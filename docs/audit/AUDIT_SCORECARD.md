@@ -1,12 +1,12 @@
 # AUDIT_SCORECARD — bitget-btc-ai
 
 **Skala:** 0–11 (11 = „überperfekt“ laut Prompt-Definition).  
-**Stand:** 2026-04-08 (Sprint 1 Prompt B) · **Git:** Initial-Commit ausstehend bis `git commit` auf dem Rechner des Teams.  
+**Stand:** 2026-04-08 (Sprint 1 Prompt B) · **Git:** `54f3917b647ff65748cecf35c720b38d1ad61005` auf `master`.  
 **Hinweis:** E2E-Sidebar-Coverage neu; voller Stack-/Playwright-Nachweis weiterhin **CI-lokal** zu bestätigen.
 
 | # | Domäne | Score | Kurzbegründung | Evidenz / Anker |
 |---|--------|------:|----------------|-----------------|
-| 1 | **Repo-Hygiene & Versionsdisziplin** | **3** | Branch-Policy dokumentiert (`BRANCH_AND_COMMIT_POLICY.md`); Commit-Pflicht unveraendert bis ausgefuehrt. | `RUN_SPRINT1_2026-04-08.md` |
+| 1 | **Repo-Hygiene & Versionsdisziplin** | **6** | Initial-Commit gesetzt; Branch-Policy dokumentiert; Remote-CI/Tags folgen beim Push. | `RUN_SPRINT1_2026-04-08.md` |
 | 2 | **Reproduzierbarkeit (Dev/Compose/ENV)** | **6** | `docker-compose.yml` mit vollständiger Engine-Kette + Healthchecks; Root-`package.json` mit `dev:up`, `config:validate*`, `stack:check`, `local:doctor`. ENV-Profile dokumentiert (`.env.*.example`). Lauf **nicht** verifiziert. | `docker-compose.yml`, `package.json` |
 | 3 | **Backend-Services (Worker)** | **6** | 13 Dockerfiles unter `services/*`, klare Pipeline-Zuordnung (market-stream → … → gateway). Ohne Runtime: keine Aussage zu Drops, Backpressure, realen Metriken. | `services/*/Dockerfile`, `docker-compose.yml` |
 | 4 | **API-Gateway** | **6** | Eigenes Image, zentrale Rolle; BFF `gateway/[...segments]` im Dashboard. Contract-Tests nicht in diesem Lauf ausgeführt. | `apps/dashboard/.../gateway`, `services/api-gateway` |

@@ -8,7 +8,7 @@
 
 | ID | Status | Nachweis |
 |----|--------|----------|
-| P0-1 | **Teil** | Policy: `docs/audit/BRANCH_AND_COMMIT_POLICY.md`; **Commit:** nach `git commit` erledigt (Hash in nächstem RUN eintragen). |
+| P0-1 | **Done** | Policy: `BRANCH_AND_COMMIT_POLICY.md`; Commit: `54f3917b647ff65748cecf35c720b38d1ad61005` (`RUN_SPRINT1_2026-04-08.md`). |
 | P0-2 | **Teil** | `pnpm check-types` grün (`RUN_SPRINT1_2026-04-08.md`); volles `pnpm test` / CI auf Remote noch auszuführen. |
 | P0-3 | **Offen** | Stack-Smoke-Log in Follow-up `RUN_*.md`. |
 | P0-4 | **Teil** | Neue Spec + JUnit-Reporter; grüner Lauf in **CI** `compose_healthcheck` + Playwright (siehe `.github/workflows/ci.yml`). |
