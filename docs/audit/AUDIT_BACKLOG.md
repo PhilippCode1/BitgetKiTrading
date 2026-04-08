@@ -4,6 +4,30 @@
 
 ---
 
+## Prompt A — Runde 5 (2026-04-08)
+
+| Thema | Status | Evidence |
+|-------|--------|----------|
+| Baseline git + check-types | **Done** | `RUN_2026-04-08_PROMPT_A_ROUND5.md` |
+| `pytest tests/llm_eval` | **Done** | 23 passed |
+| `docker compose ps` | **Done** | Container healthy |
+| `pnpm rc:health` stabil | **FAIL / Offen** | Redis timeout in Gateway `/ready`; siehe R5 Evidence |
+| E2E voll gegen :3000 | **Offen** | Nach Redis-Fix erneut `pnpm e2e` |
+
+---
+
+## KI_BACKLOG (Ziel 10/10 pro Use-Case — Owner: Cursor)
+
+| ID | Thema | DoD | Testnachweis |
+|----|-------|-----|--------------|
+| KI-1 | **Operator Explain** — Nutzer-verständliche Fehler + Latenz-SLO | UI-Copy + BFF-Timeout dokumentiert; Feld-Log-Sampling | E2E Submit + `tests/llm_eval` |
+| KI-2 | **Strategy/Signal Explain** — Golden-Set aus Produktions-Failures | `shared/prompts` + Manifest; Regression | `pytest tests/llm_eval` |
+| KI-3 | **Safety-Diagnose** — deterministische Guardrails + Fallback | Kein leerer Erfolg bei Schema-Bruch | `test_eval_safety_diagnosis.py` |
+| KI-4 | **CI-Gate** — Eval-Artefakt pro PR/Release | `artifacts/llm_eval/` + rot bei Baseline-Bruch | `.github/workflows` |
+| KI-5 | **Metriken** — Fehlerquote / Tokens / Kosten Dashboard (intern) | Minimaler Export oder Log-Structured Counter | Runbook |
+
+---
+
 ## Prompt A — Runde 4 (2026-04-07)
 
 | Thema | Status | Evidence |
@@ -64,9 +88,10 @@
 
 | ID | Thema | DoD | Betroffene Bereiche |
 |----|-------|-----|---------------------|
+| P0-0 | **Redis ↔ Gateway stabil** | `GET /ready`: `core_redis: true` zuverlässig; kein `Timeout reading from socket` unter Normal-Last; Root-Cause + Fix in `RUN_*_REDIS.md`. | `redis`, `api-gateway`, `docker-compose.yml` |
 | P0-1 | **Erster Git-Commit & Branch-Policy** | Repo hat `main`/`master` mit initialem Commit; `git status` clean für CI; Tag-Strategie dokumentiert. | ganzes Repo |
 | P0-2 | **CI grün auf Commit** | Mindestens: `pnpm check-types`, `pnpm test` (turbo), Python-Selfcheck optional; dokumentiert in `AUDIT_EVIDENCE`. | `.github/`, `turbo.json` |
-| P0-3 | **Stack-Smoke wiederholbar** | `docker compose up` + `rc:health` oder `local:doctor` Exit 0; Log-Auszug in `RUN_*.md`. | `docker-compose.yml`, `scripts/` |
+| P0-3 | **Stack-Smoke wiederholbar** | `docker compose ps` + **`pnpm rc:health` Exit 0** in Evidence (ohne Flake); Log-Auszug. | `docker-compose.yml`, `scripts/` |
 | P0-4 | **E2E Release-Gate gegen echte URLs** | `pnpm e2e` mit dokumentiertem `E2E_BASE_URL` + Auth; Ergebnis JUnit/HTML angehängt. | `e2e/` |
 
 ---

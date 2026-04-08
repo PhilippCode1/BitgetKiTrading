@@ -1,16 +1,16 @@
 # AUDIT_REPORT — Vorbericht (Totalaudit Prompt A)
 
-**Datum (Report):** 2026-04-07 · **Aktive Runde:** **4**  
+**Datum (Report):** 2026-04-08 · **Aktive Runde:** **5**  
 **Branch:** `master`  
-**Commit-Hash (HEAD):** `cce2525ac2ef9dadc380e5192b36938d46792a9c`  
-**Arbeitsbaum:** **nicht clean** (Sprint-2b-Änderungen: `PlatformExecutionStreamsGrid`, Terminal/Signals, E2E, i18n — vor Commit).  
-**Evidence (Runde 4):** `AUDIT_EVIDENCE/RUN_2026-04-07_PROMPT_A_ROUND4.md`  
-**Vorherige Evidence:** `RUN_2026-04-07_PROMPT_A_ROUND3.md` (Runde 3, HEAD `85404cd…`).
+**Commit-Hash (HEAD):** `e871b871b4a8cd803edcec50ca763e50cad7078c`  
+**Arbeitsbaum:** **clean**  
+**Evidence (Runde 5):** `AUDIT_EVIDENCE/RUN_2026-04-08_PROMPT_A_ROUND5.md`  
+**Weitere Evidence:** `RUN_2026-04-07_PROMPT_A_ROUND4.md`, `RUN_PROMPT_B_SPRINT1_2026-04-08.md`, `RUN_SPRINT2b_TERMINAL_SIGNALS_LINEAGE.md`
 
-**Runde 4 — neu verifiziert:** `docker compose config` Exit 0; `pnpm check-types` grün; `pytest tests/llm_eval` **23 passed** (lokal).  
-**Prompt B Sprint 1 (2026-04-08):** Hydration **React #418** in `LiveDataSituationBar` behoben (`Date.now()` nur nach mount); E2E broken-interactions erweitert; `pnpm rc:health` dokumentiert grün — siehe `RUN_PROMPT_B_SPRINT1_2026-04-08.md`.
+**Runde 5 — verifiziert:** `docker compose config` Exit 0; `docker compose ps` Container **healthy**; `pnpm check-types` grün; `pytest tests/llm_eval` **23 passed**.  
+**Runde 5 — hartes Finding:** `pnpm rc:health` in diesem Lauf **nicht grün**: Gateway-`/ready` mit **`redis: Timeout reading from socket`**, dazu Timeouts und **degradierte Worker** laut `system-health` — siehe `RUN_2026-04-08_PROMPT_A_ROUND5.md`.
 
-**Delta (kumulativ):** Marktuniversum-**Lineage**, **Pagination**; im Arbeitsbaum zusätzlich **gemeinsame Health-Lineage** für Terminal/Signale (`PlatformExecutionStreamsGrid`) + Release-Gate-`testid`s.
+**Delta (kumulativ bis HEAD):** Marktuniversum-Lineage + Pagination; **Terminal/Signale** mit `PlatformExecutionStreamsGrid` (committed in `42fe623`); Hydration-Fix `LiveDataSituationBar`; erweiterte **broken-interactions** E2E.
 
 ---
 
@@ -20,24 +20,24 @@ Das Repository `bitget-btc-ai` bleibt eine **End-to-End-Zielarchitektur** (Worke
 
 **Streng bewertet weiterhin FAIL oder Luecke:**
 
-1. **Phase 3 (Laufzeit):** Kein `compose up`, keine aggregierten Logs/Health-Auszuege in **Runde 4**.  
-2. **UI-Totalabdeckung:** Playwright deckt Sidebar, Release-Gate (inkl. Marktuniversum-Lineage; im WT: Terminal/Signals-Lineage-`testid`s); **kein** vollstaendiger In-Content-Link-/Button-Crawl, keine dynamischen `[id]`-Stichproben flächendeckend.  
-3. **KI 10/11:** Eval-**Suite** läuft lokal grün (23 Tests) — **trotzdem FAIL** gegen „überall messbar 10/10“: kein Nutzer-Erlebnis-/Qualitäts-Score pro Use-Case, kein CI-Artefakt in diesem Lauf, keine harten Gates in PR dokumentiert.  
-4. **Pro-Symbol-Produkt-Vollstaendigkeit** (Chart + Orderbook + Signals + News + Performance fuer **beliebiges** Symbol): **nicht** garantiert / nicht belegt.  
-5. **Terminal / Signale vs. Marktuniversum:** Lücke **im committed HEAD** noch offen; **im Arbeitsbaum** adressiert (Prompt B Sprint 2b) — bis Merge **FAIL** für „released“ Produkt.
+1. **Phase 3 (Laufzeit):** **Runde 5:** `rc:health` zeigt **Redis-Timeouts** und **Worker-Degradation** — **FAIL** gegen „stabil reproduzierbar grün“.  
+2. **UI-Totalabdeckung:** Playwright deckt Sidebar + kritische Pfade + sichere Klicks; **kein** vollständiger In-Content-Crawl, keine flächendeckenden `[id]`-Stichproben.  
+3. **KI 10/11:** `tests/llm_eval` grün — **FAIL** gegen Nutzer-Qualität 10/10 ohne Feldmetriken, SLO, CI-Artefakt pro Release.  
+4. **Pro-Symbol-Produkt-Vollstaendigkeit** (Chart + Orderbook + Signals + News + Performance für **beliebiges** Symbol): **nicht** garantiert / nicht belegt.  
+5. **SRE/MTTR:** Schwankende Edge-Gesundheit trotz „container healthy“ — Diagnosepfad für Operateure muss **Redis + Gateway** klar machen (Runbook, UI).
 
 ---
 
 ## PHASE 1 — Baseline & Reproduzierbarkeit
 
-### Git (Prompt A Runde 4)
+### Git (Prompt A Runde 5)
 
 | Check | Ergebnis |
 |--------|----------|
 | Branch | `master` |
-| HEAD | `cce2525ac2ef9dadc380e5192b36938d46792a9c` |
-| Status | **dirty** (siehe `git status`; Sprint 2b / Audit-Dateien) |
-| Diff | lokal vs. HEAD: mehrere `apps/dashboard/*`, `e2e/*`, `docs/audit/*` |
+| HEAD | `e871b871b4a8cd803edcec50ca763e50cad7078c` |
+| Status | **clean** |
+| Parent Feature-Commit | `42fe623` — Hydration, E2E, `PlatformExecutionStreamsGrid`, Terminal/Signals |
 
 ### package.json (Root) — Scripts (Kategorien)
 
@@ -108,9 +108,9 @@ Das Repository `bitget-btc-ai` bleibt eine **End-to-End-Zielarchitektur** (Worke
 
 ## PHASE 3 — Laufzeit-Check (dynamisch)
 
-**Status Runde 4:** Weiterhin **nicht** ausgefuehrt (kein `compose up`, keine `rc:health`-Ausgabe in Evidence).
+**Status Runde 5:** **Teilweise** ausgeführt — `docker compose ps` (healthy), **`pnpm rc:health` in diesem Lauf degradiert/FAIL** (Redis-Timeout im Gateway-`/ready`, Worker nicht ok, Dashboard-API-Health teils timeout). Evidence: `RUN_2026-04-08_PROMPT_A_ROUND5.md`.
 
-**Naechster DoD:** `docker compose ps`, `pnpm rc:health` / `pnpm dev:status`, Logs je Kernservice, Prometheus Targets, Anhang in `RUN_*_STACK.md`.
+**Naechster DoD:** Redis-Stabilität root-causen; Logs `api-gateway`, `redis`; wiederholbarer grüner `rc:health`-Lauf dokumentieren; optional `pnpm dev:status`.
 
 ---
 
@@ -125,7 +125,7 @@ Das Repository `bitget-btc-ai` bleibt eine **End-to-End-Zielarchitektur** (Worke
 
 | Spec | Zweck |
 |------|--------|
-| `release-gate.spec.ts` | edge-status, Operator-Explain, Kern-Konsole, **Marktuniversum + `market-universe-lineage`**, Terminal (+ im WT: **`platform-execution-lineage-terminal`**, **`platform-execution-lineage-signals`**) |
+| `release-gate.spec.ts` | edge-status, Operator-Explain, Kern-Konsole, **`market-universe-lineage`**, Terminal + **`platform-execution-lineage-terminal`**, Signale + **`platform-execution-lineage-signals`** |
 | `trust-surfaces.spec.ts` | Trust-Flaechen |
 | `responsive-shell.spec.ts` | Shell |
 | `broken-interactions.spec.ts` | Sidebar-Links, `/`, `/welcome` |
@@ -175,15 +175,15 @@ Das Repository `bitget-btc-ai` bleibt eine **End-to-End-Zielarchitektur** (Worke
 | Sprints | `SPRINT_PLAN.md` |
 | Evidence | `AUDIT_EVIDENCE/*` |
 
-**Plan Prompt B:** `SPRINT_PLAN.md` + Backlog — naechster sinnvoller Schritt: **Commit** Sprint 2b + **P0-3** Stack-Smoke + **P1-6** Ribbon vs. Bar + **Sprint 3** KI-Eval-Gates in CI mit Artefakten.
+**Plan Prompt B:** `SPRINT_PLAN.md` + Backlog — naechster sinnvoller Schritt: **Redis/Gateway-Stabilität** (P0), **P1-6** Ribbon vs. Bar, **P1-4** Universe-Last, **Sprint 3** KI-Gates + CI-Artefakte.
 
 ---
 
-## Top-Findings (Runde 4 — ergänzend)
+## Top-Findings (Runde 5 — ergänzend)
 
-1. **Arbeitsbaum dirty** — released Stand ≠ HEAD bis Merge/Commit Sprint 2b.  
-2. **Stack/Health** weiter ohne Messung in Runde 4.  
-3. **`pnpm e2e`** nicht gelaufen — Release-Gate-Änderungen im WT unverifiziert gegen Live-URL.  
+1. **`rc:health` FAIL / instabil** — Redis-Socket-Timeout im Gateway; Worker laut system-health nicht ok.  
+2. **Container „healthy“ ≠ Edge grün** — Betrieb muss beides differenzieren.  
+3. **`pnpm e2e`** in Runde 5 nicht erneut belegt (abhängig von Gateway/Redis).  
 4. **`config:validate`** gegen echte `.env.local` ausstehend.  
 5. **KI:** pytest `llm_eval` grün, aber **kein** Nachweis menschenzentrierter Qualität / Fehlerquoten-SLO.  
 6. **In-Page-Links/Buttons** jenseits Sidebar: weiter **FAIL** vs. Totalprüfung.  
@@ -210,4 +210,4 @@ Das Repository `bitget-btc-ai` bleibt eine **End-to-End-Zielarchitektur** (Worke
 
 ---
 
-*Ende Vorbericht. Evidence Runde 4:* `RUN_2026-04-07_PROMPT_A_ROUND4.md` · *Runde 3:* `RUN_2026-04-07_PROMPT_A_ROUND3.md`
+*Ende Vorbericht. Evidence Runde 5:* `RUN_2026-04-08_PROMPT_A_ROUND5.md` · *Runde 4:* `RUN_2026-04-07_PROMPT_A_ROUND4.md` · *Runde 3:* `RUN_2026-04-07_PROMPT_A_ROUND3.md`

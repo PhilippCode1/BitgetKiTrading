@@ -20,6 +20,11 @@ Primärquelle im Repo: `PAGE_COMPLETION_MATRIX.md` (detaillierte Route-Tabelle +
 
 - **Arbeitsbaum (vor Commit):** `/console/terminal` und `/console/signals` — gleiche Health-Lineage wie Marktuniversum (`PlatformExecutionStreamsGrid`). Nach Merge: Matrix + `INCOMPLETE` hier bereinigen.
 
+## Update Prompt A Runde 5 (2026-04-08)
+
+- Terminal/Signale-Lineage ist **committed** (`42fe623`); `PAGE_COMPLETION_MATRIX.md` sollte entsprechend nachgezogen werden.
+- **Edge/Redis:** Bei Ausfall sind viele Seiten „degradiert“ — Matrix-Einträge sollten unterscheiden: *UI vollständig* vs. *Datenpfad gestört*.
+
 ## Zusätzliche Routen (Matrix ggf. älter)
 
 - `/console/diagnostics`, `/console/self-healing` — neuere Features; Matrix sollte erweitert werden.

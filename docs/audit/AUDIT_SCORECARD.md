@@ -1,54 +1,53 @@
 # AUDIT_SCORECARD — bitget-btc-ai
 
 **Skala:** 0–11 (11 = „überperfekt“ laut Prompt-Definition).  
-**Stand:** 2026-04-08 · **Prompt B Sprint 1** (nach Prompt A Runde 4).  
-**Evidence:** `RUN_PROMPT_B_SPRINT1_2026-04-08.md`, `RUN_2026-04-07_PROMPT_A_ROUND4.md`, `pytest tests/llm_eval` (weiterhin 23 passed bei Lauf).  
-**Neu:** `pnpm rc:health` + `docker compose ps` healthy; **E2E broken-interactions** nach Dashboard-Rebuild erwartet grün (Hydration #418 behoben).
+**Stand:** 2026-04-08 · **Prompt A Runde 5** · **Git HEAD:** `e871b871b4a8cd803edcec50ca763e50cad7078c` (`master`, clean).  
+**Evidence:** `AUDIT_EVIDENCE/RUN_2026-04-08_PROMPT_A_ROUND5.md`, `RUN_PROMPT_B_SPRINT1_2026-04-08.md`, `RUN_2026-04-07_PROMPT_A_ROUND4.md`
 
 | # | Domäne | Score | Kurzbegründung | Evidenz / Anker |
 |---|--------|------:|----------------|-----------------|
-| 1 | **Repo-Hygiene & Versionsdisziplin** | **8** | Fokussierte Historie; **aktuell dirty** — Disziplin-Minus bis Commit. | `git status`, `BRANCH_AND_COMMIT_POLICY.md` |
-| 2 | **Reproduzierbarkeit (Dev/Compose/ENV)** | **8** | Stack healthy + `rc:health` OK; `check-types` grün; vollständiges `config:validate` gegen Prod-`.env` weiter optional. | `RUN_PROMPT_B_SPRINT1_2026-04-08.md` |
-| 3 | **Backend-Services (Worker)** | **6** | Architektur klar; Drops/Latenz/Health ohne laufenden Stack unbelegt. | `docker-compose.yml`, `services/*` |
-| 4 | **API-Gateway** | **6** | Zentrale Rolle; kein Contract-Smoke in Runde 4. | `services/api-gateway` |
-| 5 | **Datenpipelines (Markt → Signal)** | **6** | Compose-Kette dokumentiert; degraded/empty nicht gemessen. | `ai-architecture.md` |
-| 6 | **Marktuniversum & Symbolskalierung** | **8** | Lineage-Panel, Pagination, Kernsymbole; **500+-Lasttest** fehlt; „beliebiges Symbol“-Produktpaket nicht garantiert. | `market-universe`, `RUN_SPRINT2_2026-04-07.md` |
-| 7 | **Dashboard / Frontend** | **9** | MU-Transparenz stark; **WT:** Terminal/Signals gleiche Health-Lineage — bis Merge weiterhin Risiko für „released“ Stand. | `PlatformExecutionStreamsGrid` (WT), `PAGE_COMPLETION_MATRIX.md` |
-| 8 | **Routen / Links / Buttons (E2E Total)** | **8** | Sidebar + **kritische Pfade** + **sichere Klicks** in `broken-interactions.spec.ts`; Full-In-Page-Crawl + P1-2 offen. | `e2e/tests/broken-interactions.spec.ts` |
-| 9 | **Fehlerkommunikation & Self-Healing** | **7** | Produktmuster stark; verbleibende `.catch`-Pfade (7 Dateien mit mindestens einem Catch) reviewen. | Grep `.catch(` in `apps/dashboard/src` |
-|10 | **Observability / SRE / MTTR** | **7** | Prometheus/Grafana im Compose; Alarm→Runbook in Runde 4 nicht belegt. | `OBSERVABILITY_AND_SLOS.md` |
-|11 | **KI: Qualität, Evals, Guardrails** | **7** | **`pytest tests/llm_eval` 23/23** lokal; Tooling + Schemas vorhanden — **kein** 10/11 ohne Nutzer-Qualitätsmetrik, Produktions-Fehlerquote, CI-Artefakt in diesem Lauf. | `tools/run_llm_eval.py`, `tests/llm_eval` |
-|12 | **Security / Compliance** | **7** | Validator + Matrix; kein Pentest/Secrets-Scan Runde 4. | `tools/validate_env_profile.py` |
+| 1 | **Repo-Hygiene & Versionsdisziplin** | **9** | Tree clean; fokussierte Commits (`42fe623`, `e871b87`). | `git status` |
+| 2 | **Reproduzierbarkeit (Dev/Compose/ENV)** | **7** | `compose config` + `check-types` grün; **`rc:health` in R5 instabil** (Redis); `config:validate` vollständig offen. | `RUN_2026-04-08_PROMPT_A_ROUND5.md` |
+| 3 | **Backend-Services (Worker)** | **5** | Architektur klar; **Laufzeit: mehrere Services „nicht ok“** wenn Edge leidet. | `rc:health`-Log R5 |
+| 4 | **API-Gateway** | **5** | Zentrale Rolle; **`/ready` mit core_redis false** (Timeout) — kritisch. | Gateway payload in R5 |
+| 5 | **Datenpipelines (Markt → Signal)** | **5** | Von Redis/Gateway abhängig; ohne stabile Edge unbelegt. | Phase 3 REPORT |
+| 6 | **Marktuniversum & Symbolskalierung** | **8** | Lineage, Pagination, Kernsymbole; Lasttest 500+ offen; Pro-Symbol-Paket nicht garantiert. | `market-universe`, Sprint-2-Doku |
+| 7 | **Dashboard / Frontend** | **9** | Hydration-Fix; MU + Terminal/Signale Lineage committed; Matrix-i18n-Reste. | `LiveDataSituationBar`, `PlatformExecutionStreamsGrid` |
+| 8 | **Routen / Links / Buttons (E2E Total)** | **7** | Specs existieren (Sidebar + kritische Pfade + Klicks); **R5 kein grüner E2E-Lauf** dokumentiert. | `e2e/tests/broken-interactions.spec.ts` |
+| 9 | **Fehlerkommunikation & Self-Healing** | **7** | Produktmuster stark; `.catch`-Review offen. | Dashboard-Grep |
+|10 | **Observability / SRE / MTTR** | **6** | Prometheus/Grafana vorhanden; **Schwelle healthy vs. ready** verwirrt; Redis-Ausfall muss schneller sichtbar sein. | `OBSERVABILITY_AND_SLOS.md`, R5 |
+|11 | **KI: Qualität, Evals, Guardrails** | **7** | **`pytest tests/llm_eval` 23/23** (R5); kein 10/11 ohne Nutzermetrik + CI-Artefakt. | `tests/llm_eval` |
+|12 | **Security / Compliance** | **7** | Validator + Matrix; kein Pentest diesmal. | `validate_env_profile.py` |
 
 ## KI-Teil-Scorecard (Use-Cases, Ziel ≥10)
 
 | Use-Case | Score | Warum nicht 10+ |
 |----------|------:|-----------------|
-| Operator Explain | **7** | Regression-Tests grün; echte Provider-Qualität / Latenz / Nutzerverständlichkeit ungemessen. |
+| Operator Explain | **7** | Regression grün; Feldqualität/Latenz/SLO fehlen. |
 | Strategy / Signal Explain | **7** | Analog. |
-| Safety / Incident Diagnose | **7** | Testabdeckung im Repo; Feld-Fehlerbilder fehlen in Evidence. |
-| Assist Layer | **6** | Breite ohne produktnahe Eval-Kennzahlen. |
-| AI Chart Annotations | **7** | `test_eval_chart_annotations` u. a. — UI-Integration abhängig von Gateway-Daten. |
+| Safety / Incident Diagnose | **7** | Tests im Repo; Evidence aus Produktion fehlt. |
+| Assist Layer | **6** | Breite ohne Kennzahlen. |
+| AI Chart Annotations | **7** | Abhängig von stabiler Marktdaten-Kette. |
 
 ## Gesamteinschätzung (ehrlich)
 
-**Fortschritt:** Statische Qualität (`check-types`, `llm_eval` pytest) und UI-Transparenz (MU; Terminal/Signals im WT). **Gesamtbild weiter 6–9:** Ohne **laufenden Stack**, **E2E gegen Deploy**, **ENV-Validate-Nachweis** und **KI-Nutzer-Metriken** kein Gesamturteil 10–11.
+**Regression bei Laufzeit-Vertrauen (R5):** Redis/Gateway schwächt alles Downstream. **Statik + KI-Unit-Evals** bleiben stark; **SRE/Edge** muss vor nächstem Release hart stabilisiert werden — sonst kein Gesamturteil ≥8.
+
+---
+
+## Archiv — Scorecard Prompt B Sprint 1 / Runde 4
+
+| Domäne | Score (kurz vor R5) |
+|--------|---------------------|
+| Repo | 8 (dirty → jetzt 9) |
+| Repro | 8 → **7** (rc:health Flake) |
+| Gateway | 6 → **5** |
+| Worker | 6 → **5** |
+| E2E | 8 → **7** (kein Lauf R5) |
+| SRE | 7 → **6** |
 
 ---
 
 ## Archiv — Runde 3 (Referenz)
 
-| # | Domäne | Score (R3) |
-|---|--------|----------:|
-| 1 | Repo-Hygiene | 8 |
-| 2 | Reproduzierbarkeit | 7 |
-| 3–5 | Backend / Gateway / Pipelines | 6 |
-| 6 | Marktuniversum | 8 |
-| 7 | Dashboard | 8 |
-| 8 | Routen E2E | 6 |
-| 9 | Fehlerkommunikation | 7 |
-|10 | Observability | 7 |
-|11 | KI | 6 |
-|12 | Security | 7 |
-
-*HEAD Runde 3:* `85404cd6488c5cfce6a37636d7c7fb34e1dac96b` (clean). Evidence: `RUN_2026-04-07_PROMPT_A_ROUND3.md`.
+Siehe ältere `AUDIT_SCORECARD.md` in Git-Historie; HEAD R3 `85404cd…`.
