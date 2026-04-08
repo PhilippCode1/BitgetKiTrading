@@ -1,7 +1,7 @@
 # AUDIT_SCORECARD — bitget-btc-ai
 
 **Skala:** 0–11 (11 = „ueberperfekt“ laut Prompt-Definition).  
-**Stand Report:** 2026-04-07 (nach Sprint 2 Teil) · **Git:** siehe letzter Commit nach Merge dieses Laufs.  
+**Stand Report:** 2026-04-07 (nach Sprint 2 Teil) · **Git HEAD:** `a511b8c` (`master`).  
 **Hinweis:** Scores **>8** fuer Laufzeit/E2E/KI setzen einen **nachweisbaren** gruenen Stack- bzw. Eval-Lauf voraus — dieser Prompt-A-Lauf lieferte **statische** Checks + `pnpm check-types` + `validate_env_profile` + `docker compose config`.
 
 | # | Domäne | Score | Kurzbegründung | Evidenz / Anker |
