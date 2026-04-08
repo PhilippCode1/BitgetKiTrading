@@ -77,7 +77,7 @@
 |----|--------|----------|
 | P0-1 | **Done** | Policy: `BRANCH_AND_COMMIT_POLICY.md`; Commit: `54f3917b647ff65748cecf35c720b38d1ad61005` (`RUN_SPRINT1_2026-04-08.md`). |
 | P0-2 | **Teil** | `pnpm check-types` grün (`RUN_SPRINT1_2026-04-08.md`); volles `pnpm test` / CI auf Remote noch auszuführen. |
-| P0-3 | **Done** | `RUN_PROMPT_B_SPRINT1_2026-04-08.md` — Compose healthy + `rc:health` Exit 0. |
+| P0-3 | **Teil** | Sprint 1: `rc:health` grün; **Runde 5:** erneuter Lauf **FAIL** (Redis) — siehe `RUN_2026-04-08_PROMPT_A_ROUND5.md`. |
 | P0-4 | **Teil** | Broken-interactions erweitert; grüner Lauf lokal nach Image-Rebuild / ein Dev-Server (siehe Evidence). |
 | P2-3 | **Done** | `python tools/validate_env_profile.py --help` Exit 0 (Windows/cp1252). |
 | P1-3 | **Teil** | Locale-Mirror: keine stillen Catches mehr (`best-effort-fetch.ts` + Tests). Weitere `.catch(()=>{})` per Grep in Sprint E. |
