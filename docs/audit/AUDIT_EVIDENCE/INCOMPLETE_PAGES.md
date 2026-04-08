@@ -16,6 +16,10 @@ Primärquelle im Repo: `PAGE_COMPLETION_MATRIX.md` (detaillierte Route-Tabelle +
 
 - `/console/market-universe` — **Daten-Lineage-Panel** (Stream, Broker, Reconcile, Kernsymbole) und Pagination; Matrix-Eintrag sollte aktualisiert werden.
 
+## Update Prompt A Runde 4 (2026-04-07)
+
+- **Arbeitsbaum (vor Commit):** `/console/terminal` und `/console/signals` — gleiche Health-Lineage wie Marktuniversum (`PlatformExecutionStreamsGrid`). Nach Merge: Matrix + `INCOMPLETE` hier bereinigen.
+
 ## Zusätzliche Routen (Matrix ggf. älter)
 
 - `/console/diagnostics`, `/console/self-healing` — neuere Features; Matrix sollte erweitert werden.

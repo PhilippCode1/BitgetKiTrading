@@ -1,29 +1,18 @@
 # SPRINT_PLAN — Prompt B (bitget-btc-ai)
 
-**Erstellt:** 2026-04-08 (Iteration 1)  
-**Letzte Umsetzung:** 2026-04-07 (Iteration 2 — Sprint 2 Teil)  
-**Quelle:** `AUDIT_BACKLOG.md`, `AUDIT_SCORECARD.md`, `AUDIT_REPORT.md`  
-**Regeln:** Nach jedem Sprint Scorecard/Backlog/Evidence aktualisieren; kleine, testbare Schritte.
+**Stand:** 2026-04-08 · **Quelle:** `AUDIT_BACKLOG.md`, `AUDIT_SCORECARD.md`, `AUDIT_REPORT.md`  
+**Regeln:** Nach jedem Sprint `AUDIT_SCORECARD.md`, `AUDIT_BACKLOG.md`, `AUDIT_EVIDENCE/RUN_*.md` aktualisieren; kleine, testbare Inkremente; kein Big-Bang.
 
 ---
 
-## Sprint 2 — Status Iteration 2
-
-| Aspekt | Stand |
-|--------|--------|
-| **Umgesetzt** | Marktuniversum: Panel „Datenpfad und Plattform-Status“ (LIVE/SHADOW/PAPER-Pills, Kerzen-/Signal-Zeit, market-stream + live-broker Health, WS-Telemetrie-Kurztext, Broker-Reconcile, Tabelle BTCUSDT/ETHUSDT mit Registry/Chart-Link); serverseitige Pagination Universe-Symbole (`universePage`) und Instrument-Registry (`registryPage`); E2E `release-gate` prüft `data-testid=market-universe-lineage`; Jest `market-universe-lineage.test.ts`. |
-| **Offen** | Terminal/Signal-Center: gleiche Dichte wie MU (Folge-PR); Stack-Smoke P0-3; KI Sprint 3. |
-
----
-
-## Sprint 1 — UX-Blocker + Broken Links/Buttons eliminieren
+## Sprint 1 — UX-Blocker, Broken Links/Buttons, E2E-Sicherheitsnetz
 
 | Aspekt | Inhalt |
 |--------|--------|
-| **Scope** | P0-1 Branch/Commit-Policy-Doku; P0-2 lokaler Nachweis `check-types` + Dashboard-Tests; `validate_env_profile.py --help` Windows/cp1252-sicher; stille `.catch(()=>{})` bei Locale-Mirror durch sichtbare `console.warn`-Protokollierung ersetzen; E2E **Broken-Interactions**: alle sichtbaren Sidebar-Links unter `/console` traversieren + Kern-öffentliche Routen; keine `pageerror`; HTTP 2xx; Shell sichtbar. |
-| **DoD** | `python tools/validate_env_profile.py --help` Exit 0 unter Windows; neue Spec `e2e/tests/broken-interactions.spec.ts` grün in CI (Compose + Playwright); `BROKEN_LINKS.md` / `BROKEN_BUTTONS.md` verweisen auf E2E-Abdeckung + Restrisiko; `AUDIT_BACKLOG` P0-2/4 teilweise erledigt markiert. |
-| **Tests/Evidence** | `pnpm check-types`; `pnpm --dir apps/dashboard run test`; CI: bestehender Job `compose_healthcheck` + Playwright; optional lokal `pnpm e2e`; JUnit: `e2e/test-results/junit.xml`. |
-| **Risiko/Backout** | E2E-Liste zu strikt: Route aus Liste nehmen oder UI fixen; Backout = Spec revert. |
+| **Scope** | P0-1 sauberer Git-Stand (Commits pro Inkrement); P0-2 `pnpm check-types` + Dashboard-Tests; P0-3 Stack-Smoke **oder** dokumentiertes „blocked“ mit Ursache; P0-4 E2E erweitern: Sidebar-Crawl **plus** feste Liste **kritischer** `/console/*`-Pfade; **mindestens eine** sichere Button-Interaktion pro Kernoberfläche (Terminal Reload, Signale-Filter-Link, aufklappbare `<details>` ohne Destruktivität); keine 404/500/`pageerror`/harte Alert-Banner auf diesen Pfaden. |
+| **DoD** | `broken-interactions.spec.ts` grün in CI; `BROKEN_LINKS.md` / `BROKEN_BUTTONS.md` entweder leer **oder** Tabelle **blocked** mit Grund + Fix-Pfad; P0-3: `RUN_*_STACK.md` **oder** „blocked: kein Docker lokal“. |
+| **Tests/Evidence** | `pnpm check-types`; `pnpm --filter @bitget-btc-ai/dashboard test`; `pnpm e2e -- e2e/tests/broken-interactions.spec.ts`; JUnit wie in `e2e/playwright.config.ts`. |
+| **Risiko/Backout** | E2E zu strikt: Pfade oder Assertions lockern; Backout = Git-Revert der Spec. |
 
 ---
 
@@ -31,32 +20,32 @@
 
 | Aspekt | Inhalt |
 |--------|--------|
-| **Scope** | LIVE/SHADOW/PAPER + `last update` + Staleness auf Chart, Terminal, Signal-Center, Market-Universe; Broker-Reconcile-Status; fehlende Streams mit Ursache + Self-Healing-Hinweis (keine leeren Zustände ohne Text); dynamische Symbolliste aus Gateway/Catalog-API wo vorhanden; Pagination/Virtualisierung für große Listen. |
-| **DoD** | Für BTCUSDT/ETHUSDT: sichtbarer Live-State, Stream-Status, Reconcile; keine „mystery emptiness“; Evidenz-Screenshots in `AUDIT_EVIDENCE/`. |
-| **Tests** | Erweiterte Playwright-Szenarien mit Mock oder Stack; API-Smoke gegen Gateway `/v1/...` wo dokumentiert. |
-| **Risiko/Backout** | Gateway down: UI muss degraded anzeigen (bereits teils vorhanden) — keine Regression zu harten Crashes. |
+| **Scope** | LIVE/SHADOW/PAPER, Last-Update, Staleness, Datenqualität auf Terminal, Signale, Marktuniversum (Health-Lineage bereits vorhanden — ausbauen wo Lücken); dynamische Symbol-/Produktlisten aus Gateway/Catalog; Pagination/Virtualisierung für große Mengen; bei fehlenden Streams: konkreter Text (was fehlt, Self-Healing-Hinweis). |
+| **DoD** | BTCUSDT/ETHUSDT: Chart aktualisiert, Live-State, Market-Stream-Status, Broker-Reconcile sichtbar; kein „mystery emptiness“; Evidence-Screenshots oder Playwright-Assertions. |
+| **Tests/Evidence** | `release-gate.spec.ts` + API-Smoke gegen Gateway; `RUN_SPRINT2_*.md`. |
+| **Risiko/Backout** | Gateway down: nur degraded UI, keine weißen Screens; Backout = Feature-Flag pro Panel. |
 
 ---
 
-## Sprint 3 — KI 10/10 (Evals, Guardrails, Versionierung)
+## Sprint 3 — KI-Qualität (10/10): Evals, Guardrails, Versionierung, UI-Erklärungen
 
 | Aspekt | Inhalt |
 |--------|--------|
-| **Scope** | Prompt-Artefakte nur unter `shared/prompts` + Manifest-Version; Golden-Datasets pro Use-Case (`tests/llm_eval`); `validate_eval_baseline.py` + CI-Gate bei Score-Regression; Timeouts/Retry im Orchestrator/BFF dokumentiert und getestet; UI-Copy: was KI tut, Fehler, Fallback. |
-| **DoD** | Pro Use-Case (Operator Explain, Strategy Explain, Safety, Assist): Scorecard-Eintrag ≥10 mit Eval-Nachweis; CI rot bei Baseline-Bruch. |
-| **Tests** | `pnpm llm:eval` / `pytest tests/llm_eval`; Artifact Upload in CI. |
-| **Risiko/Backout** | Externe API-Kosten: Fake-Provider in CI, Live-Eval nur manuell/release. |
+| **Scope** | Prompts nur unter `shared/prompts` + Manifest/Baseline; Golden-Sets in `tests/llm_eval`; CI-Gate bei Regressions (`validate_eval_baseline` / `pnpm llm:eval`); Timeouts/Retry/Fallback im Orchestrator/BFF; UI-Copy: Was tut KI, warum, was bei Fehler. |
+| **DoD** | Pro Use-Case (Operator Explain, Strategy/Signal Explain, Safety, Assist, Chart-Annotations): Scorecard ≥10 **mit** Eval-Nachweis; CI rot bei Baseline-Bruch; Artefakt `artifacts/llm_eval/` im Release-Prozess. |
+| **Tests/Evidence** | `pytest tests/llm_eval`; `pnpm llm:eval:report`; Workflow-Logs. |
+| **Risiko/Backout** | Kosten: Fake-Provider in CI; Live-Eval nur Release/manuell. |
 
 ---
 
-## Sprint 4 — Observability + Self-Healing + Diagnosezentrum
+## Sprint 4 — Observability, Self-Healing, Diagnosezentrum
 
 | Aspekt | Inhalt |
 |--------|--------|
-| **Scope** | Diagnose-UI: Matrix aller Services (Health/Ready), Redis/Postgres, Streams, Broker, Eventbus; Fehler mit Ursache/Impact/Fix/Letzte Sichtung; Self-Healing: reale API-Actions (Reconnect, Cache-Refresh) oder explizite Grenze „nicht automatisch“. |
-| **DoD** | Keine rein dekorative Repair-Buttons; jede Aktion: Erfolg/Fehler sichtbar; Logs korrelierbar. |
-| **Tests** | Integrationstests gegen Mock-Gateway; E2E Diagnose-Seite smoke. |
-| **Risiko/Backout** | Zu breite Mutationen: Feature-Flags pro Aktion. |
+| **Scope** | Zentrale Diagnose: Services Health/Ready, Streams, DB/Redis, Broker-Reconcile, Eventbus; pro Problem: Ursache, Impact, Fix-Aktion, letzte Sichtung; Self-Healing: **reale** API-Aktionen (Reconnect, Cache-Refresh, Resubscribe) **oder** explizite Grenze „nicht automatisch“. |
+| **DoD** | Keine dekorativen Repair-Buttons; jede Aktion: Erfolg/Fehler sichtbar; Logs korrelierbar (`supportReference` o. ä.). |
+| **Tests/Evidence** | Integration gegen Mock-Gateway; E2E Diagnose-/Self-Healing-Smoke; `RUN_SPRINT4_*.md`. |
+| **Risiko/Backout** | Mutationen hinter Feature-Flags; Backout = Flag aus. |
 
 ---
 
@@ -64,17 +53,26 @@
 
 | Aspekt | Inhalt |
 |--------|--------|
-| **Scope** | Marktuniversum 500+ Symbole Profil; i18n-Rest aus Matrix; Ops „Above the fold“ KPIs; Audit-Index in README; Ribbon vs. Seitenlage konsolidieren (P1-6). |
-| **DoD** | `PAGE_COMPLETION_MATRIX` geschlossen wo versprochen; Lighthouse/Bundle-Check optional. |
-| **Tests** | Lasttest-Skript + Dokumentation; Regression E2E. |
-| **Risiko/Backout** | Virtualisierung kann UX ändern — Feature-Toggle. |
+| **Scope** | Marktuniversum Lastprofil (z. B. 500+ Symbole) dokumentiert + Timeout/Pagination-Verhalten; i18n-Reste (`PAGE_COMPLETION_MATRIX`); Ops „Above the fold“ KPIs; P1-6 Ribbon vs. `LiveDataSituationBar` konsolidieren oder Konflikt-Hinweis; optionale Bundle/Lighthouse-Checks. |
+| **DoD** | P1-4 Dokument mit Messergebnis; Matrix-Abgleich; Regression-E2E grün. |
+| **Tests/Evidence** | Last-Skript oder Playwright mit vielen Symbolen; `RUN_SPRINT5_*.md`. |
+| **Risiko/Backout** | Virtualisierung: UX-Regression — Toggle oder schrittweise Ausrollung. |
 
 ---
 
 ## Reihenfolge (Nutzen zuerst)
 
-1. Sprint 1 — Vertrauen: nichts Tot-Klickbares auf Kernpfaden.  
-2. Sprint 2 — Daten echt sichtbar.  
-3. Sprint 3 — KI messbar.  
-4. Sprint 4 — Betrieb.  
-5. Sprint 5 — Skalierung & Feinschliff.
+1. **Sprint 1** — Nichts Tot-Klickbares auf Kernpfaden; E2E-Netz.  
+2. **Sprint 2** — Datenherkunft und Kernsymbole glasklar.  
+3. **Sprint 3** — KI messbar und gatebar.  
+4. **Sprint 4** — Betrieb und Heilung.  
+5. **Sprint 5** — Skalierung und Feinschliff.
+
+---
+
+## Historische Umsetzung (Kurz)
+
+| Sprint | Erreicht (Auszug) |
+|--------|-------------------|
+| Sprint 1 (früher) | `broken-interactions` Sidebar, Locale-Catch-Fix, Policy-Doku |
+| Sprint 2 | Marktuniversum-Lineage, Pagination, `PlatformExecutionStreamsGrid` Terminal/Signale, Release-Gate-`testid`s |

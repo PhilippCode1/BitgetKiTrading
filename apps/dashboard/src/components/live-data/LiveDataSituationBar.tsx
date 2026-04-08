@@ -44,12 +44,20 @@ type Props = Readonly<{
  */
 export function LiveDataSituationBar({ model }: Props) {
   const { t } = useI18n();
-  const [nowMs, setNowMs] = useState(() => Date.now());
+  /** Erst nach mount echte Uhr — vermeidet Hydration-Mismatch (React #418) durch Date.now() in SSR vs. Client. */
+  const [clientNowMs, setClientNowMs] = useState<number | null>(null);
 
   useEffect(() => {
-    const id = globalThis.setInterval(() => setNowMs(Date.now()), 1000);
+    setClientNowMs(Date.now());
+    const id = globalThis.setInterval(() => setClientNowMs(Date.now()), 1000);
     return () => globalThis.clearInterval(id);
   }, []);
+
+  const nowMsForAge =
+    clientNowMs ??
+    model.serverTsMs ??
+    model.lastMarketIngestTsMs ??
+    null;
 
   const completenessPct = useMemo(() => {
     if (model.lineageTotal <= 0) return null;
@@ -64,8 +72,14 @@ export function LiveDataSituationBar({ model }: Props) {
 
   const srcLabel = t(`live.dataSituation.source.${model.dataSourceSummaryKey}`);
 
-  const lastMarketS = ageSeconds(model.lastMarketIngestTsMs, nowMs);
-  const lastServerS = ageSeconds(model.serverTsMs, nowMs);
+  const lastMarketS =
+    model.lastMarketIngestTsMs == null || nowMsForAge == null
+      ? null
+      : ageSeconds(model.lastMarketIngestTsMs, nowMsForAge);
+  const lastServerS =
+    model.serverTsMs == null || nowMsForAge == null
+      ? null
+      : ageSeconds(model.serverTsMs, nowMsForAge);
 
   const lastMarketText =
     lastMarketS == null

@@ -4718,6 +4718,19 @@ code {
   margin-top: 1rem;
 }
 
+.platform-execution-streams__title {
+  margin-top: 0;
+  font-size: 1.05rem;
+}
+
+.platform-execution-streams__footer {
+  margin-top: 0.75rem;
+}
+
+.platform-execution-streams.panel {
+  margin-bottom: 1rem;
+}
+
 .market-universe-symbols-pager {
   display: flex;
   flex-wrap: wrap;

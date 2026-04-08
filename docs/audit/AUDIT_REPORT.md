@@ -1,11 +1,16 @@
 # AUDIT_REPORT — Vorbericht (Totalaudit Prompt A)
 
-**Datum (Report):** 2026-04-07 · **Runde:** 3  
+**Datum (Report):** 2026-04-07 · **Aktive Runde:** **4**  
 **Branch:** `master`  
-**Commit-Hash (HEAD):** `85404cd6488c5cfce6a37636d7c7fb34e1dac96b`  
-**Umfeld:** Windows, PowerShell; **dynamischer Stack und `pnpm e2e` in diesem Audit-Lauf nicht ausgefuehrt** (Evidence: `AUDIT_EVIDENCE/RUN_2026-04-07_PROMPT_A_ROUND3.md`).
+**Commit-Hash (HEAD):** `cce2525ac2ef9dadc380e5192b36938d46792a9c`  
+**Arbeitsbaum:** **nicht clean** (Sprint-2b-Änderungen: `PlatformExecutionStreamsGrid`, Terminal/Signals, E2E, i18n — vor Commit).  
+**Evidence (Runde 4):** `AUDIT_EVIDENCE/RUN_2026-04-07_PROMPT_A_ROUND4.md`  
+**Vorherige Evidence:** `RUN_2026-04-07_PROMPT_A_ROUND3.md` (Runde 3, HEAD `85404cd…`).
 
-**Delta seit Runde 2:** Sprint 2 (Prompt B) lieferte Marktuniversum-**Daten-Lineage-Panel**, **Kernsymbole BTCUSDT/ETHUSDT**, **serverseitige Pagination** fuer Universe-Symbole und Instrument-Registry, plus Unit-Tests und E2E-Erweiterung in `release-gate.spec.ts` (Commit `a511b8c`).
+**Runde 4 — neu verifiziert:** `docker compose config` Exit 0; `pnpm check-types` grün; `pytest tests/llm_eval` **23 passed** (lokal).  
+**Prompt B Sprint 1 (2026-04-08):** Hydration **React #418** in `LiveDataSituationBar` behoben (`Date.now()` nur nach mount); E2E broken-interactions erweitert; `pnpm rc:health` dokumentiert grün — siehe `RUN_PROMPT_B_SPRINT1_2026-04-08.md`.
+
+**Delta (kumulativ):** Marktuniversum-**Lineage**, **Pagination**; im Arbeitsbaum zusätzlich **gemeinsame Health-Lineage** für Terminal/Signale (`PlatformExecutionStreamsGrid`) + Release-Gate-`testid`s.
 
 ---
 
@@ -15,24 +20,24 @@ Das Repository `bitget-btc-ai` bleibt eine **End-to-End-Zielarchitektur** (Worke
 
 **Streng bewertet weiterhin FAIL oder Luecke:**
 
-1. **Phase 3 (Laufzeit):** Kein `compose up`, keine aggregierten Logs/Health-Auszuege in **diesem** Lauf.  
-2. **UI-Totalabdeckung:** Playwright deckt Kernpfade, Sidebar, Marktuniversum-Lineage; **kein** vollstaendiger In-Content-Link-/Button-Crawl, keine dynamischen `[id]`-Stichproben automatisierbar ohne Daten.  
-3. **KI 10/11:** Ohne frische Eval-Laeufe und Schwellen pro Use-Case = **FAIL** gegen Zielbild.  
+1. **Phase 3 (Laufzeit):** Kein `compose up`, keine aggregierten Logs/Health-Auszuege in **Runde 4**.  
+2. **UI-Totalabdeckung:** Playwright deckt Sidebar, Release-Gate (inkl. Marktuniversum-Lineage; im WT: Terminal/Signals-Lineage-`testid`s); **kein** vollstaendiger In-Content-Link-/Button-Crawl, keine dynamischen `[id]`-Stichproben flächendeckend.  
+3. **KI 10/11:** Eval-**Suite** läuft lokal grün (23 Tests) — **trotzdem FAIL** gegen „überall messbar 10/10“: kein Nutzer-Erlebnis-/Qualitäts-Score pro Use-Case, kein CI-Artefakt in diesem Lauf, keine harten Gates in PR dokumentiert.  
 4. **Pro-Symbol-Produkt-Vollstaendigkeit** (Chart + Orderbook + Signals + News + Performance fuer **beliebiges** Symbol): **nicht** garantiert / nicht belegt.  
-5. **Terminal / Signale:** Dieselbe **explizite** Datenpfad-Darstellung wie auf Marktuniversum — **noch nicht** umgesetzt (Backlog Sprint 2b).
+5. **Terminal / Signale vs. Marktuniversum:** Lücke **im committed HEAD** noch offen; **im Arbeitsbaum** adressiert (Prompt B Sprint 2b) — bis Merge **FAIL** für „released“ Produkt.
 
 ---
 
 ## PHASE 1 — Baseline & Reproduzierbarkeit
 
-### Git (Prompt A Runde 3)
+### Git (Prompt A Runde 4)
 
 | Check | Ergebnis |
 |--------|----------|
 | Branch | `master` |
-| HEAD | `85404cd6488c5cfce6a37636d7c7fb34e1dac96b` |
-| Status | clean |
-| Diff | kein lokaler Diff zum HEAD |
+| HEAD | `cce2525ac2ef9dadc380e5192b36938d46792a9c` |
+| Status | **dirty** (siehe `git status`; Sprint 2b / Audit-Dateien) |
+| Diff | lokal vs. HEAD: mehrere `apps/dashboard/*`, `e2e/*`, `docs/audit/*` |
 
 ### package.json (Root) — Scripts (Kategorien)
 
@@ -55,7 +60,8 @@ Das Repository `bitget-btc-ai` bleibt eine **End-to-End-Zielarchitektur** (Worke
 ### ENV-Profile
 
 - Vorlagen: `.env.*.example`  
-- **Validator Runde 3:** temporaere `.env.local.example` mit CI-Platzhalter-Ersatz → **OK** (`local`)
+- **Validator Runde 3:** temporaere `.env.local.example` mit CI-Platzhalter-Ersatz → **OK** (`local`)  
+- **Runde 4:** kein vollständiger `config:validate`-Lauf gegen produktive `.env.local` in diesem Audit (Gap).
 
 ### Reproduktions-Setup
 
@@ -102,9 +108,9 @@ Das Repository `bitget-btc-ai` bleibt eine **End-to-End-Zielarchitektur** (Worke
 
 ## PHASE 3 — Laufzeit-Check (dynamisch)
 
-**Status:** Nicht ausgefuehrt (siehe `RUN_2026-04-07_PROMPT_A_ROUND3.md`).
+**Status Runde 4:** Weiterhin **nicht** ausgefuehrt (kein `compose up`, keine `rc:health`-Ausgabe in Evidence).
 
-**Naechster DoD:** `docker compose ps`, `healthcheck.sh` / `rc:health`, Logs je Kernservice, Prometheus Targets, Anhang in neuer `RUN_*.md`.
+**Naechster DoD:** `docker compose ps`, `pnpm rc:health` / `pnpm dev:status`, Logs je Kernservice, Prometheus Targets, Anhang in `RUN_*_STACK.md`.
 
 ---
 
@@ -119,7 +125,7 @@ Das Repository `bitget-btc-ai` bleibt eine **End-to-End-Zielarchitektur** (Worke
 
 | Spec | Zweck |
 |------|--------|
-| `release-gate.spec.ts` | edge-status, Operator-Explain, Kern-Konsole, **Marktuniversum + `data-testid=market-universe-lineage`**, Terminal |
+| `release-gate.spec.ts` | edge-status, Operator-Explain, Kern-Konsole, **Marktuniversum + `market-universe-lineage`**, Terminal (+ im WT: **`platform-execution-lineage-terminal`**, **`platform-execution-lineage-signals`**) |
 | `trust-surfaces.spec.ts` | Trust-Flaechen |
 | `responsive-shell.spec.ts` | Shell |
 | `broken-interactions.spec.ts` | Sidebar-Links, `/`, `/welcome` |
@@ -145,7 +151,8 @@ Das Repository `bitget-btc-ai` bleibt eine **End-to-End-Zielarchitektur** (Worke
 ## PHASE 6 — KI Totalpruefung
 
 - **Inventar:** Orchestrator, `shared/contracts/schemas`, `shared/prompts`, Dashboard-BFF LLM-Routen, `tools/run_llm_eval.py`, `tests/llm_eval`, CI `validate_eval_baseline.py`.  
-- **Qualitaet:** Guardrails ja; **10/10** nein ohne Evidenz-Laeufe.  
+- **Qualitaet Runde 4:** `pytest tests/llm_eval` → **23 passed** (Fake/Guardrail/Regression — kein Ersatz für Endnutzer-Qualität 10/10).  
+- **10/11 Ziel:** weiter **FAIL** ohne produktnahe Metriken, SLO für LLM-Fehlerquote, und PR-Gate mit Artefakt pro Release.  
 - Details: `AUDIT_SCORECARD.md` (KI-Abschnitt), `AUDIT_BACKLOG.md` P1-5.
 
 ---
@@ -168,16 +175,27 @@ Das Repository `bitget-btc-ai` bleibt eine **End-to-End-Zielarchitektur** (Worke
 | Sprints | `SPRINT_PLAN.md` |
 | Evidence | `AUDIT_EVIDENCE/*` |
 
-**Plan Prompt B:** `SPRINT_PLAN.md` + Backlog — naechster sinnvoller Schritt: **Terminal/Signals** Datenpfad wie MU, **P0-3** Stack-Smoke, **Sprint 3** KI-Eval-Gates.
+**Plan Prompt B:** `SPRINT_PLAN.md` + Backlog — naechster sinnvoller Schritt: **Commit** Sprint 2b + **P0-3** Stack-Smoke + **P1-6** Ribbon vs. Bar + **Sprint 3** KI-Eval-Gates in CI mit Artefakten.
 
 ---
 
-## Top-Findings (konsolidiert, Runde 3)
+## Top-Findings (Runde 4 — ergänzend)
+
+1. **Arbeitsbaum dirty** — released Stand ≠ HEAD bis Merge/Commit Sprint 2b.  
+2. **Stack/Health** weiter ohne Messung in Runde 4.  
+3. **`pnpm e2e`** nicht gelaufen — Release-Gate-Änderungen im WT unverifiziert gegen Live-URL.  
+4. **`config:validate`** gegen echte `.env.local` ausstehend.  
+5. **KI:** pytest `llm_eval` grün, aber **kein** Nachweis menschenzentrierter Qualität / Fehlerquoten-SLO.  
+6. **In-Page-Links/Buttons** jenseits Sidebar: weiter **FAIL** vs. Totalprüfung.  
+7. **P1-4** Lastprofil Marktuniversum unbelegt.  
+8. **P1-6** Ribbon vs. `LiveDataSituationBar` — Konflikt-UX offen.
+
+## Top-Findings (konsolidiert, Runde 3 — historisch)
 
 1. Kein Stack-/Log-Nachweis in Runde 3.  
 2. E2E-Gesamtlauf lokal ausstehend.  
-3. KI weiter ohne frische Eval-Evidenz.  
-4. Terminal/Signals: Transparenz-Luecke vs. Marktuniversum.  
+3. KI weiter ohne frische Eval-Evidenz (Runde 3).  
+4. Terminal/Signals: Transparenz-Luecke vs. Marktuniversum (Runde 3; siehe Runde 4 WT).  
 5. Marktuniversum: UX verbessert; Lastprofil 500+ offen.  
 6. Pro-Symbol-Vollstaendigkeit (Chart+Orderbook+News+Signals+Performance) unbelegt.  
 7. Pipeline-Drops: ungemessen.  
@@ -192,4 +210,4 @@ Das Repository `bitget-btc-ai` bleibt eine **End-to-End-Zielarchitektur** (Worke
 
 ---
 
-*Ende Vorbericht. Evidence-Runde:* `RUN_2026-04-07_PROMPT_A_ROUND3.md`
+*Ende Vorbericht. Evidence Runde 4:* `RUN_2026-04-07_PROMPT_A_ROUND4.md` · *Runde 3:* `RUN_2026-04-07_PROMPT_A_ROUND3.md`

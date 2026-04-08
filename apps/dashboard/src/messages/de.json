@@ -3372,6 +3372,12 @@
       "source": "Quelle:",
       "nextStep": "Nächster Schritt:"
     },
+    "platformLineage": {
+      "title": "Ausführungsmodus & Datenströme",
+      "lead": "Aus dem letzten Health-Snapshot: welche Spuren aktiv sind, letzte Kerze und Signal, Zustand von Market-Stream und Live-Broker sowie Reconcile — dieselbe Sicht wie im Marktuniversum.",
+      "gridAria": "Ausführungsmodus, LIVE/SHADOW/PAPER-Spuren, Stream- und Broker-Zustand",
+      "linkFullUniverse": "Vollständiges Marktuniversum & Kernsymbole"
+    },
     "paperPanel": {
       "title": "Paper-Positionen",
       "empty": "Keine offenen Paper-Positionen. Der Paper-Broker reagiert auf Signale; ohne laufende Engines bleibt die Liste leer — sobald die Pipeline Daten liefert, erscheinen Einträge hier.",

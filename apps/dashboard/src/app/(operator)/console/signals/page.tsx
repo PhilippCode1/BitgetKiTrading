@@ -5,6 +5,7 @@ import { PanelDataIssue } from "@/components/console/ConsoleFetchNotice";
 import { LiveDataSituationBar } from "@/components/live-data/LiveDataSituationBar";
 import { ConsoleSurfaceNotice } from "@/components/console/ConsoleSurfaceNotice";
 import { HealthSnapshotLoadNotice } from "@/components/console/HealthSnapshotLoadNotice";
+import { PlatformExecutionStreamsGrid } from "@/components/console/PlatformExecutionStreamsGrid";
 import { Header } from "@/components/layout/Header";
 import { SignalsTable } from "@/components/tables/SignalsTable";
 import {
@@ -210,6 +211,10 @@ export default async function SignalsPage({
           {t("console.nav.market_universe")}
         </Link>
       </p>
+      <PlatformExecutionStreamsGrid
+        health={health}
+        testId="platform-execution-lineage-signals"
+      />
       <LiveDataSituationBar
         model={buildLiveDataSurfaceModelFromSignalsRead({
           data,

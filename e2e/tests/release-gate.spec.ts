@@ -85,6 +85,20 @@ test.describe("Release gate — Konsole (Kernseiten)", () => {
     });
   }
 
+  test("/console/signals — Plattform-Lineage (Health) sichtbar", async ({
+    page,
+  }) => {
+    const res = await page.goto("/console/signals", {
+      waitUntil: "domcontentloaded",
+    });
+    expect(res?.ok()).toBeTruthy();
+    await expect(page.locator(".dash-sidebar")).toBeVisible();
+    await expect(
+      page.getByTestId("platform-execution-lineage-signals"),
+    ).toBeVisible({ timeout: 60_000 });
+    await expect(page.locator("main .msg-err")).toHaveCount(0);
+  });
+
   test("/console/market-universe — Daten-Lineage Panel sichtbar", async ({
     page,
   }) => {
@@ -111,6 +125,9 @@ test.describe("Release gate — Konsole (Kernseiten)", () => {
       "main .terminal-chart-stack, main .terminal-main-chart",
     );
     await expect(chartOrStack.first()).toBeVisible({ timeout: 60_000 });
+    await expect(
+      page.getByTestId("platform-execution-lineage-terminal"),
+    ).toBeVisible({ timeout: 60_000 });
     await expect(page.locator("main .msg-err")).toHaveCount(0);
     await expect(page.locator("main .console-fetch-notice--alert")).toHaveCount(
       0,

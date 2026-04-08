@@ -4,6 +4,17 @@
 
 ---
 
+## Prompt A — Runde 4 (2026-04-07)
+
+| Thema | Status | Evidence |
+|-------|--------|----------|
+| Statische Baseline | **Teil-Done** | `RUN_2026-04-07_PROMPT_A_ROUND4.md` — `compose config`, `pnpm check-types`, `pytest tests/llm_eval` (23 passed) |
+| Stack + `rc:health` + Logs | **Offen** | P0-3 / Phase 3 — neues `RUN_*_STACK.md` |
+| `pnpm e2e` + JUnit/HTML | **Offen** | P0-4 — nach Deploy oder lokalem `E2E_BASE_URL` |
+| Arbeitsbaum clean + Commit Sprint 2b | **Offen** | Merge Terminal/Signals-Lineage |
+
+---
+
 ## Prompt A — Runde 3 (2026-04-07)
 
 | Thema | Status | Evidence |
@@ -20,7 +31,7 @@
 |----|--------|----------|
 | Marktuniversum Datenpfad sichtbar | **Teil-Done** | `RUN_SPRINT2_2026-04-07.md`, Panel + Pagination |
 | P1-4 Lastprofil 500+ Symbole | **Offen** | Nur Pagination UI; kein Lasttest-Dokument |
-| Terminal/Signals gleiche Transparenz | **Offen** | Folge-Iteration |
+| Terminal/Signals gleiche Transparenz | **Done** | `RUN_SPRINT2b_TERMINAL_SIGNALS_LINEAGE.md`, `PlatformExecutionStreamsGrid`, Release-Gate testids |
 
 ---
 
@@ -42,8 +53,8 @@
 |----|--------|----------|
 | P0-1 | **Done** | Policy: `BRANCH_AND_COMMIT_POLICY.md`; Commit: `54f3917b647ff65748cecf35c720b38d1ad61005` (`RUN_SPRINT1_2026-04-08.md`). |
 | P0-2 | **Teil** | `pnpm check-types` grün (`RUN_SPRINT1_2026-04-08.md`); volles `pnpm test` / CI auf Remote noch auszuführen. |
-| P0-3 | **Offen** | Stack-Smoke-Log in Follow-up `RUN_*.md`. |
-| P0-4 | **Teil** | Neue Spec + JUnit-Reporter; grüner Lauf in **CI** `compose_healthcheck` + Playwright (siehe `.github/workflows/ci.yml`). |
+| P0-3 | **Done** | `RUN_PROMPT_B_SPRINT1_2026-04-08.md` — Compose healthy + `rc:health` Exit 0. |
+| P0-4 | **Teil** | Broken-interactions erweitert; grüner Lauf lokal nach Image-Rebuild / ein Dev-Server (siehe Evidence). |
 | P2-3 | **Done** | `python tools/validate_env_profile.py --help` Exit 0 (Windows/cp1252). |
 | P1-3 | **Teil** | Locale-Mirror: keine stillen Catches mehr (`best-effort-fetch.ts` + Tests). Weitere `.catch(()=>{})` per Grep in Sprint E. |
 

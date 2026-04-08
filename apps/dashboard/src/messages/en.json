@@ -3369,6 +3369,12 @@
       "source": "Source:",
       "nextStep": "Next step:"
     },
+    "platformLineage": {
+      "title": "Execution mode & data streams",
+      "lead": "From the latest health snapshot: which lanes are active, last candle and signal times, market-stream and live-broker status, and reconcile — same view as on Market universe.",
+      "gridAria": "Execution mode, LIVE/SHADOW/PAPER lanes, stream and broker health",
+      "linkFullUniverse": "Full market universe & core symbols"
+    },
     "paperPanel": {
       "title": "Paper positions",
       "empty": "No open paper positions. The paper broker reacts to signals; without running engines the list stays empty — entries appear once the pipeline delivers data.",

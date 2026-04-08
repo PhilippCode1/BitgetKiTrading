@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 
 import { HealthSnapshotLoadNotice } from "@/components/console/HealthSnapshotLoadNotice";
+import { PlatformExecutionStreamsGrid } from "@/components/console/PlatformExecutionStreamsGrid";
 import { LiveTerminalClient } from "@/components/live/LiveTerminalClient";
 import { fetchLiveState, fetchSystemHealthBestEffort } from "@/lib/api";
 import { diagnosticFromSearchParams } from "@/lib/console-params";
@@ -70,6 +71,10 @@ export default async function TerminalPage({
         error={healthLoadError}
         diagnostic={diagnostic}
         t={t}
+      />
+      <PlatformExecutionStreamsGrid
+        health={health}
+        testId="platform-execution-lineage-terminal"
       />
       <LiveTerminalClient
         initial={initial}

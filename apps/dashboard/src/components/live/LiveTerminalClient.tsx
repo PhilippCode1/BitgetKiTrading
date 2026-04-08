@@ -597,6 +597,7 @@ export function LiveTerminalClient({
           <button
             type="button"
             className="public-btn ghost live-terminal-reload-btn"
+            data-testid="live-terminal-reload"
             onClick={() => void reload()}
             aria-label={t("live.terminal.btnReloadAria")}
           >
