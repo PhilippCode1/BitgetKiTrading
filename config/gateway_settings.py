@@ -52,6 +52,26 @@ class GatewaySettings(BaseServiceSettings):
 
     database_url: str = Field(default="", alias="DATABASE_URL")
     redis_url: str = Field(default="", alias="REDIS_URL")
+    gateway_readiness_redis_timeout_sec: float = Field(
+        default=5.0,
+        ge=0.5,
+        le=30.0,
+        alias="GATEWAY_READINESS_REDIS_TIMEOUT_SEC",
+        description=(
+            "Timeout (s) pro Redis-PING im Gateway-Kern-Check (/ready). "
+            "Hoeher als Default-Client, um Docker/Last-Spitzen abzufedern."
+        ),
+    )
+    gateway_readiness_redis_retries: int = Field(
+        default=2,
+        ge=0,
+        le=5,
+        alias="GATEWAY_READINESS_REDIS_RETRIES",
+        description=(
+            "Zusaetzliche PING-Versuche bei Fehler (transiente Timeouts). "
+            "0 = ein einzelner Versuch wie frueher."
+        ),
+    )
     app_port: int = Field(default=8000, alias="APP_PORT")
     cors_allow_origins: str = Field(
         default="http://localhost:3000", alias="CORS_ALLOW_ORIGINS"

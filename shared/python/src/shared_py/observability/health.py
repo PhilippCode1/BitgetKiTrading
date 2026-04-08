@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import time
 import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -110,18 +111,45 @@ def check_postgres(dsn: str, *, timeout_sec: float = 3.0) -> tuple[bool, str]:
         return False, str(exc)[:200]
 
 
-def check_redis_url(url: str, *, timeout_sec: float = 2.0) -> tuple[bool, str]:
-    try:
-        r = redis.Redis.from_url(
-            url,
-            socket_connect_timeout=timeout_sec,
-            socket_timeout=timeout_sec,
-        )
-        if r.ping():
-            return True, "ok"
-        return False, "ping_failed"
-    except Exception as exc:
-        return False, str(exc)[:200]
+def check_redis_url(
+    url: str,
+    *,
+    timeout_sec: float = 2.0,
+    retries: int = 0,
+) -> tuple[bool, str]:
+    """Redis PING mit optionalem Retry (transiente Socket-/Timeouts).
+
+    `retries` = zusaetzliche Versuche nach dem ersten (insgesamt 1 + retries).
+    Kurzer Backoff zwischen Versuchen (Docker/Netz-Flakes).
+    """
+    u = str(url or "").strip()
+    if not u:
+        return False, "empty_redis_url"
+    attempts = max(1, int(retries) + 1)
+    last_err = "ping_failed"
+    for attempt in range(attempts):
+        client: redis.Redis | None = None
+        try:
+            client = redis.Redis.from_url(
+                u,
+                socket_connect_timeout=timeout_sec,
+                socket_timeout=timeout_sec,
+                health_check_interval=0,
+            )
+            if client.ping():
+                return True, "ok"
+            last_err = "ping_failed"
+        except Exception as exc:
+            last_err = str(exc)[:200]
+        finally:
+            if client is not None:
+                try:
+                    client.close()
+                except Exception:
+                    pass
+        if attempt + 1 < attempts:
+            time.sleep(0.05 * float(attempt + 1))
+    return False, last_err
 
 
 def merge_ready_details(parts: dict[str, tuple[bool, str]]) -> tuple[bool, dict[str, Any]]:

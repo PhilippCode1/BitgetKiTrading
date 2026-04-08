@@ -11,7 +11,7 @@
 | Baseline git + check-types | **Done** | `RUN_2026-04-08_PROMPT_A_ROUND5.md` |
 | `pytest tests/llm_eval` | **Done** | 23 passed |
 | `docker compose ps` | **Done** | Container healthy |
-| `pnpm rc:health` stabil | **FAIL / Offen** | Redis timeout in Gateway `/ready`; siehe R5 Evidence |
+| `pnpm rc:health` stabil | **Done** (nach P0-0) | `AUDIT_EVIDENCE/RUN_P0-0_REDIS_READINESS.md`; Gateway-Image nach Fix neu bauen |
 | E2E voll gegen :3000 | **Offen** | Nach Redis-Fix erneut `pnpm e2e` |
 
 ---
@@ -77,7 +77,7 @@
 |----|--------|----------|
 | P0-1 | **Done** | Policy: `BRANCH_AND_COMMIT_POLICY.md`; Commit: `54f3917b647ff65748cecf35c720b38d1ad61005` (`RUN_SPRINT1_2026-04-08.md`). |
 | P0-2 | **Teil** | `pnpm check-types` grün (`RUN_SPRINT1_2026-04-08.md`); volles `pnpm test` / CI auf Remote noch auszuführen. |
-| P0-3 | **Teil** | Sprint 1: `rc:health` grün; **Runde 5:** erneuter Lauf **FAIL** (Redis) — siehe `RUN_2026-04-08_PROMPT_A_ROUND5.md`. |
+| P0-3 | **Teil** | `rc:health` grün nach P0-0 (`RUN_P0-0_REDIS_READINESS.md`); wiederholbarer Lauf auf CI/Remote weiter dokumentieren. |
 | P0-4 | **Teil** | Broken-interactions erweitert; grüner Lauf lokal nach Image-Rebuild / ein Dev-Server (siehe Evidence). |
 | P2-3 | **Done** | `python tools/validate_env_profile.py --help` Exit 0 (Windows/cp1252). |
 | P1-3 | **Teil** | Locale-Mirror: keine stillen Catches mehr (`best-effort-fetch.ts` + Tests). Weitere `.catch(()=>{})` per Grep in Sprint E. |
@@ -88,7 +88,7 @@
 
 | ID | Thema | DoD | Betroffene Bereiche |
 |----|-------|-----|---------------------|
-| P0-0 | **Redis ↔ Gateway stabil** | `GET /ready`: `core_redis: true` zuverlässig; kein `Timeout reading from socket` unter Normal-Last; Root-Cause + Fix in `RUN_*_REDIS.md`. | `redis`, `api-gateway`, `docker-compose.yml` |
+| P0-0 | **Redis ↔ Gateway stabil** | **Done** — `check_redis_url` Retry + höheres Timeout nur Gateway-/ready; Evidence `AUDIT_EVIDENCE/RUN_P0-0_REDIS_READINESS.md`; pytest `tests/unit/shared_py/test_check_redis_url_retries.py`. | `shared_py/observability/health.py`, `api-gateway`, `config/gateway_settings.py` |
 | P0-1 | **Erster Git-Commit & Branch-Policy** | Repo hat `main`/`master` mit initialem Commit; `git status` clean für CI; Tag-Strategie dokumentiert. | ganzes Repo |
 | P0-2 | **CI grün auf Commit** | Mindestens: `pnpm check-types`, `pnpm test` (turbo), Python-Selfcheck optional; dokumentiert in `AUDIT_EVIDENCE`. | `.github/`, `turbo.json` |
 | P0-3 | **Stack-Smoke wiederholbar** | `docker compose ps` + **`pnpm rc:health` Exit 0** in Evidence (ohne Flake); Log-Auszug. | `docker-compose.yml`, `scripts/` |

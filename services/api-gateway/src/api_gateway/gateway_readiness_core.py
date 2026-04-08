@@ -37,7 +37,11 @@ def gateway_readiness_core_parts_raw() -> dict[str, tuple[bool, str]]:
             ),
         }
     if rurl:
-        parts["redis"] = check_redis_url(rurl)
+        parts["redis"] = check_redis_url(
+            rurl,
+            timeout_sec=float(s.gateway_readiness_redis_timeout_sec),
+            retries=int(s.gateway_readiness_redis_retries),
+        )
     else:
         parts["redis"] = (False, "missing REDIS_URL / REDIS_URL_DOCKER")
     return parts
