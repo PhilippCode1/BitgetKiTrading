@@ -4,6 +4,16 @@
 
 ---
 
+## Prompt A — Runde 3 (2026-04-07)
+
+| Thema | Status | Evidence |
+|-------|--------|----------|
+| Report + Scorecard | Done | `AUDIT_REPORT.md`, `AUDIT_SCORECARD.md` (HEAD `85404cd…`) |
+| Baseline-Befehle | Done | `RUN_2026-04-07_PROMPT_A_ROUND3.md` |
+| Phase 3 dynamisch | **Offen** | Stack + Logs |
+
+---
+
 ## Sprint 2 (Prompt B) — Stand
 
 | ID | Status | Nachweis |

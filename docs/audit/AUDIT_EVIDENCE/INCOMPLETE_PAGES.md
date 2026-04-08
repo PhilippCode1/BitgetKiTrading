@@ -12,6 +12,10 @@ Primärquelle im Repo: `PAGE_COMPLETION_MATRIX.md` (detaillierte Route-Tabelle +
 | `/console/account/*`   | Nicht alle Unterseiten Zeile-für-Zeile verifiziert |
 | `/console/ops`         | Sehr dicht; Einsteiger-Zusammenfassung fehlt     |
 
+## Verbesserungen (Audit 2026-04-07)
+
+- `/console/market-universe` — **Daten-Lineage-Panel** (Stream, Broker, Reconcile, Kernsymbole) und Pagination; Matrix-Eintrag sollte aktualisiert werden.
+
 ## Zusätzliche Routen (Matrix ggf. älter)
 
 - `/console/diagnostics`, `/console/self-healing` — neuere Features; Matrix sollte erweitert werden.

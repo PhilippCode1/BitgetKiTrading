@@ -1,6 +1,7 @@
 # BROKEN_LINKS — Nach Sprint 1 (Prompt B) + Prompt A 2026-04-07
 
-**Letzte Audit-Referenz:** `RUN_2026-04-07.md` (kein neuer Playwright-Lauf auf diesem Host).
+**Letzte Audit-Referenz:** `RUN_2026-04-07_PROMPT_A_ROUND3.md` (kein neuer Playwright-Gesamtlauf auf diesem Host).  
+**Marktuniversum:** Release-Gate prueft Sichtbarkeit von `data-testid="market-universe-lineage"` (siehe `release-gate.spec.ts`).
 
 ## Automatisierte Abdeckung
 

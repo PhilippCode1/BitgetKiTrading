@@ -10,6 +10,7 @@ Wiederholbare Sammlung von **Kommandoausgaben**, **Inventaren** und (wenn ausgef
 | RUN_SPRINT1_2026-04-08 | 2026-04-08 | Prompt B Sprint 1 — E2E Spec, Locale-Mirror, validate_env help |
 | RUN_2026-04-07 | 2026-04-07 | Prompt A Wiederholung — HEAD f09221a, check-types, validate_env, compose config |
 | RUN_SPRINT2_2026-04-07 | 2026-04-07 | Prompt B Sprint 2 Teil — Marktuniversum Lineage + Pagination + Tests |
+| RUN_2026-04-07_PROMPT_A_ROUND3 | 2026-04-07 | Prompt A Runde 3 — HEAD 85404cd, validate/check-types/jest lineage |
 
 ## Nutzung
 

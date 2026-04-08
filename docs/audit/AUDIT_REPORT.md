@@ -1,35 +1,36 @@
 # AUDIT_REPORT — Vorbericht (Totalaudit Prompt A)
 
-**Datum (Report):** 2026-04-07  
+**Datum (Report):** 2026-04-07 · **Runde:** 3  
 **Branch:** `master`  
-**Commit-Hash (HEAD):** `f09221a47f834388232358ab66d5f8f616d95995`  
-**Umfeld:** Windows, PowerShell; **dynamischer Stack-Lauf und `pnpm e2e` in diesem Audit-Lauf nicht ausgefuehrt** (siehe Evidence `AUDIT_EVIDENCE/RUN_2026-04-07.md`).
+**Commit-Hash (HEAD):** `85404cd6488c5cfce6a37636d7c7fb34e1dac96b`  
+**Umfeld:** Windows, PowerShell; **dynamischer Stack und `pnpm e2e` in diesem Audit-Lauf nicht ausgefuehrt** (Evidence: `AUDIT_EVIDENCE/RUN_2026-04-07_PROMPT_A_ROUND3.md`).
 
-**Historie:** Erstlauf 2026-04-08 dokumentiert in `RUN_2026-04-08.md` (damals ohne Commit); Sprint-1-Import in `RUN_SPRINT1_2026-04-08.md` (Root-Commit `54f3917…`). Dieser Report **ersetzt** veraltete Aussagen („kein Git-Commit“) und konsolidiert den aktuellen Stand.
+**Delta seit Runde 2:** Sprint 2 (Prompt B) lieferte Marktuniversum-**Daten-Lineage-Panel**, **Kernsymbole BTCUSDT/ETHUSDT**, **serverseitige Pagination** fuer Universe-Symbole und Instrument-Registry, plus Unit-Tests und E2E-Erweiterung in `release-gate.spec.ts` (Commit `a511b8c`).
 
 ---
 
 ## Executive Summary
 
-Das Repository `bitget-btc-ai` implementiert eine **End-to-End-Zielarchitektur**: Marktstream ueber Worker-Services bis **API-Gateway** und **Next.js-Dashboard** (BFF + Konsole), ergaenzt um **Prometheus/Grafana**, **LLM-Orchestrator** mit JSON-Schemas und **Eval-/Contract-Tooling** in CI (siehe `.github/workflows/ci.yml`).
+Das Repository `bitget-btc-ai` bleibt eine **End-to-End-Zielarchitektur** (Worker-Kette → API-Gateway → Next.js-Dashboard → Observability → LLM-Orchestrator mit Schemas/Eval-Tooling).
 
-**Streng bewertet bleiben Luecken:**
+**Streng bewertet weiterhin FAIL oder Luecke:**
 
-1. **Laufzeitbeweis** auf diesem Host: kein `compose up`, keine aggregierten Service-Logs, keine JUnit-Auswertung von E2E hier.  
-2. **UI-Totalabdeckung:** Playwright deckt Kernpfade + **Sidebar-Link-Traversal** (`broken-interactions.spec.ts`); **kein** vollstaendiger Crawl aller In-Content-Links, Form-Buttons und dynamischen `[id]`-Routen ohne Stichproben.  
-3. **KI 10/11:** Werkzeuge und CI-Baseline (`validate_eval_baseline.py`) vorhanden; **messbare Qualitaet pro Use-Case** ohne regelmaessige Eval-Artefakte + Schwellen = **FAIL** gegen Zielbild.  
-4. **Marktuniversum:** Konfiguration ueber ENV skalierbar; **UI/Performance bei sehr grossen N** und **Vollstaendigkeit Chart/Orderbook/News pro Symbol** nicht voll belegt.
+1. **Phase 3 (Laufzeit):** Kein `compose up`, keine aggregierten Logs/Health-Auszuege in **diesem** Lauf.  
+2. **UI-Totalabdeckung:** Playwright deckt Kernpfade, Sidebar, Marktuniversum-Lineage; **kein** vollstaendiger In-Content-Link-/Button-Crawl, keine dynamischen `[id]`-Stichproben automatisierbar ohne Daten.  
+3. **KI 10/11:** Ohne frische Eval-Laeufe und Schwellen pro Use-Case = **FAIL** gegen Zielbild.  
+4. **Pro-Symbol-Produkt-Vollstaendigkeit** (Chart + Orderbook + Signals + News + Performance fuer **beliebiges** Symbol): **nicht** garantiert / nicht belegt.  
+5. **Terminal / Signale:** Dieselbe **explizite** Datenpfad-Darstellung wie auf Marktuniversum — **noch nicht** umgesetzt (Backlog Sprint 2b).
 
 ---
 
 ## PHASE 1 — Baseline & Reproduzierbarkeit
 
-### Git (2026-04-07)
+### Git (Prompt A Runde 3)
 
 | Check | Ergebnis |
 |--------|----------|
 | Branch | `master` |
-| HEAD | `f09221a47f834388232358ab66d5f8f616d95995` |
+| HEAD | `85404cd6488c5cfce6a37636d7c7fb34e1dac96b` |
 | Status | clean |
 | Diff | kein lokaler Diff zum HEAD |
 
@@ -37,34 +38,34 @@ Das Repository `bitget-btc-ai` implementiert eine **End-to-End-Zielarchitektur**
 
 - **Monorepo:** `dev`, `build`, `lint`, `test`, `check-types`, `format`, `format:check`  
 - **Stack (Windows):** `dev:up`, `dev:down`, `dev:status`, `dev:logs`, `rc:health`, `smoke`, `stack:check`, `local:doctor`  
-- **Konfiguration:** `config:validate`, `config:validate:operator`, `config:validate:shadow`, `config:validate:production`  
+- **Konfiguration:** `config:validate*`, `config:validate:operator/shadow/production`  
 - **E2E:** `e2e`, `e2e:ui`, `e2e:debug`, `e2e:install`  
 - **KI:** `llm:eval`, `llm:eval:report`  
 - **Qualitaet:** `quality:static`, `release:gate`, `release:gate:full`  
-*(Vollstaendige Liste: Datei `package.json`.)*
+*(Vollstaendige Liste: `package.json`.)*
 
 ### Docker Compose
 
-- **Dateien:** `docker-compose.yml` (+ lokal `docker-compose.local-publish.yml` in CI)  
-- **Validierung dieses Laufs:** `docker compose -f docker-compose.yml config --quiet` → Exit 0  
-- **Services (Kern):** `postgres`, `redis`, `migrate`, `market-stream`, `feature-engine`, `structure-engine`, `drawing-engine`, `signal-engine`, `news-engine`, `llm-orchestrator`, `paper-broker`, `learning-engine`, `live-broker`, `api-gateway`, `alert-engine`, `monitor-engine`, optional `dashboard` (Profil), `prometheus`, `grafana`  
-- **Host-Ports (typisch aus Compose):** API-Gateway **8000** → Container 8000; Dashboard-Profil **3000** → 3000; Prometheus **9090**; Grafana **3001** → 3000; Postgres/Redis oft nur intern (siehe `ports:`-Bloecke im YAML).  
-- **ENV:** `BITGET_*`, Universe/Watchlist/Scopes, DB/Redis-URLs, Gateway-JWT — siehe `environment` und `env_file` im Compose.
+- **Dateien:** `docker-compose.yml`, `docker-compose.local-publish.yml` (CI)  
+- **Validierung Runde 3:** `docker compose -f docker-compose.yml config --quiet` → Exit 0  
+- **Services (Kern):** postgres, redis, migrate, market-stream, feature-/structure-/drawing-/signal-engine, news-engine, llm-orchestrator, paper-broker, learning-engine, live-broker, api-gateway, alert-engine, monitor-engine, optional dashboard, prometheus, grafana  
+- **Host-Ports (typisch):** Gateway **8000**, Dashboard **3000**, Prometheus **9090**, Grafana **3001** → 3000  
+- **ENV:** `BITGET_*`, Universe/Watchlist/Scopes, DB/Redis, Gateway-JWT
 
 ### ENV-Profile
 
-- Vorlagen: `.env.example`, `.env.local.example`, `.env.production.example`, `.env.shadow.example`, `.env.test.example`  
-- **Validator:** `tools/validate_env_profile.py` — in diesem Lauf gegen temporaere Kopie von `.env.local.example` mit `<SET_ME>`-Ersatz (**OK**, Profil `local`), analog CI-Schritt.
+- Vorlagen: `.env.*.example`  
+- **Validator Runde 3:** temporaere `.env.local.example` mit CI-Platzhalter-Ersatz → **OK** (`local`)
 
 ### Reproduktions-Setup
 
 1. `pnpm install --frozen-lockfile`  
-2. `.env.local` aus Example; `pnpm config:validate`  
-3. `docker compose up -d` (oder `pnpm dev:up` unter Windows)  
+2. `.env.local`; `pnpm config:validate`  
+3. `docker compose up -d` oder `pnpm dev:up`  
 4. `pnpm rc:health` / `pnpm local:doctor`  
-5. Dashboard: `pnpm --filter @bitget-btc-ai/dashboard dev` oder Compose-Profil `with-dashboard`  
-6. `pnpm e2e` mit `E2E_BASE_URL` (z. B. `http://127.0.0.1:3000`)  
-7. Optional: `pnpm llm:eval`
+5. Dashboard lokal oder Compose-Profil  
+6. `pnpm e2e` mit `E2E_BASE_URL`  
+7. Optional `pnpm llm:eval`
 
 ---
 
@@ -74,38 +75,36 @@ Das Repository `bitget-btc-ai` implementiert eine **End-to-End-Zielarchitektur**
 
 | Komponente | Rolle |
 |------------|--------|
-| `market-stream` | Bitget/WebSocket → Redis / Downstream |
-| `feature-engine` | Feature-Vektoren |
-| `structure-engine` | Marktstruktur |
-| `drawing-engine` | Chart-/Linienlogik |
+| `market-stream` | Bitget/WS → Redis / Downstream |
+| `feature-engine` / `structure-engine` / `drawing-engine` | Pipeline bis Chart-Logik |
 | `signal-engine` | Signale |
-| `news-engine` | News-Feed |
-| `live-broker` / `paper-broker` | Ausfuehrung bzw. Paper |
-| `learning-engine` | Lern-/Feedback-Pfad |
-| `api-gateway` | HTTP-Aggregation, Auth, Routing |
-| `llm-orchestrator` | Strukturierte LLM-Calls |
-| `apps/dashboard` | Next.js UI + BFF unter `/api/dashboard/*` |
+| `news-engine` | News |
+| `live-broker` / `paper-broker` | Ausfuehrung |
+| `learning-engine` | Lernpfad |
+| `api-gateway` | Aggregation, `/v1/system/health`, `/v1/market-universe/status`, … |
+| `llm-orchestrator` | Strukturierte LLM-Responses |
+| `apps/dashboard` | Next.js + BFF `/api/dashboard/*` |
 
 ### Datenfluss (Zielbild)
 
 `Market-Stream` → `Feature` → `Structure` → `Drawing` → `Signal` → Broker → `API-Gateway` → `Dashboard`.
 
-### Events / Queues / Streams
+### Events / Queues
 
-- **Redis** und **Postgres** als zentrale Infrastruktur; Details pro Service in `services/*/README` bzw. `ai-architecture.md`.  
-- **Risiko:** Ohne Laufzeit-Metriken keine belastbare Aussage zu **Drops**, **Lag** oder **Backpressure** — **FAIL** fuer SRE-Ziel 10/10 bis gemessen.
+- Redis + Postgres; Details `ai-architecture.md` / Service-READMEs.  
+- **FAIL** fuer SRE-10/10: Drops/Backpressure ohne Messung.
 
 ### Ungenutzte / halbe Services
 
-- Zusaetzliche Engines (`alert-engine`, `monitor-engine`) erfordern Abgleich mit tatsaechlichen Produktflows im Dashboard — stichprobenartig in Prompt B verifizieren.
+- `alert-engine`, `monitor-engine` — Abgleich mit tatsaechlicher Dashboard-Nutzung empfohlen.
 
 ---
 
 ## PHASE 3 — Laufzeit-Check (dynamisch)
 
-**Status:** In `RUN_2026-04-07.md` **nicht** ausgefuehrt (kein `docker compose up`, keine Health-GET-Auszuege).
+**Status:** Nicht ausgefuehrt (siehe `RUN_2026-04-07_PROMPT_A_ROUND3.md`).
 
-**DoD naechster Lauf:** `docker compose ps`, Stichprobe `GET /health` bzw. `scripts/healthcheck.sh`, pro Kernservice `docker compose logs --tail=200`, Prometheus targets „UP“, Auszug in neuer `RUN_*.md` **anhaengen**.
+**Naechster DoD:** `docker compose ps`, `healthcheck.sh` / `rc:health`, Logs je Kernservice, Prometheus Targets, Anhang in neuer `RUN_*.md`.
 
 ---
 
@@ -113,90 +112,84 @@ Das Repository `bitget-btc-ai` implementiert eine **End-to-End-Zielarchitektur**
 
 ### Routen
 
-- App-Pages: `AUDIT_EVIDENCE/ROUTE_INVENTORY_DASHBOARD.md`  
-- BFF/API: `AUDIT_EVIDENCE/API_ROUTES_DASHBOARD.md`
+- `AUDIT_EVIDENCE/ROUTE_INVENTORY_DASHBOARD.md`  
+- `AUDIT_EVIDENCE/API_ROUTES_DASHBOARD.md`
 
 ### E2E (Playwright)
 
 | Spec | Zweck |
 |------|--------|
-| `release-gate.spec.ts` | edge-status, Operator-Explain API, Kern-Konsole, Terminal |
-| `trust-surfaces.spec.ts` | Trust-/Sicherheitsflaechen |
-| `responsive-shell.spec.ts` | Shell responsiv |
-| `broken-interactions.spec.ts` | Sidebar-Links + `/`, `/welcome` |
+| `release-gate.spec.ts` | edge-status, Operator-Explain, Kern-Konsole, **Marktuniversum + `data-testid=market-universe-lineage`**, Terminal |
+| `trust-surfaces.spec.ts` | Trust-Flaechen |
+| `responsive-shell.spec.ts` | Shell |
+| `broken-interactions.spec.ts` | Sidebar-Links, `/`, `/welcome` |
 
 ### Artefakte
 
-- `BROKEN_LINKS.md` — Abdeckung Sidebar + dokumentierte Restrisiken  
-- `BROKEN_BUTTONS.md` — Locale-Mirror geloggt; Klick-Matrix Self-Healing/Explain **offen** (P1-2)  
-- `INCOMPLETE_PAGES.md` — Matrix + Diagnose/Self-Healing Hinweise
+- `BROKEN_LINKS.md`, `BROKEN_BUTTONS.md`, `INCOMPLETE_PAGES.md` — fortgefuehrt; **kein** vollautomatischer Gesamt-Crawl.
 
-**FAIL gegen „jeder Button/Link“:** In-Page-Links, dynamische IDs, Admin-only ohne Nav, Form-Submits — **nicht** vollautomatisch abgedeckt.
+**FAIL** gegen „jeder Button/Link“: In-Page-Aktionen, Formulare, dynamische IDs, Admin-Gates ohne Nav.
 
 ---
 
 ## PHASE 5 — Marktuniversum
 
-- **Konfiguration:** `BITGET_UNIVERSE_SYMBOLS`, Watchlist, Scopes in Compose/ENV — **datengetrieben**.  
-- **Families (spot/margin/futures):** im Code/Gateway zu verifizieren; ohne Produkt-Spec hier **unvollstaendig** dokumentiert → **RISK**.  
-- **Skalierung:** Caching/Pagination/Virtualisierung im UI teils offen (`PAGE_COMPLETION_MATRIX.md`).  
-- **Pro-Symbol-Vollstaendigkeit (Chart, Orderbook, Signals, News, Performance):** **nicht** fuer beliebiges Symbol garantiert ohne Gateway-Faehigkeit + UI-Verdrahtung — **FAIL** bis nachgewiesen.
+- **Konfiguration:** ENV/Compose — datengetrieben.  
+- **UI (neu):** `MarketUniverseDataLineagePanel`: Ausfuehrungsmodus, LIVE/SHADOW/PAPER-Pills, letzte Kerze/Signal (Plattform), **market-stream** + **live-broker** Health, WS-Telemetrie-Kurztext, **Broker-Reconcile**, Tabelle **BTCUSDT/ETHUSDT** mit Registry- und Chart-Link; **Pagination** `universePage` (32), `registryPage` (40).  
+- **Families / Spot-Margin-Futures:** weiterhin im Gateway/Produktspec zu verifizieren — **RISK**.  
+- **Backpressure / Zeitreihen-Volumen:** ohne Lasttest **unbelegt** (P1-4).  
+- **Beliebiges Symbol:** Chart ueber URL/Symbolwahl moeglich; Orderbook/News/Signals nicht fuer jedes Symbol als Paket garantiert — **FAIL** bis spezifiziert und getestet.
 
 ---
 
 ## PHASE 6 — KI Totalpruefung
 
-### Inventar (kurz)
-
-- Orchestrator `services/llm-orchestrator`; Schemas `shared/contracts/schemas`; Prompts `shared/prompts`; BFF `apps/dashboard/src/app/api/**/llm/**` und verwandte Routen; Fake-Provider lokal per ENV.  
-- Eval: `tools/run_llm_eval.py`, `tests/llm_eval`, CI `validate_eval_baseline.py`.
-
-### Qualitaet
-
-- **Guardrails:** JSON-Schema + Envelope — gut, aber nicht gleich **Nutzerqualitaet 10/10**.  
-- **Regression:** CI kann Baseline pruefen; **kein** Nachweis in diesem Lauf, dass alle Use-Cases **>= Zielscore** sind.
-
-### KI_SCORECARD / KI_BACKLOG
-
-Siehe `AUDIT_SCORECARD.md` (Abschnitt KI) und `AUDIT_BACKLOG.md` (P1-5, Sprint D).
+- **Inventar:** Orchestrator, `shared/contracts/schemas`, `shared/prompts`, Dashboard-BFF LLM-Routen, `tools/run_llm_eval.py`, `tests/llm_eval`, CI `validate_eval_baseline.py`.  
+- **Qualitaet:** Guardrails ja; **10/10** nein ohne Evidenz-Laeufe.  
+- Details: `AUDIT_SCORECARD.md` (KI-Abschnitt), `AUDIT_BACKLOG.md` P1-5.
 
 ---
 
 ## PHASE 7 — Security / Compliance / Fehlermeldungen
 
-- **Secrets:** Server-only Keys, keine `NEXT_PUBLIC_*`-Secret-Namen (Validator); vollstaendiger Secret-Scan **nicht** in diesem Lauf.  
-- **Fehlerkommunikation:** Gateway-Bootstrap, Product Messages, Diagnose, Self-Healing, Situation-Explain — **stark**; segmentierte React Error Boundaries **nicht** flaechendeckend verifiziert.  
-- **Silent error classes:** Body-Parse `.catch(() => ({}))` — Risiko **niedrig**, wenn UI-Fehlerpfad existiert; weiter pruefen.  
-- **UX-unakzeptabel:** Leere Main-Flaechen ohne Ursache+Fix-Pfad (Einzelscreens in Matrix noch offen).
+- Secrets: Validator + Doku; kein Scan in Runde 3.  
+- Fehler-UX: Gateway-Bootstrap, Diagnose, Self-Healing, Situation-Explain — stark.  
+- **Silent error classes:** `res.json().catch(() => ({}))` an wenigen Stellen — pruefen ob immer UI-Folge.  
+- Error Boundaries: nicht flaechendeckend verifiziert.
 
 ---
 
-## PHASE 8 — Deliverables & Plan Prompt B
+## PHASE 8 — Deliverables
 
 | Artefakt | Pfad |
 |----------|------|
-| Scorecard | `docs/audit/AUDIT_SCORECARD.md` |
-| Backlog | `docs/audit/AUDIT_BACKLOG.md` |
-| Sprint-Detail | `docs/audit/SPRINT_PLAN.md` |
-| Evidence | `docs/audit/AUDIT_EVIDENCE/*` |
+| Scorecard | `AUDIT_SCORECARD.md` |
+| Backlog | `AUDIT_BACKLOG.md` |
+| Sprints | `SPRINT_PLAN.md` |
+| Evidence | `AUDIT_EVIDENCE/*` |
 
-**Plan Prompt B:** siehe `AUDIT_BACKLOG.md` (Sprints A–F) und `SPRINT_PLAN.md` — Prioritaet: echte Datenlage sichtbar (Stack-Smoke, Health), dann KI-Eval-Gates, dann Skalierung.
-
----
-
-## Top-Findings (konsolidiert)
-
-1. Kein Stack-/Log-Nachweis in diesem Prompt-A-Lauf auf dem Host.  
-2. E2E gut fuer Kernpfade + Sidebar; nicht „alle Interaktionen“.  
-3. KI: Infrastruktur ja, Ziel 10/10 pro Use-Case ohne Evidenz **FAIL**.  
-4. Marktuniversum: ENV-skaliert; UI/Perf/Vollstaendigkeit **Luecken**.  
-5. Remote-CI: als wahrscheinlich gruen anzunehmen, lokal hier **nicht** erneut verifiziert.  
-6. Grafana/Prometheus: in Compose; Runbooks/Alerts **unverifiziert**.  
-7. Zwei Betriebsmodi Dashboard (Compose vs. `pnpm dev`) — Betriebsdoku pflegen.  
-8. Forensic-Routen und dynamische IDs: Stichproben noetig.  
-9. i18n-Reste laut Matrix (Paper, News, Strategies).  
-10. P1-3: weiteres Grep nach leeren Fehlerpfaden in anderen Paketen (`e2e/`, `shared/`).
+**Plan Prompt B:** `SPRINT_PLAN.md` + Backlog — naechster sinnvoller Schritt: **Terminal/Signals** Datenpfad wie MU, **P0-3** Stack-Smoke, **Sprint 3** KI-Eval-Gates.
 
 ---
 
-*Ende Vorbericht. Naechster wiederholbarer Schritt: `RUN_YYYY-MM-DD.md` anreichern + Phase 3 dynamisch ausfuehren.*
+## Top-Findings (konsolidiert, Runde 3)
+
+1. Kein Stack-/Log-Nachweis in Runde 3.  
+2. E2E-Gesamtlauf lokal ausstehend.  
+3. KI weiter ohne frische Eval-Evidenz.  
+4. Terminal/Signals: Transparenz-Luecke vs. Marktuniversum.  
+5. Marktuniversum: UX verbessert; Lastprofil 500+ offen.  
+6. Pro-Symbol-Vollstaendigkeit (Chart+Orderbook+News+Signals+Performance) unbelegt.  
+7. Pipeline-Drops: ungemessen.  
+8. Grafana/Alerts/Runbooks: unverifiziert.  
+9. Zwei Dashboard-Betriebsmodi dokumentieren.  
+10. Forensic/dynamische Routen: Stichproben.  
+11. i18n-Reste Matrix.  
+12. Button-/Form-Matrix (P1-2) offen.  
+13. Remote-CI: hier nicht erneut ausgefuehrt.  
+14. Body-parse-catches: Review-Liste (4 Stellen).  
+15. Admin-Nav: nur bei Gateway-Auth sichtbar — E2E kontextabhaengig.
+
+---
+
+*Ende Vorbericht. Evidence-Runde:* `RUN_2026-04-07_PROMPT_A_ROUND3.md`
