@@ -1,4 +1,6 @@
-# BROKEN_LINKS — Nach Sprint 1 (Prompt B)
+# BROKEN_LINKS — Nach Sprint 1 (Prompt B) + Prompt A 2026-04-07
+
+**Letzte Audit-Referenz:** `RUN_2026-04-07.md` (kein neuer Playwright-Lauf auf diesem Host).
 
 ## Automatisierte Abdeckung
 

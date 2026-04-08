@@ -1,194 +1,202 @@
 # AUDIT_REPORT — Vorbericht (Totalaudit Prompt A)
 
-**Datum:** 2026-04-08  
+**Datum (Report):** 2026-04-07  
 **Branch:** `master`  
-**Commit-Hash:** *keiner* — Working Tree vollständig untracked (siehe `AUDIT_EVIDENCE/RUN_2026-04-08.md`).  
-**Umfeld:** Windows 10, PowerShell; Audit aus Cursor-Agent-Lauf; **Docker-Stack und `pnpm e2e` in diesem Lauf nicht gestartet** (statische Analyse + Skript-Inventar).
+**Commit-Hash (HEAD):** `f09221a47f834388232358ab66d5f8f616d95995`  
+**Umfeld:** Windows, PowerShell; **dynamischer Stack-Lauf und `pnpm e2e` in diesem Audit-Lauf nicht ausgefuehrt** (siehe Evidence `AUDIT_EVIDENCE/RUN_2026-04-07.md`).
+
+**Historie:** Erstlauf 2026-04-08 dokumentiert in `RUN_2026-04-08.md` (damals ohne Commit); Sprint-1-Import in `RUN_SPRINT1_2026-04-08.md` (Root-Commit `54f3917…`). Dieser Report **ersetzt** veraltete Aussagen („kein Git-Commit“) und konsolidiert den aktuellen Stand.
 
 ---
 
 ## Executive Summary
 
-Das Repository `bitget-btc-ai` beschreibt eine **vollständige Zielarchitektur** (Marktstream → Features → Struktur → Zeichnung → Signale → Broker → API-Gateway → Dashboard) mit **docker-compose-orchestrierter Laufzeit**, **Observability-Stack** (Prometheus/Grafana), **strukturierten LLM-Antworten** (JSON-Schema + Orchestrator) und einem **umfangreichen Next.js-Dashboard** inkl. Diagnose, Self-Healing und KI-gestützter Situationserklärung.
+Das Repository `bitget-btc-ai` implementiert eine **End-to-End-Zielarchitektur**: Marktstream ueber Worker-Services bis **API-Gateway** und **Next.js-Dashboard** (BFF + Konsole), ergaenzt um **Prometheus/Grafana**, **LLM-Orchestrator** mit JSON-Schemas und **Eval-/Contract-Tooling** in CI (siehe `.github/workflows/ci.yml`).
 
-**Harte Lücken für ein „kompromissloses“ Go-Live-Urteil:**
+**Streng bewertet bleiben Luecken:**
 
-1. **Keine Git-Baseline** (null Commits) — Reproduzierbarkeit und Audit-Trail fehlen formal.  
-2. **Kein dynamischer Nachweis** in diesem Lauf: Health/Ready-Checks, Service-Logs, E2E-JUnit, LLM-Eval-Artefakte.  
-3. **UI-Totalprüfung** ist **nicht** durch automatischen Link-Crawler abgedeckt; Playwright deckt ein **Subset** ab.  
-4. **KI-Ziel 10/11** ist **nicht** belegbar ohne laufende Evals, Golden-Sets und Fehlerquoten-Metriken pro Use-Case.
+1. **Laufzeitbeweis** auf diesem Host: kein `compose up`, keine aggregierten Service-Logs, keine JUnit-Auswertung von E2E hier.  
+2. **UI-Totalabdeckung:** Playwright deckt Kernpfade + **Sidebar-Link-Traversal** (`broken-interactions.spec.ts`); **kein** vollstaendiger Crawl aller In-Content-Links, Form-Buttons und dynamischen `[id]`-Routen ohne Stichproben.  
+3. **KI 10/11:** Werkzeuge und CI-Baseline (`validate_eval_baseline.py`) vorhanden; **messbare Qualitaet pro Use-Case** ohne regelmaessige Eval-Artefakte + Schwellen = **FAIL** gegen Zielbild.  
+4. **Marktuniversum:** Konfiguration ueber ENV skalierbar; **UI/Performance bei sehr grossen N** und **Vollstaendigkeit Chart/Orderbook/News pro Symbol** nicht voll belegt.
 
 ---
 
 ## PHASE 1 — Baseline & Reproduzierbarkeit
 
-### Git
+### Git (2026-04-07)
 
-- `git status`: Branch `master`, **No commits yet**, alle Pfade untracked.  
-- `git diff`: nicht anwendbar ohne Commits.
+| Check | Ergebnis |
+|--------|----------|
+| Branch | `master` |
+| HEAD | `f09221a47f834388232358ab66d5f8f616d95995` |
+| Status | clean |
+| Diff | kein lokaler Diff zum HEAD |
 
-### package.json (Root) — Scripts (Auszug, vollständig siehe Datei)
+### package.json (Root) — Scripts (Kategorien)
 
-Wichtige Kategorien:
-
-- **Monorepo:** `dev`, `build`, `lint`, `test`, `check-types`, `format`  
-- **Stack:** `dev:up`, `dev:down`, `stack:check`, `local:doctor`, `rc:health`  
-- **Konfiguration:** `config:validate`, `config:validate:production`, `config:validate:shadow`  
+- **Monorepo:** `dev`, `build`, `lint`, `test`, `check-types`, `format`, `format:check`  
+- **Stack (Windows):** `dev:up`, `dev:down`, `dev:status`, `dev:logs`, `rc:health`, `smoke`, `stack:check`, `local:doctor`  
+- **Konfiguration:** `config:validate`, `config:validate:operator`, `config:validate:shadow`, `config:validate:production`  
 - **E2E:** `e2e`, `e2e:ui`, `e2e:debug`, `e2e:install`  
-- **KI-Eval:** `llm:eval` → `python tools/run_llm_eval.py`  
-- **Python:** `py:check`, `py:test`, `py:cov`
+- **KI:** `llm:eval`, `llm:eval:report`  
+- **Qualitaet:** `quality:static`, `release:gate`, `release:gate:full`  
+*(Vollstaendige Liste: Datei `package.json`.)*
 
 ### Docker Compose
 
-- **Datei:** `docker-compose.yml` (Root).  
-- **Services (Kernkette):** `redis`, `postgres`, `market-stream`, `feature-engine`, `structure-service`, `drawing-service`, `signal-engine`, `live-broker`, `api-gateway`, `llm-orchestrator`, `prometheus`, `grafana`, optional `dashboard` (Profil `with-dashboard`).  
-- **Ports (typisch):** Redis 6379, Postgres 5432, Market-Stream 8001, Feature 8002, Structure 8003, Drawing 8004, Signal 8005, Live-Broker 8006, API-Gateway 8080, LLM-Orchestrator 8010, Prometheus 9090, Grafana 3000, Dashboard 3001.  
-- **ENV:** Umfangreiche `BITGET_*`, `POSTGRES_*`, `REDIS_*`, Universe-/Watchlist-/Scope-Variablen — siehe Compose `environment`-Blöcke.
+- **Dateien:** `docker-compose.yml` (+ lokal `docker-compose.local-publish.yml` in CI)  
+- **Validierung dieses Laufs:** `docker compose -f docker-compose.yml config --quiet` → Exit 0  
+- **Services (Kern):** `postgres`, `redis`, `migrate`, `market-stream`, `feature-engine`, `structure-engine`, `drawing-engine`, `signal-engine`, `news-engine`, `llm-orchestrator`, `paper-broker`, `learning-engine`, `live-broker`, `api-gateway`, `alert-engine`, `monitor-engine`, optional `dashboard` (Profil), `prometheus`, `grafana`  
+- **Host-Ports (typisch aus Compose):** API-Gateway **8000** → Container 8000; Dashboard-Profil **3000** → 3000; Prometheus **9090**; Grafana **3001** → 3000; Postgres/Redis oft nur intern (siehe `ports:`-Bloecke im YAML).  
+- **ENV:** `BITGET_*`, Universe/Watchlist/Scopes, DB/Redis-URLs, Gateway-JWT — siehe `environment` und `env_file` im Compose.
 
 ### ENV-Profile
 
-- Vorhanden: `.env.example`, `.env.local.example`, `.env.production.example`, `.env.shadow.example`, `.env.test.example`.  
-- Validator: `tools/validate_env_profile.py` — in einem früheren Lauf `--help`-Kontext mit Pflichtparametern problematisch; als **P2-Backlog** (`AUDIT_BACKLOG.md`).
+- Vorlagen: `.env.example`, `.env.local.example`, `.env.production.example`, `.env.shadow.example`, `.env.test.example`  
+- **Validator:** `tools/validate_env_profile.py` — in diesem Lauf gegen temporaere Kopie von `.env.local.example` mit `<SET_ME>`-Ersatz (**OK**, Profil `local`), analog CI-Schritt.
 
-### Reproduktions-Setup (empfohlen)
+### Reproduktions-Setup
 
-1. `pnpm install`  
-2. `pnpm config:validate` (mit passender `.env.local`)  
-3. `pnpm dev:up` oder `docker compose --profile with-dashboard up -d`  
+1. `pnpm install --frozen-lockfile`  
+2. `.env.local` aus Example; `pnpm config:validate`  
+3. `docker compose up -d` (oder `pnpm dev:up` unter Windows)  
 4. `pnpm rc:health` / `pnpm local:doctor`  
-5. `pnpm e2e` mit `E2E_BASE_URL` und ggf. `E2E_AUTH_COOKIE`  
-6. `pnpm llm:eval` (wenn API-Keys gesetzt)
+5. Dashboard: `pnpm --filter @bitget-btc-ai/dashboard dev` oder Compose-Profil `with-dashboard`  
+6. `pnpm e2e` mit `E2E_BASE_URL` (z. B. `http://127.0.0.1:3000`)  
+7. Optional: `pnpm llm:eval`
 
 ---
 
 ## PHASE 2 — Architektur & Verdrahtung (statisch)
 
-### Systemübersicht
+### Systemuebersicht
 
 | Komponente | Rolle |
 |------------|--------|
-| `market-stream` | Bitget-Stream → Redis/Downstream |
-| `feature-engine` | Features aus Marktdaten |
-| `structure-service` | Struktur-Erkennung |
-| `drawing-service` | Chart-/Zeichenlogik |
-| `signal-engine` | Signalerzeugung |
-| `live-broker` | Ausführung/Bridge (PAPER/SHADOW/LIVE je Policy) |
-| `api-gateway` | Zentraler HTTP-Einstieg, Routing zu Worker-Services |
-| `llm-orchestrator` | Strukturierte LLM-Aufrufe (Schemas) |
-| `apps/dashboard` | Next.js BFF + UI (`/console`, `/api/...`) |
+| `market-stream` | Bitget/WebSocket → Redis / Downstream |
+| `feature-engine` | Feature-Vektoren |
+| `structure-engine` | Marktstruktur |
+| `drawing-engine` | Chart-/Linienlogik |
+| `signal-engine` | Signale |
+| `news-engine` | News-Feed |
+| `live-broker` / `paper-broker` | Ausfuehrung bzw. Paper |
+| `learning-engine` | Lern-/Feedback-Pfad |
+| `api-gateway` | HTTP-Aggregation, Auth, Routing |
+| `llm-orchestrator` | Strukturierte LLM-Calls |
+| `apps/dashboard` | Next.js UI + BFF unter `/api/dashboard/*` |
 
 ### Datenfluss (Zielbild)
 
-`Market-Stream` → `Feature` → `Structure` → `Drawing` → `Signal` → `Live-Broker` → `API-Gateway` → `Dashboard` (Server Components + Client).
+`Market-Stream` → `Feature` → `Structure` → `Drawing` → `Signal` → Broker → `API-Gateway` → `Dashboard`.
 
-### Events / Queues
+### Events / Queues / Streams
 
-- Redis als zentraler Bus (Streams/Keys je Service — Detail in Service-READMEs und `ai-architecture.md`).  
-- **Drop-Risiko:** ohne Laufzeit-Logs nicht quantifizierbar; in Backlog P1.
+- **Redis** und **Postgres** als zentrale Infrastruktur; Details pro Service in `services/*/README` bzw. `ai-architecture.md`.  
+- **Risiko:** Ohne Laufzeit-Metriken keine belastbare Aussage zu **Drops**, **Lag** oder **Backpressure** — **FAIL** fuer SRE-Ziel 10/10 bis gemessen.
 
 ### Ungenutzte / halbe Services
 
-- Compose-Profil `with-dashboard` trennt Dashboard-Container von lokalem `pnpm dev` — kein „toter“ Service, aber **zwei** Betriebsmodi zu dokumentieren.  
-- Einzelne `services/*` mit minimalen Implementierungen: gezielter Code-Walk nötig in Prompt B.
+- Zusaetzliche Engines (`alert-engine`, `monitor-engine`) erfordern Abgleich mit tatsaechlichen Produktflows im Dashboard — stichprobenartig in Prompt B verifizieren.
 
 ---
 
 ## PHASE 3 — Laufzeit-Check (dynamisch)
 
-**Status in diesem Audit:** **Nicht ausgeführt.**
+**Status:** In `RUN_2026-04-07.md` **nicht** ausgefuehrt (kein `docker compose up`, keine Health-GET-Auszuege).
 
-Empfohlene Evidenz für nächsten Lauf:
-
-- `docker compose ps`  
-- `curl`/`pnpm rc:health` Ausgabe  
-- Pro-Service `docker compose logs --tail=200 <service>`  
-- Screenshot Grafana/Prometheus Targets „UP“
-
-→ Artefakte unter `docs/audit/AUDIT_EVIDENCE/RUN_<datum>.md` anhängen.
+**DoD naechster Lauf:** `docker compose ps`, Stichprobe `GET /health` bzw. `scripts/healthcheck.sh`, pro Kernservice `docker compose logs --tail=200`, Prometheus targets „UP“, Auszug in neuer `RUN_*.md` **anhaengen**.
 
 ---
 
-## PHASE 4 — UI/UX Totalprüfung
+## PHASE 4 — UI/UX Totalpruefung
 
 ### Routen
 
-- Dashboard: siehe `AUDIT_EVIDENCE/ROUTE_INVENTORY_DASHBOARD.md`  
-- API-Routen (App Router): siehe `AUDIT_EVIDENCE/API_ROUTES_DASHBOARD.md`
+- App-Pages: `AUDIT_EVIDENCE/ROUTE_INVENTORY_DASHBOARD.md`  
+- BFF/API: `AUDIT_EVIDENCE/API_ROUTES_DASHBOARD.md`
 
-### Crawl / E2E
+### E2E (Playwright)
 
-- Playwright: `e2e/tests/release-gate.spec.ts`, `trust-surfaces.spec.ts`, `responsive-shell.spec.ts` (+ ggf. weitere).  
-- **Kein** vollständiger Link-Graphen-Crawler in diesem Repo-Zustand verifiziert.
+| Spec | Zweck |
+|------|--------|
+| `release-gate.spec.ts` | edge-status, Operator-Explain API, Kern-Konsole, Terminal |
+| `trust-surfaces.spec.ts` | Trust-/Sicherheitsflaechen |
+| `responsive-shell.spec.ts` | Shell responsiv |
+| `broken-interactions.spec.ts` | Sidebar-Links + `/`, `/welcome` |
 
 ### Artefakte
 
-| Datei | Inhalt |
-|-------|--------|
-| `BROKEN_LINKS.md` | Platzhalter bis Crawl |
-| `BROKEN_BUTTONS.md` | Platzhalter bis Matrix |
-| `INCOMPLETE_PAGES.md` | Verweis auf `PAGE_COMPLETION_MATRIX.md` + bekannte Lücken |
+- `BROKEN_LINKS.md` — Abdeckung Sidebar + dokumentierte Restrisiken  
+- `BROKEN_BUTTONS.md` — Locale-Mirror geloggt; Klick-Matrix Self-Healing/Explain **offen** (P1-2)  
+- `INCOMPLETE_PAGES.md` — Matrix + Diagnose/Self-Healing Hinweise
+
+**FAIL gegen „jeder Button/Link“:** In-Page-Links, dynamische IDs, Admin-only ohne Nav, Form-Submits — **nicht** vollautomatisch abgedeckt.
 
 ---
 
 ## PHASE 5 — Marktuniversum
 
-- **Modellierung:** Über Compose-ENV (`BITGET_UNIVERSE_SYMBOLS`, Watchlist, Scopes) und Gateway-Konfiguration — **datengetrieben** skalierbarer als reine Hardcodes im UI.  
-- **UI:** `market-universe`, Chart-Kontext, Signal-Center — Matrix nennt Performance-Risiken bei sehr vielen Instrumenten (Pagination/Virtualisierung).  
-- **Vollständigkeit pro Symbol:** Nicht jede Unterseite garantiert Chart+Orderbook+News+Performance für beliebiges Symbol ohne weitere Integrationsarbeit — teils **FAIL** bis nachgewiesen.
+- **Konfiguration:** `BITGET_UNIVERSE_SYMBOLS`, Watchlist, Scopes in Compose/ENV — **datengetrieben**.  
+- **Families (spot/margin/futures):** im Code/Gateway zu verifizieren; ohne Produkt-Spec hier **unvollstaendig** dokumentiert → **RISK**.  
+- **Skalierung:** Caching/Pagination/Virtualisierung im UI teils offen (`PAGE_COMPLETION_MATRIX.md`).  
+- **Pro-Symbol-Vollstaendigkeit (Chart, Orderbook, Signals, News, Performance):** **nicht** fuer beliebiges Symbol garantiert ohne Gateway-Faehigkeit + UI-Verdrahtung — **FAIL** bis nachgewiesen.
 
 ---
 
-## PHASE 6 — KI-Totalprüfung
+## PHASE 6 — KI Totalpruefung
 
-### Inventar
+### Inventar (kurz)
 
-- **Orchestrator:** `services/llm-orchestrator`  
-- **Schemas:** `shared/contracts/schemas` (z. B. `operator_explain`)  
-- **Prompts:** `shared/prompts` (Manifest)  
-- **Dashboard-BFF:** `apps/dashboard/src/app/api/llm/*`, `assist/[segment]`, Operator/Strategy-Pfade  
-- **Eval:** `tools/run_llm_eval.py` → Ausgabe unter `artifacts/llm_eval/`, Tests unter `tests/llm_eval`
+- Orchestrator `services/llm-orchestrator`; Schemas `shared/contracts/schemas`; Prompts `shared/prompts`; BFF `apps/dashboard/src/app/api/**/llm/**` und verwandte Routen; Fake-Provider lokal per ENV.  
+- Eval: `tools/run_llm_eval.py`, `tests/llm_eval`, CI `validate_eval_baseline.py`.
 
-### Qualität
+### Qualitaet
 
-- Strukturierte JSON-Ausgabe + Validierung ist **Grundlage** für Guardrails.  
-- **Messbarkeit:** Erfordert regelmäßige Eval-Läufe + Schwellen in CI — **nicht** in diesem Audit belegt.
+- **Guardrails:** JSON-Schema + Envelope — gut, aber nicht gleich **Nutzerqualitaet 10/10**.  
+- **Regression:** CI kann Baseline pruefen; **kein** Nachweis in diesem Lauf, dass alle Use-Cases **>= Zielscore** sind.
 
-Detaillierte Teil-Scores: `AUDIT_SCORECARD.md` (Abschnitt KI).
+### KI_SCORECARD / KI_BACKLOG
 
----
-
-## PHASE 7 — Security / Compliance / Fehlerkommunikation
-
-- **Secrets:** Server-only Env für Bitget/JWT dokumentiert in Projektguides; keine Keys in Repo-Beispielen erwünscht — **Scan in diesem Lauf nicht ausgeführt**.  
-- **Fehler-UX:** Product Messages, Situation Bar, Self-Healing, Diagnose-Zentrale — stark.  
-- **Silent errors:** vereinzelte leere `catch` — Backlog P1-3.
+Siehe `AUDIT_SCORECARD.md` (Abschnitt KI) und `AUDIT_BACKLOG.md` (P1-5, Sprint D).
 
 ---
 
-## PHASE 8 — Verweise auf Deliverables
+## PHASE 7 — Security / Compliance / Fehlermeldungen
+
+- **Secrets:** Server-only Keys, keine `NEXT_PUBLIC_*`-Secret-Namen (Validator); vollstaendiger Secret-Scan **nicht** in diesem Lauf.  
+- **Fehlerkommunikation:** Gateway-Bootstrap, Product Messages, Diagnose, Self-Healing, Situation-Explain — **stark**; segmentierte React Error Boundaries **nicht** flaechendeckend verifiziert.  
+- **Silent error classes:** Body-Parse `.catch(() => ({}))` — Risiko **niedrig**, wenn UI-Fehlerpfad existiert; weiter pruefen.  
+- **UX-unakzeptabel:** Leere Main-Flaechen ohne Ursache+Fix-Pfad (Einzelscreens in Matrix noch offen).
+
+---
+
+## PHASE 8 — Deliverables & Plan Prompt B
 
 | Artefakt | Pfad |
 |----------|------|
 | Scorecard | `docs/audit/AUDIT_SCORECARD.md` |
-| Backlog + Prompt-B-Plan | `docs/audit/AUDIT_BACKLOG.md` |
-| Evidenz-Index | `docs/audit/AUDIT_EVIDENCE/README.md` |
-| Lauf-Notiz | `docs/audit/AUDIT_EVIDENCE/RUN_2026-04-08.md` |
+| Backlog | `docs/audit/AUDIT_BACKLOG.md` |
+| Sprint-Detail | `docs/audit/SPRINT_PLAN.md` |
+| Evidence | `docs/audit/AUDIT_EVIDENCE/*` |
+
+**Plan Prompt B:** siehe `AUDIT_BACKLOG.md` (Sprints A–F) und `SPRINT_PLAN.md` — Prioritaet: echte Datenlage sichtbar (Stack-Smoke, Health), dann KI-Eval-Gates, dann Skalierung.
 
 ---
 
-## Anhang: Top-Findings (kurz)
+## Top-Findings (konsolidiert)
 
-1. Kein Git-Commit — P0.  
-2. Kein Stack/E2E-Lauf in diesem Audit — dynamische Scores unbelegt.  
-3. Link/Button-Totalcoverage fehlt — P1.  
-4. KI ohne Eval-Nachweis — max. Score 6–7.  
-5. Marktuniversum skalierbar per ENV; UI-Perf bei N→∞ offen.  
-6. `validate_env_profile.py` CLI-UX verbesserungsfähig.  
-7. Zwei Dashboard-Betriebsmodi (Compose vs. pnpm) — Dokumentationspflicht.  
-8. `PAGE_COMPLETION_MATRIX.md` listet noch i18n-/Tabellen-Schulden.  
-9. Prometheus/Grafana vorhanden; Alerting-Runbooks nicht in diesem Report verifiziert.  
-10. Self-Healing + Diagnose + Situation-AI — starke Säule, weiter mit Tests absichern.
+1. Kein Stack-/Log-Nachweis in diesem Prompt-A-Lauf auf dem Host.  
+2. E2E gut fuer Kernpfade + Sidebar; nicht „alle Interaktionen“.  
+3. KI: Infrastruktur ja, Ziel 10/10 pro Use-Case ohne Evidenz **FAIL**.  
+4. Marktuniversum: ENV-skaliert; UI/Perf/Vollstaendigkeit **Luecken**.  
+5. Remote-CI: als wahrscheinlich gruen anzunehmen, lokal hier **nicht** erneut verifiziert.  
+6. Grafana/Prometheus: in Compose; Runbooks/Alerts **unverifiziert**.  
+7. Zwei Betriebsmodi Dashboard (Compose vs. `pnpm dev`) — Betriebsdoku pflegen.  
+8. Forensic-Routen und dynamische IDs: Stichproben noetig.  
+9. i18n-Reste laut Matrix (Paper, News, Strategies).  
+10. P1-3: weiteres Grep nach leeren Fehlerpfaden in anderen Paketen (`e2e/`, `shared/`).
 
 ---
 
-*Ende Vorbericht. Nächster Schritt: Prompt B — P0/P1 aus `AUDIT_BACKLOG.md` abarbeiten und Evidenz in `AUDIT_EVIDENCE/` anreichern.*
+*Ende Vorbericht. Naechster wiederholbarer Schritt: `RUN_YYYY-MM-DD.md` anreichern + Phase 3 dynamisch ausfuehren.*

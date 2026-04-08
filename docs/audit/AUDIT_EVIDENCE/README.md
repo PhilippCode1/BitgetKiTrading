@@ -8,6 +8,7 @@ Wiederholbare Sammlung von **Kommandoausgaben**, **Inventaren** und (wenn ausgef
 | ------------ | ----------- | ----------------------------------------- |
 | RUN_2026-04-08 | 2026-04-08  | Erstaudit Prompt A — statisch + Toolliste |
 | RUN_SPRINT1_2026-04-08 | 2026-04-08 | Prompt B Sprint 1 — E2E Spec, Locale-Mirror, validate_env help |
+| RUN_2026-04-07 | 2026-04-07 | Prompt A Wiederholung — HEAD f09221a, check-types, validate_env, compose config |
 
 ## Nutzung
 

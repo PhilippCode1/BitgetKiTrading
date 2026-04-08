@@ -4,6 +4,18 @@
 
 ---
 
+## Prompt A — Lauf 2026-04-07 (Wiederholung)
+
+| Thema | Status | Evidence |
+|-------|--------|----------|
+| Report/Scorecard aktualisiert | Done | `AUDIT_REPORT.md`, `AUDIT_SCORECARD.md` (HEAD `f09221a…`) |
+| Baseline-Befehle | Done | `AUDIT_EVIDENCE/RUN_2026-04-07.md` (`check-types`, `validate_env_profile`, `docker compose config`) |
+| Phase 3 dynamisch | **Offen** | Stack + Logs in neuer `RUN_*.md` |
+
+**Owner:** Cursor · **Plan Prompt B:** unveraendert Sprints in `SPRINT_PLAN.md` / unten.
+
+---
+
 ## Sprint 1 (Prompt B) — Stand
 
 | ID | Status | Nachweis |
@@ -47,7 +59,7 @@
 |----|-------|-----|
 | P2-1 | Paper/News/Strategies vollständige i18n | Keine hardcodierten UI-Strings laut `PAGE_COMPLETION_MATRIX` Restliste. |
 | P2-2 | Ops-Cockpit „Above the fold“ | Ein Panel mit 5 KPIs für Einsteiger. |
-| P2-3 | `validate_env_profile.py` UX | `--help` funktioniert zuverlässig (Windows/PowerShell); Doku aktualisiert. |
+| P2-3 | `validate_env_profile.py` UX | **Done** (Sprint 1): `--help` Windows/cp1252; Validator-Lauf siehe `RUN_2026-04-07.md`. |
 | P2-4 | Audit-Dashboard | Ein Markdown-Index verlinkt alle `docs/audit/*` aus `README.md` (optional). |
 
 ---
