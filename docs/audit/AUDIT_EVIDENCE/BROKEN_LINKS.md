@@ -1,6 +1,7 @@
 # BROKEN_LINKS — Sprint 1 Prompt B (2026-04-08)
 
-**Evidence:** `RUN_PROMPT_B_SPRINT1_2026-04-08.md`, `e2e/tests/broken-interactions.spec.ts`, `release-gate.spec.ts`
+**Evidence:** `RUN_PROMPT_B_SPRINT1_2026-04-08.md`, `RUN_2026-04-08_PROMPT_A_ROUND5.md`, `e2e/tests/broken-interactions.spec.ts`, `release-gate.spec.ts`  
+**Hinweis Prompt A R5:** Playwright-Gesamtlauf wegen instabilem Edge (Redis) **nicht** wiederholt — Counts stützen sich auf Spec-Design + frühere Läufe.
 
 ## Automatisierte Abdeckung
 
