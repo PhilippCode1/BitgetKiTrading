@@ -50,3 +50,7 @@ pnpm exec jest src/lib/__tests__/market-universe-lineage.test.ts --runInBand
 
 - `AUDIT_REPORT.md`, `AUDIT_SCORECARD.md`, `AUDIT_BACKLOG.md` (aktualisiert in Runde 3)
 - `RUN_SPRINT2_2026-04-07.md` — Sprint-2-Umsetzung Marktuniversum
+
+## Nachgelagert (Doku-Commit)
+
+Audit-Dateien eingecheckt als **`407202c`** (`docs(audit): Prompt A round 3 report scorecard evidence 85404cd`). Aktueller Repo-HEAD nach Pull/Commit: `git rev-parse HEAD`.
