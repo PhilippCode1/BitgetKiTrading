@@ -1,7 +1,7 @@
 # AUDIT_SCORECARD — bitget-btc-ai
 
 **Skala:** 0–11 (11 = „überperfekt“ laut Prompt-Definition).  
-**Stand:** 2026-04-08 · **P0-0 Redis-Readiness Fix** · **Git HEAD:** `fcc2d21` (`master`, clean nach P0-0-Commit).  
+**Stand:** 2026-04-08 · **P0-0 Redis-Readiness Fix** · **Implementierungs-Commit:** `fcc2d21`.  
 **Evidence:** `AUDIT_EVIDENCE/RUN_P0-0_REDIS_READINESS.md`, `RUN_2026-04-08_PROMPT_A_ROUND5.md`, `RUN_PROMPT_B_SPRINT1_2026-04-08.md`
 
 | # | Domäne | Score | Kurzbegründung | Evidenz / Anker |
