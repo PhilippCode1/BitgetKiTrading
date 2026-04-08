@@ -1,7 +1,7 @@
 # AUDIT_SCORECARD — bitget-btc-ai
 
 **Skala:** 0–11 (11 = „ueberperfekt“ laut Prompt-Definition).  
-**Stand Report:** 2026-04-07 · **Git HEAD:** `f09221a47f834388232358ab66d5f8f616d95995` (`master`, clean laut `RUN_2026-04-07.md`).  
+**Stand Report:** 2026-04-07 (nach Sprint 2 Teil) · **Git:** siehe letzter Commit nach Merge dieses Laufs.  
 **Hinweis:** Scores **>8** fuer Laufzeit/E2E/KI setzen einen **nachweisbaren** gruenen Stack- bzw. Eval-Lauf voraus — dieser Prompt-A-Lauf lieferte **statische** Checks + `pnpm check-types` + `validate_env_profile` + `docker compose config`.
 
 | # | Domäne | Score | Kurzbegründung | Evidenz / Anker |
@@ -13,7 +13,7 @@
 | 5 | **Datenpipelines (Markt → Signal)** | **6** | Compose-Kette plausibel; Datenqualitaet/degraded nicht gemessen. | `ai-architecture.md` |
 | 6 | **Marktuniversum & Symbolskalierung** | **7** | ENV-gesteuert; UI-Perf und „alles pro Symbol“ unvollstaendig. | `PAGE_COMPLETION_MATRIX.md` |
 | 7 | **Dashboard / Frontend** | **7** | Umfangreich, Diagnose/Self-Healing; Matrix-Schulden. | `apps/dashboard` |
-| 8 | **Routen / Links / Buttons (E2E Total)** | **6** | Vier Playwright-Specs inkl. Sidebar-Traversal; kein Full-Crawl/keine Button-Matrix. | `e2e/tests/*.spec.ts`, `BROKEN_LINKS.md` |
+| 8 | **Routen / Links / Buttons (E2E Total)** | **6** | + Release-Gate prueft Marktuniversum-Lineage; Full-Crawl/Button-Matrix offen. | `release-gate.spec.ts` |
 | 9 | **Fehlerkommunikation & Self-Healing** | **7** | Starke Muster; Locale-Mirror mit Warn-Log; nicht alle Pfade verifiziert. | `best-effort-fetch.ts`, Diagnose-Komponenten |
 |10 | **Observability / SRE / MTTR** | **7** | Prometheus/Grafana in Compose; Alarm→Runbook nicht in diesem Lauf belegt. | `OBSERVABILITY_AND_SLOS.md` |
 |11 | **KI: Qualität, Evals, Guardrails** | **6** | Schema/Orchestrator/Eval-Tooling/CI-Baseline; kein frischer Eval-Nachweis hier. | `tools/run_llm_eval.py`, `tests/llm_eval` |

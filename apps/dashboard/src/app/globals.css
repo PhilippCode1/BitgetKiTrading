@@ -4678,3 +4678,56 @@ code {
 .safety-diag-result__sep {
   margin-top: 1rem;
 }
+
+/* Marktuniversum — Daten-Lineage (Sprint 2 Prompt B) */
+.market-universe-lineage__grid {
+  margin-top: 0.75rem;
+}
+
+.market-universe-lineage__lanes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.25rem;
+}
+
+.market-universe-lineage__pill {
+  display: inline-block;
+  padding: 0.15rem 0.45rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border: 1px solid var(--border-subtle);
+  color: var(--muted-fg, #888);
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.market-universe-lineage__pill--on {
+  color: var(--fg, #e8e8e8);
+  border-color: rgba(106, 168, 212, 0.55);
+  background: rgba(106, 168, 212, 0.12);
+}
+
+.market-universe-lineage__sub {
+  margin-top: 1.25rem;
+  font-size: 1rem;
+}
+
+.market-universe-lineage__footer {
+  margin-top: 1rem;
+}
+
+.market-universe-symbols-pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+}
+
+.market-universe-symbols-pager__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}

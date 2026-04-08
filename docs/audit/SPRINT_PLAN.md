@@ -1,8 +1,18 @@
 # SPRINT_PLAN — Prompt B (bitget-btc-ai)
 
 **Erstellt:** 2026-04-08 (Iteration 1)  
+**Letzte Umsetzung:** 2026-04-07 (Iteration 2 — Sprint 2 Teil)  
 **Quelle:** `AUDIT_BACKLOG.md`, `AUDIT_SCORECARD.md`, `AUDIT_REPORT.md`  
 **Regeln:** Nach jedem Sprint Scorecard/Backlog/Evidence aktualisieren; kleine, testbare Schritte.
+
+---
+
+## Sprint 2 — Status Iteration 2
+
+| Aspekt | Stand |
+|--------|--------|
+| **Umgesetzt** | Marktuniversum: Panel „Datenpfad und Plattform-Status“ (LIVE/SHADOW/PAPER-Pills, Kerzen-/Signal-Zeit, market-stream + live-broker Health, WS-Telemetrie-Kurztext, Broker-Reconcile, Tabelle BTCUSDT/ETHUSDT mit Registry/Chart-Link); serverseitige Pagination Universe-Symbole (`universePage`) und Instrument-Registry (`registryPage`); E2E `release-gate` prüft `data-testid=market-universe-lineage`; Jest `market-universe-lineage.test.ts`. |
+| **Offen** | Terminal/Signal-Center: gleiche Dichte wie MU (Folge-PR); Stack-Smoke P0-3; KI Sprint 3. |
 
 ---
 

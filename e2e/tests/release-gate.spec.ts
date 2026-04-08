@@ -85,6 +85,20 @@ test.describe("Release gate — Konsole (Kernseiten)", () => {
     });
   }
 
+  test("/console/market-universe — Daten-Lineage Panel sichtbar", async ({
+    page,
+  }) => {
+    const res = await page.goto("/console/market-universe", {
+      waitUntil: "domcontentloaded",
+    });
+    expect(res?.ok()).toBeTruthy();
+    await expect(page.locator(".dash-sidebar")).toBeVisible();
+    await expect(page.getByTestId("market-universe-lineage")).toBeVisible({
+      timeout: 60_000,
+    });
+    await expect(page.locator("main .msg-err")).toHaveCount(0);
+  });
+
   test("/console/terminal — Chart & Toolbar (Marktbild)", async ({ page }) => {
     const res = await page.goto("/console/terminal", {
       waitUntil: "domcontentloaded",

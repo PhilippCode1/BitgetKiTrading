@@ -6,6 +6,7 @@ import { HealthSnapshotLoadNotice } from "@/components/console/HealthSnapshotLoa
 import { Header } from "@/components/layout/Header";
 import { LiveDataSituationBar } from "@/components/live-data/LiveDataSituationBar";
 import { MarketCapabilityMatrixTable } from "@/components/market/MarketCapabilityMatrixTable";
+import { MarketUniverseDataLineagePanel } from "@/components/market/MarketUniverseDataLineagePanel";
 import {
   fetchMarketUniverseStatus,
   fetchSystemHealthBestEffort,
@@ -40,6 +41,41 @@ function boolLabel(
 function fmtTs(ts: number | null | undefined): string {
   if (!ts) return "—";
   return new Date(ts).toLocaleString();
+}
+
+const UNIVERSE_SYMBOLS_PAGE_SIZE = 32;
+const REGISTRY_PAGE_SIZE = 40;
+
+function parseNonNegPage(sp: ConsoleSearchParams, key: string): number {
+  const raw = first(sp, key);
+  const n = raw != null ? parseInt(raw, 10) : 0;
+  return Number.isFinite(n) && n >= 0 ? n : 0;
+}
+
+/** Query fuer Marktuniversum: vorhandene Params beibehalten, gezielt ueberschreiben. */
+function marketUniverseHref(
+  sp: ConsoleSearchParams,
+  patch: Record<string, string | null | undefined>,
+): string {
+  const keys = [
+    "symbol",
+    "timeframe",
+    "diagnostic",
+    "universePage",
+    "registryPage",
+  ] as const;
+  const params = new URLSearchParams();
+  for (const k of keys) {
+    const v =
+      Object.prototype.hasOwnProperty.call(patch, k) && patch[k] !== undefined
+        ? patch[k]
+        : first(sp, k);
+    if (v != null && v !== "") params.set(k, v);
+  }
+  const q = params.toString();
+  return q
+    ? `${consolePath("market-universe")}?${q}`
+    : consolePath("market-universe");
 }
 
 export default async function MarketUniversePage({
@@ -237,6 +273,11 @@ export default async function MarketUniversePage({
             ) : null}
           </div>
 
+          <MarketUniverseDataLineagePanel
+            health={health}
+            instruments={data.instruments}
+          />
+
           <ConsoleLiveMarketChartSection
             pathname={consolePath("market-universe")}
             urlParams={muChartNav}
@@ -268,9 +309,73 @@ export default async function MarketUniversePage({
                 <span className="label">
                   {t("pages.marketUniverse.labelUniverseSymbols")}
                 </span>
-                <div className="mono-small">
-                  {data.configuration.universe_symbols.join(", ") || "—"}
-                </div>
+                {(() => {
+                  const all = data.configuration.universe_symbols;
+                  const uPage = parseNonNegPage(sp, "universePage");
+                  const uTotal = Math.max(
+                    1,
+                    Math.ceil(all.length / UNIVERSE_SYMBOLS_PAGE_SIZE),
+                  );
+                  const uSafe = Math.min(uPage, uTotal - 1);
+                  const uStart = uSafe * UNIVERSE_SYMBOLS_PAGE_SIZE;
+                  const slice = all.slice(
+                    uStart,
+                    uStart + UNIVERSE_SYMBOLS_PAGE_SIZE,
+                  );
+                  return (
+                    <>
+                      <p className="muted small">
+                        {t("pages.marketUniverse.universeSymbolsPage", {
+                          page: uSafe + 1,
+                          totalPages: uTotal,
+                        })}
+                      </p>
+                      <div className="market-universe-symbols-pager">
+                        <div className="market-universe-symbols-pager__links">
+                          {slice.length === 0 ? (
+                            <span className="mono-small">—</span>
+                          ) : (
+                            slice.map((sym) => (
+                              <Link
+                                key={sym}
+                                className="dash-nav-link"
+                                href={marketUniverseHref(sp, {
+                                  symbol: sym,
+                                  universePage: String(uSafe),
+                                })}
+                              >
+                                {sym}
+                              </Link>
+                            ))
+                          )}
+                        </div>
+                        {uTotal > 1 ? (
+                          <span className="muted small">
+                            {uSafe > 0 ? (
+                              <Link
+                                href={marketUniverseHref(sp, {
+                                  universePage: String(uSafe - 1),
+                                })}
+                              >
+                                {t("pages.marketUniverse.universeSymbolsPrev")}
+                              </Link>
+                            ) : null}
+                            {uSafe > 0 && uSafe < uTotal - 1 ? " · " : null}
+                            {uSafe < uTotal - 1 ? (
+                              <Link
+                                href={marketUniverseHref(sp, {
+                                  universePage: String(uSafe + 1),
+                                })}
+                              >
+                                {t("pages.marketUniverse.universeSymbolsNext")}
+                              </Link>
+                            ) : null}
+                          </span>
+                        ) : null}
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
               <div>
                 <span className="label">
@@ -319,62 +424,112 @@ export default async function MarketUniversePage({
 
           <div className="panel">
             <h2>{t("pages.marketUniverse.registryTitle")}</h2>
-            <div className="table-wrap">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>{t("pages.marketUniverse.thInstrument")}</th>
-                    <th>{t("pages.marketUniverse.thFamily")}</th>
-                    <th>{t("pages.marketUniverse.thProductMode")}</th>
-                    <th>{t("pages.marketUniverse.thCoins")}</th>
-                    <th>{t("pages.marketUniverse.thInventory")}</th>
-                    <th>{t("pages.marketUniverse.thAnalytics")}</th>
-                    <th>{t("pages.marketUniverse.thPaperShadow")}</th>
-                    <th>{t("pages.marketUniverse.thLive")}</th>
-                    <th>{t("pages.marketUniverse.thLeverage")}</th>
-                    <th>{t("pages.marketUniverse.thShorting")}</th>
-                    <th>{t("pages.marketUniverse.thTradeSubscribe")}</th>
-                    <th>{t("pages.marketUniverse.thMetadata")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.instruments.map((item) => (
-                    <tr key={item.canonical_instrument_id}>
-                      <td>
-                        <div>{item.symbol}</div>
-                        <div className="mono-small">
-                          {item.canonical_instrument_id}
-                        </div>
-                      </td>
-                      <td>{item.market_family}</td>
-                      <td>{item.product_type ?? item.margin_account_mode}</td>
-                      <td>
-                        {[item.base_coin, item.quote_coin, item.settle_coin]
-                          .filter(Boolean)
-                          .join(" / ") || "—"}
-                      </td>
-                      <td>{boolLabel(item.inventory_visible, t)}</td>
-                      <td>{boolLabel(item.analytics_eligible, t)}</td>
-                      <td>{boolLabel(item.paper_shadow_eligible, t)}</td>
-                      <td>{boolLabel(item.live_execution_enabled, t)}</td>
-                      <td>{boolLabel(item.supports_leverage, t)}</td>
-                      <td>{boolLabel(item.supports_shorting, t)}</td>
-                      <td>
-                        {boolLabel(item.trading_enabled, t)} /{" "}
-                        {boolLabel(item.subscribe_enabled, t)}
-                      </td>
-                      <td className="mono-small">
-                        {item.metadata_source}
-                        <br />
-                        {t("pages.marketUniverse.metaVerifiedTpl", {
-                          value: boolLabel(item.metadata_verified, t),
-                        })}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            {(() => {
+              const rPage = parseNonNegPage(sp, "registryPage");
+              const inst = data.instruments;
+              const rTotal = Math.max(
+                1,
+                Math.ceil(inst.length / REGISTRY_PAGE_SIZE),
+              );
+              const rSafe = Math.min(rPage, rTotal - 1);
+              const rStart = rSafe * REGISTRY_PAGE_SIZE;
+              const pageItems = inst.slice(rStart, rStart + REGISTRY_PAGE_SIZE);
+              return (
+                <>
+                  <p className="muted small">
+                    {t("pages.marketUniverse.registryPage", {
+                      page: rSafe + 1,
+                      totalPages: rTotal,
+                    })}
+                  </p>
+                  {rTotal > 1 ? (
+                    <p className="muted small">
+                      {rSafe > 0 ? (
+                        <Link
+                          href={marketUniverseHref(sp, {
+                            registryPage: String(rSafe - 1),
+                          })}
+                        >
+                          {t("pages.marketUniverse.registryPrev")}
+                        </Link>
+                      ) : null}
+                      {rSafe > 0 && rSafe < rTotal - 1 ? " · " : null}
+                      {rSafe < rTotal - 1 ? (
+                        <Link
+                          href={marketUniverseHref(sp, {
+                            registryPage: String(rSafe + 1),
+                          })}
+                        >
+                          {t("pages.marketUniverse.registryNext")}
+                        </Link>
+                      ) : null}
+                    </p>
+                  ) : null}
+                  <div className="table-wrap">
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>{t("pages.marketUniverse.thInstrument")}</th>
+                          <th>{t("pages.marketUniverse.thFamily")}</th>
+                          <th>{t("pages.marketUniverse.thProductMode")}</th>
+                          <th>{t("pages.marketUniverse.thCoins")}</th>
+                          <th>{t("pages.marketUniverse.thInventory")}</th>
+                          <th>{t("pages.marketUniverse.thAnalytics")}</th>
+                          <th>{t("pages.marketUniverse.thPaperShadow")}</th>
+                          <th>{t("pages.marketUniverse.thLive")}</th>
+                          <th>{t("pages.marketUniverse.thLeverage")}</th>
+                          <th>{t("pages.marketUniverse.thShorting")}</th>
+                          <th>{t("pages.marketUniverse.thTradeSubscribe")}</th>
+                          <th>{t("pages.marketUniverse.thMetadata")}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pageItems.map((item) => (
+                          <tr key={item.canonical_instrument_id}>
+                            <td>
+                              <div>{item.symbol}</div>
+                              <div className="mono-small">
+                                {item.canonical_instrument_id}
+                              </div>
+                            </td>
+                            <td>{item.market_family}</td>
+                            <td>
+                              {item.product_type ?? item.margin_account_mode}
+                            </td>
+                            <td>
+                              {[
+                                item.base_coin,
+                                item.quote_coin,
+                                item.settle_coin,
+                              ]
+                                .filter(Boolean)
+                                .join(" / ") || "—"}
+                            </td>
+                            <td>{boolLabel(item.inventory_visible, t)}</td>
+                            <td>{boolLabel(item.analytics_eligible, t)}</td>
+                            <td>{boolLabel(item.paper_shadow_eligible, t)}</td>
+                            <td>{boolLabel(item.live_execution_enabled, t)}</td>
+                            <td>{boolLabel(item.supports_leverage, t)}</td>
+                            <td>{boolLabel(item.supports_shorting, t)}</td>
+                            <td>
+                              {boolLabel(item.trading_enabled, t)} /{" "}
+                              {boolLabel(item.subscribe_enabled, t)}
+                            </td>
+                            <td className="mono-small">
+                              {item.metadata_source}
+                              <br />
+                              {t("pages.marketUniverse.metaVerifiedTpl", {
+                                value: boolLabel(item.metadata_verified, t),
+                              })}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </>
       )}

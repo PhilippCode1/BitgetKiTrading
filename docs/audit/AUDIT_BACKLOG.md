@@ -4,6 +4,16 @@
 
 ---
 
+## Sprint 2 (Prompt B) — Stand
+
+| ID | Status | Nachweis |
+|----|--------|----------|
+| Marktuniversum Datenpfad sichtbar | **Teil-Done** | `RUN_SPRINT2_2026-04-07.md`, Panel + Pagination |
+| P1-4 Lastprofil 500+ Symbole | **Offen** | Nur Pagination UI; kein Lasttest-Dokument |
+| Terminal/Signals gleiche Transparenz | **Offen** | Folge-Iteration |
+
+---
+
 ## Prompt A — Lauf 2026-04-07 (Wiederholung)
 
 | Thema | Status | Evidence |
