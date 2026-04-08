@@ -9,9 +9,9 @@
 | Thema | Status | Evidence |
 |-------|--------|----------|
 | Statische Baseline | **Teil-Done** | `RUN_2026-04-07_PROMPT_A_ROUND4.md` — `compose config`, `pnpm check-types`, `pytest tests/llm_eval` (23 passed) |
-| Stack + `rc:health` + Logs | **Offen** | P0-3 / Phase 3 — neues `RUN_*_STACK.md` |
-| `pnpm e2e` + JUnit/HTML | **Offen** | P0-4 — nach Deploy oder lokalem `E2E_BASE_URL` |
-| Arbeitsbaum clean + Commit Sprint 2b | **Offen** | Merge Terminal/Signals-Lineage |
+| Stack + `rc:health` + Logs | **Done** | `RUN_PROMPT_B_SPRINT1_2026-04-08.md` |
+| `pnpm e2e` + JUnit/HTML | **Teil** | Broken-interactions erweitert; grün nach `docker compose build dashboard` |
+| Arbeitsbaum clean + Commit | **Done** | `42fe623` |
 
 ---
 
