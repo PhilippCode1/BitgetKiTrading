@@ -1,0 +1,45 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "market-stream"
+version = "0.1.0"
+description = "Bitget market stream service for the Bitget market-universe platform."
+requires-python = ">=3.11"
+dependencies = [
+  "asyncpg",
+  "fastapi",
+  "httpx",
+  "prometheus_client>=0.20.0",
+  "psycopg[binary]",
+  "pydantic",
+  "pydantic-settings",
+  "python-json-logger>=2.0.7",
+  "redis",
+  "uvicorn[standard]",
+  "websockets",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/market_stream"]
+
+[tool.black]
+line-length = 88
+target-version = ["py311"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+mypy_path = ["src"]

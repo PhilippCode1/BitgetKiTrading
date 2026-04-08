@@ -1,0 +1,656 @@
+# Stack-Grundgeruest: Shadow/Production — nur Edge-Ports auf dem Host.
+# Standard: Bind an Loopback (127.0.0.1), um LAN/WAN-Exposition zu vermeiden.
+# Oeffentliche Bindung nur bewusst: COMPOSE_EDGE_BIND=0.0.0.0
+# Interne Engines/Pipeline: nur im Docker-Netz `bitget_ai_net` erreichbar.
+# Lokal + CI (healthcheck.sh mit localhost:*): zusaetzlich
+#   docker-compose.local-publish.yml
+# Siehe docs/compose_runtime.md
+
+name: bitget-btc-ai
+
+x-env-file: &env-file
+  env_file:
+    - ${COMPOSE_ENV_FILE:-.env.local}
+
+x-service-defaults: &service-defaults
+  <<: *env-file
+  restart: unless-stopped
+  networks:
+    - bitget_ai_net
+
+# App-Container: DSNs nur aus Compose-Netz — nie localhost fuer Postgres/Redis.
+# Passwort ausschliesslich POSTGRES_PASSWORD (muss mit postgresql://user:pass@ uebereinstimmen).
+x-app-runtime-env: &app-runtime-env
+  BITGET_USE_DOCKER_DATASTORE_DSN: "true"
+  CONFIG_ENV_FILE: ${COMPOSE_ENV_FILE:-.env.local}
+  DATABASE_URL_DOCKER: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-bitget_ai}
+  REDIS_URL_DOCKER: redis://redis:6379/0
+  DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-bitget_ai}
+  REDIS_URL: redis://redis:6379/0
+  # Sinnvolle Defaults, falls Host-.env keine Symbole setzt (Compose-Start ohne leeres Universe)
+  BITGET_UNIVERSE_SYMBOLS: ${BITGET_UNIVERSE_SYMBOLS:-BTCUSDT,ETHUSDT}
+  BITGET_WATCHLIST_SYMBOLS: ${BITGET_WATCHLIST_SYMBOLS:-BTCUSDT,ETHUSDT}
+  FEATURE_SCOPE_SYMBOLS: ${FEATURE_SCOPE_SYMBOLS:-BTCUSDT,ETHUSDT}
+  SIGNAL_SCOPE_SYMBOLS: ${SIGNAL_SCOPE_SYMBOLS:-BTCUSDT,ETHUSDT}
+
+networks:
+  bitget_ai_net:
+    driver: bridge
+
+volumes:
+  pgdata:
+  redisdata:
+  backtest_artifacts:
+  grafanadata:
+  prometheusdata:
+
+services:
+  postgres:
+    <<: *service-defaults
+    image: postgres:16.6-alpine
+    container_name: bitget_ai_postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-bitget_ai}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  redis:
+    <<: *service-defaults
+    image: redis:7.4.2-alpine
+    container_name: bitget_ai_redis
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  migrate:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.migrate
+    container_name: bitget_ai_migrate
+    environment:
+      <<: *app-runtime-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  market-stream:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: services/market-stream/Dockerfile
+    container_name: bitget_ai_market_stream
+    environment:
+      <<: *app-runtime-env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'python -c "import urllib.request; urllib.request.urlopen(''http://127.0.0.1:8010/ready'', timeout=8).read()"',
+        ]
+      interval: 10s
+      timeout: 12s
+      start_period: 120s
+      retries: 25
+
+  feature-engine:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: services/feature-engine/Dockerfile
+    container_name: bitget_ai_feature_engine
+    environment:
+      <<: *app-runtime-env
+      READINESS_REQUIRE_URLS: http://market-stream:8010/ready
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      market-stream:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'python -c "import urllib.request; urllib.request.urlopen(''http://127.0.0.1:8020/ready'', timeout=6).read()"',
+        ]
+      interval: 10s
+      timeout: 12s
+      start_period: 45s
+      retries: 25
+
+  structure-engine:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: services/structure-engine/Dockerfile
+    container_name: bitget_ai_structure_engine
+    environment:
+      <<: *app-runtime-env
+      READINESS_REQUIRE_URLS: http://market-stream:8010/ready
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      market-stream:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'python -c "import urllib.request; urllib.request.urlopen(''http://127.0.0.1:8030/ready'', timeout=6).read()"',
+        ]
+      interval: 10s
+      timeout: 12s
+      start_period: 45s
+      retries: 25
+
+  drawing-engine:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: services/drawing-engine/Dockerfile
+    container_name: bitget_ai_drawing_engine
+    environment:
+      <<: *app-runtime-env
+      READINESS_REQUIRE_URLS: http://structure-engine:8030/ready
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      structure-engine:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'python -c "import urllib.request; urllib.request.urlopen(''http://127.0.0.1:8040/ready'', timeout=6).read()"',
+        ]
+      interval: 10s
+      timeout: 12s
+      start_period: 45s
+      retries: 25
+
+  signal-engine:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: services/signal-engine/Dockerfile
+    container_name: bitget_ai_signal_engine
+    environment:
+      <<: *app-runtime-env
+      READINESS_REQUIRE_URLS: http://feature-engine:8020/ready,http://structure-engine:8030/ready,http://drawing-engine:8040/ready,http://news-engine:8060/ready
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      feature-engine:
+        condition: service_healthy
+      structure-engine:
+        condition: service_healthy
+      drawing-engine:
+        condition: service_healthy
+      news-engine:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'python -c "import urllib.request; urllib.request.urlopen(''http://127.0.0.1:8050/ready'', timeout=8).read()"',
+        ]
+      interval: 10s
+      timeout: 15s
+      start_period: 60s
+      retries: 25
+
+  news-engine:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: services/news-engine/Dockerfile
+    container_name: bitget_ai_news_engine
+    environment:
+      <<: *app-runtime-env
+      READINESS_REQUIRE_URLS: http://llm-orchestrator:8070/ready
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      llm-orchestrator:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'python -c "import urllib.request; urllib.request.urlopen(''http://127.0.0.1:8060/ready'', timeout=6).read()"',
+        ]
+      interval: 10s
+      timeout: 12s
+      start_period: 45s
+      retries: 25
+
+  llm-orchestrator:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: services/llm-orchestrator/Dockerfile
+    container_name: bitget_ai_llm_orchestrator
+    environment:
+      <<: *app-runtime-env
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'python -c "import urllib.request; urllib.request.urlopen(''http://127.0.0.1:8070/ready'', timeout=6).read()"',
+        ]
+      interval: 10s
+      timeout: 8s
+      start_period: 25s
+      retries: 30
+
+  paper-broker:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: services/paper-broker/Dockerfile
+    container_name: bitget_ai_paper_broker
+    environment:
+      <<: *app-runtime-env
+      READINESS_REQUIRE_URLS: http://signal-engine:8050/ready,http://news-engine:8060/ready
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      market-stream:
+        condition: service_healthy
+      structure-engine:
+        condition: service_healthy
+      drawing-engine:
+        condition: service_healthy
+      signal-engine:
+        condition: service_healthy
+      news-engine:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'python -c "import urllib.request; urllib.request.urlopen(''http://127.0.0.1:8085/ready'', timeout=8).read()"',
+        ]
+      interval: 10s
+      timeout: 15s
+      start_period: 60s
+      retries: 25
+
+  learning-engine:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: services/learning-engine/Dockerfile
+    container_name: bitget_ai_learning_engine
+    environment:
+      <<: *app-runtime-env
+      READINESS_REQUIRE_URLS: http://paper-broker:8085/ready
+    volumes:
+      - backtest_artifacts:/app/services/learning-engine/artifacts/backtests
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      paper-broker:
+        condition: service_healthy
+      signal-engine:
+        condition: service_healthy
+      news-engine:
+        condition: service_healthy
+      structure-engine:
+        condition: service_healthy
+      drawing-engine:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'python -c "import urllib.request; urllib.request.urlopen(''http://127.0.0.1:8090/ready'', timeout=8).read()"',
+        ]
+      interval: 10s
+      timeout: 15s
+      start_period: 60s
+      retries: 25
+
+  live-broker:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: services/live-broker/Dockerfile
+    container_name: bitget_ai_live_broker
+    environment:
+      <<: *app-runtime-env
+      READINESS_REQUIRE_URLS: http://paper-broker:8085/ready,http://signal-engine:8050/ready
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      signal-engine:
+        condition: service_healthy
+      paper-broker:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'python -c "import urllib.request; urllib.request.urlopen(''http://127.0.0.1:8120/ready'', timeout=8).read()"',
+        ]
+      interval: 10s
+      timeout: 15s
+      start_period: 45s
+      retries: 25
+
+  api-gateway:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: services/api-gateway/Dockerfile
+    container_name: bitget_ai_api_gateway
+    ports:
+      - "${COMPOSE_EDGE_BIND:-127.0.0.1}:8000:8000"
+    environment:
+      <<: *app-runtime-env
+      APP_BASE_URL: ${APP_BASE_URL}
+      FRONTEND_URL: ${FRONTEND_URL}
+      CORS_ALLOW_ORIGINS: ${CORS_ALLOW_ORIGINS}
+      GATEWAY_SEND_HSTS: ${GATEWAY_SEND_HSTS:-false}
+      GATEWAY_SSE_COOKIE_SAMESITE: ${GATEWAY_SSE_COOKIE_SAMESITE:-lax}
+      HEALTH_URL_MARKET_STREAM: http://market-stream:8010/ready
+      HEALTH_URL_FEATURE_ENGINE: http://feature-engine:8020/ready
+      HEALTH_URL_STRUCTURE_ENGINE: http://structure-engine:8030/ready
+      HEALTH_URL_SIGNAL_ENGINE: http://signal-engine:8050/ready
+      HEALTH_URL_DRAWING_ENGINE: http://drawing-engine:8040/ready
+      HEALTH_URL_NEWS_ENGINE: http://news-engine:8060/ready
+      HEALTH_URL_LLM_ORCHESTRATOR: http://llm-orchestrator:8070/ready
+      HEALTH_URL_PAPER_BROKER: http://paper-broker:8085/ready
+      HEALTH_URL_LEARNING_ENGINE: http://learning-engine:8090/ready
+      HEALTH_URL_ALERT_ENGINE: http://alert-engine:8100/ready
+      HEALTH_URL_MONITOR_ENGINE: http://monitor-engine:8110/ready
+      HEALTH_URL_LIVE_BROKER: http://live-broker:8120/ready
+      # Ueberschreibt .env.local Loopback: Gateway-Container braucht Docker-Dienstnamen bei BITGET_USE_DOCKER_DATASTORE_DSN.
+      LLM_ORCH_BASE_URL: http://llm-orchestrator:8070
+      LIVE_BROKER_BASE_URL: http://live-broker:8120
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      market-stream:
+        condition: service_healthy
+      feature-engine:
+        condition: service_healthy
+      structure-engine:
+        condition: service_healthy
+      drawing-engine:
+        condition: service_healthy
+      signal-engine:
+        condition: service_healthy
+      news-engine:
+        condition: service_healthy
+      llm-orchestrator:
+        condition: service_healthy
+      paper-broker:
+        condition: service_healthy
+      learning-engine:
+        condition: service_healthy
+      alert-engine:
+        condition: service_healthy
+      live-broker:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'python -c "import json,urllib.request;r=urllib.request.urlopen(''http://127.0.0.1:8000/ready'',timeout=8);j=json.loads(r.read().decode());raise SystemExit(0 if j.get(''ready'') is True else 1)"',
+        ]
+      interval: 10s
+      timeout: 12s
+      start_period: 45s
+      retries: 25
+
+  alert-engine:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: services/alert-engine/Dockerfile
+    container_name: bitget_ai_alert_engine
+    environment:
+      <<: *app-runtime-env
+      READINESS_REQUIRE_URLS: http://signal-engine:8050/ready,http://paper-broker:8085/ready
+      ALERT_ENGINE_LIVE_BROKER_BASE_URL: http://live-broker:8120
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      signal-engine:
+        condition: service_healthy
+      news-engine:
+        condition: service_healthy
+      paper-broker:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'python -c "import urllib.request; urllib.request.urlopen(''http://127.0.0.1:8100/ready'', timeout=8).read()"',
+        ]
+      interval: 10s
+      timeout: 15s
+      start_period: 45s
+      retries: 25
+
+  monitor-engine:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: services/monitor-engine/Dockerfile
+    container_name: bitget_ai_monitor_engine
+    environment:
+      <<: *app-runtime-env
+      READINESS_REQUIRE_URLS: http://api-gateway:8000/ready
+      MONITOR_SERVICE_URLS: api-gateway=http://api-gateway:8000,market-stream=http://market-stream:8010,feature-engine=http://feature-engine:8020,structure-engine=http://structure-engine:8030,drawing-engine=http://drawing-engine:8040,signal-engine=http://signal-engine:8050,news-engine=http://news-engine:8060,llm-orchestrator=http://llm-orchestrator:8070,paper-broker=http://paper-broker:8085,learning-engine=http://learning-engine:8090,alert-engine=http://alert-engine:8100,live-broker=http://live-broker:8120
+      MONITOR_STREAMS: events:signal_created,events:trade_opened,events:trade_updated,events:trade_closed,events:candle_close,events:news_scored,events:market_feed_health,events:system_alert,events:dlq
+      THRESH_LIVE_RECONCILE_STALE_MS: 90000
+      THRESH_LIVE_ERROR_LOOKBACK_MS: 900000
+      THRESH_LIVE_KILL_SWITCH_AGE_MS: 300000
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api-gateway:
+        condition: service_healthy
+      market-stream:
+        condition: service_healthy
+      feature-engine:
+        condition: service_healthy
+      structure-engine:
+        condition: service_healthy
+      drawing-engine:
+        condition: service_healthy
+      signal-engine:
+        condition: service_healthy
+      news-engine:
+        condition: service_healthy
+      llm-orchestrator:
+        condition: service_healthy
+      paper-broker:
+        condition: service_healthy
+      learning-engine:
+        condition: service_healthy
+      alert-engine:
+        condition: service_healthy
+      live-broker:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'python -c "import urllib.request; urllib.request.urlopen(''http://127.0.0.1:8110/ready'', timeout=10).read()"',
+        ]
+      interval: 10s
+      timeout: 18s
+      start_period: 30s
+      retries: 25
+
+  dashboard:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: apps/dashboard/Dockerfile
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
+        NEXT_PUBLIC_WS_BASE_URL: ${NEXT_PUBLIC_WS_BASE_URL}
+        NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-bitget-btc-ai}
+        NEXT_PUBLIC_ADMIN_USE_SERVER_PROXY: ${NEXT_PUBLIC_ADMIN_USE_SERVER_PROXY:-true}
+        NEXT_PUBLIC_ENABLE_ADMIN: ${NEXT_PUBLIC_ENABLE_ADMIN:-false}
+        NEXT_PUBLIC_ENABLE_NEWS: ${NEXT_PUBLIC_ENABLE_NEWS:-true}
+        NEXT_PUBLIC_ENABLE_TELEGRAM_STATUS: ${NEXT_PUBLIC_ENABLE_TELEGRAM_STATUS:-true}
+    container_name: bitget_ai_dashboard
+    environment:
+      NODE_ENV: production
+      API_GATEWAY_URL: http://api-gateway:8000
+      PORT: 3000
+      # Explizit aus COMPOSE_ENV_FILE interpolieren (BFF/Health -> Gateway); siehe docs/LOCAL_START_MINIMUM.md
+      DASHBOARD_GATEWAY_AUTHORIZATION: ${DASHBOARD_GATEWAY_AUTHORIZATION:-}
+    ports:
+      - "${COMPOSE_EDGE_BIND:-127.0.0.1}:3000:3000"
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'node -e "fetch(''http://127.0.0.1:3000/api/health'').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"',
+        ]
+      interval: 15s
+      timeout: 10s
+      start_period: 50s
+      retries: 30
+
+  prometheus:
+    <<: *service-defaults
+    image: prom/prometheus:v2.54.1
+    container_name: bitget_ai_prometheus
+    profiles:
+      - observability
+    ports:
+      - "${COMPOSE_EDGE_BIND:-127.0.0.1}:9090:9090"
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
+    volumes:
+      - ./infra/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./infra/observability/prometheus-alerts.yml:/etc/prometheus/prometheus-alerts.yml:ro
+      - prometheusdata:/prometheus
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+      market-stream:
+        condition: service_healthy
+      feature-engine:
+        condition: service_healthy
+      structure-engine:
+        condition: service_healthy
+      drawing-engine:
+        condition: service_healthy
+      signal-engine:
+        condition: service_healthy
+      news-engine:
+        condition: service_healthy
+      llm-orchestrator:
+        condition: service_healthy
+      paper-broker:
+        condition: service_healthy
+      learning-engine:
+        condition: service_healthy
+      alert-engine:
+        condition: service_healthy
+      monitor-engine:
+        condition: service_healthy
+      live-broker:
+        condition: service_healthy
+
+  grafana:
+    <<: *service-defaults
+    image: grafana/grafana:11.2.0
+    container_name: bitget_ai_grafana
+    profiles:
+      - observability
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      # Kein Klartext-Default: bei Profil observability GRAFANA_ADMIN_PASSWORD setzen
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_USERS_DEFAULT_THEME: dark
+    ports:
+      - "${COMPOSE_EDGE_BIND:-127.0.0.1}:3001:3000"
+    volumes:
+      - grafanadata:/var/lib/grafana
+      - ./infra/observability/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./infra/observability/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./infra/observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      prometheus:
+        condition: service_started

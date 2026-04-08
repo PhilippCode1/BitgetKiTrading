@@ -1,0 +1,80 @@
+{
+  "version": "1",
+  "description": "Kuratierte, versionskontrollierte Textbausteine fuer LLM-Analyst-Prompts (kein freies Web-RAG).",
+  "chunks": [
+    {
+      "id": "runbook-live-execution-gate",
+      "path": "runbooks/live_execution_gate.md",
+      "tags": [
+        "runbook",
+        "live",
+        "execution",
+        "post_trade",
+        "operator_explain"
+      ],
+      "keywords": [
+        "live",
+        "broker",
+        "gate",
+        "execution",
+        "risk",
+        "allowlist",
+        "shadow"
+      ]
+    },
+    {
+      "id": "playbook-stop-budget",
+      "path": "playbooks/stop_budget_curve.md",
+      "tags": ["playbook", "risk", "hypotheses", "context", "operator_explain"],
+      "keywords": [
+        "stop",
+        "budget",
+        "leverage",
+        "tick",
+        "spread",
+        "liquidation",
+        "executable"
+      ]
+    },
+    {
+      "id": "benchmark-structured-context",
+      "path": "benchmarks/structured_market_context.md",
+      "tags": ["benchmark", "news", "context", "hypotheses", "context"],
+      "keywords": [
+        "smc",
+        "facet",
+        "surprise",
+        "decay",
+        "macro",
+        "listing",
+        "funding"
+      ]
+    },
+    {
+      "id": "instrument-futures-usdt",
+      "path": "instruments/futures_usdt_mech.md",
+      "tags": ["instrument", "futures", "hypotheses", "context", "journal"],
+      "keywords": ["futures", "usdt", "perp", "funding", "margin", "bitget"]
+    },
+    {
+      "id": "playbook-exit-families",
+      "path": "playbooks/exit_families.md",
+      "tags": ["playbook", "exit", "post_trade", "journal"],
+      "keywords": ["scale", "runner", "time", "liquidity", "exit", "tp", "mean"]
+    },
+    {
+      "id": "runbook-telegram-boundaries",
+      "path": "runbooks/telegram_strategy_boundary.md",
+      "tags": ["runbook", "operator_explain", "journal"],
+      "keywords": [
+        "telegram",
+        "chat",
+        "strategy",
+        "parameter",
+        "risk",
+        "no",
+        "trade"
+      ]
+    }
+  ]
+}

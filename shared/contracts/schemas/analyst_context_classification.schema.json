@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bitget-btc-ai.local/schemas/analyst-context-classification-v1.json",
+  "title": "AnalystContextClassificationV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "primary_bucket",
+    "secondary_buckets",
+    "conflict_with_pure_technical_de",
+    "suggested_smc_facets_hints",
+    "confidence_0_1"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "1.0" },
+    "primary_bucket": {
+      "type": "string",
+      "enum": [
+        "macro",
+        "microstructure",
+        "idiosyncratic",
+        "liquidity",
+        "regulatory",
+        "technical_structure",
+        "sentiment_flow",
+        "unknown"
+      ]
+    },
+    "secondary_buckets": {
+      "type": "array",
+      "maxItems": 4,
+      "items": {
+        "type": "string",
+        "enum": [
+          "macro",
+          "microstructure",
+          "idiosyncratic",
+          "liquidity",
+          "regulatory",
+          "technical_structure",
+          "sentiment_flow",
+          "unknown"
+        ]
+      }
+    },
+    "conflict_with_pure_technical_de": { "type": "string" },
+    "suggested_smc_facets_hints": {
+      "type": "array",
+      "maxItems": 12,
+      "items": { "type": "string" }
+    },
+    "confidence_0_1": { "type": "number", "minimum": 0, "maximum": 1 }
+  }
+}

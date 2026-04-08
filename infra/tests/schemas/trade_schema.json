@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bitget-btc-ai.local/schemas/paper-trade-item-v1.json",
+  "title": "PaperTradeItem",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "position_id",
+    "symbol",
+    "side",
+    "qty_base",
+    "entry_price_avg",
+    "state"
+  ],
+  "properties": {
+    "position_id": { "type": "string" },
+    "symbol": { "type": "string" },
+    "side": { "type": "string" },
+    "qty_base": { "type": "string" },
+    "entry_price_avg": { "type": "string" },
+    "closed_ts_ms": { "type": ["integer", "null"] },
+    "state": { "type": "string" },
+    "pnl_net_usdt": { "type": ["number", "null"] },
+    "fees_total_usdt": { "type": ["number", "null"] },
+    "direction_correct": { "type": ["boolean", "null"] }
+  }
+}

@@ -1,0 +1,46 @@
+---
+description: Modul Mate — vollstaendige Dateien, Lieferformat, keine Teil-Snippets
+alwaysApply: true
+---
+
+# Umsetzungsmodus (Modul Mate / bitget-btc-ai)
+
+## Unbedingt
+
+- **Jede neue oder geaenderte Datei** in einer Antwort **immer vollstaendig** ausgeben — **keine** Teil-Snippets, **keine** Platzhalter wie „bestehender Code bleibt“, **keine** ausgelassenen Bereiche (`// ...` in produktivem Code vermeiden).
+- Wenn mehrere Dateien geaendert werden: **pro Datei** den **kompletten** neuen Inhalt liefern.
+- Sehr grosse Dateien: **eine vollstaendige Datei pro Block**; bei Bedarf in **aufeinanderfolgenden** Nachrichten — weiterhin vollstaendig, nie gekuerzt.
+
+## Festes Antwortformat fuer Umsetzungsschritte
+
+1. **Ziel des Schritts**
+2. **Betroffene Dateien** (Liste der Pfade)
+3. **Vollstaendige Dateien** (gesamter Inhalt je Datei)
+4. **Kurze Testanleitung** (Befehle oder manuelle Schritte)
+5. **Bekannte offene Punkte**
+
+Referenz im Repo: `docs/CURSOR_IMPLEMENTATION_MODE_MODUL_MATE.md`, `shared_py.cursor_delivery_contract`.
+
+## Bei Unsicherheit
+
+1. Zuerst **Annahmenliste**
+2. Dann **sichere Standardentscheidung** pro Punkt
+3. Dann **ganze Dateien** liefern
+4. Offene Punkte im letzten Abschnitt wiederholen
+
+## Kennzeichnung
+
+- `[TECHNICAL_DEBT]` — bewusst verschobene Refaktorierung
+- `[PROVISIONAL]` — provisorisch, ersetzen
+- `[RISK]` — bekanntes Risiko
+- `[FUTURE]` — nach v1
+
+## Sprache
+
+- Nutzerkommunikation in diesem Projekt: **Deutsch**, wo der Nutzer Deutsch verlangt.
+- UI-Texte: **keine** sichtbare Entwicklersprache (siehe `shared_py.design_system_contract`).
+
+## Repo-Kontext
+
+- Fachkontrakte liegen in `shared_py` (`product_policy`, `customer_lifecycle`, `commercial_data_model`, …).
+- Aenderungen **fokussiert** halten — keine unnoetigen Refactorings in demselben Schritt.

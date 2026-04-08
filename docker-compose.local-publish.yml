@@ -1,0 +1,65 @@
+# Host-Publishing fuer lokale Entwicklung, bootstrap_stack.sh und CI (healthcheck.sh).
+# Standard-Bind: Loopback (127.0.0.1). LAN-Zugriff nur bewusst:
+#   COMPOSE_LOCAL_PUBLISH_BIND=0.0.0.0
+# Nicht auf Edge-Servern ohne Firewall-Review verwenden.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.local-publish.yml up -d
+#
+# Siehe docs/compose_runtime.md
+
+services:
+  postgres:
+    ports:
+      - "${COMPOSE_LOCAL_PUBLISH_BIND:-127.0.0.1}:5432:5432"
+
+  redis:
+    ports:
+      - "${COMPOSE_LOCAL_PUBLISH_BIND:-127.0.0.1}:6379:6379"
+
+  market-stream:
+    ports:
+      - "${COMPOSE_LOCAL_PUBLISH_BIND:-127.0.0.1}:8010:8010"
+
+  feature-engine:
+    ports:
+      - "${COMPOSE_LOCAL_PUBLISH_BIND:-127.0.0.1}:8020:8020"
+
+  structure-engine:
+    ports:
+      - "${COMPOSE_LOCAL_PUBLISH_BIND:-127.0.0.1}:8030:8030"
+
+  drawing-engine:
+    ports:
+      - "${COMPOSE_LOCAL_PUBLISH_BIND:-127.0.0.1}:8040:8040"
+
+  signal-engine:
+    ports:
+      - "${COMPOSE_LOCAL_PUBLISH_BIND:-127.0.0.1}:8050:8050"
+
+  news-engine:
+    ports:
+      - "${COMPOSE_LOCAL_PUBLISH_BIND:-127.0.0.1}:8060:8060"
+
+  llm-orchestrator:
+    ports:
+      - "${COMPOSE_LOCAL_PUBLISH_BIND:-127.0.0.1}:8070:8070"
+
+  paper-broker:
+    ports:
+      - "${COMPOSE_LOCAL_PUBLISH_BIND:-127.0.0.1}:8085:8085"
+
+  learning-engine:
+    ports:
+      - "${COMPOSE_LOCAL_PUBLISH_BIND:-127.0.0.1}:8090:8090"
+
+  alert-engine:
+    ports:
+      - "${COMPOSE_LOCAL_PUBLISH_BIND:-127.0.0.1}:8100:8100"
+
+  monitor-engine:
+    ports:
+      - "${COMPOSE_LOCAL_PUBLISH_BIND:-127.0.0.1}:8110:8110"
+
+  live-broker:
+    ports:
+      - "${COMPOSE_LOCAL_PUBLISH_BIND:-127.0.0.1}:8120:8120"

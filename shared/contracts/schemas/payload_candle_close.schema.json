@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bitget-btc-ai.local/schemas/payload-candle-close-v1.json",
+  "title": "candle_close payload (Kernfelder)",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["start_ts_ms", "open", "high", "low", "close"],
+  "properties": {
+    "start_ts_ms": { "type": "integer" },
+    "open": { "type": "number" },
+    "high": { "type": "number" },
+    "low": { "type": "number" },
+    "close": { "type": "number" },
+    "usdt_vol": { "type": "number" },
+    "quote_vol": { "type": "number" }
+  }
+}

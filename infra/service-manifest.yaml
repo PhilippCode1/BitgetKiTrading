@@ -1,0 +1,639 @@
+version: "1.0"
+project: "bitget-btc-ai"
+defaults:
+  language: "de"
+  runtime:
+    python: "3.11"
+    node: "20"
+  env_files:
+    - ".env.local"
+    - ".env.shadow"
+    - ".env.production"
+    - ".env.test"
+  env_files_note: "Laufzeit: CONFIG_ENV_FILE/COMPOSE_ENV_FILE/APP_ENV — siehe docs/env_profiles.md; kein statisches Tuple beim Modul-Import."
+  env_resolution:
+    order:
+      - "CONFIG_ENV_FILE"
+      - "COMPOSE_ENV_FILE"
+      - "ENV_PROFILE_FILE"
+      - "STACK_PROFILE"
+      - "APP_ENV"
+      - ".env.local fallback"
+  security:
+    secrets_in_repo: false
+    note: "Alle Secrets nur ueber ENV / Secret Manager. Niemals committen."
+compose_runtime:
+  primary_file: docker-compose.yml
+  local_host_ports_overlay: docker-compose.local-publish.yml
+  env_file_switch: COMPOSE_ENV_FILE
+  docker_network: bitget_ai_net
+  documentation: docs/compose_runtime.md
+  edge_host_publish:
+    api-gateway: 8000
+    dashboard: 3000
+  observability:
+    profile: observability
+    prometheus_port: 9090
+    grafana_port: 3001
+  internal_pipeline:
+    note: "Im Basis-Compose keine Host-Port-Mappings fuer Engines/Broker/Learning/Alert/Monitor — nur Docker-intern. Overlay local-publish fuer Dev/CI."
+  readiness:
+    env_peer_urls: READINESS_REQUIRE_URLS
+    env_peer_timeout: READINESS_PEER_TIMEOUT_SEC
+    monitor_boot_grace: MONITOR_READINESS_BOOT_GRACE_MS
+    documentation: docs/stack_readiness.md
+infrastructure:
+  - name: postgres
+    compose_service: postgres
+    image: "postgres:16.6-alpine"
+    container_port: 5432
+  - name: redis
+    compose_service: redis
+    image: "redis:7.4.2-alpine"
+    container_port: 6379
+services:
+  - name: "api-gateway"
+    folder: "services/api-gateway"
+    purpose: "Zentrale HTTP/WebSocket Schnittstelle fuers Dashboard; Routing zu internen Services."
+    entrypoint: "services/api-gateway/src/api_gateway/app.py"
+    exposes:
+      http_port: 8000
+      host_publish: true
+    depends_on:
+      - "postgres"
+      - "redis"
+      - "market-stream"
+      - "feature-engine"
+      - "structure-engine"
+      - "drawing-engine"
+      - "signal-engine"
+      - "news-engine"
+      - "llm-orchestrator"
+      - "paper-broker"
+      - "learning-engine"
+      - "alert-engine"
+      - "live-broker"
+    required_env:
+      - "APP_ENV"
+      - "APP_PORT"
+      - "DATABASE_URL"
+      - "REDIS_URL"
+      - "EVENTBUS_DEFAULT_BLOCK_MS"
+      - "EVENTBUS_DEFAULT_COUNT"
+      - "EVENTBUS_DEDUPE_TTL_SEC"
+      - "HEALTH_URL_MARKET_STREAM"
+      - "HEALTH_URL_FEATURE_ENGINE"
+      - "HEALTH_URL_STRUCTURE_ENGINE"
+      - "HEALTH_URL_DRAWING_ENGINE"
+      - "HEALTH_URL_SIGNAL_ENGINE"
+      - "HEALTH_URL_NEWS_ENGINE"
+      - "HEALTH_URL_LLM_ORCHESTRATOR"
+      - "HEALTH_URL_PAPER_BROKER"
+      - "HEALTH_URL_LEARNING_ENGINE"
+      - "HEALTH_URL_ALERT_ENGINE"
+      - "HEALTH_URL_MONITOR_ENGINE"
+      - "HEALTH_URL_LIVE_BROKER"
+      - "LOG_LEVEL"
+
+  - name: "market-stream"
+    folder: "services/market-stream"
+    purpose: "Bitget Public WS + REST-Gapfill, zentraler Instrumentenkatalog-Refresh, Orderbook-Checksumme/Seq, Feed-Health-Events, Ready-Alters-Gates."
+    entrypoint: "services/market-stream/src/market_stream/main.py"
+    exposes:
+      http_port: 8010
+      host_publish: false
+    depends_on:
+      - "postgres"
+      - "redis"
+    required_env:
+      - "MARKET_STREAM_PORT"
+      - "MARKET_STREAM_WS_MODE"
+      - "MARKET_STREAM_ENABLE_RAW_PERSIST"
+      - "BITGET_CANDLE_INITIAL_LOAD_LIMIT"
+      - "BITGET_CANDLE_KLINE_TYPE"
+      - "ORDERBOOK_MAX_LEVELS"
+      - "ORDERBOOK_CHECKSUM_LEVELS"
+      - "ORDERBOOK_RESYNC_ON_MISMATCH"
+      - "SLIPPAGE_SIZES_USDT"
+      - "OI_SNAPSHOT_INTERVAL_SEC"
+      - "FUNDING_SNAPSHOT_INTERVAL_SEC"
+      - "SYMBOL_PRICE_SNAPSHOT_INTERVAL_SEC"
+      - "TSDB_RETENTION_DAYS_CANDLES_1M"
+      - "TSDB_RETENTION_DAYS_CANDLES_5M"
+      - "TSDB_RETENTION_DAYS_CANDLES_15M"
+      - "TSDB_RETENTION_DAYS_CANDLES_1H"
+      - "TSDB_RETENTION_DAYS_CANDLES_4H"
+      - "BITGET_API_BASE_URL"
+      - "BITGET_WS_PUBLIC_URL"
+      - "BITGET_UNIVERSE_MARKET_FAMILIES"
+      - "BITGET_UNIVERSE_SYMBOLS"
+      - "BITGET_WATCHLIST_SYMBOLS"
+      - "FEATURE_SCOPE_SYMBOLS"
+      - "FEATURE_SCOPE_TIMEFRAMES"
+      - "BITGET_MARKET_FAMILY"
+      - "BITGET_FUTURES_ALLOWED_PRODUCT_TYPES"
+      - "BITGET_FUTURES_DEFAULT_PRODUCT_TYPE"
+      - "BITGET_FUTURES_DEFAULT_MARGIN_COIN"
+      - "BITGET_SPOT_DEFAULT_QUOTE_COIN"
+      - "BITGET_MARGIN_DEFAULT_QUOTE_COIN"
+      - "BITGET_MARGIN_DEFAULT_ACCOUNT_MODE"
+      - "BITGET_MARGIN_DEFAULT_LOAN_TYPE"
+      - "BITGET_PRODUCT_TYPE"
+      - "BITGET_MARGIN_ACCOUNT_MODE"
+      - "BITGET_DISCOVERY_SYMBOLS"
+      - "BITGET_SYMBOL"
+      - "BITGET_DEMO_ENABLED"
+      - "BITGET_DEMO_REST_BASE_URL"
+      - "BITGET_DEMO_WS_PUBLIC_URL"
+      - "BITGET_DEMO_PAPTRADING_HEADER"
+      - "INSTRUMENT_CATALOG_REFRESH_INTERVAL_SEC"
+      - "INSTRUMENT_CATALOG_CACHE_TTL_SEC"
+      - "INSTRUMENT_CATALOG_MAX_STALE_SEC"
+      - "REDIS_URL"
+      - "EVENTBUS_DEFAULT_BLOCK_MS"
+      - "EVENTBUS_DEFAULT_COUNT"
+      - "EVENTBUS_DEDUPE_TTL_SEC"
+      - "INSTRUMENT_CATALOG_REFRESH_INTERVAL_SEC"
+      - "INSTRUMENT_CATALOG_CACHE_TTL_SEC"
+      - "INSTRUMENT_CATALOG_MAX_STALE_SEC"
+      - "DATABASE_URL"
+      - "LOG_LEVEL"
+    operational_constraints:
+      websocket_rate_limit_msg_per_sec: 10
+      reconnect_required: true
+      rest_fallback_required: true
+      note: "Bitget WS max 10 msg/s inklusive ping und subscribe; private Kanaele koennen Message-Loss haben, REST Fallback ist empfohlen, und waehrend Releases sind Disconnects moeglich. Zusaetzliche ENV (Defaults im Code): MARKET_STREAM_WS_STALE_AFTER_SEC, MARKET_STREAM_STALE_ESCALATION_MAX_CYCLES, MARKET_STREAM_READY_MAX_DATA_AGE_SEC, MARKET_STREAM_READY_BOOT_GRACE_SEC, MARKET_STREAM_READY_REQUIRE_FRESH_TRADES, MARKET_STREAM_FEED_HEALTH_INTERVAL_SEC. Downstream: events:market_feed_health, /ready -> data_freshness."
+
+  - name: "feature-engine"
+    folder: "services/feature-engine"
+    purpose: "Family-aware Feature-Berechnung aus Candles, Orderbook, Ticker und Instrument-Metadaten fuer Spezialisten-, Risk- und ML-Layer."
+    entrypoint: "services/feature-engine/src/feature_engine/main.py"
+    exposes:
+      http_port: 8020
+      host_publish: false
+    depends_on:
+      - "postgres"
+      - "redis"
+      - "market-stream"
+    required_env:
+      - "FEATURE_ENGINE_PORT"
+      - "FEATURE_STREAM"
+      - "FEATURE_GROUP"
+      - "FEATURE_CONSUMER"
+      - "FEATURE_LOOKBACK_CANDLES"
+      - "FEATURE_ATR_WINDOW"
+      - "FEATURE_RSI_WINDOW"
+      - "FEATURE_VOLZ_WINDOW"
+      - "FEATURE_MAX_EVENT_AGE_MS"
+      - "REDIS_URL"
+      - "DATABASE_URL"
+      - "LOG_LEVEL"
+
+  - name: "structure-engine"
+    folder: "services/structure-engine"
+    purpose: "Marktstruktur: Swings, Trend/BOS/CHOCH, Kompression, Breakouts; Redis events:structure_updated."
+    entrypoint: "services/structure-engine/src/structure_engine/main.py"
+    exposes:
+      http_port: 8030
+      host_publish: false
+    depends_on:
+      - "postgres"
+      - "redis"
+      - "market-stream"
+    required_env:
+      - "STRUCTURE_ENGINE_PORT"
+      - "STRUCTURE_STREAM"
+      - "STRUCTURE_GROUP"
+      - "STRUCTURE_CONSUMER"
+      - "STRUCTURE_LOOKBACK_CANDLES"
+      - "PIVOT_LEFT_N_1M"
+      - "PIVOT_RIGHT_N_1M"
+      - "PIVOT_LEFT_N_5M"
+      - "PIVOT_RIGHT_N_5M"
+      - "PIVOT_LEFT_N_15M"
+      - "PIVOT_RIGHT_N_15M"
+      - "PIVOT_LEFT_N_1H"
+      - "PIVOT_RIGHT_N_1H"
+      - "PIVOT_LEFT_N_4H"
+      - "PIVOT_RIGHT_N_4H"
+      - "COMPRESSION_ATRP_THRESH"
+      - "COMPRESSION_ATRP_THRESH_OFF"
+      - "COMPRESSION_RANGE_THRESH"
+      - "COMPRESSION_RANGE_THRESH_OFF"
+      - "BOX_WINDOW_1M"
+      - "BOX_WINDOW_5M"
+      - "BOX_WINDOW_15M"
+      - "BOX_WINDOW_1H"
+      - "BOX_WINDOW_4H"
+      - "BOX_PREBREAK_DIST_BPS"
+      - "BOX_BREAKOUT_BUFFER_BPS"
+      - "FALSE_BREAKOUT_WINDOW_BARS"
+      - "REDIS_URL"
+      - "DATABASE_URL"
+      - "EVENTBUS_DEFAULT_BLOCK_MS"
+      - "EVENTBUS_DEFAULT_COUNT"
+      - "EVENTBUS_DEDUPE_TTL_SEC"
+      - "LOG_LEVEL"
+
+  - name: "drawing-engine"
+    folder: "services/drawing-engine"
+    purpose: "Erzeugt/versioniert Drawings aus structure_updated + Orderbook; events:drawing_updated."
+    entrypoint: "services/drawing-engine/src/drawing_engine/main.py"
+    exposes:
+      http_port: 8040
+      host_publish: false
+    depends_on:
+      - "postgres"
+      - "redis"
+      - "structure-engine"
+    required_env:
+      - "DRAWING_ENGINE_PORT"
+      - "DRAWING_STREAM"
+      - "DRAWING_GROUP"
+      - "DRAWING_CONSUMER"
+      - "ZONE_CLUSTER_BPS"
+      - "ZONE_PAD_BPS"
+      - "STOP_PAD_BPS"
+      - "LIQUIDITY_TOPK"
+      - "LIQUIDITY_CLUSTER_BPS"
+      - "REDIS_URL"
+      - "DATABASE_URL"
+      - "EVENTBUS_DEFAULT_BLOCK_MS"
+      - "EVENTBUS_DEFAULT_COUNT"
+      - "EVENTBUS_DEDUPE_TTL_SEC"
+      - "LOG_LEVEL"
+
+  - name: "signal-engine"
+    folder: "services/signal-engine"
+    purpose: "Deterministisches Scoring V1 (6 Schichten) plus kataloggebundene Family-/Regime-/Playbook-Spezialisten, app.signals_v1, events:signal_created."
+    entrypoint: "services/signal-engine/src/signal_engine/main.py"
+    exposes:
+      http_port: 8050
+      host_publish: false
+    depends_on:
+      - "postgres"
+      - "redis"
+      - "feature-engine"
+      - "structure-engine"
+      - "drawing-engine"
+      - "news-engine"
+    required_env:
+      - "SIGNAL_ENGINE_PORT"
+      - "SIGNAL_STREAM"
+      - "SIGNAL_GROUP"
+      - "SIGNAL_CONSUMER"
+      - "SIGNAL_MIN_SCORE_FOR_MICRO"
+      - "SIGNAL_MIN_SCORE_FOR_CORE"
+      - "SIGNAL_MIN_SCORE_FOR_GROSS"
+      - "SIGNAL_REJECTION_ENABLED"
+      - "SIGNAL_WEIGHT_STRUCTURE"
+      - "SIGNAL_WEIGHT_MOMENTUM"
+      - "SIGNAL_WEIGHT_MULTI_TIMEFRAME"
+      - "SIGNAL_WEIGHT_NEWS"
+      - "SIGNAL_WEIGHT_RISK"
+      - "SIGNAL_WEIGHT_HISTORY"
+      - "SIGNAL_MAX_DATA_AGE_MS"
+      - "SIGNAL_MAX_STRUCTURE_AGE_MS"
+      - "SIGNAL_MAX_DRAWING_AGE_MS"
+      - "SIGNAL_MAX_NEWS_AGE_MS"
+      - "SIGNAL_MAX_ORDERBOOK_AGE_MS"
+      - "SIGNAL_MAX_FUNDING_FEATURE_AGE_MS"
+      - "SIGNAL_MAX_OPEN_INTEREST_AGE_MS"
+      - "SIGNAL_MAX_SPREAD_BPS"
+      - "SIGNAL_MAX_EXECUTION_COST_BPS"
+      - "SIGNAL_MAX_ADVERSE_FUNDING_BPS"
+      - "SIGNAL_DEFAULT_NEWS_NEUTRAL_SCORE"
+      - "SIGNAL_DEFAULT_HISTORY_NEUTRAL_SCORE"
+      - "SIGNAL_MIN_REWARD_RISK"
+      - "SIGNAL_MIN_RISK_SCORE"
+      - "SIGNAL_MIN_STRUCTURE_SCORE_FOR_DIRECTIONAL"
+      - "SIGNAL_MIN_MULTI_TF_SCORE_FOR_DIRECTIONAL"
+      - "SIGNAL_SCORING_MODEL_VERSION"
+      - "SIGNAL_EXPLAIN_VERSION"
+      - "STOP_MIN_ATR_MULT"
+      - "SIGNAL_DEFAULT_STOP_TRIGGER_TYPE"
+      - "BITGET_UNIVERSE_MARKET_FAMILIES"
+      - "BITGET_UNIVERSE_SYMBOLS"
+      - "BITGET_WATCHLIST_SYMBOLS"
+      - "FEATURE_SCOPE_SYMBOLS"
+      - "FEATURE_SCOPE_TIMEFRAMES"
+      - "SIGNAL_SCOPE_SYMBOLS"
+      - "BITGET_MARKET_FAMILY"
+      - "BITGET_PRODUCT_TYPE"
+      - "BITGET_MARGIN_ACCOUNT_MODE"
+      - "BITGET_MARGIN_COIN"
+      - "INSTRUMENT_CATALOG_CACHE_TTL_SEC"
+      - "INSTRUMENT_CATALOG_MAX_STALE_SEC"
+      - "REDIS_URL"
+      - "DATABASE_URL"
+      - "EVENTBUS_DEFAULT_BLOCK_MS"
+      - "EVENTBUS_DEFAULT_COUNT"
+      - "EVENTBUS_DEDUPE_TTL_SEC"
+      - "LOG_LEVEL"
+
+  - name: "news-engine"
+    folder: "services/news-engine"
+    purpose: "Ingestion CryptoPanic/NewsAPI/CoinDesk RSS/GDELT DOC 2.0; app.news_items; Scoring V1; events:news_item_created, events:news_scored."
+    entrypoint: "services/news-engine/src/news_engine/main.py"
+    exposes:
+      http_port: 8060
+      host_publish: false
+    depends_on:
+      - "postgres"
+      - "redis"
+      - "llm-orchestrator"
+    required_env:
+      - "DATABASE_URL"
+      - "REDIS_URL"
+      - "NEWS_ENGINE_PORT"
+      - "NEWS_POLL_INTERVAL_SEC"
+      - "NEWS_FIXTURE_MODE"
+      - "COINDESK_RSS_URL"
+      - "GDELT_DOC_API_BASE"
+      - "NEWS_KEYWORDS"
+      - "NEWS_HTTP_ALLOWED_HOSTS"
+      - "EVENTBUS_DEDUPE_TTL_SEC"
+      - "LOG_LEVEL"
+      - "NEWS_SCORING_VERSION"
+      - "NEWS_LLM_ENABLED"
+      - "NEWS_LLM_PROVIDER_PREF"
+      - "LLM_ORCH_BASE_URL"
+      - "NEWS_SCORE_MAX_LLM_DELTA"
+      - "NEWS_SCORE_PUBLISH_EVENTS"
+
+  - name: "paper-broker"
+    folder: "services/paper-broker"
+    purpose: "Paper-/Shadow-nahe Referenzausfuehrung ueber den zentralen Instrumentenkatalog; family-aware Fees/Funding/Slippage/Exit-Validierung; events trade_* / funding_booked."
+    entrypoint: "services/paper-broker/src/paper_broker/main.py"
+    exposes:
+      http_port: 8085
+      host_publish: false
+    depends_on:
+      - "postgres"
+      - "redis"
+      - "market-stream"
+      - "structure-engine"
+      - "drawing-engine"
+      - "signal-engine"
+      - "news-engine"
+    required_env:
+      - "DATABASE_URL"
+      - "REDIS_URL"
+      - "PAPER_BROKER_PORT"
+      - "PAPER_SIM_MODE"
+      - "PAPER_ACCOUNT_INITIAL_EQUITY_USDT"
+      - "PAPER_DEFAULT_MARGIN_MODE"
+      - "PAPER_DEFAULT_LEVERAGE"
+      - "PAPER_MAX_LEVERAGE"
+      - "PAPER_DEFAULT_SLIPPAGE_BPS"
+      - "PAPER_ORDERBOOK_LEVELS"
+      - "PAPER_FEE_SOURCE"
+      - "PAPER_DEFAULT_MAKER_FEE"
+      - "PAPER_DEFAULT_TAKER_FEE"
+      - "PAPER_FUNDING_SOURCE"
+      - "PAPER_MMR_BASE"
+      - "PAPER_LIQ_FEE_BUFFER_USDT"
+      - "PAPER_CONTRACT_CONFIG_MODE"
+      - "BITGET_UNIVERSE_MARKET_FAMILIES"
+      - "BITGET_UNIVERSE_SYMBOLS"
+      - "BITGET_WATCHLIST_SYMBOLS"
+      - "FEATURE_SCOPE_SYMBOLS"
+      - "FEATURE_SCOPE_TIMEFRAMES"
+      - "BITGET_MARKET_FAMILY"
+      - "BITGET_PRODUCT_TYPE"
+      - "BITGET_MARGIN_ACCOUNT_MODE"
+      - "BITGET_DISCOVERY_SYMBOLS"
+      - "INSTRUMENT_CATALOG_CACHE_TTL_SEC"
+      - "INSTRUMENT_CATALOG_MAX_STALE_SEC"
+      - "EVENTBUS_DEDUPE_TTL_SEC"
+      - "LOG_LEVEL"
+
+  - name: "learning-engine"
+    folder: "services/learning-engine"
+    purpose: "Evaluation, Labeling, E2E-Lernrecords (learn.e2e_decision_records), Shadow-Training, Promotion Gates."
+    entrypoint: "services/learning-engine/src/learning_engine/main.py"
+    exposes:
+      http_port: 8090
+      host_publish: false
+    depends_on:
+      - "postgres"
+      - "redis"
+      - "paper-broker"
+      - "signal-engine"
+      - "news-engine"
+      - "structure-engine"
+      - "drawing-engine"
+    operational_constraints:
+      e2e_learning_table: "Migration 540_e2e_decision_learning.sql; Consumer: signal_created, trade_opened, trade_closed."
+      shadow_mode_env_legacy: "SHADOW_MODE_ENABLED ist Legacy-Alias; kanonisch SHADOW_TRADE_ENABLE (config/settings.py)."
+    required_env:
+      - "DATABASE_URL"
+      - "REDIS_URL"
+      - "LEARNING_ENABLED"
+      - "LEARNING_RETRAIN_INTERVAL_MIN"
+      - "STRATEGY_PROMOTION_THRESHOLD"
+      - "SHADOW_MODE_ENABLED"
+      - "LEARN_MAX_FEATURE_AGE_MS"
+      - "LOG_LEVEL"
+
+  - name: "alert-engine"
+    folder: "services/alert-engine"
+    purpose: "Alerts (Telegram) + Systemwarnungen."
+    entrypoint: "services/alert-engine/src/alert_engine/main.py"
+    exposes:
+      http_port: 8100
+      host_publish: false
+    depends_on:
+      - "postgres"
+      - "redis"
+      - "signal-engine"
+      - "news-engine"
+      - "paper-broker"
+    required_env:
+      - "TELEGRAM_BOT_TOKEN"
+      - "TELEGRAM_CHAT_ID"
+      - "TELEGRAM_ALERTS_ENABLED"
+      - "DATABASE_URL"
+      - "REDIS_URL"
+      - "LOG_LEVEL"
+
+  - name: "llm-orchestrator"
+    folder: "services/llm-orchestrator"
+    purpose: "Analystenlayer: Structured Outputs, Schema-Validation, Redis-Cache, Circuit-Breaker, OpenAI, kuratiertes Retrieval (docs/llm_knowledge), events:llm_failed; kein Tool-Calling/keine Orderhoheit; Fake nur Tests."
+    entrypoint: "services/llm-orchestrator/src/llm_orchestrator/main.py"
+    exposes:
+      http_port: 8070
+      host_publish: false
+    depends_on:
+      - "redis"
+    required_env:
+      - "REDIS_URL"
+      - "LLM_ORCH_PORT"
+      - "LLM_CACHE_TTL_SEC"
+      - "LLM_MAX_RETRIES"
+      - "LLM_TIMEOUT_MS"
+      - "LLM_USE_FAKE_PROVIDER"
+      - "LLM_BACKOFF_BASE_SEC"
+      - "LLM_BACKOFF_MAX_SEC"
+      - "LLM_BACKOFF_JITTER_RATIO"
+      - "LLM_MAX_PROMPT_CHARS"
+      - "LLM_CIRCUIT_FAIL_THRESHOLD"
+      - "LLM_CIRCUIT_OPEN_SEC"
+      - "EVENTBUS_DEDUPE_TTL_SEC"
+      - "LOG_LEVEL"
+    operational_constraints:
+      structured_outputs: true
+      redis_cache: true
+      provider_openai_only: true
+      curated_retrieval: "docs/llm_knowledge + manifest.json (Docker-Image: shared/contracts + docs/llm_knowledge)"
+      function_calling: false
+      note: "Kein Tool-Calling; keine Order-/Strategie-Mutation; strukturierte Outputs; Provenance-Feld in API; Retry mit Backoff; Circuit Breaker; events:llm_failed; Fake nur lokal/Test."
+
+  - name: "monitor-engine"
+    folder: "services/monitor-engine"
+    purpose: "Ueberwacht Services, Streams und Staleness; liefert Health und Prometheus-Metriken."
+    entrypoint: "services/monitor-engine/src/monitor_engine/main.py"
+    exposes:
+      http_port: 8110
+      host_publish: false
+    depends_on:
+      - "postgres"
+      - "redis"
+      - "api-gateway"
+      - "market-stream"
+      - "feature-engine"
+      - "structure-engine"
+      - "drawing-engine"
+      - "signal-engine"
+      - "news-engine"
+      - "llm-orchestrator"
+      - "paper-broker"
+      - "learning-engine"
+      - "alert-engine"
+      - "live-broker"
+    required_env:
+      - "DATABASE_URL"
+      - "REDIS_URL"
+      - "MONITOR_ENGINE_PORT"
+      - "MONITOR_INTERVAL_SEC"
+      - "MONITOR_ALERT_DEDUPE_SEC"
+      - "MONITOR_ENABLE_PROMETHEUS"
+      - "MONITOR_SERVICE_URLS"
+      - "MONITOR_STREAMS"
+      - "MONITOR_STREAM_GROUPS"
+      - "MONITOR_SYMBOL"
+      - "THRESH_LIVE_RECONCILE_STALE_MS"
+      - "THRESH_LIVE_ERROR_LOOKBACK_MS"
+      - "THRESH_LIVE_KILL_SWITCH_AGE_MS"
+      - "LOG_LEVEL"
+
+  - name: "live-broker"
+    folder: "services/live-broker"
+    purpose: "Shadow-/Live-Execution-Runtime: konsumiert signal_created und paper trade_* Events, nutzt den zentralen Instrumentenkatalog fuer Resolver/Gating, persistiert Decisions und bietet signierte Bitget-REST-Orders, Kill-Switches und Emergency-Safety-Pfade."
+    entrypoint: "services/live-broker/src/live_broker/main.py"
+    exposes:
+      http_port: 8120
+      host_publish: false
+    depends_on:
+      - "postgres"
+      - "redis"
+      - "signal-engine"
+      - "paper-broker"
+    required_env:
+      - "DATABASE_URL"
+      - "REDIS_URL"
+      - "LIVE_BROKER_PORT"
+      - "EXECUTION_MODE"
+      - "STRATEGY_EXEC_MODE"
+      - "SHADOW_TRADE_ENABLE"
+      - "LIVE_TRADE_ENABLE"
+      - "API_AUTH_MODE"
+      - "LIVE_BROKER_ENABLED"
+      - "LIVE_BROKER_BASE_URL"
+      - "LIVE_BROKER_WS_PRIVATE_URL"
+      - "LIVE_BROKER_CONSUMER_GROUP"
+      - "LIVE_BROKER_CONSUMER_NAME"
+      - "LIVE_BROKER_SIGNAL_STREAM"
+      - "LIVE_BROKER_REFERENCE_STREAMS"
+      - "ORDER_IDEMPOTENCY_PREFIX"
+      - "LIVE_KILL_SWITCH_ENABLED"
+      - "INSTRUMENT_CATALOG_REFRESH_INTERVAL_SEC"
+      - "INSTRUMENT_CATALOG_CACHE_TTL_SEC"
+      - "INSTRUMENT_CATALOG_MAX_STALE_SEC"
+      - "LIVE_RECONCILE_INTERVAL_SEC"
+      - "LIVE_ORDER_TIMEOUT_SEC"
+      - "LIVE_ALLOWED_MARKET_FAMILIES"
+      - "LIVE_ALLOWED_SYMBOLS"
+      - "LIVE_ALLOWED_PRODUCT_TYPES"
+      - "LIVE_REQUIRE_EXCHANGE_HEALTH"
+      - "LIVE_BROKER_HTTP_TIMEOUT_SEC"
+      - "LIVE_BROKER_HTTP_MAX_RETRIES"
+      - "LIVE_BROKER_HTTP_RETRY_BASE_SEC"
+      - "LIVE_BROKER_HTTP_RETRY_MAX_SEC"
+      - "LIVE_BROKER_CIRCUIT_FAIL_THRESHOLD"
+      - "LIVE_BROKER_CIRCUIT_OPEN_SEC"
+      - "LIVE_BROKER_SERVER_TIME_SYNC_SEC"
+      - "LIVE_BROKER_SERVER_TIME_MAX_SKEW_MS"
+      - "BITGET_UNIVERSE_MARKET_FAMILIES"
+      - "BITGET_UNIVERSE_SYMBOLS"
+      - "BITGET_WATCHLIST_SYMBOLS"
+      - "FEATURE_SCOPE_SYMBOLS"
+      - "FEATURE_SCOPE_TIMEFRAMES"
+      - "BITGET_MARKET_FAMILY"
+      - "BITGET_MARGIN_COIN"
+      - "BITGET_MARGIN_ACCOUNT_MODE"
+      - "BITGET_DISCOVERY_SYMBOLS"
+      - "BITGET_REST_LOCALE"
+      - "RISK_ALLOWED_LEVERAGE_MIN"
+      - "RISK_ALLOWED_LEVERAGE_MAX"
+      - "RISK_REQUIRE_7X_APPROVAL"
+      - "RISK_FORCE_REDUCE_ONLY_ON_ALERT"
+      - "LOG_LEVEL"
+    operational_constraints:
+      upstream_required_for_live: true
+      shadow_path_required: true
+      signal_ingest_via_redis: true
+      paper_reference_via_redis: true
+      note: "Persistiert Shadow- und Blocked-Entscheidungen real, signiert private REST-Orders und erzwingt Kill-Switch-, Reduce-Only-, Timeout- und Emergency-Flatten-Pfade. Private-WS-Reconciliation bleibt weiterhin offen."
+
+  - name: "dashboard"
+    folder: "apps/dashboard"
+    purpose: "Next.js Dashboard fuer Live-Terminal, Paper, News, Strategien und System-Health."
+    entrypoint: "apps/dashboard/src/app/page.tsx"
+    exposes:
+      http_port: 3000
+      host_publish: true
+    depends_on:
+      - "api-gateway"
+    required_env:
+      - "NODE_ENV"
+      - "LOG_LEVEL"
+      - "LOG_FORMAT"
+      - "API_GATEWAY_URL"
+      - "NEXT_PUBLIC_APP_NAME"
+      - "NEXT_PUBLIC_API_BASE_URL"
+      - "NEXT_PUBLIC_WS_BASE_URL"
+      - "DASHBOARD_DEFAULT_MARKET_FAMILY"
+      - "DASHBOARD_WATCHLIST_SYMBOLS"
+      - "NEXT_PUBLIC_DEFAULT_SYMBOL"
+      - "NEXT_PUBLIC_DEFAULT_TF"
+      - "NEXT_PUBLIC_DEFAULT_PRODUCT"
+      - "NEXT_PUBLIC_DEFAULT_MARKET_FAMILY"
+      - "NEXT_PUBLIC_WATCHLIST_SYMBOLS"
+      - "NEXT_PUBLIC_LIVE_POLL_INTERVAL_MS"
+      - "NEXT_PUBLIC_LIVE_SSE_PING_SEC"
+      - "NEXT_PUBLIC_ENABLE_ADMIN"
+      - "NEXT_PUBLIC_ENABLE_NEWS"
+      - "NEXT_PUBLIC_ENABLE_TELEGRAM_STATUS"
+
+release_auditability:
+  truth_documents:
+    - docs/REPO_TRUTH_MATRIX.md
+    - docs/REPO_FREEZE_GAP_MATRIX.md
+    - docs/FINAL_READINESS_REPORT.md
+    - docs/LAUNCH_PACKAGE.md
+  dependency_lockfiles:
+    node: pnpm-lock.yaml
+    python_runtime: constraints-runtime.txt
+    python_dev: requirements-dev.txt
+  sbom_note: "Formale SBOM (CycloneDX/SPDX): docs/REPO_SBOM_AND_RELEASE_METADATA.md"

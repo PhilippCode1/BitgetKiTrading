@@ -1,0 +1,18 @@
+{
+  "title": "Bitget AI — Grafana-Dashboards (produktionsreif)",
+  "description": "Alle Dashboards liegen als JSON unter infra/observability/grafana/dashboards/ und werden per Docker-Volume nach /var/lib/grafana/dashboards gemountet (siehe docker-compose observability profile). Keine leeren Platzhalter — Erweiterungen als neue JSON-Dateien + Commit.",
+  "provisioned_dashboards": [
+    {
+      "file": "bitget-trading-ops.json",
+      "uid": "bitget-trading-ops",
+      "title": "Bitget BTC AI — Trading & Ops"
+    },
+    {
+      "file": "bitget-sli-security.json",
+      "uid": "bitget-sli-security",
+      "title": "Bitget BTC AI — SLI, Sicherheit & Kommerziell"
+    }
+  ],
+  "datasource_uid": "prometheus-bitget",
+  "note_de": "Alert-Runbooks: docs/monitoring_runbook.md und docs/observability_incident_recovery.md"
+}

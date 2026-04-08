@@ -1,0 +1,180 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bitget-btc-ai.local/schemas/strategy-signal-explain-v1.json",
+  "title": "StrategySignalExplainV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "execution_authority",
+    "strategy_explanation_de",
+    "risk_and_caveats_de",
+    "referenced_input_keys_de",
+    "non_authoritative_note_de"
+  ],
+  "$defs": {
+    "line_style": {
+      "type": "string",
+      "enum": ["solid", "dashed", "dotted"],
+      "description": "Darstellung von Linien im Dashboard-KI-Layer."
+    },
+    "marker_shape": {
+      "type": "string",
+      "enum": ["circle", "square", "arrow_up", "arrow_down"],
+      "description": "Marker auf der Kerzen-Zeitachse (lightweight-charts)."
+    },
+    "chart_annotations_v1": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Optionale KI-Chart-Overlays; getrennt von deterministischen Signal-Preislinien. Zeiten als Unix-Sekunden wie Kerzen time_s.",
+      "required": ["schema_version"],
+      "properties": {
+        "schema_version": { "type": "string", "const": "1.0" },
+        "horizontal_lines": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["price"],
+            "properties": {
+              "price": { "type": "number" },
+              "label": { "type": "string", "maxLength": 80 },
+              "line_style": { "$ref": "#/$defs/line_style" }
+            }
+          }
+        },
+        "price_bands": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["price_high", "price_low"],
+            "properties": {
+              "price_high": { "type": "number" },
+              "price_low": { "type": "number" },
+              "label": { "type": "string", "maxLength": 80 },
+              "line_style": { "$ref": "#/$defs/line_style" }
+            }
+          }
+        },
+        "time_markers": {
+          "type": "array",
+          "maxItems": 24,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["time_unix_s"],
+            "properties": {
+              "time_unix_s": { "type": "integer" },
+              "label": { "type": "string", "maxLength": 64 },
+              "shape": { "$ref": "#/$defs/marker_shape" }
+            }
+          }
+        },
+        "line_segments": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "time_a_unix_s",
+              "price_a",
+              "time_b_unix_s",
+              "price_b"
+            ],
+            "properties": {
+              "time_a_unix_s": { "type": "integer" },
+              "price_a": { "type": "number" },
+              "time_b_unix_s": { "type": "integer" },
+              "price_b": { "type": "number" },
+              "label": { "type": "string", "maxLength": 64 },
+              "line_style": { "$ref": "#/$defs/line_style" }
+            }
+          }
+        },
+        "vertical_rules": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["time_unix_s", "price_low", "price_high"],
+            "properties": {
+              "time_unix_s": { "type": "integer" },
+              "price_low": { "type": "number" },
+              "price_high": { "type": "number" },
+              "label": { "type": "string", "maxLength": 64 },
+              "line_style": { "$ref": "#/$defs/line_style" }
+            }
+          }
+        },
+        "uncertainty_regions": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "time_from_unix_s",
+              "time_to_unix_s",
+              "price_high",
+              "price_low"
+            ],
+            "properties": {
+              "time_from_unix_s": { "type": "integer" },
+              "time_to_unix_s": { "type": "integer" },
+              "price_high": { "type": "number" },
+              "price_low": { "type": "number" },
+              "label": { "type": "string", "maxLength": 80 }
+            }
+          }
+        },
+        "chart_notes_de": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["text"],
+            "properties": {
+              "text": { "type": "string", "maxLength": 220 }
+            }
+          }
+        }
+      }
+    }
+  },
+  "properties": {
+    "schema_version": { "type": "string", "const": "1.0" },
+    "execution_authority": {
+      "type": "string",
+      "const": "none",
+      "description": "Nur Erklaerung; keine Orders, keine Parameterhoheit."
+    },
+    "strategy_explanation_de": {
+      "type": "string",
+      "description": "Verstaendliche Zusammenfassung des Signals im Kontext der gelieferten Snapshot-Felder."
+    },
+    "risk_and_caveats_de": {
+      "type": "string",
+      "description": "Risiken, Grenzen der Daten, was der Snapshot nicht abdeckt."
+    },
+    "referenced_input_keys_de": {
+      "type": "array",
+      "maxItems": 24,
+      "items": { "type": "string" },
+      "description": "Welche Top-Level-Schluessel aus signal_context_json fuer die Erklaerung relevant waren."
+    },
+    "non_authoritative_note_de": {
+      "type": "string",
+      "description": "Hinweis: keine Handlungsempfehlung, Modell kann irren."
+    },
+    "chart_annotations": {
+      "description": "Optional: maschinenlesbare Overlays fuer das Kerzenchart (KI-Interpretation, nicht Signal-Engine).",
+      "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/chart_annotations_v1" }]
+    }
+  }
+}

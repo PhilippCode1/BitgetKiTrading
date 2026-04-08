@@ -1,0 +1,19 @@
+# Dev/Test-Abhaengigkeiten (Monorepo) — gepinnte Versionen fuer reproduzierbare CI/lokale Toolchain.
+# Installation: python -m pip install -r requirements-dev.txt
+# Hinweis: Laufzeit-Abhaengigkeiten der Services liegen in den jeweiligen services/*/pyproject.toml.
+
+pytest==8.3.4
+PyJWT==2.12.1
+pytest-cov==6.0.0
+httpx==0.28.1
+jsonschema==4.23.0
+ruff==0.9.2
+black==24.10.0
+mypy==1.14.1
+pydantic-settings==2.7.1
+python-json-logger==2.0.7
+scikit-learn==1.6.1
+build==1.2.2
+# API-Gateway: Zahlungen (routes_commerce_* importieren stripe_checkout)
+stripe>=10.0.0
+fpdf2==2.8.7

@@ -1,0 +1,17 @@
+{
+  "results": [
+    {
+      "id": 900001,
+      "title": "Bitcoin and regulation: SEC ETF discussion",
+      "url": "https://www.coindesk.com/policy/2024/01/10/bitcoin-etf-fixture/",
+      "published_at": "2024-01-10T15:30:00Z",
+      "domain": "coindesk.com"
+    },
+    {
+      "id": 900002,
+      "title": "Unrelated sports scores only soccer",
+      "url": "https://example.com/sports/1",
+      "published_at": "2024-01-10T16:00:00Z"
+    }
+  ]
+}

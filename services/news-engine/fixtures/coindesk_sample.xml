@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>CoinDesk RSS Fixture</title>
+    <item>
+      <title>BTC holds level as ETF flows</title>
+      <link>https://www.coindesk.com/markets/2024/01/14/rss-fixture-btc</link>
+      <description>Fixture ETF btcusdt headline</description>
+      <pubDate>Sun, 14 Jan 2024 08:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Random cats</title>
+      <link>https://www.coindesk.com/offbeat/cats-fixture</link>
+      <description>Cute animals only</description>
+      <pubDate>Sun, 14 Jan 2024 09:00:00 GMT</pubDate>
+    </item>
+  </channel>
+</rss>

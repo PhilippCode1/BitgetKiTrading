@@ -1,0 +1,109 @@
+/**
+ * Premium Dark / Gold — zentrale Design-Tokens.
+ * globals.css referenziert nur diese Variablen (Lesbarkeit, Kontrast WCAG-orientiert).
+ * Abstand/Typografie: konsistentes Raster; Schrift: --font-ui (next/font auf <html>).
+ */
+:root {
+  color-scheme: dark;
+
+  /* Flächen — leicht gewärmtes Dunkel, klare Stufung */
+  --bg-base: #070708;
+  --bg-surface: #0c0c0f;
+  --bg-raised: #121216;
+  --bg-elevated: #1a1a1f;
+  --bg-inset: #080809;
+
+  /* Gold — akzentuiert, nicht grell */
+  --gold-100: #f5edd8;
+  --gold-200: #e8d9b0;
+  --gold-300: #d4bc6a;
+  --gold-400: #b89a3e;
+  --gold-500: #8f7528;
+  --gold-600: #6b5a1f;
+
+  --fg-default: #ede8de;
+  --fg-muted: #a8a095;
+  --fg-subtle: #736c62;
+  --fg-gold: #e3d4a8;
+
+  --accent: #d4bc6a;
+  --accent-hover: #e8d18a;
+  --accent-muted: rgba(212, 188, 106, 0.35);
+  --accent-dim: rgba(212, 188, 106, 0.12);
+
+  /* Rahmen — weicher, weniger „hart“ */
+  --border-hairline: rgba(255, 255, 255, 0.055);
+  --border-subtle: rgba(212, 188, 106, 0.14);
+  --border-default: rgba(212, 188, 106, 0.22);
+  --border-strong: rgba(232, 209, 138, 0.38);
+  --border-focus: rgba(232, 209, 138, 0.58);
+
+  /* Semantik — ruhig, unterscheidbar */
+  --ok: #6bc98f;
+  --ok-muted: rgba(107, 201, 143, 0.14);
+  --warn: #d4a84b;
+  --warn-muted: rgba(212, 168, 75, 0.16);
+  --danger: #e07070;
+  --danger-muted: rgba(224, 112, 112, 0.12);
+  --info: #8eb4d4;
+  --info-muted: rgba(142, 180, 212, 0.14);
+
+  /* Abstand — 4-pt-Raster */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+
+  /* Typografie-Skala */
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-body: 0.9375rem;
+  --text-md: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.35rem;
+  --text-2xl: 1.5rem;
+  --leading-tight: 1.28;
+  --leading-snug: 1.42;
+  --leading-normal: 1.55;
+  --leading-relaxed: 1.65;
+
+  --content-readable: 62ch;
+  --dash-max-width: 1280px;
+  --panel-padding: var(--space-5);
+  --panel-padding-sm: var(--space-4);
+
+  /* Radien — etwas großzügiger */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-pill: 999px;
+
+  /* Schatten — weiche Tiefe, dezente Kontur */
+  --shadow-inset-soft: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --shadow-inset-deep: inset 0 2px 8px rgba(0, 0, 0, 0.32);
+  --shadow-card:
+    var(--shadow-inset-soft), 0 0 0 1px rgba(255, 255, 255, 0.055),
+    0 0 0 1px rgba(212, 188, 106, 0.08), 0 18px 48px rgba(0, 0, 0, 0.48);
+  --shadow-card-hover:
+    inset 0 1px 0 rgba(255, 255, 255, 0.065),
+    0 0 0 1px rgba(255, 255, 255, 0.07), 0 0 0 1px rgba(232, 209, 138, 0.16),
+    0 22px 56px rgba(0, 0, 0, 0.55);
+  --shadow-elevated: 0 10px 36px rgba(0, 0, 0, 0.45);
+  --shadow-nav: 0 1px 0 var(--border-hairline);
+
+  --focus-ring: 0 0 0 2px var(--bg-base), 0 0 0 4px rgba(212, 188, 106, 0.42);
+
+  --transition-fast:
+    border-color 0.18s ease, box-shadow 0.18s ease, color 0.18s ease,
+    background-color 0.18s ease, transform 0.18s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --transition-fast: none;
+  }
+}

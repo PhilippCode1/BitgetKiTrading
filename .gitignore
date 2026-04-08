@@ -1,0 +1,102 @@
+# Environment files
+.env
+.env.local
+.env.*
+# Falscher Ordnername (Leerzeichen); nutze .env.production — sonst pnpm-Artefakte im Repo-Wurzelbereich
+/.env production/
+!.env.example
+!.env.local.example
+!.env.shadow.example
+!.env.production.example
+!.env.test.example
+
+# Secrets and certificates
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+credentials.json
+vault-token
+.vault-token
+*-vault-token.txt
+kms-*.json
+*-credentials.json
+
+# Node / frontend
+node_modules/
+.pnpm-store/
+.turbo/
+.next/
+# Lokaler IDE-/Tool-Build (nicht committen)
+apps/dashboard/build-cursor/
+build/
+out/
+dist/
+coverage/
+htmlcov/
+
+# Playwright E2E
+e2e/playwright-report/
+e2e/test-results/
+playwright-report/
+test-results/
+
+# Coverage / Test-Artefakte (Python + JS)
+.coverage
+coverage.xml
+coverage.json
+*.cover
+.hypothesis/
+.pytype/
+
+# Backtest runtime artifacts (Prompt 24)
+artifacts/backtests/*
+!artifacts/backtests/.gitkeep
+
+# Release evidence dumps (scripts/collect_release_evidence.ps1)
+artifacts/release-evidence/*
+!artifacts/release-evidence/.gitkeep
+
+# LLM eval reports (tools/run_llm_eval.py --write-report)
+artifacts/llm_eval/*
+!artifacts/llm_eval/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.venv/
+venv/
+env/
+.env.venv/
+pip-wheel-metadata/
+*.egg-info/
+.eggs/
+build/
+*.egg
+
+# Logs / ad-hoc Output
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Caches (Tooling)
+.cache/
+.parcel-cache/
+.eslintcache
+*.tsbuildinfo
+
+# IDE / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

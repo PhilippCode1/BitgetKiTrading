@@ -1,0 +1,83 @@
+{
+  "baseline_id": "llm-eval-baseline-2026.04.05-p38-safety-ai",
+  "description_de": "Release-Gate: LLM-Governance-Regression inkl. Sicherheits-Diagnose (Health/Alerts-Kontext), Fake-Provider, Manifest-/Baseline-Kohärenz, Assist, Chart, Governance.",
+  "ci_command": "pytest tests/llm_eval -q",
+  "release_gate": true,
+  "quality_dimensions_de": [
+    "Schema-Treue: jsonschema + Pflichtfelder pro Task",
+    "execution_authority none und Rollen-/Separation-Felder bei Assist",
+    "Output-Guardrails: imperative Trading-Aufforderungen, Geheimnis-Muster, Gewinngarantien",
+    "Chart-Annotationen: schema_version 1.0, Array-Limits, Unix-s-Nachbearbeitung im Orchestrator",
+    "Fake-Provider: erkennbare Test-Kennzeichnung, Mindestlänge erklärender Texte",
+    "Assist: trial_status nur bei geliefertem Kontext; keine erfundenen Fristen im Schema-Zwang",
+    "Degradation: /health fake_mode bei Eval-Client; ohne Provider konfiguriert → strukturierte Fehler (separater Pfad)"
+  ],
+  "cases": [
+    {
+      "id": "operator_explain_smoke",
+      "description_de": "Operator-Erklärung: strukturierte Antwort, Provenance mit Prompt-/Guardrail-Versionen.",
+      "task_types": ["operator_explain"],
+      "category": "operator"
+    },
+    {
+      "id": "safety_incident_diagnosis_smoke",
+      "description_de": "Sicherheits-Diagnose: strukturierte Ursachen/Pläne aus Diagnose-Kontext, execution_authority none.",
+      "task_types": ["safety_incident_diagnosis"],
+      "category": "safety_ai"
+    },
+    {
+      "id": "strategy_signal_explain_smoke",
+      "description_de": "Strategie-/Signal-Erklärung: Schema + Governance-Metadaten.",
+      "task_types": ["strategy_signal_explain"],
+      "category": "strategy"
+    },
+    {
+      "id": "chart_annotations_smoke",
+      "description_de": "Strategie-Erklärung: optionale chart_annotations (Schema 1.0), Notizen, Orchestrator-Sanitize.",
+      "task_types": ["strategy_signal_explain"],
+      "category": "chart_intelligence"
+    },
+    {
+      "id": "admin_operations_assist_smoke",
+      "description_de": "Admin-Assistenz: mehrstufiger Turn, execution_authority none, Rollen-Echo.",
+      "task_types": ["admin_operations_assist"],
+      "category": "admin_assist"
+    },
+    {
+      "id": "customer_onboarding_assist_smoke",
+      "description_de": "Kundenhilfe Onboarding: Assistenz-Turn ohne Trade-Hoheit.",
+      "task_types": ["customer_onboarding_assist"],
+      "category": "customer_help"
+    },
+    {
+      "id": "support_billing_assist_smoke",
+      "description_de": "Billing-/Support-Assistenz: strukturierte Antwort, Trennung Trade vs. Erklärung.",
+      "task_types": ["support_billing_assist"],
+      "category": "billing"
+    },
+    {
+      "id": "trial_contract_context_smoke",
+      "description_de": "Trial-/Vertragskontext: nur mit geliefertem trial_status; keine erfundenen Fristen im Pflichtschema.",
+      "task_types": ["customer_onboarding_assist"],
+      "category": "trial_contract"
+    },
+    {
+      "id": "eval_fake_provider_health",
+      "description_de": "Eval-Client: Health meldet fake_mode=true (reproduzierbare Baseline ohne OpenAI).",
+      "task_types": [],
+      "category": "provider"
+    },
+    {
+      "id": "governance_summary_contract",
+      "description_de": "Governance-GET: Task-Katalog und Modell-Mapping abrufbar.",
+      "task_types": [],
+      "category": "governance"
+    },
+    {
+      "id": "guardrails_policy",
+      "description_de": "Output-Guardrails: imperatives Trading / Leak-Muster werden blockiert.",
+      "task_types": ["operator_explain", "admin_operations_assist"],
+      "category": "guardrails"
+    }
+  ]
+}

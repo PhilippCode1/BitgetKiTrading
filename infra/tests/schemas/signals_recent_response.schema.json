@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bitget-btc-ai.local/schemas/signals-recent-response-v1.json",
+  "title": "SignalsRecentResponse",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["items", "limit"],
+  "properties": {
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": [
+          "signal_id",
+          "symbol",
+          "timeframe",
+          "direction",
+          "signal_strength_0_100",
+          "probability_0_1",
+          "signal_class",
+          "decision_state",
+          "analysis_ts_ms"
+        ],
+        "properties": {
+          "signal_id": { "type": "string", "minLength": 1 },
+          "symbol": { "type": "string" },
+          "timeframe": { "type": "string" },
+          "direction": { "type": "string" },
+          "market_regime": { "type": ["string", "null"] },
+          "regime_bias": { "type": ["string", "null"] },
+          "regime_confidence_0_1": { "type": ["number", "null"] },
+          "signal_strength_0_100": { "type": "number" },
+          "probability_0_1": { "type": "number" },
+          "take_trade_prob": { "type": ["number", "null"] },
+          "take_trade_model_version": { "type": ["string", "null"] },
+          "take_trade_model_run_id": { "type": ["string", "null"] },
+          "take_trade_calibration_method": { "type": ["string", "null"] },
+          "expected_return_bps": { "type": ["number", "null"] },
+          "expected_mae_bps": { "type": ["number", "null"] },
+          "expected_mfe_bps": { "type": ["number", "null"] },
+          "model_uncertainty_0_1": { "type": ["number", "null"] },
+          "model_ood_alert": { "type": "boolean" },
+          "trade_action": { "type": ["string", "null"] },
+          "decision_confidence_0_1": { "type": ["number", "null"] },
+          "decision_policy_version": { "type": ["string", "null"] },
+          "allowed_leverage": { "type": ["integer", "null"] },
+          "recommended_leverage": { "type": ["integer", "null"] },
+          "leverage_policy_version": { "type": ["string", "null"] },
+          "leverage_cap_reasons_json": { "type": "array" },
+          "signal_class": { "type": "string" },
+          "decision_state": { "type": "string" },
+          "analysis_ts_ms": { "type": "integer" },
+          "created_ts": { "type": ["string", "null"] },
+          "outcome_badge": { "type": ["object", "null"] }
+        }
+      }
+    },
+    "limit": { "type": "integer", "minimum": 1 }
+  }
+}

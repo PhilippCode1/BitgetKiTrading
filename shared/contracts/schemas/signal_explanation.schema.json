@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bitget-btc-ai.local/schemas/signal-explanation-v1.json",
+  "title": "SignalExplanationLong",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "signal_id",
+    "symbol",
+    "timeframe",
+    "explain_version",
+    "sections"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "signal_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "symbol": {
+      "type": "string"
+    },
+    "timeframe": {
+      "type": "string"
+    },
+    "explain_version": {
+      "type": "string"
+    },
+    "sections": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "market_structure",
+        "momentum",
+        "multi_timeframe",
+        "news_context",
+        "risk_and_stop",
+        "targets",
+        "regime_context",
+        "playbook_context",
+        "uncertainty_breakdown",
+        "why_not_direction",
+        "decision_pipeline",
+        "peripheral_boundary"
+      ],
+      "properties": {
+        "market_structure": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "momentum": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "multi_timeframe": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "news_context": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "risk_and_stop": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "targets": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "regime_context": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "playbook_context": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "uncertainty_breakdown": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "why_not_direction": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "decision_pipeline": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "peripheral_boundary": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    }
+  }
+}

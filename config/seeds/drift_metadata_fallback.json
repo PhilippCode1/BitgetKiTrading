@@ -1,0 +1,5 @@
+{
+  "schema": "learning_drift_v1",
+  "note_de": "Platzhalter-Metadaten bei leerer Drift-Event-Liste oder fehlendem Online-State; keine echten Messwerte.",
+  "effective_action_hint": "ok"
+}

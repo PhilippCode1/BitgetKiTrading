@@ -1,0 +1,393 @@
+# Prometheus-Alertregeln (Stack + monitor-engine Metriken).
+# Auswertung: Prometheus; Zustellung typischerweise Alertmanager -> alert-engine/Webhook.
+# runbook: Pfad im Repo (Anker in docs/monitoring_runbook.md).
+#
+# Laerm reduzieren: Alertmanager-Gruppierung + inhibit_rules — siehe
+# infra/observability/alertmanager-inhibit-rules.example.yml
+
+groups:
+  - name: bitget_trading_safety
+    rules:
+      - alert: KillSwitchActive
+        expr: live_kill_switch_active_count > 0
+        for: 1m
+        labels:
+          severity: critical
+          category: safety
+        annotations:
+          summary: "Aktiver Kill-Switch"
+          description: "live_kill_switch_active_count={{ $value }} — Live-Broker pruefen."
+          runbook: "docs/monitoring_runbook.md#kill-switch-active"
+
+      - alert: SafetyLatchActive
+        expr: live_safety_latch_active > 0
+        for: 2m
+        labels:
+          severity: critical
+          category: safety
+        annotations:
+          summary: "Safety-Latch aktiv (Live-Fire blockiert)"
+          description: "Post-Reconcile-Fail — Release nur nach manuellem Check."
+          runbook: "docs/monitoring_runbook.md#safety-latch"
+
+      - alert: ReconcileLagHigh
+        expr: live_reconcile_age_ms > 0 and live_reconcile_age_ms > 90000
+        for: 2m
+        labels:
+          severity: critical
+          category: trading
+        annotations:
+          summary: "Reconcile-Snapshot zu alt"
+          description: "Alter {{ $value }} ms (Schwelle 90000) — Live-Broker Reconcile."
+          runbook: "docs/monitoring_runbook.md#reconcile-lag"
+
+      - alert: ReconcileDriftNonZero
+        expr: live_reconcile_drift_total > 0
+        for: 5m
+        labels:
+          severity: warning
+          category: trading
+        annotations:
+          summary: "Reconcile meldet Drift"
+          description: "drift total_count={{ $value }} — Shadow/Live-Abgleich pruefen."
+          runbook: "docs/monitoring_runbook.md#reconcile-drift"
+
+      - alert: ShadowLiveGateActivity
+        expr: shadow_live_gate_blocks_24h > 0 or shadow_live_match_failures_24h > 3
+        for: 10m
+        labels:
+          severity: warning
+          category: trading
+        annotations:
+          summary: "Shadow-Live-Divergenz-Gate aktiv"
+          description: "Bloecke/Failures in 24h — Execution-Pfad pruefen."
+          runbook: "docs/monitoring_runbook.md#shadow-live-gate"
+
+      - alert: ShadowLiveAssessmentMismatch
+        expr: shadow_live_assessment_mismatch_24h > 0
+        for: 10m
+        labels:
+          severity: warning
+          category: trading
+        annotations:
+          summary: "Shadow-Live Assessments mit match_ok=false (24h)"
+          description: "Anzahl={{ $value }} — Divergenz-Reports in live.shadow_live_assessments."
+          runbook: "docs/monitoring_runbook.md#replay-shadow-divergenz"
+
+      - alert: OnlineDriftHardBlock
+        expr: online_drift_action_rank >= 3
+        for: 2m
+        labels:
+          severity: critical
+          category: model
+        annotations:
+          summary: "Online-Drift hard_block"
+          description: "action_rank={{ $value }} — Learning/Registry pruefen."
+          runbook: "docs/monitoring_runbook.md#online-drift"
+
+      - alert: LiveCriticalAudits
+        expr: live_critical_audits_24h > 0
+        for: 1m
+        labels:
+          severity: critical
+          category: safety
+        annotations:
+          summary: "Kritische Live-Audits im Lookback"
+          description: "count={{ $value }} — live.audit_trails severity=critical."
+          runbook: "docs/monitoring_runbook.md#kritische-audits"
+
+      - alert: ExecutionRiskBlocksElevated
+        expr: execution_decisions_blocked_24h > 50
+        for: 15m
+        labels:
+          severity: warning
+          category: risk
+        annotations:
+          summary: "Viele Risk-/Gate-Blocks (24h)"
+          description: "blocked decisions={{ $value }} — Policy, Limits, Drift pruefen."
+          runbook: "docs/monitoring_runbook.md#risk-blocks"
+
+      - alert: SignalRouterInstability
+        expr: signal_router_switches_24h > 12
+        for: 15m
+        labels:
+          severity: warning
+          category: trading
+        annotations:
+          summary: "Router-Instabilitaet im Spezialistenpfad"
+          description: "Router-Wechsel in 24h={{ $value }} — Router-/Playbook-Wildwuchs oder Regime-Flattern pruefen."
+          runbook: "docs/monitoring_runbook.md#router-instability"
+
+      - alert: SpecialistDisagreementHigh
+        expr: signal_specialist_disagreement_ratio_24h > 0.35
+        for: 15m
+        labels:
+          severity: warning
+          category: trading
+        annotations:
+          summary: "Spezialisten-Disagreement erhoeht"
+          description: "Anteil mit Dissent/Ueberstimmung={{ $value }} — Family/Regime/Playbook-Router pruefen."
+          runbook: "docs/monitoring_runbook.md#specialist-disagreement"
+
+  - name: bitget_data_streams
+    rules:
+      - alert: DataStaleCandles1m
+        expr: data_freshness_seconds{datapoint="candles_1m"} > 180
+        for: 2m
+        labels:
+          severity: critical
+          category: data
+        annotations:
+          summary: "1m-Kerzen veraltet"
+          description: "data_freshness_seconds={{ $value }}s"
+          runbook: "docs/monitoring_runbook.md#data-stale-candles"
+          dedupe_hint: "Root oft Marktdaten/Bitget/Pipeline — vor parallelen Tickets Signal-Stale pruefen."
+
+      - alert: DataStaleSignals
+        expr: data_freshness_seconds{datapoint="signals"} > 300
+        for: 5m
+        labels:
+          severity: warning
+          category: data
+        annotations:
+          summary: "Signale veraltet"
+          description: "Alter {{ $value }}s"
+          runbook: "docs/monitoring_runbook.md#data-stale-signals"
+          dedupe_hint: "Wenn Kerzen-Stale gleichzeitig feuert, zuerst Datenpfad; nicht als separates KI/UI-Problem werten."
+
+      - alert: SignalThroughputStalled
+        expr: data_freshness_seconds{datapoint="candles_1m"} < 120 and signal_pipeline_throughput_1h < 1
+        for: 30m
+        labels:
+          severity: warning
+          category: data
+        annotations:
+          summary: "Kerzen frisch, aber keine Signale (1h)"
+          description: "signal_pipeline_throughput_1h={{ $value }} bei frischen Kerzen — Signal-Engine/Filter."
+          runbook: "docs/monitoring_runbook.md#signal-throughput"
+
+      - alert: LLMPipelineStaleOrDLQ
+        expr: data_freshness_seconds{datapoint="llm"} > 900
+        for: 5m
+        labels:
+          severity: warning
+          category: inference
+        annotations:
+          summary: "LLM-Pipeline / DLQ-Pfad veraltet"
+          description: "data_freshness llm={{ $value }}s — News/LLM-Orchestrator pruefen."
+          runbook: "docs/monitoring_runbook.md#llm-dlq"
+
+      - alert: RedisStreamLagHigh
+        expr: redis_stream_lag > 5000
+        for: 3m
+        labels:
+          severity: warning
+          category: queue
+        annotations:
+          summary: "Redis-Stream-Lag hoch"
+          description: "stream/group siehe Labels"
+          runbook: "docs/monitoring_runbook.md#redis-stream-lag"
+
+      - alert: LiveOrderFailRateHigh
+        expr: live_order_fail_rate_1h > 0.15
+        for: 5m
+        labels:
+          severity: warning
+          category: trading
+        annotations:
+          summary: "Hohe Order-Fehlerrate (1h)"
+          description: "Anteil={{ $value }}"
+          runbook: "docs/monitoring_runbook.md#order-fail-rate"
+
+      - alert: LiveOrderExitFailures
+        expr: live_order_exit_failures_1h > 0
+        for: 5m
+        labels:
+          severity: warning
+          category: trading
+        annotations:
+          summary: "Exit-/Flatten-Fehler (1h)"
+          description: "count={{ $value }} — status error/flatten_failed."
+          runbook: "docs/monitoring_runbook.md#exit-fehler"
+
+      - alert: LearnDriftEventsSpike
+        expr: learn_drift_events_24h > 10
+        for: 10m
+        labels:
+          severity: warning
+          category: model
+        annotations:
+          summary: "Viele Drift-Events (24h)"
+          description: "count={{ $value }}"
+          runbook: "docs/monitoring_runbook.md#learn-drift"
+
+      - alert: SignalDoNotTradeSpike
+        expr: signal_do_not_trade_ratio_1h > 0.82
+        for: 15m
+        labels:
+          severity: warning
+          category: trading
+        annotations:
+          summary: "Hoher No-Trade-Anteil (1h)"
+          description: "signal_do_not_trade_ratio_1h={{ $value }} — Regime, Datenqualitaet und Gating pruefen."
+          runbook: "docs/monitoring_runbook.md#no-trade-spike"
+
+      - alert: SignalStopFragilityElevated
+        expr: signal_stop_fragility_p90_24h > 0.78
+        for: 15m
+        labels:
+          severity: warning
+          category: trading
+        annotations:
+          summary: "Stop-Fragilitaet P90 erhoeht"
+          description: "signal_stop_fragility_p90_24h={{ $value }} — Tick/Spread/Leverage-Kurve und Instrumentmechanik pruefen."
+          runbook: "docs/monitoring_runbook.md#stop-fragility"
+
+      - alert: TelegramDeliveryIssues
+        expr: alert_outbox_failed_24h > 2 or telegram_operator_errors_24h > 1
+        for: 10m
+        labels:
+          severity: warning
+          category: ops
+        annotations:
+          summary: "Telegram-Zustellung oder Operatorpfad fehlerhaft"
+          description: "Outbox-Fails oder Operator-Errors erhoeht — alert-engine / Telegram-Flow pruefen."
+          runbook: "docs/monitoring_runbook.md#telegram-delivery"
+
+      - alert: GatewayAuthAnomalies
+        expr: gateway_auth_failures_1h > 10
+        for: 10m
+        labels:
+          severity: warning
+          category: security
+        annotations:
+          summary: "Gateway-Auth-Anomalien"
+          description: "gateway_auth_failures_1h={{ $value }} — 401/403-/Manual-Action-Fehler pruefen."
+          runbook: "docs/monitoring_runbook.md#auth-anomalies"
+
+      - alert: AlertBacklogHigh
+        expr: alert_outbox_pending > 20 or monitor_open_alerts > 15
+        for: 20m
+        labels:
+          severity: warning
+          category: ops
+        annotations:
+          summary: "Alert-Backlog hoch"
+          description: "Outbox/Ops-Alerts stauen — Zustellung und Policies pruefen."
+          runbook: "docs/monitoring_runbook.md#alert-backlog"
+
+  - name: bitget_slo_contract
+    rules:
+      - alert: MonitorEngineTickStalled
+        expr: increase(monitor_engine_tick_duration_seconds_count[25m]) == 0
+        for: 5m
+        labels:
+          severity: critical
+          category: ops
+        annotations:
+          summary: "Monitor-Engine Tick ausgeblieben"
+          description: "Kein Histogram-Increment fuer monitor_engine_tick_duration_seconds — Scheduler/Prozess pruefen."
+          runbook: "docs/monitoring_runbook.md#monitor-tick-stalled"
+
+      - alert: MonitorEngineTickSlowP90
+        expr: |
+          histogram_quantile(
+            0.9,
+            sum(rate(monitor_engine_tick_duration_seconds_bucket[10m])) by (le)
+          ) > 45
+        for: 15m
+        labels:
+          severity: warning
+          category: ops
+        annotations:
+          summary: "Monitor-Tick langsam (P90)"
+          description: "Scheduler blockiert auf HTTP/SQL/Redis — Engpass lokalisieren."
+          runbook: "docs/monitoring_runbook.md#monitor-tick-slow"
+
+      - alert: SignalPipelineLagP95High
+        expr: signal_pipeline_lag_p95_seconds_1h > 0 and signal_pipeline_lag_p95_seconds_1h > 180
+        for: 10m
+        labels:
+          severity: warning
+          category: data
+        annotations:
+          summary: "Signal-Pipeline-Latenz P95 hoch"
+          description: "analysis_ts vs feature computed_ts — Feature-/Signal-Engine pruefen."
+          runbook: "docs/monitoring_runbook.md#pipeline-lag-p95"
+
+      - alert: ManualLiveBrokerAuthFailures
+        expr: gateway_manual_action_auth_failures_1h > 2
+        for: 5m
+        labels:
+          severity: critical
+          category: security
+        annotations:
+          summary: "Manuelle Live-Broker-/Token-Auth-Failures"
+          description: "Fehlversuche bei Manual-Action oder Mutation — Missbrauch oder kaputtes Runbook."
+          runbook: "docs/monitoring_runbook.md#manual-action-misuse"
+
+      - alert: DriftLinkedExecutionDecisionsElevated
+        expr: execution_drift_or_shadow_decisions_24h > 8
+        for: 30m
+        labels:
+          severity: warning
+          category: model
+        annotations:
+          summary: "Viele drift-/shadow-verknuepfte Execution-Decisions"
+          description: "Online-Drift, Shadow-Gates oder Policy — Forensik je execution_id."
+          runbook: "docs/monitoring_runbook.md#drift-execution-decisions"
+
+      - alert: CommerceBillingAuthFailures
+        expr: commerce_billing_auth_failures_1h > 3
+        for: 15m
+        labels:
+          severity: warning
+          category: security
+        annotations:
+          summary: "Billing-Lese-Auth schlaegt fehl"
+          description: "Rollen/Tokens fuer /v1/commerce pruefen."
+          runbook: "docs/monitoring_runbook.md#commerce-billing-auth"
+
+      - alert: CommerceLedgerWriteSpike
+        expr: commerce_ledger_lines_1h > 5000
+        for: 10m
+        labels:
+          severity: warning
+          category: commercial
+        annotations:
+          summary: "Ungewoehnlich hohe Ledger-Schreibrate"
+          description: "Meter-Ingest oder Missbrauch — Tenant-Aggregate und Audit."
+          runbook: "docs/monitoring_runbook.md#commerce-ledger-spike"
+
+      - alert: RedisStreamLagCritical
+        expr: redis_stream_lag > 25000
+        for: 2m
+        labels:
+          severity: critical
+          category: queue
+        annotations:
+          summary: "Redis-Stream-Lag kritisch"
+          description: "Consumer tot oder Stau — sofort Consumer-Logs und XPENDING."
+          runbook: "docs/monitoring_runbook.md#redis-stream-lag-critical"
+
+      - alert: OnlineDriftShadowOnly
+        expr: online_drift_action_rank == 2
+        for: 15m
+        labels:
+          severity: warning
+          category: model
+        annotations:
+          summary: "Online-Drift: shadow_only"
+          description: "Kein hard_block, aber Live eingeschraenkt — Registry/Champion pruefen."
+          runbook: "docs/monitoring_runbook.md#online-drift-shadow-only"
+
+      - alert: SpecialistDisagreementSevere
+        expr: signal_specialist_disagreement_ratio_24h > 0.55
+        for: 10m
+        labels:
+          severity: critical
+          category: trading
+        annotations:
+          summary: "Spezialisten-Disagreement kritisch"
+          description: "Sehr hoher Dissent/Router-Konflikt-Anteil — Signal-Forensik und Regime."
+          runbook: "docs/monitoring_runbook.md#specialist-disagreement-severe"

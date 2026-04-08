@@ -1,0 +1,28 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "monitor-engine"
+version = "0.1.0"
+description = "Ops monitoring: health, Redis streams, data freshness, alerts"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi",
+  "httpx",
+  "prometheus_client>=0.20.0",
+  "psycopg[binary]",
+  "pydantic",
+  "pydantic-settings",
+  "python-json-logger>=2.0.7",
+  "redis",
+  "uvicorn[standard]",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/monitor_engine"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+src = ["src"]

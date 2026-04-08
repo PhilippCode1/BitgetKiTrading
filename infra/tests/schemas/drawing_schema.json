@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bitget-btc-ai.local/schemas/drawing-live-ui-v1.json",
+  "title": "LiveTerminalDrawing",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "drawing_id",
+    "parent_id",
+    "type",
+    "timeframe",
+    "status",
+    "reasons_json",
+    "price_lines"
+  ],
+  "properties": {
+    "drawing_id": { "type": "string" },
+    "parent_id": { "type": "string" },
+    "type": { "type": "string" },
+    "timeframe": { "type": ["string", "null"] },
+    "status": { "type": ["string", "null"] },
+    "confidence": { "type": ["number", "null"] },
+    "reasons_json": {},
+    "price_lines": {
+      "type": "array",
+      "items": { "type": "object", "additionalProperties": true }
+    },
+    "trendline": { "type": ["object", "null"], "additionalProperties": true },
+    "updated_ts_ms": { "type": ["integer", "null"] }
+  }
+}

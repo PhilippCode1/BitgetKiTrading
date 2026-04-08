@@ -1,0 +1,22 @@
+{
+  "schema_version": "1.0",
+  "event_id": "550e8400-e29b-41d4-a716-446655440000",
+  "event_type": "candle_close",
+  "symbol": "BTCUSDT",
+  "instrument": null,
+  "timeframe": "1m",
+  "exchange_ts_ms": 1700000000000,
+  "ingest_ts_ms": 1700000000100,
+  "dedupe_key": null,
+  "payload": {
+    "start_ts_ms": 1700000000000,
+    "open": 42000.5,
+    "high": 42100.0,
+    "low": 41950.0,
+    "close": 42050.25,
+    "usdt_vol": 1234567.89
+  },
+  "trace": {
+    "source": "fixture"
+  }
+}

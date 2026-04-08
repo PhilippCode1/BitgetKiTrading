@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bitget-btc-ai.local/schemas/strategy-registry-item-v1.json",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["strategy_id", "name", "status"],
+  "properties": {
+    "strategy_id": { "type": "string" },
+    "name": { "type": "string" },
+    "description": { "type": ["string", "null"] },
+    "status": { "type": "string" },
+    "latest_version": { "type": ["integer", "null"] },
+    "rolling_pf": { "type": ["number", "null"] },
+    "rolling_win_rate": { "type": ["number", "null"] },
+    "rolling_metrics_json": { "type": "object" },
+    "created_ts": { "type": ["string", "null"] }
+  }
+}

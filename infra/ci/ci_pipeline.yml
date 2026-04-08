@@ -1,0 +1,80 @@
+# Veralteter historischer Spiegel der CI-Pipeline.
+# Single Source of Truth: ../../.github/workflows/ci.yml
+#
+# Diese Datei ist NICHT kanonisch und kann bewusst vom echten GitHub-Workflow abweichen.
+# Fuer Merge-/Release-Gates gelten:
+# - .github/workflows/ci.yml
+# - docs/ci_release_gates.md
+# - docs/FINAL_READINESS_REPORT.md
+
+name: ci
+
+on:
+  push:
+    branches: [main, master, "feat/**"]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Shell scripts (Syntax)
+        run: bash -n scripts/start_all.sh scripts/healthcheck.sh scripts/deploy.sh
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install packages
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+          pip install -e ./shared/python
+          pip install -e ./services/feature-engine
+          pip install -e ./services/signal-engine
+          pip install -e ./services/paper-broker
+          pip install -e ./services/structure-engine
+          pip install -e ./services/drawing-engine
+          pip install -e ./services/learning-engine
+          pip install -e ./services/api-gateway
+          pip install -e ./services/monitor-engine
+          pip install -e ./services/news-engine
+          pip install -e ./services/market-stream
+          pip install -e ./services/llm-orchestrator
+      - name: Ruff (Prompt-29 Pfade)
+        run: ruff check tests/unit tests/integration tools/check_schema.py
+      - name: Black (Prompt-29 Pfade)
+        run: black --check tests/unit tests/integration tests/conftest.py tools/check_schema.py
+      - name: Schema check (Fixture)
+        run: |
+          python tools/check_schema.py \
+            --schema infra/tests/schemas/signals_recent_response.schema.json \
+            --json_file tests/fixtures/signals_fixture.json
+      - name: Pytest + Coverage
+        env:
+          CI: "true"
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ci_dummy
+          REDIS_URL: redis://localhost:6379/0
+        run: |
+          coverage run -m pytest tests shared/python/tests -m "not integration"
+          coverage report --fail-under=25
+      - run: coverage xml
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml
+          path: coverage.xml
+
+  dashboard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install & test
+        working-directory: apps/dashboard
+        run: |
+          npm install
+          npm run lint
+          npm test

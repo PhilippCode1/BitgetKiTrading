@@ -1,0 +1,68 @@
+{
+  "manifest_version": "2026.04.05-p40-ai-strategy-draft",
+  "guardrails_version": "2026.04.03-2",
+  "global_system": {
+    "instruction_file": "system/system_base_de.txt",
+    "version": "2026.04.03-1"
+  },
+  "tasks": {
+    "operator_explain": {
+      "prompt_version": "2026.04.03-1",
+      "schema_filename": "operator_explain.schema.json",
+      "instruction_file": "tasks/operator_explain.instruction_de.txt",
+      "guardrail_tier": "full",
+      "status": "active"
+    },
+    "safety_incident_diagnosis": {
+      "prompt_version": "2026.04.05-1",
+      "schema_filename": "safety_incident_diagnosis.schema.json",
+      "instruction_file": "tasks/safety_incident_diagnosis.instruction_de.txt",
+      "guardrail_tier": "full",
+      "status": "active",
+      "note_de": "Readonly Health/Alerts-Kontext; keine Ausfuehrungshoheit."
+    },
+    "strategy_signal_explain": {
+      "prompt_version": "2026.04.03-1",
+      "schema_filename": "strategy_signal_explain.schema.json",
+      "instruction_file": "tasks/strategy_signal_explain.instruction_de.txt",
+      "guardrail_tier": "full",
+      "status": "active"
+    },
+    "ai_strategy_proposal_draft": {
+      "prompt_version": "2026.04.05-1",
+      "schema_filename": "ai_strategy_proposal_draft.schema.json",
+      "instruction_file": "tasks/ai_strategy_proposal_draft.instruction_de.txt",
+      "guardrail_tier": "full",
+      "status": "active",
+      "note_de": "Strategie-/Szenario-Entwurf inkl. Chart-Overlays; keine Ausführungshoheit."
+    },
+    "admin_operations_assist": {
+      "prompt_version": "2026.04.03-1",
+      "schema_filename": "assistant_turn.schema.json",
+      "instruction_file": "tasks/admin_operations_assist.instruction_de.txt",
+      "guardrail_tier": "full",
+      "status": "active"
+    },
+    "strategy_signal_assist": {
+      "prompt_version": "2026.04.03-1",
+      "schema_filename": "assistant_turn.schema.json",
+      "instruction_file": "tasks/strategy_signal_assist.instruction_de.txt",
+      "guardrail_tier": "full",
+      "status": "active"
+    },
+    "customer_onboarding_assist": {
+      "prompt_version": "2026.04.03-1",
+      "schema_filename": "assistant_turn.schema.json",
+      "instruction_file": "tasks/customer_onboarding_assist.instruction_de.txt",
+      "guardrail_tier": "full",
+      "status": "active"
+    },
+    "support_billing_assist": {
+      "prompt_version": "2026.04.03-1",
+      "schema_filename": "assistant_turn.schema.json",
+      "instruction_file": "tasks/support_billing_assist.instruction_de.txt",
+      "guardrail_tier": "full",
+      "status": "active"
+    }
+  }
+}

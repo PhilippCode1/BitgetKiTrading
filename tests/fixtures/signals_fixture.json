@@ -1,0 +1,34 @@
+{
+  "items": [
+    {
+      "signal_id": "00000000-0000-4000-8000-000000000001",
+      "symbol": "BTCUSDT",
+      "timeframe": "1m",
+      "direction": "long",
+      "signal_strength_0_100": 72.5,
+      "probability_0_1": 0.62,
+      "take_trade_prob": 0.67,
+      "take_trade_model_version": "hgb-cal-1700000000000",
+      "take_trade_model_run_id": "00000000-0000-4000-8000-0000000000aa",
+      "take_trade_calibration_method": "sigmoid",
+      "expected_return_bps": 19.5,
+      "expected_mae_bps": 28.0,
+      "expected_mfe_bps": 54.0,
+      "model_uncertainty_0_1": 0.21,
+      "model_ood_alert": false,
+      "trade_action": "allow_trade",
+      "decision_confidence_0_1": 0.82,
+      "decision_policy_version": "hybrid-v2",
+      "allowed_leverage": 15,
+      "recommended_leverage": 10,
+      "leverage_policy_version": "int-leverage-v1",
+      "leverage_cap_reasons_json": ["model_cap_binding", "edge_factor_cap"],
+      "signal_class": "kern",
+      "decision_state": "accepted",
+      "analysis_ts_ms": 1700000000000,
+      "created_ts": "2024-01-01T12:00:00+00:00",
+      "outcome_badge": null
+    }
+  ],
+  "limit": 50
+}

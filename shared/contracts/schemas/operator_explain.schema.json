@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bitget-btc-ai.local/schemas/operator-explain-v1.json",
+  "title": "OperatorExplainV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "execution_authority",
+    "explanation_de",
+    "referenced_artifacts_de",
+    "non_authoritative_note_de"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "1.0" },
+    "execution_authority": {
+      "type": "string",
+      "const": "none",
+      "description": "LLM erklaert nur; keine Order- oder Parameterhoheit."
+    },
+    "explanation_de": { "type": "string" },
+    "referenced_artifacts_de": {
+      "type": "array",
+      "maxItems": 16,
+      "items": { "type": "string" }
+    },
+    "non_authoritative_note_de": { "type": "string" }
+  }
+}

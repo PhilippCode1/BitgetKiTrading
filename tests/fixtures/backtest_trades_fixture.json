@@ -1,0 +1,20 @@
+[
+  {
+    "closed_ts_ms": 1000,
+    "pnl_net_usdt": "10",
+    "fees_total_usdt": "1",
+    "funding_total_usdt": "0",
+    "direction_correct": true,
+    "stop_hit": false,
+    "signal_snapshot_json": { "strategy_name": "FixtureStrategy" }
+  },
+  {
+    "closed_ts_ms": 2000,
+    "pnl_net_usdt": "-5",
+    "fees_total_usdt": "1",
+    "funding_total_usdt": "-0.5",
+    "direction_correct": false,
+    "stop_hit": true,
+    "signal_snapshot_json": { "strategy_name": "FixtureStrategy" }
+  }
+]

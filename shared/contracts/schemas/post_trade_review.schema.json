@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bitget-btc-ai.local/schemas/post-trade-review-v1.json",
+  "title": "PostTradeReviewV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "outcome_vs_plan_de",
+    "lessons_de",
+    "what_worked_de",
+    "what_failed_de",
+    "bias_check_de",
+    "review_confidence_0_1"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "1.0" },
+    "outcome_vs_plan_de": { "type": "string" },
+    "lessons_de": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "items": { "type": "string" }
+    },
+    "what_worked_de": { "type": "string" },
+    "what_failed_de": { "type": "string" },
+    "bias_check_de": { "type": "string" },
+    "review_confidence_0_1": { "type": "number", "minimum": 0, "maximum": 1 }
+  }
+}

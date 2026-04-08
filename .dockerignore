@@ -1,0 +1,56 @@
+# VCS / CI (Build-Kontext nicht nötig)
+.git
+.github
+
+# Node / Frontend Build & Deps
+.next
+.next/**
+apps/dashboard/build-cursor
+apps/dashboard/build-cursor/**
+build
+build/**
+.turbo
+node_modules
+**/node_modules
+
+# Python venv & Cache
+.venv
+venv
+**/.venv
+**/venv
+__pycache__
+**/__pycache__
+.mypy_cache
+.ruff_cache
+.pytest_cache
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info
+.eggs
+dist
+
+# Coverage / Tests / lokale Reports (Images brauchen das nicht)
+coverage
+htmlcov
+.coverage
+coverage.xml
+coverage.json
+.hypothesis
+
+# Tests & Dev-Tools (nicht in Service-Images kopiert)
+tests
+**/tests
+shared/python/tests
+
+# Laufzeit- und Render-Artefakte
+artifacts/backtests/*
+!artifacts/backtests/.gitkeep
+*.log
+logs
+
+# Secrets / lokale ENV (nie ins Image)
+.env
+.env.*
+!.env.example

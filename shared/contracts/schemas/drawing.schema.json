@@ -1,0 +1,179 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bitget-btc-ai.local/schemas/drawing-v1.json",
+  "title": "DrawingRecord",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "drawing_id",
+    "parent_id",
+    "revision",
+    "symbol",
+    "timeframe",
+    "type",
+    "status",
+    "geometry",
+    "style",
+    "confidence",
+    "reasons",
+    "created_ts_ms",
+    "updated_ts_ms"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "drawing_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "parent_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "symbol": {
+      "type": "string",
+      "minLength": 1
+    },
+    "timeframe": {
+      "type": "string",
+      "minLength": 1
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "support_zone",
+        "resistance_zone",
+        "trendline",
+        "breakout_box",
+        "liquidity_zone",
+        "target_zone",
+        "stop_zone"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["active", "hit", "invalidated", "expired"]
+    },
+    "geometry": {
+      "$ref": "#/$defs/geometry"
+    },
+    "style": {
+      "type": "object"
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "reasons": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "created_ts_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "updated_ts_ms": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "$defs": {
+    "geometry": {
+      "oneOf": [
+        { "$ref": "#/$defs/horizontalZone" },
+        { "$ref": "#/$defs/twoPointLine" },
+        { "$ref": "#/$defs/priceTimeBox" }
+      ]
+    },
+    "horizontalZone": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "price_low", "price_high"],
+      "properties": {
+        "kind": {
+          "const": "horizontal_zone"
+        },
+        "price_low": {
+          "type": "string",
+          "pattern": "^[0-9]+(\\.[0-9]+)?$"
+        },
+        "price_high": {
+          "type": "string",
+          "pattern": "^[0-9]+(\\.[0-9]+)?$"
+        },
+        "label": {
+          "type": "string"
+        },
+        "rank": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "twoPointLine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "point_a", "point_b"],
+      "properties": {
+        "kind": {
+          "const": "two_point_line"
+        },
+        "point_a": { "$ref": "#/$defs/timedPoint" },
+        "point_b": { "$ref": "#/$defs/timedPoint" },
+        "direction": {
+          "type": "string",
+          "enum": ["up", "down"]
+        }
+      }
+    },
+    "timedPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["t_ms", "price"],
+      "properties": {
+        "t_ms": {
+          "type": "integer"
+        },
+        "price": {
+          "type": "string",
+          "pattern": "^[0-9]+(\\.[0-9]+)?$"
+        }
+      }
+    },
+    "priceTimeBox": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "price_low", "price_high", "t_start_ms"],
+      "properties": {
+        "kind": {
+          "const": "price_time_box"
+        },
+        "price_low": {
+          "type": "string",
+          "pattern": "^[0-9]+(\\.[0-9]+)?$"
+        },
+        "price_high": {
+          "type": "string",
+          "pattern": "^[0-9]+(\\.[0-9]+)?$"
+        },
+        "t_start_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "t_end_ms": {
+          "oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "null" }]
+        }
+      }
+    }
+  }
+}

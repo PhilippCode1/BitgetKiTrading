@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bitget-btc-ai.local/schemas/payload-signal-created-v1.json",
+  "title": "signal_created payload (Kernfelder)",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["signal_id", "direction"],
+  "properties": {
+    "signal_id": { "type": "string", "minLength": 1 },
+    "direction": { "type": "string" },
+    "market_regime": { "type": "string" },
+    "regime_bias": { "type": "string" },
+    "regime_confidence_0_1": { "type": "number" },
+    "signal_strength_0_100": { "type": "number" },
+    "probability_0_1": { "type": "number" }
+  }
+}

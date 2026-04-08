@@ -1,0 +1,21 @@
+{
+  "status": "ok",
+  "articles": [
+    {
+      "source": { "id": null, "name": "Fixture" },
+      "author": "Fixture Author",
+      "title": "Fed signals and BTCUSDT liquidity",
+      "description": "Markets watch the Federal Reserve.",
+      "url": "https://www.coindesk.com/markets/2024/01/11/fed-btc-fixture/",
+      "urlToImage": null,
+      "publishedAt": "2024-01-11T09:00:00Z",
+      "content": null
+    },
+    {
+      "title": "Local weather only sunshine",
+      "description": "No crypto keywords here.",
+      "url": "https://www.coindesk.com/weather/fixture/",
+      "publishedAt": "2024-01-11T10:00:00Z"
+    }
+  ]
+}

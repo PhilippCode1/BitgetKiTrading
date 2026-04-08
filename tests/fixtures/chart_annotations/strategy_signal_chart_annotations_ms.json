@@ -1,0 +1,15 @@
+{
+  "description": "Beispiel: Modell liefert Unix-Zeiten in Millisekunden — Orchestrator-Sanitizer und Dashboard erwarten Sekunden (wie Kerzen time_s).",
+  "chart_annotations": {
+    "schema_version": "1.0",
+    "horizontal_lines": [{ "price": 98500.5, "label": "Beispiel-Level" }],
+    "time_markers": [
+      {
+        "time_unix_s": 1700000000000,
+        "label": "ms statt s",
+        "shape": "circle"
+      }
+    ],
+    "chart_notes_de": [{ "text": "Demo-Notiz fuer Nachweisdokumentation." }]
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "envelope_default_schema_version": "1.0",
+  "envelope_fingerprint_canon_version": "1",
+  "description": "Kanonische Zuordnung event_type <-> Redis-Stream. Python: shared_py.eventbus.envelope; Gateway: routes_events + routes_live importieren aus shared_py. Fingerprint-Kanon: shared_py.eventbus.canonical + shared/ts/src/canonicalJson.ts.",
+  "streams": [
+    { "event_type": "market_tick", "stream": "events:market_tick" },
+    {
+      "event_type": "market_feed_health",
+      "stream": "events:market_feed_health"
+    },
+    { "event_type": "candle_close", "stream": "events:candle_close" },
+    { "event_type": "funding_update", "stream": "events:funding_update" },
+    { "event_type": "structure_updated", "stream": "events:structure_updated" },
+    { "event_type": "drawing_updated", "stream": "events:drawing_updated" },
+    { "event_type": "signal_created", "stream": "events:signal_created" },
+    { "event_type": "trade_opened", "stream": "events:trade_opened" },
+    { "event_type": "trade_updated", "stream": "events:trade_updated" },
+    { "event_type": "trade_closed", "stream": "events:trade_closed" },
+    { "event_type": "funding_booked", "stream": "events:funding_booked" },
+    { "event_type": "risk_alert", "stream": "events:risk_alert" },
+    { "event_type": "learning_feedback", "stream": "events:learning_feedback" },
+    {
+      "event_type": "strategy_registry_updated",
+      "stream": "events:strategy_registry_updated"
+    },
+    { "event_type": "news_item_created", "stream": "events:news_item_created" },
+    { "event_type": "news_scored", "stream": "events:news_scored" },
+    { "event_type": "llm_failed", "stream": "events:llm_failed" },
+    { "event_type": "dlq", "stream": "events:dlq" },
+    { "event_type": "system_alert", "stream": "events:system_alert" },
+    { "event_type": "operator_intel", "stream": "events:operator_intel" }
+  ],
+  "live_sse_streams": [
+    "events:candle_close",
+    "events:drawing_updated",
+    "events:signal_created",
+    "events:news_scored",
+    "events:trade_opened",
+    "events:trade_updated",
+    "events:trade_closed"
+  ]
+}

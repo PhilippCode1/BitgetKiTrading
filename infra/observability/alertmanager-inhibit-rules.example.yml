@@ -1,0 +1,21 @@
+# Beispiel: Alertmanager inhibit_rules — vor Deploy Label in eurer Prometheus-Installation pruefen.
+# Ziel: weniger „Lawine“, wenn mehrere Alerts dieselbe Datenfluss-Ursache haben.
+#
+# Einbindung: in alertmanager.yml unter top-level `inhibit_rules:` mergen oder diese Datei per include.
+#
+# Hinweis: `equal` muss zu den tatsaechlichen Alert-Labels passen (job, cluster, env, …).
+
+inhibit_rules:
+  - source_matchers:
+      - alertname = "DataStaleCandles1m"
+    target_matchers:
+      - alertname = "DataStaleSignals"
+    equal: ["category"]
+    # Kerzen tot → Signale fast immer mit — nur ein aktives Ticket zur Datenlage.
+
+  - source_matchers:
+      - alertname = "RedisStreamLagCritical"
+    target_matchers:
+      - alertname = "RedisStreamLagHigh"
+    equal: ["category"]
+    # Kritisch ersetzt Warnung fuer dieselbe Queue-Sicht (Labels ggf. anpassen).

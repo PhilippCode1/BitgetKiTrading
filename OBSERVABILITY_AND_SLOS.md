@@ -1,0 +1,147 @@
+# Observability, SLOs und Betriebs-Playbook
+
+Dieses Dokument ist der **Einstieg fuer Betrieb und On-Call**: welche Ketten zaehlen, welche Messpunkte im Code existieren, welche **SLO-Ziele** realistisch sind, und wie man einen Vorfall **schnell eingrenzt**. Technische Details und Alert-Namen: [`docs/observability.md`](docs/observability.md), SLI-Tabelle: [`docs/observability_slos.md`](docs/observability_slos.md), Prometheus-Regeln: `infra/observability/prometheus-alerts.yml`, Grafana: `infra/observability/grafana/dashboards/`.
+
+---
+
+## 1. Kritische Ketten (was beobachtet werden muss)
+
+| Kette                            | Messpunkte im Betrieb                                                                                                                | Code / Pfad                                                                                    |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
+| **Edge-Erreichbarkeit**          | HTTP 200 `GET /health`, `GET /ready` am API-Gateway; `ready: true` und `checks` ohne harte Fehler                                    | `services/api-gateway`                                                                         |
+| **Zentraler Lese- und Ops-Pfad** | `GET /v1/system/health` (JWT): `database`, `redis`, eingebettete Worker-/Frische-Felder                                              | Gateway + aggregierte Downstream-Checks                                                        |
+| **Pro Worker / Engine**          | Je Dienst `GET /ready` (Postgres/Redis/Peer-URLs laut Settings)                                                                      | z. B. `signal-engine`, `feature-engine`, … `instrument_fastapi` → `/metrics`                   |
+| **Datenfluss & Pipeline**        | `data_freshness_seconds`, `redis_stream_lag`, `signal_pipeline_lag_p95_seconds_1h`                                                   | Monitor-Engine-Prometheus, siehe `docs/observability_slos.md`                                  |
+| **Hintergrundjobs / Heartbeats** | `worker_heartbeat_timestamp` (von `touch_worker_heartbeat` in HTTP-Middleware und Loops)                                             | `shared_py.observability.metrics`                                                              |
+| **KI (Operator Explain)**        | Latenz Gateway→Orchestrator (Logs `llm forward …`), HTTP 5xx-Rate auf `POST /v1/llm/operator/explain`, Orchestrator `/ready` (Redis) | `api_gateway/llm_orchestrator_forward.py`, `llm-orchestrator`, BFF `operator-explain/route.ts` |
+| **Fehlerhaeufigkeit**            | `http_errors_total`, `http_request_latency_seconds` je Service-Label; Gateway-Audit bei sensiblen Routen                             | Prometheus pro `/metrics`                                                                      |
+| **Pipeline-Verzoegerung / CI**   | (ausserhalb Laufzeit-App) eigene CI-Metriken/Alerts; im Stack: siehe Signal-Pipeline-SLIs                                            | `docs/observability_slos.md`                                                                   |
+
+---
+
+## 2. Messpunkte im Code (keine reine Theorie)
+
+| Mechanismus                     | Wo                                                                                                                                    | Nutzen fuer Operator                                                                          |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| **Request-ID / Correlation-ID** | API-Gateway: Middleware setzt `X-Request-ID`, `X-Correlation-ID`; ausgehend `get_outbound_trace_headers()` z. B. zum LLM-Orchestrator | Gleiche ID in Gateway-Logs und (bei JSON-Log) Felder `corr_request_id`, `corr_correlation_id` |
+| **LLM-Orchestrator Trace**      | Middleware setzt Kontext aus eingehenden `X-Request-ID` / `X-Correlation-ID` (abgestimmt mit Gateway)                                 | KI-Aufruf in Logs quer zuordenbar                                                             |
+| **Dashboard BFF KI**            | `POST /api/dashboard/llm/operator-explain`: erzeugt oder reicht IDs weiter; Antwort-Header enthalten IDs                              | Browser/DevTools: Response-Header fuer Support-Ticket                                         |
+| **Strukturierte Logs**          | `LOG_FORMAT=json` + `RequestContextLoggingFilter`                                                                                     | Log-Shipper kann filtern/aggregieren                                                          |
+| **Prometheus**                  | `instrument_fastapi`: Requests, Latenz-Histogramm, 5xx-Zaehler, Heartbeat                                                             | Grafana-Dashboards `bitget-trading-ops`, `bitget-sli-security`                                |
+| **Gateway-Audit**               | Persistierte Zeilen mit `corr_gateway_audit_id`                                                                                       | Nachvollziehbarkeit sensibler Aktionen                                                        |
+| **Fehler-JSON**                 | Gateway: `shape_http_exception` mit `detail.code` / `message` (ohne Secrets)                                                          | UI und Runbooks koennen Codes mappen                                                          |
+
+---
+
+## 3. Wichtigste SLOs (Zielgroessen)
+
+Die folgenden Ziele sind **technische Orientierung** fuer Alert-Tuning; harte Schwellen liegen in `prometheus-alerts.yml`.
+
+### 3.1 Verfuegbarkeit & Readiness
+
+| SLO                      | Ziel                                                                           | Pruefpfad / Metrik                                       |
+| ------------------------ | ------------------------------------------------------------------------------ | -------------------------------------------------------- |
+| **Gateway lebend**       | 99,5 % Zeit HTTP 200 auf `/health` (oder Ihre SLA)                             | Blackbox oder LB-Health                                  |
+| **Stack „bereit“**       | `GET /ready` am Gateway: `ready: true` unter Normalbedingungen                 | Alle eingetragenen `HEALTH_URL_*` / interne Checks gruen |
+| **Auth-Pfad konsistent** | Kein anhaltender Anstieg 401/403 auf `GET /v1/system/health` bei gueltigem JWT | `gateway_auth_failures_*` / manuelle Stichprobe          |
+
+### 3.2 Zentrale Lesepfade (Beispiel)
+
+| SLO                            | Ziel                                                    | Hinweis                                                        |
+| ------------------------------ | ------------------------------------------------------- | -------------------------------------------------------------- |
+| **System-Health Latenz**       | p95 < 3 s unter Last (anpassen)                         | Histogram am Gateway; bei Timeout Runbook: DB/Redis/Downstream |
+| **API p95 je kritische Route** | Team-spezifisch; Startwert p95 < 5 s fuer Standard-GETs | `http_request_latency_seconds`                                 |
+
+### 3.3 Datenfrische & Pipeline
+
+| SLO                     | Ziel                            | Quelle                               |
+| ----------------------- | ------------------------------- | ------------------------------------ |
+| Kerzen 1m               | Staleness < 180 s               | `docs/observability_slos.md`         |
+| Signale                 | Staleness < 300 s               | wie oben                             |
+| Stream-Lag              | < 5k (Warn) / < 25k (kritisch)  | `redis_stream_lag`                   |
+| Feature→Signal-Pipeline | P95 < 180 s wenn Daten anliegen | `signal_pipeline_lag_p95_seconds_1h` |
+
+### 3.4 KI (Operator Explain)
+
+| SLO                                   | Ziel                                                  | Begruendung                                                     |
+| ------------------------------------- | ----------------------------------------------------- | --------------------------------------------------------------- |
+| **Erfolgsrate**                       | > 99 % HTTP 2xx unter Normalbetrieb (ohne Rate-Limit) | Excludes: absichtlich zu grosse Prompts, fehlender Provider-Key |
+| **Latenz (e2e Gateway-Orchestrator)** | p95 < 90 s, p99 < 120 s                               | OpenAI/Netz variabel; Timeout Gateway 120 s                     |
+| **Orchestrator Redis**                | `/ready` Redis-Check gruen                            | Cache/Circuit; ohne Redis kein stabiler Betrieb                 |
+
+### 3.5 Live-Ausfuehrung (Auszug)
+
+| SLO               | Ziel    |
+| ----------------- | ------- |
+| Kill-Switch       | 0 aktiv |
+| Reconcile-Alter   | < 90 s  |
+| Order-Failrate 1h | < 15 %  |
+
+Vollstaendige SLI-Liste: **`docs/observability_slos.md`**.
+
+---
+
+## 4. Alerts und Eskalation (Muster)
+
+1. **Quelle:** Prometheus-Regeln unter `infra/observability/prometheus-alerts.yml` (Namen wie `DataStaleCandles1m`, `RedisStreamLagCritical`, …).
+2. **Routing:** Alertmanager → On-Call-Kanal (Slack/PagerDuty) — **in Ihrer Infrastruktur** verdrahten (nicht im Anwendungsrepo).
+3. **Eskalation (empfohlen):**
+   - **L1 (15 min):** Pruefung `GET /ready` Gateway, `GET /v1/system/health` mit gueltigem JWT, letzte Deploys.
+   - **L2:** Engpass-Service anhand `checks` und Metrik-Label; Log-Zeilen mit `corr_request_id` zum Vorfallzeitpunkt.
+   - **L3:** Datenbank/Redis/Infrastructure-Team bei persistierendem DB/Redis-Down.
+
+**Runbook pro Alert:** Kurz beschreiben: _Symptom → erste Query → haeufige Ursache → Rollback/Restart-Freigabe._
+
+---
+
+## 5. Fehlerfall schnell eingrenzen (Operator-Playbook)
+
+### Schritt A: Was ist kaputt?
+
+- **Browser/Operator:** Dashboard-Fehlermeldung notieren (oft `detail.code`).
+- **Gateway:** `X-Request-ID` aus Response-Header (KI: auch nach BFF-Antwort).
+- **Globale Sicht:** Grafana: Spike bei `http_errors_total` oder spezifischen Gauges (Freshness, Lag).
+
+### Schritt B: Wo ist es kaputt?
+
+| Symptom                    | Naechster Check                                                           |
+| -------------------------- | ------------------------------------------------------------------------- |
+| 502/503 vom Dashboard-BFF  | `API_GATEWAY_URL`, Gateway-Logs, `edge-status` JSON                       |
+| 503 `LLM_ORCH_UNAVAILABLE` | Gateway: `LLM_ORCH_BASE_URL`, `INTERNAL_API_KEY`; Orchestrator erreichbar |
+| 502 LLM / Provider         | Orchestrator-Logs: OpenAI-Key, `LLM_USE_FAKE_PROVIDER`, Schema-Validation |
+| `/ready: false`            | JSON `checks` — welcher Service-URL oder Postgres/Redis rot               |
+| Daten „alt“                | `data_freshness_seconds` / Alerts `DataStale*`                            |
+
+### Schritt C: Seit wann?
+
+- Grafana-Zeitreihe zum Metriknamen; Logs nach `corr_request_id` oder Zeitstempel filtern.
+- Gateway-Audit-Tabelle (wenn aktiviert) fuer mutierende Pfade.
+
+### Schritt D: Wie stark die Wirkung?
+
+- **Nur KI-Hilfe down:** Trading kann weiterlaufen — Kommunikation: eingeschraenkter Operator-Support.
+- **Gateway /ready false:** haengende oder fehlende Datenstroeme — **hoch**.
+- **Kill-Switch / Safety:** **kritisch** — sofortiges Runbook „Live“.
+
+---
+
+## 6. Dashboards und Pruefpfade (Checkliste)
+
+| Aufgabe           | Aktion                                                                                                      |
+| ----------------- | ----------------------------------------------------------------------------------------------------------- |
+| Taeglicher Health | `curl -sS "$API_GATEWAY_URL/ready" \| jq .`                                                                 |
+| Auth + Datenlage  | `curl -sS -H "Authorization: Bearer …" "$API_GATEWAY_URL/v1/system/health" \| jq .warnings,.data_freshness` |
+| KI-Smoke          | `python scripts/staging_smoke.py --env-file .env.shadow` oder `AI_FLOW.md`                                  |
+| Metriken scrape   | Pro Service `GET http://<service>:<port>/metrics` (nicht oeffentlich exponieren ohne Schutz)                |
+
+---
+
+## 7. Aenderungen in diesem Repo (Referenz)
+
+- **Neu / verbessert:** Explizite Logzeilen im LLM-Gateway-Forward (Dauer, Pfad, Hinweis bei HTTP-Fehler).
+- **Neu:** Trace-Middleware im **llm-orchestrator** (Korrelation mit Gateway).
+- **Neu:** **BFF** `operator-explain` reicht `X-Request-ID` / `X-Correlation-ID` und gibt sie zurueck.
+- **Erweitert (Prompt 23):** Zentrale Trace-Header fuer praktisch alle `fetchGatewayUpstream`-Aufrufe; strukturierte `corr_*`-Felder im LLM-Forward-Log; `edge-status` liefert `supportReference` pro Diagnose-Lauf; Beispiel **Alertmanager inhibit_rules** unter `infra/observability/alertmanager-inhibit-rules.example.yml`; Prometheus-Regeln leicht entschaerft/annotiert (DataStaleSignals, Shadow-Live-Gate, Alert-Backlog).
+- **Monitor-Engine:** `ops.alerts.details` und `events:system_alert` enthalten strukturierte Betreiberfelder (`operator_*`, `correlation`) — `docs/cursor_execution/20_monitor_alerts_and_observability.md`.
+
+Aeltere Basis: `docs/observability.md`, `docs/observability_slos.md`, `shared_py.observability`, Gateway-Request-ID-Middleware.

@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bitget-btc-ai.local/schemas/event-envelope-v1.json",
+  "title": "EventEnvelope",
+  "description": "Huellenschema v1. Fingerprints (semantic/wire) und Kanonisierung: shared_py.eventbus.canonical, shared/ts/src/canonicalJson.ts, docs/contracts_determinism.md. Breaking Aenderungen nur mit schema_version- oder canon_version-Anhebung.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "event_id",
+    "event_type",
+    "symbol",
+    "ingest_ts_ms",
+    "payload",
+    "trace"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0",
+      "description": "Muss mit shared/contracts/catalog/event_streams.json -> envelope_default_schema_version uebereinstimmen."
+    },
+    "event_id": { "type": "string", "minLength": 8 },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "market_tick",
+        "market_feed_health",
+        "candle_close",
+        "funding_update",
+        "structure_updated",
+        "drawing_updated",
+        "signal_created",
+        "trade_opened",
+        "trade_updated",
+        "trade_closed",
+        "funding_booked",
+        "risk_alert",
+        "learning_feedback",
+        "strategy_registry_updated",
+        "news_item_created",
+        "news_scored",
+        "llm_failed",
+        "dlq",
+        "system_alert",
+        "operator_intel"
+      ]
+    },
+    "symbol": { "type": "string", "minLength": 1 },
+    "instrument": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "canonical_instrument_id",
+        "venue",
+        "market_family",
+        "symbol",
+        "category_key",
+        "margin_account_mode",
+        "public_ws_inst_type",
+        "metadata_source",
+        "metadata_verified",
+        "inventory_visible",
+        "analytics_eligible",
+        "paper_shadow_eligible",
+        "live_execution_enabled",
+        "execution_disabled",
+        "supports_funding",
+        "supports_open_interest",
+        "supports_long_short",
+        "supports_shorting",
+        "supports_reduce_only",
+        "supports_leverage",
+        "uses_spot_public_market_data"
+      ],
+      "properties": {
+        "schema_version": { "type": "string", "minLength": 1 },
+        "canonical_instrument_id": { "type": "string", "minLength": 1 },
+        "venue": { "type": "string", "minLength": 1 },
+        "market_family": {
+          "type": "string",
+          "enum": ["spot", "margin", "futures"]
+        },
+        "symbol": { "type": "string", "minLength": 1 },
+        "category_key": { "type": "string", "minLength": 1 },
+        "product_type": { "type": ["string", "null"] },
+        "margin_coin": { "type": ["string", "null"] },
+        "margin_account_mode": {
+          "type": "string",
+          "enum": ["cash", "isolated", "crossed"]
+        },
+        "base_coin": { "type": ["string", "null"] },
+        "quote_coin": { "type": ["string", "null"] },
+        "settle_coin": { "type": ["string", "null"] },
+        "public_ws_inst_type": { "type": "string", "minLength": 1 },
+        "private_ws_inst_type": { "type": ["string", "null"] },
+        "metadata_source": { "type": "string", "minLength": 1 },
+        "metadata_verified": { "type": "boolean" },
+        "status": { "type": ["string", "null"] },
+        "inventory_visible": { "type": "boolean" },
+        "analytics_eligible": { "type": "boolean" },
+        "paper_shadow_eligible": { "type": "boolean" },
+        "live_execution_enabled": { "type": "boolean" },
+        "execution_disabled": { "type": "boolean" },
+        "supports_funding": { "type": "boolean" },
+        "supports_open_interest": { "type": "boolean" },
+        "supports_long_short": { "type": "boolean" },
+        "supports_shorting": { "type": "boolean" },
+        "supports_reduce_only": { "type": "boolean" },
+        "supports_leverage": { "type": "boolean" },
+        "uses_spot_public_market_data": { "type": "boolean" }
+      }
+    },
+    "timeframe": { "type": ["string", "null"] },
+    "exchange_ts_ms": { "type": ["integer", "null"] },
+    "ingest_ts_ms": { "type": "integer" },
+    "dedupe_key": { "type": ["string", "null"] },
+    "payload": { "type": "object" },
+    "trace": { "type": "object" }
+  }
+}

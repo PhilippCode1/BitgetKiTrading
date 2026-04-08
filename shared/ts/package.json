@@ -1,0 +1,19 @@
+{
+  "name": "@bitget-btc-ai/shared-ts",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "pnpm run check-types",
+    "check-types": "tsc --noEmit -p tsconfig.json",
+    "lint": "pnpm run check-types",
+    "test": "node -e \"console.log('@bitget-btc-ai/shared-ts: no package-level tests (contracts covered via dashboard).'); process.exit(0)\"",
+    "format": "prettier --write \"src/**/*.ts\""
+  },
+  "devDependencies": {
+    "prettier": "3.8.1",
+    "typescript": "5.9.3"
+  }
+}

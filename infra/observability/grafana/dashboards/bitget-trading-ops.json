@@ -1,0 +1,448 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "gridPos": { "h": 3, "w": 24, "x": 0, "y": 0 },
+      "id": 100,
+      "options": {
+        "content": "## Operativer Kontext\n\n- **Runbooks:** `docs/monitoring_runbook.md` (Anker / Prometheus-Annotation `runbook`).\n- **monitor-engine:** Frische (`data_freshness_seconds`), **Event-Lag** (`redis_stream_lag`), **Signal-Durchsatz** (`signal_pipeline_throughput_1h`), **Risk-Blocks** (`execution_decisions_blocked_24h`), **Replay/Shadow** (`shadow_live_assessment_mismatch_24h`).\n- **api-gateway:** `gateway_live_broker_forward_*` (Operator-Forwards).\n- **Worker-Leben:** `time() - worker_heartbeat_timestamp` (Redis-/Ingest-Loops + Monitor-Tick; siehe Prompt 7).",
+        "mode": "markdown"
+      },
+      "title": "Runbooks & Datenquellen",
+      "type": "text"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus-bitget" },
+      "fieldConfig": {
+        "defaults": { "unit": "short" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 3 },
+      "id": 101,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "signal_pipeline_throughput_1h",
+          "legendFormat": "signals_1h",
+          "refId": "A"
+        },
+        {
+          "expr": "live_orders_open",
+          "legendFormat": "live_orders_open",
+          "refId": "B"
+        },
+        {
+          "expr": "paper_positions_open",
+          "legendFormat": "paper_positions_open",
+          "refId": "C"
+        },
+        {
+          "expr": "execution_decisions_blocked_24h",
+          "legendFormat": "exec_blocked_24h",
+          "refId": "D"
+        },
+        {
+          "expr": "shadow_live_assessment_mismatch_24h",
+          "legendFormat": "shadow_mismatch_24h",
+          "refId": "E"
+        },
+        {
+          "expr": "live_critical_audits_24h",
+          "legendFormat": "critical_audits_lookback",
+          "refId": "F"
+        },
+        {
+          "expr": "live_order_exit_failures_1h",
+          "legendFormat": "exit_failures_1h",
+          "refId": "G"
+        },
+        {
+          "expr": "live_safety_latch_active",
+          "legendFormat": "safety_latch",
+          "refId": "H"
+        }
+      ],
+      "title": "Durchsatz, Bestand, Risk, Shadow-Mismatch, Exits, Latch",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus-bitget" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "showPoints": "never"
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 11 },
+      "id": 1,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "single" }
+      },
+      "targets": [
+        {
+          "expr": "live_reconcile_age_ms",
+          "legendFormat": "reconcile_age_ms",
+          "refId": "A"
+        }
+      ],
+      "title": "Live Reconcile Alter (ms, -1 = unbekannt)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus-bitget" },
+      "fieldConfig": {
+        "defaults": { "unit": "short" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 19 },
+      "id": 2,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "live_kill_switch_active_count",
+          "legendFormat": "kill_switch_active",
+          "refId": "A"
+        },
+        {
+          "expr": "live_reconcile_drift_total",
+          "legendFormat": "reconcile_drift_total",
+          "refId": "B"
+        },
+        {
+          "expr": "online_drift_action_rank",
+          "legendFormat": "online_drift_rank",
+          "refId": "C"
+        }
+      ],
+      "title": "Safety / Drift",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus-bitget" },
+      "fieldConfig": {
+        "defaults": { "unit": "s" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 19 },
+      "id": 3,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "data_freshness_seconds",
+          "legendFormat": "{{datapoint}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Daten-Staleness (Sekunden)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus-bitget" },
+      "fieldConfig": {
+        "defaults": { "unit": "short" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 27 },
+      "id": 4,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "redis_stream_lag",
+          "legendFormat": "{{stream}}/{{group}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Redis Stream Lag (Queue)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus-bitget" },
+      "fieldConfig": {
+        "defaults": { "unit": "short" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 27 },
+      "id": 5,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "shadow_live_gate_blocks_24h",
+          "legendFormat": "shadow_live_gate_blocks_24h",
+          "refId": "A"
+        },
+        {
+          "expr": "shadow_live_match_failures_24h",
+          "legendFormat": "shadow_live_match_failures_24h",
+          "refId": "B"
+        },
+        {
+          "expr": "live_order_fail_rate_1h",
+          "legendFormat": "order_fail_rate_1h",
+          "refId": "C"
+        },
+        {
+          "expr": "signal_pipeline_rejected_ratio_24h",
+          "legendFormat": "signal_rejected_ratio_24h",
+          "refId": "D"
+        }
+      ],
+      "title": "Shadow/Live Gate & Ablehnungen",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus-bitget" },
+      "fieldConfig": {
+        "defaults": { "unit": "short" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 35 },
+      "id": 6,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "live_order_roundtrip_p90_seconds",
+          "legendFormat": "order_roundtrip_p90_s",
+          "refId": "A"
+        },
+        {
+          "expr": "live_fill_slippage_bps_avg_24h",
+          "legendFormat": "fill_slippage_bps_avg_24h",
+          "refId": "B"
+        },
+        {
+          "expr": "learn_drift_events_24h",
+          "legendFormat": "learn_drift_events_24h",
+          "refId": "C"
+        }
+      ],
+      "title": "Latenz / Slippage / Modell-Drift-Events",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus-bitget" },
+      "fieldConfig": {
+        "defaults": { "unit": "short" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 35 },
+      "id": 7,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "alert_outbox_pending",
+          "legendFormat": "alert_outbox_pending",
+          "refId": "A"
+        },
+        {
+          "expr": "monitor_open_alerts",
+          "legendFormat": "monitor_open_alerts",
+          "refId": "B"
+        }
+      ],
+      "title": "Alert-Backlog (Outbox / Ops)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus-bitget" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "showPoints": "never"
+          },
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 43 },
+      "id": 108,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "sum by (result) (rate(gateway_live_broker_forward_total[5m]))",
+          "legendFormat": "{{result}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Gateway → Live-Broker Forward (Rate)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus-bitget" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "showPoints": "never"
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 43 },
+      "id": 109,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(gateway_live_broker_forward_latency_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p95_s",
+          "refId": "A"
+        }
+      ],
+      "title": "Gateway → Live-Broker Forward Latenz (P95)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus-bitget" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "showPoints": "never"
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 51 },
+      "id": 110,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "signal_pipeline_lag_p95_seconds_1h",
+          "legendFormat": "pipeline_lag_p95_1h",
+          "refId": "A"
+        }
+      ],
+      "title": "Signal-Pipeline Latenz P95 (Feature→Analyse, 1h)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus-bitget" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "showPoints": "never"
+          },
+          "unit": "percentunit",
+          "max": 1,
+          "min": 0
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 51 },
+      "id": 111,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "signal_do_not_trade_ratio_1h",
+          "legendFormat": "do_not_trade_abstain_ratio_1h",
+          "refId": "A"
+        }
+      ],
+      "title": "No-Trade-Rate (do_not_trade / abstain, 1h)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus-bitget" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "showPoints": "never"
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 59 },
+      "id": 112,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "max by (service) (time() - worker_heartbeat_timestamp)",
+          "legendFormat": "{{service}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Worker-Heartbeat-Alter (s) — niedriger = frischer",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["bitget", "trading", "ops"],
+  "templating": { "list": [] },
+  "time": { "from": "now-6h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Bitget BTC AI — Trading & Ops",
+  "uid": "bitget-trading-ops",
+  "version": 1
+}

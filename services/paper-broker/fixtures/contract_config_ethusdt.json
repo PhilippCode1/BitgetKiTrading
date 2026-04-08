@@ -1,0 +1,12 @@
+{
+  "symbol": "ETHUSDT",
+  "productType": "USDT-FUTURES",
+  "makerFeeRate": "0.0002",
+  "takerFeeRate": "0.0006",
+  "sizeMultiplier": "0.01",
+  "fundInterval": "8",
+  "maxLever": "125",
+  "priceEndStep": "0.01",
+  "quoteCoin": "USDT",
+  "baseCoin": "ETH"
+}

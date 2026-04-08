@@ -1,0 +1,26 @@
+{
+  "symbol": "BTCUSDT",
+  "timeframe": "1m",
+  "candles": [
+    {
+      "start_ts_ms": 1700000000000,
+      "open": 42000.0,
+      "high": 42100.0,
+      "low": 41950.0,
+      "close": 42050.0,
+      "base_vol": 1.2,
+      "quote_vol": 50460.0,
+      "usdt_vol": 50460.0
+    },
+    {
+      "start_ts_ms": 1700000060000,
+      "open": 42050.0,
+      "high": 42200.0,
+      "low": 42000.0,
+      "close": 42180.0,
+      "base_vol": 2.1,
+      "quote_vol": 88578.0,
+      "usdt_vol": 88578.0
+    }
+  ]
+}

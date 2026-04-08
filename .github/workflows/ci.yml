@@ -1,0 +1,278 @@
+# CI — Shell, Release-Sanity, Ruff, Black, Mypy (Kern), Schema, Migrate,
+# Pytest Unit + Integration (Coverage append), Coverage-Gates, Wheel-Build,
+# pip/pnpm Audit, Dashboard, Docker Compose + Config + Healthcheck + KI-Orchestrator-Smoke
+#
+# Merge auf main/master: alle Jobs Pflicht (Branch-Protection im Remote einrichten).
+# Zeitplan: woechentlich Python+Dashboard ohne Compose (Kosten/Laufzeit).
+name: ci
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+  schedule:
+    # Montag 05:00 UTC — Python + Dashboard; Compose-Job ist ausgeschlossen (siehe if unten)
+    - cron: "0 5 * * 1"
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16.6-alpine
+        env:
+          POSTGRES_DB: ci_dummy
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d ci_dummy"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7.4.2-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 3s
+          --health-timeout 3s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Env profile validation (Beispiel-ENV mit CI-Platzhalter-Ersatz)
+        run: |
+          set -euo pipefail
+          sed 's/<SET_ME>/ci_repeatable_secret_min_32_chars_x/g' .env.local.example > /tmp/ci.env.local
+          python3 tools/validate_env_profile.py --env-file /tmp/ci.env.local --profile local
+
+      - name: Shell scripts (Syntax)
+        run: >-
+          bash -n scripts/start_all.sh scripts/healthcheck.sh scripts/deploy.sh
+          scripts/integration_compose_smoke.sh scripts/wait_compose_healthy.sh
+          scripts/rc_health.sh
+
+      - name: Release sanity (Secrets / Ballast / Compose-Bindings)
+        run: python tools/release_sanity_checks.py
+
+      - name: Prod/Shadow ENV template security gate
+        run: python3 tools/check_production_env_template_security.py
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11.15"
+          cache: pip
+
+      - name: "Install packages (gepinnt: requirements-dev + editables)"
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+          pip install -c constraints-runtime.txt -e ./shared/python
+          pip install -c constraints-runtime.txt -e ./services/feature-engine
+          pip install -c constraints-runtime.txt -e ./services/signal-engine
+          pip install -c constraints-runtime.txt -e ./services/paper-broker
+          pip install -c constraints-runtime.txt -e ./services/structure-engine
+          pip install -c constraints-runtime.txt -e ./services/drawing-engine
+          pip install -c constraints-runtime.txt -e ./services/learning-engine
+          pip install -c constraints-runtime.txt -e ./services/api-gateway
+          pip install -c constraints-runtime.txt -e ./services/monitor-engine
+          pip install -c constraints-runtime.txt -e ./services/news-engine
+          pip install -c constraints-runtime.txt -e ./services/market-stream
+          pip install -c constraints-runtime.txt -e ./services/llm-orchestrator
+          pip install -c constraints-runtime.txt -e ./services/alert-engine
+          pip install -c constraints-runtime.txt -e ./services/live-broker
+
+      - name: Ruff (tests, tools, integration inkl. fixtures)
+        run: >-
+          ruff check tests/unit tests/integration tests/signal_engine tests/shared
+          tests/paper_broker tests/fixtures tests/conftest.py
+          tests/integration/fixtures config/required_secrets.py config/bootstrap.py
+          tools/check_schema.py tools/check_contracts.py
+          tools/check_coverage_gates.py tools/release_sanity_checks.py
+          tools/validate_env_profile.py tools/pip_audit_supply_chain_gate.py
+          tools/check_production_env_template_security.py
+          tools/modul_mate_selfcheck.py tools/production_selfcheck.py
+          scripts/release_gate.py
+          tools/local_stack_doctor.py
+          tools/run_llm_eval.py
+          tools/validate_eval_baseline.py
+
+      - name: LLM eval baseline manifest (Prompt 5)
+        run: python tools/validate_eval_baseline.py
+
+      - name: Black (ohne tests/unit — Legacy-Format dort)
+        run: >-
+          black --check tests/integration tests/signal_engine tests/shared
+          tests/paper_broker tests/conftest.py tests/fixtures tools/check_schema.py
+          tools/check_contracts.py tools/check_coverage_gates.py tools/release_sanity_checks.py
+          tools/validate_env_profile.py tools/pip_audit_supply_chain_gate.py
+          tools/check_production_env_template_security.py
+          tools/modul_mate_selfcheck.py tools/production_selfcheck.py
+          scripts/release_gate.py
+          tools/local_stack_doctor.py
+          tools/run_llm_eval.py
+          tools/validate_eval_baseline.py
+
+      - name: Mypy (kritische shared_py-Module, strict package)
+        working-directory: shared/python
+        run: >-
+          mypy src/shared_py/leverage_allocator.py src/shared_py/risk_engine.py
+          src/shared_py/exit_engine.py src/shared_py/shadow_live_divergence.py
+          src/shared_py/product_policy.py src/shared_py/modul_mate_db_gates.py
+          src/shared_py/model_layer_contract.py
+
+      - name: Packaging smoke (shared-py Wheel)
+        run: |
+          python -m build shared/python --wheel --outdir dist/ci-wheels
+          python -c "import glob,zipfile; w=sorted(glob.glob('dist/ci-wheels/*.whl')); assert w, 'no wheel'; z=zipfile.ZipFile(w[0]); print('wheel:', w[0]); print('\\n'.join(z.namelist()[:25]))"
+
+      - name: Schema check (Fixture)
+        run: |
+          python tools/check_schema.py \
+            --schema infra/tests/schemas/signals_recent_response.schema.json \
+            --json_file tests/fixtures/signals_fixture.json
+
+      - name: Shared contracts (Katalog, Envelope-Schema, shared_py)
+        run: python tools/check_contracts.py
+
+      - name: DB migrations (infra/migrate.py)
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ci_dummy
+        run: python infra/migrate.py
+
+      - name: Modul Mate gates selfcheck (nach Migrationen)
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ci_dummy
+        run: python tools/modul_mate_selfcheck.py
+
+      - name: Pytest unit + Coverage (Basis)
+        env:
+          CI: "true"
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ci_dummy
+          REDIS_URL: redis://localhost:6379/0
+        run: |
+          coverage erase
+          coverage run -m pytest tests shared/python/tests -m "not integration"
+
+      - name: Pytest integration + Coverage (append — Stack-Smokes / DB-Recovery)
+        env:
+          CI: "true"
+          TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ci_dummy
+          TEST_REDIS_URL: redis://localhost:6379/1
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ci_dummy
+          REDIS_URL: redis://localhost:6379/0
+        run: |
+          coverage run -a -m pytest tests/integration tests/learning_engine -m integration -q
+
+      - name: Coverage gates + XML
+        env:
+          CI: "true"
+        run: |
+          python tools/check_coverage_gates.py
+          coverage xml
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml
+          path: coverage.xml
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: shared-py-wheel
+          path: dist/ci-wheels/*.whl
+          if-no-files-found: warn
+
+      - name: pip-audit supply-chain gate (CVSS>=7 / OSV HIGH+, Allowlist)
+        run: |
+          python -m pip install pip-audit==2.7.3 cvss==3.2
+          python tools/pip_audit_supply_chain_gate.py
+
+  dashboard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20.19.6"
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install (Monorepo-Lockfile)
+        run: pnpm install --frozen-lockfile
+      - name: Typecheck (turbo, dashboard + shared-ts)
+        run: pnpm check-types
+      - name: Prettier (Repo-Root, wie pnpm format:check)
+        run: pnpm format:check
+      - name: Dashboard test + build
+        run: |
+          pnpm --dir apps/dashboard run test:ci
+          pnpm --dir apps/dashboard run build
+
+      - name: pnpm audit (Supply-Chain, high+ — Gate)
+        run: pnpm audit --audit-level=high
+
+  compose_healthcheck:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - name: Docker Compose config validate
+        run: >-
+          docker compose -f docker-compose.yml -f docker-compose.local-publish.yml
+          config --quiet
+      - name: Prepare .env.local (ersetzt Platzhalter fuer Compose)
+        run: |
+          set -euo pipefail
+          sed 's/<SET_ME>/ci_repeatable_secret_min_32_chars_x/g' .env.local.example > .env.local
+      - name: Docker Compose (Build + Up)
+        run: >-
+          docker compose -f docker-compose.yml -f docker-compose.local-publish.yml
+          up -d --build
+      - name: Healthcheck (Retry bis Stack ready)
+        shell: bash
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 45); do
+            sleep 15
+            if bash scripts/healthcheck.sh; then
+              echo "healthcheck OK after round $i"
+              echo "Running smoke gate (rc_health_edge, gleicher Pfad wie pnpm smoke) ..."
+              python3 scripts/rc_health_runner.py .env.local
+              echo "smoke OK"
+              echo "KI-Orchestrator Smoke (POST /llm/analyst/operator_explain, Fake-Provider aus .env.local) ..."
+              python3 scripts/verify_ai_operator_explain.py --env-file .env.local --mode orchestrator
+              echo "KI smoke OK"
+              exit 0
+            fi
+            echo "round $i: healthcheck noch nicht gruen, warte..."
+          done
+          echo "=== docker compose ps ==="
+          docker compose ps || true
+          exit 1
+      - uses: pnpm/action-setup@v4
+        if: success()
+        with:
+          version: 10.30.1
+      - uses: actions/setup-node@v4
+        if: success()
+        with:
+          node-version: "20.19.6"
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: "Playwright Release-Gate (Nutzerreisen, Dashboard :3000)"
+        if: success()
+        env:
+          E2E_BASE_URL: http://127.0.0.1:3000
+        run: |
+          set -euo pipefail
+          pnpm install --frozen-lockfile
+          pnpm exec playwright install chromium --with-deps
+          pnpm exec playwright test -c e2e/playwright.config.ts

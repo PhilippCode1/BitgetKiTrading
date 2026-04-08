@@ -1,0 +1,7 @@
+# Vulnerability-IDs, die temporaer akzeptiert sind (Begruendung im PR/Issue).
+# Format: eine ID pro Zeile (GHSA-*, CVE-*, PYSEC-*). Keine Leerzeilen mit Whitespace als ID.
+#
+# Black <26.3.1: GHSA-3936-cmfr-pm3m (arbitrary write via --python-cell-magics).
+# Risiko im Repo: nur Dev/CI; kein untrusted Input an diese CLI-Option. Upgrade auf Black 26.x
+# erzwingt grossen Reformat-PR — separat planen.
+GHSA-3936-cmfr-pm3m

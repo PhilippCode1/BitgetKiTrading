@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bitget-btc-ai.local/schemas/payload-market-feed-health-v1.json",
+  "title": "market_feed_health payload",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["ok", "ws_connected", "symbol"],
+  "properties": {
+    "ok": { "type": "boolean" },
+    "ws_connected": { "type": "boolean" },
+    "symbol": { "type": "string", "minLength": 1 },
+    "connection_state": { "type": "string" },
+    "reasons": { "type": "array", "items": { "type": "string" } },
+    "age_ticker_ms": { "type": ["integer", "null"] },
+    "age_orderbook_ms": { "type": ["integer", "null"] },
+    "age_trade_ms": { "type": ["integer", "null"] },
+    "ready_max_age_ms": { "type": "integer" },
+    "orderbook_desynced": { "type": "boolean" },
+    "last_gapfill_reason": { "type": ["string", "null"] },
+    "stale_escalation_count": { "type": "integer" }
+  }
+}

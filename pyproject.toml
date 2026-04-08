@@ -1,0 +1,71 @@
+[project]
+name = "bitget-btc-ai-workspace"
+version = "0.0.0"
+description = "Monorepo meta-config for pytest/ruff/black (kein installierbares Paket)."
+requires-python = ">=3.11"
+readme = "README.md"
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "shared/python/tests"]
+pythonpath = ["shared/python/src"]
+markers = [
+    "integration: benoetigt TEST_DATABASE_URL / laufende Services",
+    "slow: laengere Laufzeit",
+    "live_mock: Bitget-/Replay-Contract-Fixtures ohne Netzwerk",
+    "compose_smoke: RUN_COMPOSE_SMOKE=1 + scripts/integration_compose_smoke.sh",
+    "stack_recovery: Redis/DB/HTTP-Recovery und Restart-/Chaos-nahe Integrationspfade",
+    "chaos: Druck/Stale/Queue-Szenarien (Unit mit Mocks oder Integration)",
+    "security: Auth-Bypass, Leakage, Rate-Limit-Klassifikation",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+[tool.coverage.run]
+branch = true
+source = [
+    "shared/python/src/shared_py",
+    "api_gateway",
+    "services/feature-engine/src/feature_engine",
+    "services/signal-engine/src/signal_engine",
+    "services/paper-broker/src/paper_broker",
+    "services/structure-engine/src/structure_engine",
+    "services/learning-engine/src/learning_engine",
+    "services/monitor-engine/src/monitor_engine",
+    "alert_engine",
+    "services/live-broker/src/live_broker",
+]
+omit = [
+    "*/tests/*",
+    "*/__main__.py",
+    "*/conftest.py",
+]
+
+[tool.coverage.report]
+precision = 1
+show_missing = true
+skip_covered = false
+# CI: zusaetzlich tools/check_coverage_gates.py (shared_py >= 80 %, kritische Pfade >= 90 %).
+# Globales Floor verhindert triviales "0 % und gruen" bei lokalem `coverage report`.
+fail_under = 25
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+src = ["config", "tests", "tools", "shared/python/src", "services"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests: sys.path-Shims vor Imports; viele Zeilen > 88 (Legacy).
+"tests/**" = ["E402", "E501"]
+# Repo-Root auf sys.path vor config-Import.
+"tools/validate_env_profile.py" = ["E402", "I001"]
+# Diagnose-Texte und lange Hint-Zeilen.
+"tools/local_stack_doctor.py" = ["E501"]
+
+[tool.black]
+line-length = 88
+target-version = ["py311"]
+extend-exclude = "/(\\.venv|venv|node_modules|\\.next|dist)/"

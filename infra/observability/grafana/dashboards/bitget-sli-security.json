@@ -1,0 +1,237 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "gridPos": { "h": 4, "w": 24, "x": 0, "y": 0 },
+      "id": 200,
+      "options": {
+        "content": "## SLI / Sicherheit / Kommerziell\n\n- **SLO-Tabelle:** `docs/observability_slos.md`\n- **Incident-Recovery:** `docs/observability_incident_recovery.md`\n- **Alerts:** `infra/observability/prometheus-alerts.yml` (Gruppe `bitget_slo_contract`)\n- **Forensik:** `GET /v1/live-broker/executions/{id}/forensic-timeline` — Phasen `forensic_phases`, `signal_path_summary`",
+        "mode": "markdown"
+      },
+      "title": "Runbooks",
+      "type": "text"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus-bitget" },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "id": 201,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "signal_pipeline_lag_p95_seconds_1h",
+          "legendFormat": "pipeline_lag_p95_s_1h",
+          "refId": "A"
+        }
+      ],
+      "title": "Signal-Pipeline Latenz P95 (Feature→Analyse, 1h)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus-bitget" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "id": 202,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "gateway_auth_failures_1h",
+          "legendFormat": "gateway_auth_failures_1h",
+          "refId": "A"
+        },
+        {
+          "expr": "gateway_manual_action_auth_failures_1h",
+          "legendFormat": "manual_live_mutation_auth_fails_1h",
+          "refId": "B"
+        },
+        {
+          "expr": "commerce_billing_auth_failures_1h",
+          "legendFormat": "commerce_billing_auth_fails_1h",
+          "refId": "C"
+        }
+      ],
+      "title": "Auth-Anomalien (Gateway / Manual / Billing)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus-bitget" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "id": 203,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "signal_specialist_disagreement_ratio_24h",
+          "legendFormat": "specialist_disagreement_ratio_24h",
+          "refId": "A"
+        },
+        {
+          "expr": "signal_do_not_trade_ratio_1h",
+          "legendFormat": "do_not_trade_ratio_1h",
+          "refId": "B"
+        },
+        {
+          "expr": "signal_stop_fragility_p90_24h",
+          "legendFormat": "stop_fragility_p90_24h",
+          "refId": "C"
+        }
+      ],
+      "title": "Signalqualitaet: Dissent / No-Trade / Stop-Fragilitaet",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus-bitget" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "id": 204,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "shadow_live_gate_blocks_24h",
+          "legendFormat": "shadow_gate_blocks_24h",
+          "refId": "A"
+        },
+        {
+          "expr": "shadow_live_match_failures_24h",
+          "legendFormat": "shadow_match_failures_24h",
+          "refId": "B"
+        },
+        {
+          "expr": "execution_drift_or_shadow_decisions_24h",
+          "legendFormat": "drift_shadow_exec_decisions_24h",
+          "refId": "C"
+        }
+      ],
+      "title": "Shadow/Live & Drift-Execution",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus-bitget" },
+      "fieldConfig": { "defaults": { "unit": "ms" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
+      "id": 205,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "single" }
+      },
+      "targets": [
+        {
+          "expr": "live_reconcile_age_ms",
+          "legendFormat": "reconcile_age_ms",
+          "refId": "A"
+        }
+      ],
+      "title": "Reconcile Lag",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus-bitget" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
+      "id": 206,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "redis_stream_lag",
+          "legendFormat": "{{stream}}/{{group}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Queue Lag (Redis Streams)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus-bitget" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 28 },
+      "id": 207,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "online_drift_action_rank",
+          "legendFormat": "online_drift_action_rank",
+          "refId": "A"
+        },
+        {
+          "expr": "learn_drift_events_24h",
+          "legendFormat": "learn_drift_events_24h",
+          "refId": "B"
+        }
+      ],
+      "title": "Drift Blocks & Events",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus-bitget" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 28 },
+      "id": 208,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "commerce_ledger_lines_1h",
+          "legendFormat": "commerce_ledger_lines_1h",
+          "refId": "A"
+        }
+      ],
+      "title": "Billing / Ledger (Schreibvolumen 1h)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus-bitget" },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 36 },
+      "id": 209,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "single" }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.9, sum(rate(monitor_engine_tick_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "monitor_tick_p90_s",
+          "refId": "A"
+        }
+      ],
+      "title": "Monitor-Engine Tick Dauer (P90 aus Histogram)",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["bitget", "sli", "security", "commerce"],
+  "templating": { "list": [] },
+  "time": { "from": "now-6h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Bitget BTC AI — SLI, Sicherheit & Kommerziell",
+  "uid": "bitget-sli-security",
+  "version": 1
+}

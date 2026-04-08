@@ -1,0 +1,16 @@
+node_modules
+.pnpm-store
+.turbo
+.next
+build
+dist
+apps/dashboard/build-cursor
+coverage
+htmlcov
+pnpm-lock.yaml
+
+# TypeScript incremental — kein sinnvolles Review-Format
+**/*.tsbuildinfo
+
+# Versehentlicher Pfad (Leerzeichen vor „production“); offizielles Profil ist .env.production
+.env production/

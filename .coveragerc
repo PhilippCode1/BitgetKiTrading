@@ -1,0 +1,20 @@
+# Synchron zu pyproject.toml [tool.coverage.*] — coverage.py liest .coveragerc bevorzugt.
+[run]
+branch = True
+source =
+    shared/python/src/shared_py
+    services/feature-engine/src/feature_engine
+    services/signal-engine/src/signal_engine
+    services/paper-broker/src/paper_broker
+    services/structure-engine/src/structure_engine
+    services/learning-engine/src/learning_engine
+    services/monitor-engine/src/monitor_engine
+    services/live-broker/src/live_broker
+omit =
+    */tests/*
+    */__main__.py
+    */conftest.py
+
+[report]
+fail_under = 25
+show_missing = True

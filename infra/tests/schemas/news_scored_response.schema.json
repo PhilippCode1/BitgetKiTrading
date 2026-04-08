@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bitget-btc-ai.local/schemas/news-scored-response-v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["items", "limit"],
+  "properties": {
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["news_id", "score_0_100", "summary"],
+        "properties": {
+          "news_id": { "type": "string" },
+          "source": { "type": ["string", "null"] },
+          "title": { "type": ["string", "null"] },
+          "url": { "type": ["string", "null"] },
+          "score_0_100": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "sentiment": { "type": ["string", "null"] },
+          "impact_window": { "type": ["string", "null"] },
+          "published_ts_ms": { "type": ["integer", "null"] },
+          "summary": { "type": "string" }
+        }
+      }
+    },
+    "limit": { "type": "integer", "minimum": 1 }
+  }
+}

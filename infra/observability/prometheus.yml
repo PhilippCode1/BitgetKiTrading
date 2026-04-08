@@ -1,0 +1,60 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - prometheus-alerts.yml
+
+scrape_configs:
+  - job_name: api-gateway
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["api-gateway:8000"]
+  - job_name: market-stream
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["market-stream:8010"]
+  - job_name: feature-engine
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["feature-engine:8020"]
+  - job_name: structure-engine
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["structure-engine:8030"]
+  - job_name: drawing-engine
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["drawing-engine:8040"]
+  - job_name: signal-engine
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["signal-engine:8050"]
+  - job_name: news-engine
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["news-engine:8060"]
+  - job_name: llm-orchestrator
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["llm-orchestrator:8070"]
+  - job_name: paper-broker
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["paper-broker:8085"]
+  - job_name: alert-engine
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["alert-engine:8100"]
+  - job_name: learning-engine
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["learning-engine:8090"]
+  - job_name: monitor-engine
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["monitor-engine:8110"]
+  - job_name: live-broker
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["live-broker:8120"]
