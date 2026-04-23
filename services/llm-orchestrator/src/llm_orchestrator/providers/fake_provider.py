@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Any
 
-
 _FAKE_OPERATOR_EXPLAIN_DE = (
     "[TEST-PROVIDER — kein OpenAI-Aufruf] Deterministische Smoke-Antwort. "
     "Für echtes Modell: LLM_USE_FAKE_PROVIDER=false und OPENAI_API_KEY am llm-orchestrator setzen. "
@@ -37,8 +36,11 @@ class FakeProvider:
         timeout_ms: int,
         model: str | None = None,
         system_instructions_de: str | None = None,
+        system_instructions_append_de: str | None = None,
+        task_type: str | None = None,
     ) -> dict[str, Any]:
         del temperature, timeout_ms, model, system_instructions_de
+        del system_instructions_append_de, task_type
         sid = str(schema_json.get("$id") or "").lower()
         # Explizit gekennzeichnete Antwort statt generischem \"fake\"-String — fuer UI/E2E nachvollziehbar.
         if "operator-explain" in sid:

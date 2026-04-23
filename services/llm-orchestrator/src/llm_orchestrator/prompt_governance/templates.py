@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from llm_orchestrator.agents.tsfm_semantics import (
+    OPERATOR_MARKET_DATA_GAP_DIRECTIVE_DE,
+)
 from llm_orchestrator.prompt_governance.manifest import (
     load_prompt_manifest,
     read_instruction_text,
@@ -19,9 +22,11 @@ def build_operator_explain_user_prompt(
     instr = read_instruction_text(spec)
     return (
         f"{instr}\n\n"
+        f"DATENLUEKEN-REGEL:\n{OPERATOR_MARKET_DATA_GAP_DIRECTIVE_DE}\n\n"
         f"RETRIEVAL:\n{retrieval_block}\n\n"
         f"FRAGE:\n{question_de}\n\n"
-        f"READONLY_KONTEXT:\n{readonly_context_json_text}"
+        f"READONLY_KONTEXT (pro Symbol: News/Orderbook/Signale/Chart, evtl. Platzhalter "
+        f"wenn leer):\n{readonly_context_json_text}"
     )
 
 

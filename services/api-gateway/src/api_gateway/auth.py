@@ -1,9 +1,13 @@
 """Gateway-Authentifizierung: JWT (HS256), X-Gateway-Internal-Key, optional Legacy-Admin-Token.
 
-X-Gateway-Internal-Key nutzt GATEWAY_INTERNAL_API_KEY (auth_method=gateway_internal_key).
-Das ist nicht INTERNAL_API_KEY — letzteres ist X-Internal-Service-Key fuer Worker (shared_py.service_auth).
+X-Gateway-Internal-Key nutzt GATEWAY_INTERNAL_API_KEY (auth_method=gateway_internal_key) — nur serverseitig (BFF/Operator),
+niemals im Browser-Bundle.
+
+INTERNAL_API_KEY (Header X-Internal-Service-Key) ist ausschliesslich Service-zu-Service (shared_py.service_auth),
+z. B. Gateway → Worker; gehoert nicht in Next.js-Client-Code und ersetzt kein Kunden- oder Admin-JWT.
 
 401-Details: strukturiertes JSON mit code/message/hint (z. B. GATEWAY_JWT_EXPIRED, GATEWAY_INTERNAL_KEY_MISMATCH).
+Kunden-Portal-Bearer auf /v1/admin: 403 GATEWAY_FORBIDDEN_CUSTOMER_SESSION.
 """
 
 from __future__ import annotations
@@ -14,6 +18,7 @@ from typing import Any, cast
 import jwt
 from fastapi import Header, HTTPException, Request
 from shared_py.portal_access_contract import (
+    PORTAL_ROLE_CUSTOMER,
     PORTAL_ROLE_SUPER_ADMIN,
     merge_portal_roles_from_payload,
 )
@@ -65,6 +70,7 @@ class GatewayAuthContext:
     actor: str
     auth_method: str
     roles: frozenset[str]
+    # Mandanten-ID (JWT, Portal); Grundlage fuer u. a. verify_live_trading_capability
     tenant_id: str | None = None
     portal_roles: frozenset[str] = field(default_factory=_empty_frozenset)
 
@@ -129,6 +135,17 @@ class GatewayAuthContext:
         if route_key in EMERGENCY_ROUTE_KEYS:
             return self.has_role("emergency:mutate")
         return False
+
+    def is_customer_portal_jwt(self) -> bool:
+        """
+        Kunden-Portal-Sitzung (JWT): portal_roles enthaelt 'customer' ohne Super-Admin-Portal.
+        S2S (X-Gateway-Internal-Key, Legacy-Admin) ist kein Kunden-Portal.
+        """
+        if self.auth_method != "jwt":
+            return False
+        if PORTAL_ROLE_SUPER_ADMIN in self.portal_roles:
+            return False
+        return PORTAL_ROLE_CUSTOMER in self.portal_roles
 
 
 def _auth_diag(code: str, message: str, hint: str) -> dict[str, str]:
@@ -503,6 +520,38 @@ def _billing_admin_problem_detail(
     }
 
 
+def _admin_forbidden_customer_session_detail() -> dict[str, str | bool]:
+    return {
+        "code": "GATEWAY_FORBIDDEN_CUSTOMER_SESSION",
+        "message": "Kundenportal-Token: Zugriff auf Admin-APIs ist nicht erlaubt.",
+        "hint": (
+            "Admin-APIs verlangen ein Operator-JWT (ohne customer in portal_roles) und "
+            "gateway_roles admin:read bzw. admin:write, oder X-Gateway-Internal-Key (BFF, nur serverseitig). "
+            "INTERNAL_API_KEY (X-Internal-Service-Key) ist kein Kunden-Token und gehoert niemals ins Frontend."
+        ),
+    }
+
+
+def _forbid_admin_if_customer_jwt(
+    request: Request,
+    ctx: GatewayAuthContext | None,
+    *, event: str
+) -> None:
+    if ctx is None or not ctx.is_customer_portal_jwt():
+        return
+    record_gateway_auth_failure(
+        request,
+        event,
+        actor=ctx.actor,
+        auth_method=ctx.auth_method,
+        extra={"failure_code": "GATEWAY_FORBIDDEN_CUSTOMER_SESSION"},
+    )
+    raise HTTPException(
+        status_code=403,
+        detail=_admin_forbidden_customer_session_detail(),
+    )
+
+
 def resolve_gateway_auth(
     *,
     request: Request,
@@ -564,27 +613,20 @@ async def require_admin_read(
     x_gateway_internal_key: str | None = Header(None, alias=_HEADER_INTERNAL),
     x_admin_token: str | None = Header(None, alias=_HEADER_LEGACY_ADMIN),
 ) -> GatewayAuthContext:
+    """
+    Admin-Lese-Autorisierung. Kein anonymes admin:read mehr, wenn SENSITIVE_AUTH deaktiviert:
+    lokal nur mit echtem JWT, X-Gateway-Internal-Key (BFF) oder Legacy-Admin-Token.
+    Kunden-Portal-Bearer: immer 403 auf Admin-Routen.
+    """
     settings = get_gateway_settings()
-    if not settings.sensitive_auth_enforced():
-        ctx = resolve_gateway_auth(
-            request=request,
-            authorization=authorization,
-            x_gateway_internal_key=x_gateway_internal_key,
-            x_admin_token=x_admin_token,
-        )
-        if ctx is not None and ctx.can_admin_read():
-            return ctx
-        return GatewayAuthContext(
-            actor="anonymous",
-            auth_method="none",
-            roles=frozenset({"admin:read"}),
-            tenant_id=None,
-        )
     ctx, diag = resolve_gateway_auth_with_diagnostic(
         request=request,
         authorization=authorization,
         x_gateway_internal_key=x_gateway_internal_key,
         x_admin_token=x_admin_token if settings.legacy_admin_token_allowed() else None,
+    )
+    _forbid_admin_if_customer_jwt(
+        request, ctx, event="auth_forbidden_customer_admin_read"
     )
     if ctx is not None and ctx.can_admin_read():
         return ctx
@@ -615,6 +657,9 @@ async def require_admin_write(
         authorization=authorization,
         x_gateway_internal_key=x_gateway_internal_key,
         x_admin_token=x_admin_token if settings.legacy_admin_token_allowed() else None,
+    )
+    _forbid_admin_if_customer_jwt(
+        request, ctx, event="auth_forbidden_customer_admin_write"
     )
     if ctx is not None and ctx.can_admin_write():
         return ctx
@@ -799,3 +844,24 @@ async def require_operator_aggregate_auth(
     d["code"] = "OPERATOR_AGGREGATE_AUTH_REQUIRED"
     d["message"] = "Operator-Systempfad: " + str(d.get("message", ""))
     raise HTTPException(status_code=401, detail=d)
+
+
+async def require_customer_role(
+    request: Request,
+    authorization: str | None = Header(None),
+    x_gateway_internal_key: str | None = Header(None, alias=_HEADER_INTERNAL),
+) -> GatewayAuthContext:
+    """
+    Kunden- und Abo-Scope: delegiert an require_billing_read (identische technische Pruefung).
+    Gegenstueck zu require_admin_read / require_admin_write auf /v1/admin/... .
+    """
+    return await require_billing_read(
+        request, authorization, x_gateway_internal_key
+    )
+
+
+# --- RBAC: /v1/admin bevorzugt explizit benannte Dependencies ---
+require_admin_read_role = require_admin_read
+require_admin_write_role = require_admin_write
+# Lesende Admin-Standard-Abfrage; Schreibrechte: require_admin_write_role
+require_admin_role = require_admin_read

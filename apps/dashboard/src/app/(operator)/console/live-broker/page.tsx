@@ -23,8 +23,8 @@ import {
   executionPathFromSystemHealth,
 } from "@/lib/execution-path-view-model";
 import { buildLiveDataSurfaceModelFromBrokerPage } from "@/lib/live-data-surface-model";
-import { gatewayFetchErrorMessage } from "@/lib/gateway-fetch-errors";
 import { getServerTranslator } from "@/lib/i18n/server-translate";
+import { userFacingBodyForFetchFailure } from "@/lib/user-facing-fetch-error";
 import { readConsoleChartPrefs } from "@/lib/chart-prefs-server";
 import {
   orderStatusCountsNonEmpty,
@@ -90,28 +90,28 @@ export default async function LiveBrokerOpsPage({
   if (rtRes.status === "fulfilled") runtimeResponse = rtRes.value;
   else
     sectionErrors.push(
-      `${t("pages.broker.sectionRuntime")}: ${gatewayFetchErrorMessage(rtRes.reason)}`,
+      `${t("pages.broker.sectionRuntime")}: ${userFacingBodyForFetchFailure(rtRes.reason, t)}`,
     );
 
   let activeResponse: LiveBrokerKillSwitchResponse | undefined;
   if (actRes.status === "fulfilled") activeResponse = actRes.value;
   else
     sectionErrors.push(
-      `${t("pages.broker.sectionKillActive")}: ${gatewayFetchErrorMessage(actRes.reason)}`,
+      `${t("pages.broker.sectionKillActive")}: ${userFacingBodyForFetchFailure(actRes.reason, t)}`,
     );
 
   let eventsResponse: LiveBrokerKillSwitchResponse | undefined;
   if (evRes.status === "fulfilled") eventsResponse = evRes.value;
   else
     sectionErrors.push(
-      `${t("pages.broker.sectionKillEvents")}: ${gatewayFetchErrorMessage(evRes.reason)}`,
+      `${t("pages.broker.sectionKillEvents")}: ${userFacingBodyForFetchFailure(evRes.reason, t)}`,
     );
 
   let auditResponse: LiveBrokerAuditResponse | undefined;
   if (audRes.status === "fulfilled") auditResponse = audRes.value;
   else
     sectionErrors.push(
-      `${t("pages.broker.sectionAudit")}: ${gatewayFetchErrorMessage(audRes.reason)}`,
+      `${t("pages.broker.sectionAudit")}: ${userFacingBodyForFetchFailure(audRes.reason, t)}`,
     );
 
   let decisionsResponse:
@@ -120,14 +120,14 @@ export default async function LiveBrokerOpsPage({
   if (decRes.status === "fulfilled") decisionsResponse = decRes.value;
   else
     sectionErrors.push(
-      `${t("pages.broker.sectionDecisions")}: ${gatewayFetchErrorMessage(decRes.reason)}`,
+      `${t("pages.broker.sectionDecisions")}: ${userFacingBodyForFetchFailure(decRes.reason, t)}`,
     );
 
   let ordersResponse: LiveBrokerOrdersResponse | undefined;
   if (ordRes.status === "fulfilled") ordersResponse = ordRes.value;
   else
     sectionErrors.push(
-      `${t("pages.broker.sectionOrders")}: ${gatewayFetchErrorMessage(ordRes.reason)}`,
+      `${t("pages.broker.sectionOrders")}: ${userFacingBodyForFetchFailure(ordRes.reason, t)}`,
     );
 
   let fillsResponse:
@@ -136,7 +136,7 @@ export default async function LiveBrokerOpsPage({
   if (filRes.status === "fulfilled") fillsResponse = filRes.value;
   else
     sectionErrors.push(
-      `${t("pages.broker.sectionFills")}: ${gatewayFetchErrorMessage(filRes.reason)}`,
+      `${t("pages.broker.sectionFills")}: ${userFacingBodyForFetchFailure(filRes.reason, t)}`,
     );
 
   let actionsResponse:
@@ -145,7 +145,7 @@ export default async function LiveBrokerOpsPage({
   if (oaRes.status === "fulfilled") actionsResponse = oaRes.value;
   else
     sectionErrors.push(
-      `${t("pages.broker.sectionOrderActions")}: ${gatewayFetchErrorMessage(oaRes.reason)}`,
+      `${t("pages.broker.sectionOrderActions")}: ${userFacingBodyForFetchFailure(oaRes.reason, t)}`,
     );
 
   const runtime: LiveBrokerRuntimeItem | null = runtimeResponse?.item ?? null;

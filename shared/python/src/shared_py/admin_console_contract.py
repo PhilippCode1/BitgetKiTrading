@@ -9,6 +9,9 @@ sind bewusst **nutzerfreundlich** (keine Entwicklersprache auf Knoepfen/Menues).
 
 Hinweis: Authentifizierung und Autorisierung (nur Philipp) implementieren die Services;
 dieses Modul liefert nur **fachliche** Konstanten und Regeln.
+
+Gateway: /v1/admin erzwingt `gateway_roles` (admin:read|admin:write) bzw. BFF
+`X-Gateway-Internal-Key` (GATEWAY_INTERNAL_API_KEY) — Kunden-Portal-JWTs erhalten 403, nicht 401.
 """
 
 from __future__ import annotations

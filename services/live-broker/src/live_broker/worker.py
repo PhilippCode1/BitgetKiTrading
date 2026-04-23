@@ -9,7 +9,7 @@ from dataclasses import asdict
 from typing import Any
 
 from shared_py.eventbus import RedisStreamBus
-from shared_py.observability import touch_worker_heartbeat
+from shared_py.observability import start_thread_periodic_heartbeat
 
 from live_broker.config import LiveBrokerSettings
 from live_broker.execution.service import LiveExecutionService
@@ -114,6 +114,7 @@ class LiveBrokerWorker:
     def run_forever(self, stop_event: threading.Event) -> None:
         streams = [self._settings.live_broker_signal_stream, *self._settings.reference_streams]
         self._stats["thread_running"] = True
+        hb_t = start_thread_periodic_heartbeat("live_broker", 8.0, stop_event)
         try:
             for stream in streams:
                 self._bus.ensure_group(stream, self._settings.live_broker_consumer_group)
@@ -143,7 +144,6 @@ class LiveBrokerWorker:
                 logger.exception("runtime recovery snapshot failed: %s", exc)
             next_reconcile_at = 0.0
             while not stop_event.is_set():
-                touch_worker_heartbeat("live_broker")
                 now = time.monotonic()
                 if now >= next_reconcile_at:
                     try:
@@ -262,4 +262,6 @@ class LiveBrokerWorker:
                 if not activity:
                     time.sleep(0.2)
         finally:
+            if hb_t.is_alive():
+                hb_t.join(timeout=2.0)
             self._stats["thread_running"] = False

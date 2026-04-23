@@ -280,6 +280,9 @@
   "tables": {
     "paperOpen": {
       "empty": "Keine offenen Positionen.",
+      "emptyTitle": "Keine offenen Positionen",
+      "emptyDescription": "Sobald im Übungs- oder Brokermodus eine Position offen ist, erscheint sie hier – mit Einstiegs- und uPnL-Angaben.",
+      "emptyNextStep": "Cockpit und Signale prüfen, ob Ausführungen laufen, oder auf den nächsten geplanten Trade warten.",
       "thSymbol": "Symbol",
       "thSide": "Seite",
       "thQty": "Menge",
@@ -293,6 +296,9 @@
     },
     "paperTrades": {
       "empty": "Keine geschlossenen Trades.",
+      "emptyTitle": "Noch keine geschlossenen Trades",
+      "emptyDescription": "Hier erscheint die Historie, sobald eine Position beendet ist.",
+      "emptyNextStep": "Offene Positionen oben prüfen oder weitere Trades abwarten; die Equity-Kurve wächst mit jeder Schließung.",
       "thClosed": "Schluss",
       "thSymbol": "Symbol",
       "thSide": "Seite",
@@ -1579,6 +1585,49 @@
       "rationaleNoTradeLead": "Aus flachen Feldern der Signalzeile abgeleitet — keine LLM-Erfindung.",
       "rationaleTradeTitle": "Kompakt: Warum genau dieser Trade?",
       "rationaleTradeLead": "Nur sinnvoll bei passender trade_action; sonst leer.",
+      "valueUnknown": "unbekannt",
+      "techUnitBps": " bps",
+      "rationaleNo": {
+        "hybridTradeAction": "Hybrid trade_action={action}",
+        "abstention": "Abstention: {detail}",
+        "rejection": "Rejection: {detail}",
+        "governorUniversal": "Governor (universal hard): {detail}",
+        "oodAlert": "OOD-Alert aktiv (Modell-/Datenkontext).",
+        "highUncertainty": "Hohe Modell-Unsicherheit ({pct} %).",
+        "leverageCap": "Hebel-Cap: {detail}",
+        "stopFragility": "Stop-Fragilität hoch ({frag}), Ausführbarkeit niedrig ({exec}).",
+        "stopOverBudget": "Stop-Distanz {dist} liegt über Budget-Cap {cap}.",
+        "stopUnderMin": "Stop-Distanz {dist} liegt unter dem minimal ausführbaren Abstand {min}.",
+        "metadataUnverified": "Instrument-Metadaten nicht verifiziert; Default ist konservativ/no-trade.",
+        "spotNoShort": "Spot-Instrument ohne natives Shorting begrenzt die Trade-Richtung.",
+        "notLiveMirrorEligible": "Signal ist nicht live-mirror-eligible; Shadow/Paper bleibt Referenzpfad.",
+        "liveBrokerBlocked": "Live-Broker blockierte die letzte Execution im Modus {mode}.",
+        "fallbackNoBranch": "Kein expliziter Trade-Zweig — Details in reasons_json / Explain prüfen."
+      },
+      "rationaleTrade": {
+        "allowTradeLine": "trade_action=allow_trade, decision_state={state}",
+        "lane": "Lane: {lane}",
+        "marketFamily": "Markt-Familie: {family}",
+        "instrumentContext": "Instrument-Kontext: product={product} margin_mode={margin}",
+        "playbook": "Playbook: {id} ({family})",
+        "regime": "Regime-State: {state}",
+        "router": "Router: {id}",
+        "routerPlaybook": "Router-Playbook: {id}",
+        "operatorGate": "Operator-Gate: Freigabe erforderlich (Lane/Policy).",
+        "exitFamily": "Exit-Familie effektiv: {primary} (Ensemble: {ensemble})",
+        "leverage": "Hebel: empfohlen {rec}, zulässig {allow}",
+        "stopFragExec": "Stop-Fragilität/Ausführbarkeit: {frag} / {exec}",
+        "leverageRationale": "Hebel-Begründung (Caps): {list}",
+        "stopBudget": "Stop: Distanz {dist}, Budget-Cap {cap}",
+        "shadowDiv": "Shadow-Divergenz: {pct} %",
+        "liveMirrorEligible": "Execution ist live-mirror-eligible.",
+        "lastExecution": "Letzte Execution: {action} ({mode})",
+        "operatorRelease": "Operator-Release liegt bereits vor.",
+        "telegram": "Telegram: {type} / {state}",
+        "liveBlockedHint": "Hinweis: Live-Execution durch Governor blockiert (Paper/Shadow können laufen).",
+        "liveBlockItem": "  Live-Block: {detail}",
+        "governorClear": "Governor: keine Live-Execution-Blocker in diesem Snapshot."
+      },
       "explainMarkdownHeading": "Langtext (Markdown)",
       "explainLayer4Aside": "Schritt 4 folgt im nächsten Panel: Live-KI nur nach manuellem Senden.",
       "badgeLiveLlm": "Live-KI (nicht gespeichert)",
@@ -2702,6 +2751,7 @@
   },
   "signalsTable": {
     "empty": "Keine Signale.",
+    "skeletonAria": "Signalliste wird geladen",
     "thTime": "Zeit",
     "thInstrument": "Instrument",
     "thTf": "Intervall",
@@ -2858,7 +2908,7 @@
   },
   "adminRules": {
     "panelTitle": "Regelwerke (Lesen; Änderung nur mit Berechtigung)",
-    "intro": "Keine Börsen- oder Zahlungsgeheimnisse im Browser. In der Produktion: NEXT_PUBLIC_ADMIN_USE_SERVER_PROXY=true und DASHBOARD_GATEWAY_AUTHORIZATION nur auf dem Server (JWT als vollständiger Authorization-Header).",
+    "intro": "Keine Börsen- oder Zahlungsgeheimnisse im Browser. Schreibzugriff nur über den Next.js-Server; die Operator-Identität steckt in DASHBOARD_GATEWAY_AUTHORIZATION (Bearer-JWT) und wird gegen GATEWAY_JWT_SECRET geprüft — nicht per öffentlichem Build-Flag steuerbar.",
     "envGatewayHeading": "Umgebungsvariablen (Gateway)",
     "rulesFromDb": "Regeln aus der Datenbank",
     "updateHeadingProxy": "Änderungen (über Server-Proxy)",
@@ -2878,7 +2928,7 @@
   "strategyStatus": {
     "panelTitle": "Lebenszyklus (Admin)",
     "disabledEnv": "Statuswechsel sind deaktiviert (NEXT_PUBLIC_ENABLE_ADMIN=false).",
-    "disabledGateway": "Nicht freigeschaltet: gültige Server-Anmeldung am Gateway fehlt. Prüfe NEXT_PUBLIC_ADMIN_USE_SERVER_PROXY und DASHBOARD_GATEWAY_AUTHORIZATION.",
+    "disabledGateway": "Nicht freigeschaltet: gültige serverseitige Operator-JWT (DASHBOARD_GATEWAY_AUTHORIZATION) mit admin:-Rollen fehlt oder ist abgelaufen. Prüfe Mint und GATEWAY_JWT_SECRET.",
     "errNoToken": "Kein Admin-Token: bitte zuerst unter Admin ein Token hinterlegen.",
     "errHttp": "Anfrage fehlgeschlagen (HTTP {status}).",
     "msgStatusSet": "Status auf {status} gesetzt.",
@@ -2890,6 +2940,10 @@
     "actionRetire": "Retire"
   },
   "ui": {
+    "emptyState": {
+      "resetFilters": "Filter zurücksetzen",
+      "tableLoading": "Tabelle wird geladen"
+    },
     "refreshHint": "Beim nächsten Seitenaufruf oder nach „Aktualisieren“ im Browser versuchen wir es automatisch erneut. Live-Ansichten nutzen zusätzlich Polling oder Echtzeit-Updates, sobald die Verbindung steht.",
     "llmAnswer": {
       "authorityAria": "Hinweis zur Handlungsfreigabe",
@@ -3005,7 +3059,8 @@
       "noDetail": "(Keine zusätzliche Meldung.)",
       "digestPrefix": "Referenz:",
       "home": "Zur Startseite",
-      "openConsole": "Zur Konsole"
+      "openConsole": "Zur Konsole",
+      "openCustomerPortal": "Zum Kundenportal"
     },
     "bool": {
       "yes": "ja",
@@ -3671,5 +3726,19 @@
         "suggestedSafetyQuestion": "Wir haben eskalierte offene Monitor-Alerts. Bitte eine priorisierte Ursachenhypothese und welche Service-Logs ich zuerst öffnen soll."
       }
     }
+  },
+  "customerPortal": {
+    "metaTitle": "Kundenportal | Modul Mate",
+    "nav": {
+      "aria": "Hauptnavigation Kundenportal",
+      "dashboard": "Dashboard",
+      "contract": "Mein Vertrag",
+      "billing": "Abrechnung",
+      "performance": "Performance"
+    },
+    "overviewTitle": "Übersicht",
+    "overviewLead": "Kurzüberblick — getrennt von der Operator-Konsole; Anbindung an Ihre Vertrags- und Nutzungsdaten folgt.",
+    "placeholder": "Diese Seite ist vorerst ein Platzhalter.",
+    "backToProduct": "Zur Produktseite"
   }
 }

@@ -1,11 +1,19 @@
 # Beispiel: Alertmanager inhibit_rules — vor Deploy Label in eurer Prometheus-Installation pruefen.
-# Ziel: weniger „Lawine“, wenn mehrere Alerts dieselbe Datenfluss-Ursache haben.
+# Ziel: weniger „Lawine“, wenn mehrere Alerts dieselbe Datenfluss-Ursache haben; P0-Priorisierung
+# (alert_tier=p0) in routing.yml nutzen, hier nur Duplikat-Reduktion.
 #
 # Einbindung: in alertmanager.yml unter top-level `inhibit_rules:` mergen oder diese Datei per include.
 #
 # Hinweis: `equal` muss zu den tatsaechlichen Alert-Labels passen (job, cluster, env, …).
 
 inhibit_rules:
+  - source_matchers:
+      - alertname = "LiveBrokerDegraded"
+    target_matchers:
+      - alertname = "ReconcileLagHigh"
+    equal: ["category"]
+    # P0-Blocker schlaegt mit Reconcile ueberein: nur ein aktives Ticket (category=trading).
+
   - source_matchers:
       - alertname = "DataStaleCandles1m"
     target_matchers:

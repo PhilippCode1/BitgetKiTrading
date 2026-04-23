@@ -52,9 +52,8 @@ export type PublicEnv = Readonly<{
   enableTelegramStatus: boolean;
   livePollIntervalMs: number;
   liveSsePingSec: number;
+  /** Globales Feature-Flag; Sichtbarkeit /console/admin: serverseitig (getOperatorSession, nicht public ENV). */
   enableAdmin: boolean;
-  /** Admin-Mutationen nur ueber Next.js-Route-Handler (ohne Token im Browser). */
-  useServerAdminProxy: boolean;
   /** Spiegelt Gateway COMMERCIAL_TELEGRAM_REQUIRED_FOR_CONSOLE (nur UI-Gate). */
   commercialTelegramRequiredForConsole: boolean;
 }>;
@@ -86,14 +85,6 @@ export const publicEnv: PublicEnv = Object.freeze({
     15,
   ),
   enableAdmin: readPublicBool(process.env.NEXT_PUBLIC_ENABLE_ADMIN, true),
-  /**
-   * Build-Zeit-Hinweis fuer UI/Diagnose. /v1-JSON und sensible Admin-Pfade laufen serverseitig
-   * ueber `/api/dashboard/*` (kein DASHBOARD_GATEWAY_AUTHORIZATION im Client-Bundle).
-   */
-  useServerAdminProxy: readPublicBool(
-    process.env.NEXT_PUBLIC_ADMIN_USE_SERVER_PROXY,
-    true,
-  ),
   commercialTelegramRequiredForConsole: readPublicBool(
     process.env.NEXT_PUBLIC_COMMERCIAL_TELEGRAM_REQUIRED_FOR_CONSOLE,
     false,

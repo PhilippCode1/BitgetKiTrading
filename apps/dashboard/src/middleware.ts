@@ -6,6 +6,9 @@ import {
   ONBOARDING_COOKIE_NAME,
 } from "@/lib/dashboard-prefs";
 import { isLocale, LOCALE_COOKIE_NAME } from "@/lib/i18n/config";
+import { hasAdminSessionFromDashboardEnv } from "@/lib/operator-jwt";
+import { PORTAL_BASE } from "@/lib/console-paths";
+import { getDashboardPersonaFromRequest } from "@/lib/portal-persona";
 
 function pathnameIsStaticAsset(pathname: string): boolean {
   return /\.(ico|png|jpg|jpeg|gif|webp|svg|txt|xml|webmanifest)$/i.test(
@@ -22,7 +25,7 @@ function isLocaleBypassPath(pathname: string): boolean {
   return false;
 }
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   if (isLocaleBypassPath(pathname)) {
     return NextResponse.next();
@@ -30,6 +33,13 @@ export function middleware(request: NextRequest) {
 
   const raw = request.cookies.get(LOCALE_COOKIE_NAME)?.value;
   if (isLocale(raw)) {
+    const persona = await getDashboardPersonaFromRequest(request);
+    if (persona === "customer" && pathname.startsWith("/console")) {
+      const url = request.nextUrl.clone();
+      url.pathname = PORTAL_BASE;
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
     if (
       pathname.startsWith("/console") &&
       !isOnboardingSettled(request.cookies.get(ONBOARDING_COOKIE_NAME)?.value)
@@ -38,6 +48,19 @@ export function middleware(request: NextRequest) {
       url.pathname = "/onboarding";
       url.searchParams.set("returnTo", `${pathname}${search}`);
       return NextResponse.redirect(url);
+    }
+    if (pathname.startsWith("/console/admin")) {
+      const adminFeatureOff =
+        (process.env.NEXT_PUBLIC_ENABLE_ADMIN ?? "true").trim().toLowerCase() ===
+        "false";
+      if (
+        adminFeatureOff ||
+        !(await hasAdminSessionFromDashboardEnv())
+      ) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/console";
+        return NextResponse.redirect(url);
+      }
     }
     return NextResponse.next();
   }

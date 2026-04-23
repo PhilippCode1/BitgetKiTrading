@@ -25,12 +25,21 @@ function wrap(ui: ReactElement) {
 describe("Paper-Tabellen (i18n)", () => {
   it("OpenPositionsTable: Leerzustand auf Deutsch", () => {
     wrap(<OpenPositionsTable positions={[]} />);
-    expect(screen.getByText("Keine offenen Positionen.")).toBeInTheDocument();
+    expect(screen.getByText("Keine offenen Positionen")).toBeInTheDocument();
   });
 
   it("TradesTable: Leerzustand auf Deutsch", () => {
     wrap(<TradesTable trades={[]} />);
-    expect(screen.getByText("Keine geschlossenen Trades.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Noch keine geschlossenen Trades"),
+    ).toBeInTheDocument();
+  });
+
+  it("OpenPositionsTable: Skeleton während isLoading", () => {
+    wrap(<OpenPositionsTable isLoading positions={[]} />);
+    expect(
+      screen.getByRole("status", { name: "Tabelle wird geladen" }),
+    ).toBeInTheDocument();
   });
 
   it("OpenPositionsTable: Mobile-Kartenliste bei Daten", () => {

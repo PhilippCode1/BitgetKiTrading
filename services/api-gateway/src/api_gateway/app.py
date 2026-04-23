@@ -32,7 +32,10 @@ from shared_py.observability import (
 
 from api_gateway.auth import require_sensitive_auth
 from api_gateway.config import get_gateway_settings
-from api_gateway.gateway_readiness_core import READINESS_CONTRACT_VERSION, gateway_readiness_core_parts_raw
+from api_gateway.gateway_readiness_core import (
+    READINESS_CONTRACT_VERSION,
+    gateway_readiness_core_parts_resilient,
+)
 from api_gateway.errors import http_error_envelope, shape_http_exception
 from api_gateway.gateway_read_envelope import merge_read_envelope
 from api_gateway.rate_limit import GatewayRateLimitMiddleware
@@ -358,30 +361,51 @@ def create_app() -> FastAPI:
     @app.get("/ready")
     def ready() -> dict[str, object]:
         s = get_gateway_settings()
-        parts = dict(gateway_readiness_core_parts_raw())
-        parts = append_peer_readiness_checks(
-            parts,
-            s.readiness_require_urls_raw,
-            timeout_sec=float(s.readiness_peer_timeout_sec),
-        )
-        ok, details = merge_ready_details(parts)
-        peer_n = sum(1 for k in parts if k.startswith("upstream_"))
-        out: dict[str, object] = {
-            "ready": ok,
-            "role": "readiness",
-            "service": "api-gateway",
-            "readiness_contract_version": READINESS_CONTRACT_VERSION,
-            "checks": details,
-            "summary": {
-                "core_postgres_connect": parts["postgres"][0],
-                "core_postgres_schema": parts["postgres_schema"][0],
-                "core_redis": parts["redis"][0],
-                "peer_checks_configured": peer_n,
-            },
-        }
-        if not s.production:
-            out["app_env"] = s.app_env
-        return out
+        try:
+            parts = dict(gateway_readiness_core_parts_resilient())
+            parts = append_peer_readiness_checks(
+                parts,
+                s.readiness_require_urls_raw,
+                timeout_sec=float(s.readiness_peer_timeout_sec),
+            )
+            ok, details = merge_ready_details(parts)
+            peer_n = sum(1 for k in parts if k.startswith("upstream_"))
+            out: dict[str, object] = {
+                "ready": ok,
+                "role": "readiness",
+                "service": "api-gateway",
+                "readiness_contract_version": READINESS_CONTRACT_VERSION,
+                "checks": details,
+                "summary": {
+                    "core_postgres_connect": parts.get("postgres", (False, ""))[0],
+                    "core_postgres_schema": parts.get("postgres_schema", (False, ""))[0],
+                    "core_redis": parts.get("redis", (False, ""))[0],
+                    "peer_checks_configured": peer_n,
+                },
+            }
+            if not s.production:
+                out["app_env"] = s.app_env
+            return out
+        except Exception as exc:  # pragma: no cover - harte Entkopplung: kein 500er bei Hiccup
+            logger.exception("readiness probe failed: %s", exc)
+            return {
+                "ready": False,
+                "role": "readiness",
+                "service": "api-gateway",
+                "readiness_contract_version": READINESS_CONTRACT_VERSION,
+                "checks": {
+                    "readiness_unhandled": {
+                        "ok": False,
+                        "detail": str(exc)[:400],
+                    }
+                },
+                "summary": {
+                    "core_postgres_connect": False,
+                    "core_postgres_schema": False,
+                    "core_redis": False,
+                    "peer_checks_configured": 0,
+                },
+            }
 
     @app.get("/")
     def root() -> dict[str, str]:

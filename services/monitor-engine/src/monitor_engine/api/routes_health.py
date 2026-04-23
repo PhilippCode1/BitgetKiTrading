@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import logging
 import time
 from typing import Any
 
 from fastapi import APIRouter, Request
+
+logger = logging.getLogger("monitor_engine.api.health")
 
 from shared_py.observability import (
     append_peer_readiness_checks,
@@ -23,7 +26,8 @@ def health(request: Request) -> dict[str, Any]:
     scheduler = request.app.state.scheduler
     stats = scheduler.stats_snapshot()
     now_ms = int(time.time() * 1000)
-    stale_after_ms = max(15_000, int(settings.monitor_interval_sec) * 3 * 1000)
+    sm = float(settings.monitor_scheduler_stale_multiplier)
+    stale_after_ms = int(max(15_000, int(settings.monitor_interval_sec) * 3 * 1000) * sm)
     last_run_ts_ms = stats.get("last_run_ts_ms")
     scheduler_stale = (
         True
@@ -38,6 +42,22 @@ def health(request: Request) -> dict[str, Any]:
     status = "ok"
     if scheduler_stale or last_error:
         status = "degraded"
+        if scheduler_stale and last_run_ts_ms is not None:
+            age = now_ms - int(last_run_ts_ms)
+            logger.warning(
+                "monitor-engine /health scheduler deemed stale: tick_age_ms=%s > stale_after_ms=%s "
+                "(last_run_ts_ms=%s monitor_interval_sec=%s stale_multiplier=%s)",
+                age,
+                stale_after_ms,
+                last_run_ts_ms,
+                settings.monitor_interval_sec,
+                sm,
+            )
+        if last_error:
+            logger.warning(
+                "monitor-engine /health degraded: last_error=%r",
+                last_error,
+            )
     return {
         "status": status,
         "service": "monitor-engine",
@@ -65,7 +85,8 @@ def ready(request: Request) -> dict[str, Any]:
     boot_age_ms = now_ms - boot_ts_ms
     grace_ms = int(settings.monitor_readiness_boot_grace_ms)
     in_boot_grace = boot_age_ms < grace_ms
-    stale_after_ms = max(15_000, int(settings.monitor_interval_sec) * 3 * 1000)
+    sm = float(settings.monitor_scheduler_stale_multiplier)
+    stale_after_ms = int(max(15_000, int(settings.monitor_interval_sec) * 3 * 1000) * sm)
     last_run_ts_ms = stats.get("last_run_ts_ms")
     last_err = stats.get("last_error")
     if last_run_ts_ms is not None:
@@ -79,6 +100,19 @@ def ready(request: Request) -> dict[str, Any]:
     else:
         scheduler_ok = False
         sched_detail = "scheduler has not completed a run after boot_grace"
+    if not scheduler_ok and last_run_ts_ms is not None and not in_boot_grace:
+        age = now_ms - int(last_run_ts_ms)
+        if age > stale_after_ms:
+            logger.warning(
+                "monitor-engine /ready scheduler not ok: tick_age_ms=%s > stale_after_ms=%s "
+                "(last_run_ts_ms=%s interval=%s mult=%s detail=%s)",
+                age,
+                stale_after_ms,
+                last_run_ts_ms,
+                settings.monitor_interval_sec,
+                sm,
+                sched_detail,
+            )
     try:
         eb_ok = bool(request.app.state.bus.ping())
         eb_detail = "ok"

@@ -39,13 +39,15 @@ def alerts_from_service_checks(results: list[ServiceCheckResult]) -> list[AlertS
             (r.service_name, r.check_type),
             35 if sev == "critical" else 55,
         )
+        d = r.details
+        ex = f" {d.get('degraded_reason')!s}" if isinstance(d, dict) and d.get("degraded_reason") else ""
         out.append(
             AlertSpec(
                 alert_key=key,
                 severity=sev,
                 title=f"Service {r.service_name} {r.check_type}",
-                message=f"Status {r.status} Latenz {r.latency_ms}ms",
-                details=r.details,
+                message=(f"Status {r.status} Latenz {r.latency_ms}ms{ex}")[:1_200],
+                details=d,
                 priority=pri,
             )
         )
@@ -89,13 +91,18 @@ def alerts_from_freshness(rows: list[FreshnessRow]) -> list[AlertSpec]:
         key = f"freshness:{row.datapoint}"
         sev = "warn" if row.status == "warn" else "critical"
         pri = 25 if sev == "critical" else 45
+        d2 = {**row.details, "age_ms": row.age_ms, "last_ts_ms": row.last_ts_ms}
+        if isinstance(d2.get("stale_classify"), str):
+            reason = f' status={row.status} reason={d2["stale_classify"]}'
+        else:
+            reason = f" status={row.status}"
         out.append(
             AlertSpec(
                 alert_key=key,
                 severity=sev,
                 title=f"Datenfrische {row.datapoint}",
-                message=f"age_ms={row.age_ms} last_ts_ms={row.last_ts_ms}",
-                details={**row.details, "age_ms": row.age_ms, "last_ts_ms": row.last_ts_ms},
+                message=f"age_ms={row.age_ms} last_ts_ms={row.last_ts_ms}{reason}",
+                details=d2,
                 priority=pri,
             )
         )

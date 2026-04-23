@@ -12,6 +12,19 @@ from typing import Any
 
 from shared_py.observability.execution_forensic import redact_nested_mapping
 
+# Bekannte ENV-/Log-Zeilen: vollstaendiger Wert -> *** (Bitget, JWT, BFF, …)
+_REDACT_FULL_ASSIGN: re.Pattern[str] = re.compile(
+    r"(?im)^(\s*)(?P<k>"
+    r"BITGET_(?:API_SECRET|API_KEY|API_PASSPHRASE|SECRET_KEY)|"
+    r"OPENAI_API_KEY|"
+    r"STRIPE_(?:SECRET_KEY|WEBHOOK_SECRET|RESTRICTED_KEY)|"
+    r"PAYMENT_STRIPE_SECRET_KEY|PAYMENT_STRIPE_WEBHOOK_SECRET|"
+    r"INTERNAL_API_KEY|GATEWAY_JWT_SECRET|JWT_SECRET|SECRET_KEY|ENCRYPTION_KEY|"
+    r"ADMIN_TOKEN|DASHBOARD_GATEWAY_AUTHORIZATION"
+    r")\s*=\s*[^\r\n#]+"
+)
+
+
 # Heuristiken — kein Ersatz fuer dedizierte Secret-Scanner (Gitleaks etc.).
 _TEXT_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"sk-(?:live|proj|test)-[A-Za-z0-9_\-]{20,}"), "[REDACTED_OPENAI_KEY]"),
@@ -25,6 +38,7 @@ _TEXT_PATTERNS: list[tuple[re.Pattern[str], str]] = [
 
 def scrub_plaintext(text: str, *, max_len: int = 120_000) -> str:
     s = text if len(text) <= max_len else text[: max_len - 20] + "…[truncated]"
+    s = _REDACT_FULL_ASSIGN.sub(r"\1\g<k>=***", s)
     for pat, repl in _TEXT_PATTERNS:
         s = pat.sub(repl, s)
     return s

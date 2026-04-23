@@ -1,8 +1,10 @@
 /**
  * Deterministische Kurzbegruendungen aus Signal-Persistenz (keine LLM-Inferenz).
+ * Alle Nutzersicht-Strings ueber pages.signalsDetail.rationale* (i18n).
  */
 
-import { formatDistancePctField } from "@/lib/format";
+import { formatDistancePctField, formatNum } from "@/lib/format";
+import type { TranslateFn } from "@/lib/user-facing-fetch-error";
 
 export type SignalRationaleInput = {
   trade_action?: string | null;
@@ -55,32 +57,57 @@ function asStringArray(v: unknown): string[] {
     .filter(Boolean);
 }
 
-export function summarizeNoTradeReasons(s: SignalRationaleInput): string[] {
+function tNo(
+  t: TranslateFn,
+  key: string,
+  vars?: Record<string, string | number | boolean>,
+) {
+  return t(`pages.signalsDetail.rationaleNo.${key}`, vars);
+}
+
+function tTr(
+  t: TranslateFn,
+  key: string,
+  vars?: Record<string, string | number | boolean>,
+) {
+  return t(`pages.signalsDetail.rationaleTrade.${key}`, vars);
+}
+
+export function summarizeNoTradeReasons(
+  s: SignalRationaleInput,
+  t: TranslateFn,
+): string[] {
   const lines: string[] = [];
   const ta = (s.trade_action ?? "").toLowerCase();
   if (ta === "do_not_trade" || ta === "no_trade" || ta === "abstain") {
-    lines.push(`Hybrid trade_action=${s.trade_action ?? "—"}`);
+    lines.push(
+      tNo(t, "hybridTradeAction", {
+        action: s.trade_action ?? "—",
+      }),
+    );
   }
   const abs = asStringArray(s.abstention_reasons_json);
-  for (const x of abs.slice(0, 8)) lines.push(`Abstention: ${x}`);
+  for (const x of abs.slice(0, 8)) lines.push(tNo(t, "abstention", { detail: x }));
   const rej = asStringArray(s.rejection_reasons_json);
-  for (const x of rej.slice(0, 8)) lines.push(`Rejection: ${x}`);
+  for (const x of rej.slice(0, 8)) lines.push(tNo(t, "rejection", { detail: x }));
   const uni = asStringArray(s.governor_universal_hard_block_reasons_json);
   for (const x of uni.slice(0, 8))
-    lines.push(`Governor (universal hard): ${x}`);
+    lines.push(tNo(t, "governorUniversal", { detail: x }));
   if (s.model_ood_alert) {
-    lines.push("OOD-Alert aktiv (Modell-/Datenkontext).");
+    lines.push(tNo(t, "oodAlert"));
   }
   if (
     typeof s.model_uncertainty_0_1 === "number" &&
     s.model_uncertainty_0_1 >= 0.55
   ) {
     lines.push(
-      `Hohe Modell-Unsicherheit (${(s.model_uncertainty_0_1 * 100).toFixed(0)} %).`,
+      tNo(t, "highUncertainty", {
+        pct: (s.model_uncertainty_0_1 * 100).toFixed(0),
+      }),
     );
   }
   const lev = asStringArray(s.leverage_cap_reasons_json);
-  for (const x of lev.slice(0, 6)) lines.push(`Hebel-Cap: ${x}`);
+  for (const x of lev.slice(0, 6)) lines.push(tNo(t, "leverageCap", { detail: x }));
   if (
     typeof s.stop_fragility_0_1 === "number" &&
     s.stop_fragility_0_1 >= 0.65 &&
@@ -88,7 +115,10 @@ export function summarizeNoTradeReasons(s: SignalRationaleInput): string[] {
     s.stop_executability_0_1 <= 0.45
   ) {
     lines.push(
-      `Stop-Fragilität hoch (${s.stop_fragility_0_1.toFixed(2)}), Ausführbarkeit niedrig (${s.stop_executability_0_1.toFixed(2)}).`,
+      tNo(t, "stopFragility", {
+        frag: s.stop_fragility_0_1.toFixed(2),
+        exec: s.stop_executability_0_1.toFixed(2),
+      }),
     );
   }
   if (
@@ -97,7 +127,10 @@ export function summarizeNoTradeReasons(s: SignalRationaleInput): string[] {
     s.stop_distance_pct > s.stop_budget_max_pct_allowed
   ) {
     lines.push(
-      `Stop-Distanz ${formatDistancePctField(s.stop_distance_pct)} liegt über Budget-Cap ${formatDistancePctField(s.stop_budget_max_pct_allowed)}.`,
+      tNo(t, "stopOverBudget", {
+        dist: formatDistancePctField(s.stop_distance_pct),
+        cap: formatDistancePctField(s.stop_budget_max_pct_allowed),
+      }),
     );
   }
   if (
@@ -106,130 +139,167 @@ export function summarizeNoTradeReasons(s: SignalRationaleInput): string[] {
     s.stop_distance_pct < s.stop_min_executable_pct
   ) {
     lines.push(
-      `Stop-Distanz ${formatDistancePctField(s.stop_distance_pct)} liegt unter dem minimal ausführbaren Abstand ${formatDistancePctField(s.stop_min_executable_pct)}.`,
+      tNo(t, "stopUnderMin", {
+        dist: formatDistancePctField(s.stop_distance_pct),
+        min: formatDistancePctField(s.stop_min_executable_pct),
+      }),
     );
   }
   if (s.instrument_metadata_verified === false) {
-    lines.push(
-      "Instrument-Metadaten nicht verifiziert; Default ist konservativ/no-trade.",
-    );
+    lines.push(tNo(t, "metadataUnverified"));
   }
   if (
     s.instrument_supports_long_short === false &&
     (s.market_family ?? "").toLowerCase() === "spot"
   ) {
-    lines.push(
-      "Spot-Instrument ohne natives Shorting begrenzt die Trade-Richtung.",
-    );
+    lines.push(tNo(t, "spotNoShort"));
   }
   if (s.live_mirror_eligible === false) {
-    lines.push(
-      "Signal ist nicht live-mirror-eligible; Shadow/Paper bleibt Referenzpfad.",
-    );
+    lines.push(tNo(t, "notLiveMirrorEligible"));
   }
   if (s.latest_execution_decision_action === "blocked") {
     lines.push(
-      `Live-Broker blockierte die letzte Execution im Modus ${s.latest_execution_runtime_mode ?? "—"}.`,
+      tNo(t, "liveBrokerBlocked", {
+        mode: s.latest_execution_runtime_mode ?? "—",
+      }),
     );
   }
   if (lines.length === 0 && ta !== "allow_trade") {
-    lines.push(
-      "Kein expliziter Trade-Zweig — Details in reasons_json / Explain prüfen.",
-    );
+    lines.push(tNo(t, "fallbackNoBranch"));
   }
   return lines;
 }
 
-export function summarizeTradeRationale(s: SignalRationaleInput): string[] {
+export function summarizeTradeRationale(
+  s: SignalRationaleInput,
+  t: TranslateFn,
+): string[] {
   const lines: string[] = [];
   const ta = (s.trade_action ?? "").toLowerCase();
   if (ta === "allow_trade") {
     lines.push(
-      `trade_action=allow_trade, decision_state=${s.decision_state ?? "—"}`,
+      tTr(t, "allowTradeLine", {
+        state: s.decision_state ?? "—",
+      }),
     );
   } else {
     return lines;
   }
-  if (s.meta_trade_lane) lines.push(`Lane: ${s.meta_trade_lane}`);
-  if (s.market_family) lines.push(`Markt-Familie: ${s.market_family}`);
+  if (s.meta_trade_lane) lines.push(tTr(t, "lane", { lane: s.meta_trade_lane }));
+  if (s.market_family) lines.push(tTr(t, "marketFamily", { family: s.market_family }));
   if (s.instrument_product_type || s.instrument_margin_account_mode) {
     lines.push(
-      `Instrument-Kontext: product=${s.instrument_product_type ?? "—"} margin_mode=${s.instrument_margin_account_mode ?? "—"}`,
+      tTr(t, "instrumentContext", {
+        product: s.instrument_product_type ?? "—",
+        margin: s.instrument_margin_account_mode ?? "—",
+      }),
     );
   }
   if (s.playbook_family || s.playbook_id) {
     lines.push(
-      `Playbook: ${s.playbook_id ?? "—"} (${s.playbook_family ?? "—"})`,
+      tTr(t, "playbook", {
+        id: s.playbook_id ?? "—",
+        family: s.playbook_family ?? "—",
+      }),
     );
   }
-  if (s.regime_state) lines.push(`Regime-State: ${s.regime_state}`);
-  if (s.specialist_router_id) lines.push(`Router: ${s.specialist_router_id}`);
+  if (s.regime_state) lines.push(tTr(t, "regime", { state: s.regime_state }));
+  if (s.specialist_router_id)
+    lines.push(tTr(t, "router", { id: s.specialist_router_id }));
   if (s.router_selected_playbook_id)
-    lines.push(`Router-Playbook: ${s.router_selected_playbook_id}`);
+    lines.push(
+      tTr(t, "routerPlaybook", { id: s.router_selected_playbook_id }),
+    );
   if (s.router_operator_gate_required === true) {
-    lines.push("Operator-Gate: Freigabe erforderlich (Lane/Policy).");
+    lines.push(tTr(t, "operatorGate"));
   }
   if (s.exit_family_effective_primary || s.exit_family_primary_ensemble) {
     lines.push(
-      `Exit-Familie effektiv: ${s.exit_family_effective_primary ?? "—"} (Ensemble: ${s.exit_family_primary_ensemble ?? "—"})`,
+      tTr(t, "exitFamily", {
+        primary: s.exit_family_effective_primary ?? "—",
+        ensemble: s.exit_family_primary_ensemble ?? "—",
+      }),
     );
   }
   if (
     typeof s.allowed_leverage === "number" ||
     typeof s.recommended_leverage === "number"
   ) {
-    lines.push(
-      `Hebel: empfohlen ${s.recommended_leverage ?? "—"}x, frei ${s.allowed_leverage ?? "—"}x`,
-    );
+    const rec =
+      s.recommended_leverage == null
+        ? "—"
+        : `${formatNum(s.recommended_leverage, 0)}×`;
+    const allow =
+      s.allowed_leverage == null
+        ? "—"
+        : `${formatNum(s.allowed_leverage, 0)}×`;
+    lines.push(tTr(t, "leverage", { rec, allow }));
   }
   if (
     typeof s.stop_fragility_0_1 === "number" ||
     typeof s.stop_executability_0_1 === "number"
   ) {
     lines.push(
-      `Stop-Fragilität/Ausführbarkeit: ${s.stop_fragility_0_1?.toFixed(2) ?? "—"} / ${s.stop_executability_0_1?.toFixed(2) ?? "—"}`,
+      tTr(t, "stopFragExec", {
+        frag: s.stop_fragility_0_1?.toFixed(2) ?? "—",
+        exec: s.stop_executability_0_1?.toFixed(2) ?? "—",
+      }),
     );
   }
   const lev = asStringArray(s.leverage_cap_reasons_json);
   if (lev.length)
-    lines.push(`Hebel-Begründung (Caps): ${lev.slice(0, 4).join("; ")}`);
+    lines.push(
+      tTr(t, "leverageRationale", {
+        list: lev.slice(0, 4).join("; "),
+      }),
+    );
   if (
     typeof s.stop_distance_pct === "number" ||
     typeof s.stop_budget_max_pct_allowed === "number"
   ) {
     lines.push(
-      `Stop: Distanz ${formatDistancePctField(s.stop_distance_pct ?? null)}, Budget-Cap ${formatDistancePctField(s.stop_budget_max_pct_allowed ?? null)}`,
+      tTr(t, "stopBudget", {
+        dist: formatDistancePctField(s.stop_distance_pct ?? null),
+        cap: formatDistancePctField(s.stop_budget_max_pct_allowed ?? null),
+      }),
     );
   }
   if (typeof s.shadow_divergence_0_1 === "number") {
     lines.push(
-      `Shadow-Divergenz: ${(s.shadow_divergence_0_1 * 100).toFixed(1)} %`,
+      tTr(t, "shadowDiv", {
+        pct: (s.shadow_divergence_0_1 * 100).toFixed(1),
+      }),
     );
   }
   if (s.live_mirror_eligible === true) {
-    lines.push("Execution ist live-mirror-eligible.");
+    lines.push(tTr(t, "liveMirrorEligible"));
   }
   if (s.latest_execution_decision_action) {
     lines.push(
-      `Letzte Execution: ${s.latest_execution_decision_action} (${s.latest_execution_runtime_mode ?? "—"})`,
+      tTr(t, "lastExecution", {
+        action: s.latest_execution_decision_action,
+        mode: s.latest_execution_runtime_mode ?? "—",
+      }),
     );
   }
   if (s.operator_release_exists) {
-    lines.push("Operator-Release liegt bereits vor.");
+    lines.push(tTr(t, "operatorRelease"));
   }
   if (s.telegram_alert_type || s.telegram_delivery_state) {
     lines.push(
-      `Telegram: ${s.telegram_alert_type ?? "—"} / ${s.telegram_delivery_state ?? "—"}`,
+      tTr(t, "telegram", {
+        type: s.telegram_alert_type ?? "—",
+        state: s.telegram_delivery_state ?? "—",
+      }),
     );
   }
   const liveBlocks = asStringArray(s.live_execution_block_reasons_json);
   if (liveBlocks.length) {
-    lines.push(
-      "Hinweis: Live-Execution durch Governor blockiert (Paper/Shadow können laufen).",
-    );
-    for (const x of liveBlocks.slice(0, 4)) lines.push(`  Live-Block: ${x}`);
+    lines.push(tTr(t, "liveBlockedHint"));
+    for (const x of liveBlocks.slice(0, 4))
+      lines.push(tTr(t, "liveBlockItem", { detail: x }));
   } else if (s.live_execution_clear_for_real_money === true) {
-    lines.push("Governor: keine Live-Execution-Blocker in diesem Snapshot.");
+    lines.push(tTr(t, "governorClear"));
   }
   return lines;
 }

@@ -7,6 +7,8 @@ from typing import Any
 
 from redis import Redis
 
+from shared_py.redis_client import create_sync_connection_pool, sync_redis_from_pool
+
 from .envelope import EVENT_STREAMS, EventEnvelope, STREAM_DLQ
 
 
@@ -30,12 +32,14 @@ class RedisStreamBus:
         ttl = int(os.environ.get("EVENTBUS_DEDUPE_TTL_SEC", "0"))
         block_ms = int(os.environ.get("EVENTBUS_DEFAULT_BLOCK_MS", "2000"))
         count = int(os.environ.get("EVENTBUS_DEFAULT_COUNT", "50"))
-        redis_client = Redis.from_url(
+        pool = create_sync_connection_pool(
             url,
             decode_responses=True,
+            max_connections=32,
             socket_connect_timeout=5,
             socket_timeout=5,
         )
+        redis_client = sync_redis_from_pool(pool, health_check_interval=30)
         return cls(
             redis=redis_client,
             dedupe_ttl_sec=ttl,
@@ -52,12 +56,14 @@ class RedisStreamBus:
         default_block_ms: int = 2000,
         default_count: int = 50,
     ) -> "RedisStreamBus":
-        redis_client = Redis.from_url(
+        pool = create_sync_connection_pool(
             redis_url,
             decode_responses=True,
+            max_connections=32,
             socket_connect_timeout=5,
             socket_timeout=5,
         )
+        redis_client = sync_redis_from_pool(pool, health_check_interval=30)
         return cls(
             redis=redis_client,
             dedupe_ttl_sec=dedupe_ttl_sec,
@@ -69,7 +75,16 @@ class RedisStreamBus:
         return bool(self.redis.ping())
 
     def close(self) -> None:
-        self.redis.close()
+        try:
+            self.redis.close()
+        except Exception:  # pragma: no cover
+            pass
+        pl = getattr(self.redis, "connection_pool", None)
+        if pl is not None:
+            try:
+                pl.disconnect()
+            except Exception:  # pragma: no cover
+                pass
 
     def publish(self, stream: str, env: EventEnvelope) -> str:
         _validate_stream(stream)

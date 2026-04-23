@@ -9,15 +9,24 @@ Dashboard /api/health, aggregiertes /v1/system/health und Lesepfade
 Auth: Wenn das Gateway JWT fuer /v1/* verlangt, setze in der Shell
 DASHBOARD_GATEWAY_AUTHORIZATION="Bearer <jwt>" (gleicher Wert wie im Dashboard-Container).
 Lokal mit API_AUTH_MODE=none reicht oft ohne Header (siehe .env.local.example).
+
+Exit-Codes: 0 = alles gruen, 1 = degradiert/Timeout. Startup: bis RC_HEALTH_STARTUP_BUDGET_SEC
+mit exponentiellen Backoff Retries, damit fluechtige Neustarts (Redis, Gateway) Zeit haben.
+--stress: 10 Laeufe im 2s-Abstand; 1, wenn ein Lauf scheitert (Flapping wird in stderr klar benannt).
 """
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import sys
 import time
 import urllib.error
 import urllib.request
+
+STRESS_ROUNDS_DEFAULT = 10
+STRESS_INTERVAL_SEC = 2.0
+STARTUP_BUDGET_SEC_DEFAULT = 60.0
 
 
 def _gateway_auth_headers() -> dict[str, str]:
@@ -69,17 +78,26 @@ def _json(
     return data
 
 
+def _format_gateway_ready_failures(checks: dict) -> list[str]:
+    """API-Gateway liefert checks meist als dict[str, {ok, detail}]."""
+    failed: list[str] = []
+    for key, value in checks.items():
+        if isinstance(value, dict) and value.get("ok") is False:
+            detail = str(value.get("detail", "failed"))[:200]
+            failed.append(f"{key}: {detail}")
+        elif isinstance(value, (list, tuple)) and value and not bool(value[0]):
+            detail = value[1] if len(value) > 1 else "failed"
+            failed.append(f"{key}:{detail}")
+    return failed
+
+
 def _check_gateway_ready(url: str) -> None:
     p = _json(url)
     if p.get("ready") is not True:
         raise SystemExit(f"FAIL gateway /ready ready!=true payload={p!r}")
     checks = p.get("checks") or {}
     if isinstance(checks, dict):
-        failed: list[str] = []
-        for key, value in checks.items():
-            if isinstance(value, (list, tuple)) and value and not bool(value[0]):
-                detail = value[1] if len(value) > 1 else "failed"
-                failed.append(f"{key}:{detail}")
+        failed = _format_gateway_ready_failures(checks)
         if failed:
             raise SystemExit("FAIL gateway /ready checks: " + "; ".join(failed))
     print(f"OK  gateway /ready ({url})")
@@ -185,26 +203,135 @@ def _run_once(gw: str, dash: str) -> None:
         print(f"OK  {label} ({gw}{path})")
 
 
-def main() -> int:
-    gw = os.environ.get("API_GATEWAY_URL", "http://127.0.0.1:8000").rstrip("/")
-    dash = os.environ.get("DASHBOARD_URL", "http://127.0.0.1:3000").rstrip("/")
+def _env_float(name: str, default: float) -> float:
+    raw = (os.environ.get(name) or "").strip()
+    if not raw:
+        return default
+    try:
+        return float(raw)
+    except ValueError:
+        return default
 
-    attempts = max(1, int(os.environ.get("RC_HEALTH_ATTEMPTS", "6")))
-    base_sleep = max(1, int(os.environ.get("RC_HEALTH_BASE_SLEEP_SEC", "3")))
 
-    for attempt in range(1, attempts + 1):
+def _run_stress(
+    gw: str,
+    dash: str,
+    rounds: int,
+    interval_sec: float,
+) -> int:
+    n_ok = 0
+    last_err: str | None = None
+    for r in range(1, int(rounds) + 1):
         try:
             _run_once(gw, dash)
-            print("OK  rc_health_edge: alle Pruefungen gruen (warnings in system/health sind Hinweise, kein Fehler).")
+        except (SystemExit, OSError) as e:
+            last_err = str(e) if e else None
+            print(
+                f"RETRY/FEHLER rc_health_edge --stress {r}/{rounds}: {e!s}",
+                file=sys.stderr,
+            )
+        except Exception as e:  # pragma: no cover - Sicherheitsnetz
+            last_err = str(e)
+            print(
+                f"RETRY/FEHLER rc_health_edge --stress {r}/{rounds}: {e!s}",
+                file=sys.stderr,
+            )
+        else:
+            n_ok += 1
+            print(f"OK  rc_health_edge --stress {r}/{rounds}", file=sys.stderr)
+        if r < int(rounds):
+            time.sleep(max(0.1, float(interval_sec)))
+    if n_ok == int(rounds):
+        print(
+            f"OK  rc_health_edge: --stress {n_ok}/{rounds} alle gruen (stabil).",
+            file=sys.stderr,
+        )
+        return 0
+    if 0 < n_ok < int(rounds):
+        print(
+            f"FEHLER rc_health_edge: --stress FLAPPING/instabil (ok={n_ok}/{rounds}, zuletzt: {last_err!r})",
+            file=sys.stderr,
+        )
+    else:
+        print(
+            f"FEHLER rc_health_edge: --stress dauerhaft rot (0/{rounds} ok, zuletzt: {last_err!r})",
+            file=sys.stderr,
+        )
+    return 1
+
+
+def _run_with_startup_backoff(
+    gw: str,
+    dash: str,
+    budget_sec: float,
+) -> int:
+    t0 = time.time()
+    delay = 0.5
+    attempt = 0
+    last_err: BaseException | None = None
+    while time.time() - t0 < float(budget_sec):
+        attempt += 1
+        try:
+            _run_once(gw, dash)
+            print(
+                "OK  rc_health_edge: alle Pruefungen gruen (warnings in system/health "
+                "sind Hinweise, kein Fehler).",
+            )
             return 0
         except SystemExit as e:
-            if attempt >= attempts:
-                _print_smoke_diagnose(gw, dash, e)
-                raise
-            wait = min(25, base_sleep * attempt)
-            print(f"RETRY rc_health_edge {attempt}/{attempts} in {wait}s ... ({e})", file=sys.stderr)
-            time.sleep(wait)
-    raise RuntimeError("rc_health_edge: keine Versuche ausgefuehrt")
+            last_err = e
+        except OSError as e:
+            last_err = e
+        remain = float(budget_sec) - (time.time() - t0)
+        if remain <= 0.1:
+            break
+        w = min(delay, remain, 8.0)
+        print(
+            f"RETRY rc_health_edge (startup budget {float(budget_sec):.0f}s) attempt={attempt} "
+            f"sleep={w:.2f}s remain={remain:.1f}s err={last_err!s}",
+            file=sys.stderr,
+        )
+        time.sleep(w)
+        delay = min(8.0, max(0.5, delay * 1.5))
+    _print_smoke_diagnose(gw, dash, last_err or RuntimeError("unbekannter fehler"))
+    return 1
+
+
+def _parse_args(argv: list[str] | None) -> argparse.Namespace:
+    p = argparse.ArgumentParser(description="Edge Release-Candidate Health (Quality Gate).")
+    p.add_argument(
+        "--stress",
+        action="store_true",
+        help=(
+            f"Stabilitaet: {STRESS_ROUNDS_DEFAULT} volle Durchlaeufe, "
+            f"Abstand {STRESS_INTERVAL_SEC:.0f}s; Exit 0 nur wenn alle gruen (Flapping erkennbar in stderr)"
+        ),
+    )
+    p.add_argument(
+        "--stress-rounds",
+        type=int,
+        default=STRESS_ROUNDS_DEFAULT,
+        help=f"Anzahl Laeufe fuer --stress (Default {STRESS_ROUNDS_DEFAULT})",
+    )
+    p.add_argument(
+        "--stress-interval-sec",
+        type=float,
+        default=STRESS_INTERVAL_SEC,
+        help="Pause zwischen --stress Laeufen",
+    )
+    return p.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = _parse_args(argv if argv is not None else sys.argv[1:])
+    gw = os.environ.get("API_GATEWAY_URL", "http://127.0.0.1:8000").rstrip("/")
+    dash = os.environ.get("DASHBOARD_URL", "http://127.0.0.1:3000").rstrip("/")
+    if args.stress:
+        return _run_stress(
+            gw, dash, rounds=int(args.stress_rounds), interval_sec=float(args.stress_interval_sec)
+        )
+    budget = _env_float("RC_HEALTH_STARTUP_BUDGET_SEC", STARTUP_BUDGET_SEC_DEFAULT)
+    return _run_with_startup_backoff(gw, dash, budget)
 
 
 def _print_smoke_diagnose(gw: str, dash: str, err: BaseException) -> None:
@@ -234,4 +361,4 @@ def _print_smoke_diagnose(gw: str, dash: str, err: BaseException) -> None:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(main(sys.argv[1:]))

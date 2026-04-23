@@ -13,6 +13,18 @@ class RetryableLLMError(Exception):
         self.status_code = status_code
 
 
+class LLMProviderOfflineError(Exception):
+    """
+    OpenAI-Circuit OPEN: sofort 503/Detail fuer BFF (i18n message_key).
+    """
+
+    def to_http_detail(self) -> dict[str, str]:
+        return {
+            "code": "LLM_PROVIDER_OFFLINE",
+            "message_key": "llm.error.provider_offline",
+        }
+
+
 class GuardrailViolation(ValueError):
     """Modell-Output besteht Schema, verletzt aber Governance (Policy / Leak-Heuristik)."""
 

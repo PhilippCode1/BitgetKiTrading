@@ -34,3 +34,28 @@ def test_path_traversal_rejected(knowledge_dir: Path, tmp_path: Path) -> None:
     (tmp_path / "secrets.txt").write_text("secret", encoding="utf-8")
     kr = KnowledgeRetriever(knowledge_dir=tmp_path, max_chunks=2, max_excerpt_chars=100)
     assert kr.retrieve("analyst_hypotheses", "playbook") == []
+
+
+def test_operator_readonly_fills_gaps() -> None:
+    from llm_orchestrator.knowledge import retrieval as r
+
+    s = r.format_operator_readonly_pro_symbol(
+        {
+            "symbol": "BTCUSDT",
+            "news": [],
+            "orderbook": {"bids": [[1.0, 0.1]]},
+        },
+    )
+    assert "BTCUSDT" in s
+    assert r.PLACEHOLDER_NO_NEWS in s
+    assert "1.0" in s
+    assert r.PLACEHOLDER_NO_CHART in s
+    assert r.PLACEHOLDER_NO_SIGNALS in s
+
+
+def test_operator_readonly_not_dict() -> None:
+    from llm_orchestrator.knowledge import retrieval as r
+
+    s = r.format_operator_readonly_pro_symbol(None)  # type: ignore[arg-type]
+    assert r.PLACEHOLDER_NO_NEWS in s
+    assert "ungueltiger" in s.lower() or "kein json" in s.lower()

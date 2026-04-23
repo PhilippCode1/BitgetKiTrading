@@ -18,7 +18,10 @@
       "const": "none",
       "description": "LLM erklaert nur; keine Order- oder Parameterhoheit."
     },
-    "explanation_de": { "type": "string" },
+    "explanation_de": {
+      "type": "string",
+      "description": "Erklaerung; bei technischem Struktur-Fallback kann der Text eine klar formulierte Fehlersituation widerspiegeln."
+    },
     "referenced_artifacts_de": {
       "type": "array",
       "maxItems": 16,

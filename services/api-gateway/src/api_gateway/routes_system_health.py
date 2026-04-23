@@ -10,6 +10,7 @@ from typing import Annotated, Any
 
 import psycopg
 import psycopg.errors
+import redis
 from config.execution_tier import build_execution_tier_payload
 from fastapi import APIRouter, Depends
 from fastapi.responses import Response
@@ -137,9 +138,14 @@ def _redis_streams_length() -> dict[str, Any]:
     if not rurl:
         return out
     try:
-        import redis
+        from shared_py.redis_client import get_or_create_sync_pooled_client
 
-        r = redis.Redis.from_url(rurl, socket_connect_timeout=2, socket_timeout=2)
+        r = get_or_create_sync_pooled_client(
+            rurl,
+            role="gateway_system_health_streams",
+            decode_responses=True,
+            max_connections=16,
+        )
         if not r.ping():
             out["redis"] = "error"
             return out

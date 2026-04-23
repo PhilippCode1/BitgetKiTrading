@@ -33,7 +33,13 @@ def _bad_value(val: str | None) -> bool:
     if not t:
         return True
     u = t.upper()
-    if "<SET_ME>" in u or u == "SET_ME" or u == "CHANGE_ME":
+    if (
+        "<SET_ME>" in u
+        or "<CHANGEME>" in u
+        or u == "SET_ME"
+        or u == "CHANGE_ME"
+        or u == "CHANGEME"
+    ):
         return True
     return False
 

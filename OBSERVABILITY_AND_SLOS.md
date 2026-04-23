@@ -14,7 +14,7 @@ Dieses Dokument ist der **Einstieg fuer Betrieb und On-Call**: welche Ketten zae
 | **Datenfluss & Pipeline**        | `data_freshness_seconds`, `redis_stream_lag`, `signal_pipeline_lag_p95_seconds_1h`                                                   | Monitor-Engine-Prometheus, siehe `docs/observability_slos.md`                                  |
 | **Hintergrundjobs / Heartbeats** | `worker_heartbeat_timestamp` (von `touch_worker_heartbeat` in HTTP-Middleware und Loops)                                             | `shared_py.observability.metrics`                                                              |
 | **KI (Operator Explain)**        | Latenz Gateway→Orchestrator (Logs `llm forward …`), HTTP 5xx-Rate auf `POST /v1/llm/operator/explain`, Orchestrator `/ready` (Redis) | `api_gateway/llm_orchestrator_forward.py`, `llm-orchestrator`, BFF `operator-explain/route.ts` |
-| **Fehlerhaeufigkeit**            | `http_errors_total`, `http_request_latency_seconds` je Service-Label; Gateway-Audit bei sensiblen Routen                             | Prometheus pro `/metrics`                                                                      |
+| **Fehlerhaeufigkeit**            | `http_request_errors_total` (4xx/5xx je Route-Gruppe), `http_errors_total` (5xx), `http_request_duration_seconds`; Gateway-Audit bei sensiblen Routen | Prometheus pro `/metrics`                                                                 |
 | **Pipeline-Verzoegerung / CI**   | (ausserhalb Laufzeit-App) eigene CI-Metriken/Alerts; im Stack: siehe Signal-Pipeline-SLIs                                            | `docs/observability_slos.md`                                                                   |
 
 ---
@@ -50,7 +50,7 @@ Die folgenden Ziele sind **technische Orientierung** fuer Alert-Tuning; harte Sc
 | SLO                            | Ziel                                                    | Hinweis                                                        |
 | ------------------------------ | ------------------------------------------------------- | -------------------------------------------------------------- |
 | **System-Health Latenz**       | p95 < 3 s unter Last (anpassen)                         | Histogram am Gateway; bei Timeout Runbook: DB/Redis/Downstream |
-| **API p95 je kritische Route** | Team-spezifisch; Startwert p95 < 5 s fuer Standard-GETs | `http_request_latency_seconds`                                 |
+| **API p95 je kritische Route** | Team-spezifisch; Startwert p95 < 5 s fuer Standard-GETs | `http_request_duration_seconds` (Labels `service`, `http_route`) |
 
 ### 3.3 Datenfrische & Pipeline
 
@@ -83,8 +83,20 @@ Vollstaendige SLI-Liste: **`docs/observability_slos.md`**.
 
 ## 4. Alerts und Eskalation (Muster)
 
-1. **Quelle:** Prometheus-Regeln unter `infra/observability/prometheus-alerts.yml` (Namen wie `DataStaleCandles1m`, `RedisStreamLagCritical`, …).
-2. **Routing:** Alertmanager → On-Call-Kanal (Slack/PagerDuty) — **in Ihrer Infrastruktur** verdrahten (nicht im Anwendungsrepo).
+### 4.0 P0-Blocker (Seite/Notruf) vs. P1
+
+| Prioritaet | Label in den Regeln | Beispiel-Namen in `prometheus-alerts.yml` | Typische Reaktion |
+| ---------- | -------------------- | ------------------------------------------- | ----------------- |
+| **P0**     | `alert_tier: p0`, `severity: critical` | `GatewayHighErrorRate`, `LiveBrokerDegraded`, `MarketStreamLag` | Sofort, On-Call, Runbook oeffnen |
+| **P1**     | meist `severity: warning` (ohne p0)    | `RedisStreamLagHigh`, `DataStaleSignals`, … | Reaktion im Dienst, Gruppierung im Alertmanager |
+
+P0-Regeln stehen in der Gruppe `p0_production_blocker`; alle weiteren `groups` sind fachlich P1/P2 – die Dringlichkeit ergibt sich aus `severity: critical` vs. `warning` und eurer Alertmanager-Route.
+
+1. **Quelle:** Prometheus-Regeln unter `infra/observability/prometheus-alerts.yml` (P0 oben, danach u. a. `DataStaleCandles1m`, `RedisStreamLagCritical`, …).
+2. **Routing (Slack / PagerDuty):** In **alertmanager.yml** (nicht im Anwendungsrepo) **Receiver** definieren und an **route** haengen. Typisches Muster:
+   - **PagerDuty (kritische Seite):** In PagerDuty eine **Services**-Integration anlegen (Events **v2** API) und **Integration Key** (Routing Key) oder globale **Events API**-URL kopieren. In Alertmanager einen `receiver` mit `pagerduty_configs` anlegen, z. B. `service_key: '<from-pagerduty>'` bzw. `routing_key` je nach API-Version, und eine **Sub-Route** mit `matchers: [ alert_tier = "p0" ]` oder `severity = "critical"`, damit nur produktionskritische Alerts seiten. Allgemeinere `warning`-Alerts in einen zweiten Receiver (Slack) routen.
+   - **Slack:** In Slack einen **Incoming Webhook** (oder die neuere App mit OAuth) erzeugen; in Alertmanager `slack_configs` mit `api_url: '<webhook-url>'` und sinnvollem `channel` bzw. `title` / `text` setzen. Optional **separate** `route`-Knoten: z. B. `match: alert_tier: p0` → dedizierter High-Priority-Kanal, `severity: warning` → Team-Kanal. **Hinweis:** Webhook-URLs und Keys nur aus Secret-Store (Kubernetes Secret, Vault) beziehen, **nicht** im Git ablegen.
+   - **Inhibit-Regeln:** `infra/observability/alertmanager-inhibit-rules.example.yml` in eure `inhibit_rules` mergen, damit P0- und Folge-Alarme nicht doppelt fluten (z. B. `LiveBrokerDegraded` vs. `ReconcileLagHigh` bei gleicher `category`).
 3. **Eskalation (empfohlen):**
    - **L1 (15 min):** Pruefung `GET /ready` Gateway, `GET /v1/system/health` mit gueltigem JWT, letzte Deploys.
    - **L2:** Engpass-Service anhand `checks` und Metrik-Label; Log-Zeilen mit `corr_request_id` zum Vorfallzeitpunkt.
@@ -100,7 +112,7 @@ Vollstaendige SLI-Liste: **`docs/observability_slos.md`**.
 
 - **Browser/Operator:** Dashboard-Fehlermeldung notieren (oft `detail.code`).
 - **Gateway:** `X-Request-ID` aus Response-Header (KI: auch nach BFF-Antwort).
-- **Globale Sicht:** Grafana: Spike bei `http_errors_total` oder spezifischen Gauges (Freshness, Lag).
+- **Globale Sicht:** Grafana: Spike bei `http_request_errors_total` (5xx) bzw. `http_errors_total` oder spezifischen Gauges (Freshness, Lag).
 
 ### Schritt B: Wo ist es kaputt?
 

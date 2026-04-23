@@ -280,6 +280,9 @@
   "tables": {
     "paperOpen": {
       "empty": "No open positions.",
+      "emptyTitle": "No open positions",
+      "emptyDescription": "Once a position is open in paper or broker mode, it will appear here with entry and uPnL fields.",
+      "emptyNextStep": "Check the cockpit and signals to see whether executions are running, or wait for the next intended trade.",
       "thSymbol": "Symbol",
       "thSide": "Side",
       "thQty": "Qty",
@@ -293,6 +296,9 @@
     },
     "paperTrades": {
       "empty": "No closed trades.",
+      "emptyTitle": "No closed trades yet",
+      "emptyDescription": "Your history will show here once a position is closed.",
+      "emptyNextStep": "Check open positions above, or wait for more trades; the equity curve updates with each close.",
       "thClosed": "Closed",
       "thSymbol": "Symbol",
       "thSide": "Side",
@@ -1356,6 +1362,49 @@
       "rationaleNoTradeLead": "Derived from flat signal-row fields — not LLM-invented.",
       "rationaleTradeTitle": "Compact: why this trade?",
       "rationaleTradeLead": "Only meaningful for the matching trade_action; otherwise empty.",
+      "valueUnknown": "unknown",
+      "techUnitBps": " bps",
+      "rationaleNo": {
+        "hybridTradeAction": "Hybrid trade_action={action}",
+        "abstention": "Abstention: {detail}",
+        "rejection": "Rejection: {detail}",
+        "governorUniversal": "Governor (universal hard): {detail}",
+        "oodAlert": "OOD alert active (model/data context).",
+        "highUncertainty": "High model uncertainty ({pct} %).",
+        "leverageCap": "Leverage cap: {detail}",
+        "stopFragility": "High stop fragility ({frag}), low executability ({exec}).",
+        "stopOverBudget": "Stop distance {dist} is above the budget cap {cap}.",
+        "stopUnderMin": "Stop distance {dist} is below the minimum executable distance {min}.",
+        "metadataUnverified": "Instrument metadata not verified; defaults stay conservative / no-trade.",
+        "spotNoShort": "Spot without native shorting limits trade direction options.",
+        "notLiveMirrorEligible": "Signal is not live-mirror eligible; shadow/paper remain the reference path.",
+        "liveBrokerBlocked": "The live broker blocked the last execution in mode {mode}.",
+        "fallbackNoBranch": "No explicit trade branch — check reasons_json / explain for details."
+      },
+      "rationaleTrade": {
+        "allowTradeLine": "trade_action=allow_trade, decision_state={state}",
+        "lane": "Lane: {lane}",
+        "marketFamily": "Market family: {family}",
+        "instrumentContext": "Instrument context: product={product} margin_mode={margin}",
+        "playbook": "Playbook: {id} ({family})",
+        "regime": "Regime state: {state}",
+        "router": "Router: {id}",
+        "routerPlaybook": "Router playbook: {id}",
+        "operatorGate": "Operator gate: release required (lane/policy).",
+        "exitFamily": "Exit family effective: {primary} (ensemble: {ensemble})",
+        "leverage": "Leverage: recommended {rec}, allowed {allow}",
+        "stopFragExec": "Stop fragility / executability: {frag} / {exec}",
+        "leverageRationale": "Leverage rationale (caps): {list}",
+        "stopBudget": "Stop: distance {dist}, budget cap {cap}",
+        "shadowDiv": "Shadow divergence: {pct} %",
+        "liveMirrorEligible": "Execution is live-mirror eligible.",
+        "lastExecution": "Last execution: {action} ({mode})",
+        "operatorRelease": "Operator release already on file.",
+        "telegram": "Telegram: {type} / {state}",
+        "liveBlockedHint": "Note: live execution blocked by governor (paper/shadow may still run).",
+        "liveBlockItem": "  Live block: {detail}",
+        "governorClear": "Governor: no live-execution blockers in this snapshot."
+      },
       "explainMarkdownHeading": "Long copy (Markdown)",
       "explainLayer4Aside": "Step 4 is in the next panel: live AI only after you send a request.",
       "badgeLiveLlm": "Live AI (not auto-saved)",
@@ -2699,6 +2748,7 @@
   },
   "signalsTable": {
     "empty": "No signals.",
+    "skeletonAria": "Loading signal list",
     "thTime": "Time",
     "thInstrument": "Instrument",
     "thTf": "Interval",
@@ -2855,7 +2905,7 @@
   },
   "adminRules": {
     "panelTitle": "Rule sets (read-only; edits need permission)",
-    "intro": "No exchange or payment secrets in the browser. In production use NEXT_PUBLIC_ADMIN_USE_SERVER_PROXY=true and keep DASHBOARD_GATEWAY_AUTHORIZATION server-side only (full Authorization header with JWT).",
+    "intro": "No exchange or payment secrets in the browser. Writes go through the Next.js server only; operator identity comes from DASHBOARD_GATEWAY_AUTHORIZATION (Bearer JWT) verified with GATEWAY_JWT_SECRET — not via a public build flag.",
     "envGatewayHeading": "Environment (gateway)",
     "rulesFromDb": "Rules from database",
     "updateHeadingProxy": "Updates (server proxy)",
@@ -2875,7 +2925,7 @@
   "strategyStatus": {
     "panelTitle": "Lifecycle (admin)",
     "disabledEnv": "Status changes are disabled (NEXT_PUBLIC_ENABLE_ADMIN=false).",
-    "disabledGateway": "Not enabled: missing or invalid server-to-gateway authentication. Check NEXT_PUBLIC_ADMIN_USE_SERVER_PROXY and DASHBOARD_GATEWAY_AUTHORIZATION.",
+    "disabledGateway": "Not enabled: missing, invalid, or expired server-side operator JWT (DASHBOARD_GATEWAY_AUTHORIZATION) with admin roles. Check mint and GATEWAY_JWT_SECRET.",
     "errNoToken": "No admin token: set one under Admin first.",
     "errHttp": "Request failed (HTTP {status}).",
     "msgStatusSet": "Status set to {status}.",
@@ -2887,6 +2937,10 @@
     "actionRetire": "Retire"
   },
   "ui": {
+    "emptyState": {
+      "resetFilters": "Reset filters",
+      "tableLoading": "Loading table"
+    },
     "refreshHint": "We will retry automatically on the next page load or when you refresh. Live views also poll or use real-time updates once the connection is back.",
     "llmAnswer": {
       "authorityAria": "Notice about trading authority",
@@ -3002,7 +3056,8 @@
       "noDetail": "(No additional message.)",
       "digestPrefix": "Reference:",
       "home": "Back to home",
-      "openConsole": "Open console"
+      "openConsole": "Open console",
+      "openCustomerPortal": "Customer portal"
     },
     "bool": {
       "yes": "yes",
@@ -3668,5 +3723,19 @@
         "suggestedSafetyQuestion": "We have escalated open monitor alerts. Prioritised root-cause hypothesis and which service logs to open first?"
       }
     }
+  },
+  "customerPortal": {
+    "metaTitle": "Customer portal | Modul Mate",
+    "nav": {
+      "aria": "Customer portal main navigation",
+      "dashboard": "Dashboard",
+      "contract": "My agreement",
+      "billing": "Billing",
+      "performance": "Performance"
+    },
+    "overviewTitle": "Overview",
+    "overviewLead": "A short introduction — separate from the operator console; data APIs will follow.",
+    "placeholder": "This page is a placeholder for now.",
+    "backToProduct": "Back to product home"
   }
 }

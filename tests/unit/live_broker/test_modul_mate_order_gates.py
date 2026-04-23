@@ -138,9 +138,11 @@ def test_live_broker_require_commercial_gates_without_modul_mate_flag(monkeypatc
     repo = MagicMock()
     svc = LiveBrokerOrderService(s, repo, MagicMock(), bus=None)  # type: ignore[arg-type]
     conn = MagicMock()
-    conn.execute.return_value.fetchone.return_value = _row(
-        admin_live=True, contract=True, subscription=True
-    )
+    ex_g = MagicMock()
+    ex_c = MagicMock()
+    ex_g.fetchone.return_value = _row(admin_live=True, contract=True, subscription=True)
+    ex_c.fetchone.return_value = (1,)
+    conn.execute.side_effect = [ex_g, ex_c]
     with patch(
         "live_broker.orders.service.psycopg.connect",
         return_value=_pg_context(conn),
@@ -169,7 +171,10 @@ def test_modul_mate_gate_missing_row(monkeypatch: pytest.MonkeyPatch) -> None:
     call_kw = repo.record_audit_trail.call_args[0][0]
     assert call_kw["category"] == "commercial_gate"
     assert call_kw["action"] == "denied"
-    assert call_kw["details_json"]["reason"] == "tenant_modul_mate_gates_missing"
+    assert (
+        call_kw["details_json"].get("policy_violation_reason")
+        == "tenant_modul_mate_gates_missing"
+    )
 
 
 def test_modul_mate_live_blocked_for_demo_only_gates(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -181,7 +186,11 @@ def test_modul_mate_live_blocked_for_demo_only_gates(monkeypatch: pytest.MonkeyP
     )
     svc = LiveBrokerOrderService(s, repo, MagicMock(), bus=None)  # type: ignore[arg-type]
     conn = MagicMock()
-    conn.execute.return_value.fetchone.return_value = _row(admin_live=False, contract=True)
+    ex_g = MagicMock()
+    ex_c = MagicMock()
+    ex_g.fetchone.return_value = _row(admin_live=False, contract=True)
+    ex_c.fetchone.return_value = (1,)
+    conn.execute.side_effect = [ex_g, ex_c]
     with patch(
         "live_broker.orders.service.psycopg.connect",
         return_value=_pg_context(conn),
@@ -193,7 +202,7 @@ def test_modul_mate_live_blocked_for_demo_only_gates(monkeypatch: pytest.MonkeyP
     assert str(ei.value) == "modul_mate_live_trading_not_permitted"
     repo.record_audit_trail.assert_called_once()
     assert (
-        repo.record_audit_trail.call_args[0][0]["details_json"]["policy_reason"]
+        repo.record_audit_trail.call_args[0][0]["details_json"]["policy_violation_reason"]
         == "live_trading_not_permitted"
     )
 
@@ -206,14 +215,48 @@ def test_modul_mate_live_ok_when_fully_granted(monkeypatch: pytest.MonkeyPatch) 
     )
     svc = _service(s)
     conn = MagicMock()
-    conn.execute.return_value.fetchone.return_value = _row(
-        admin_live=True, contract=True, subscription=True
-    )
+    ex_g = MagicMock()
+    ex_c = MagicMock()
+    ex_g.fetchone.return_value = _row(admin_live=True, contract=True, subscription=True)
+    ex_c.fetchone.return_value = (1,)
+    conn.execute.side_effect = [ex_g, ex_c]
     with patch(
         "live_broker.orders.service.psycopg.connect",
         return_value=_pg_context(conn),
     ):
         svc._assert_modul_mate_policy_allows_exchange_submit(allow_safety_bypass=False)
+
+
+def test_modul_mate_live_blocked_without_tenant_contract_admin_complete(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """LIVE: Gates ok, aber kein tenant_contract mit admin_review_complete -> policy_blocked."""
+    repo = MagicMock()
+    s = _settings(
+        monkeypatch,
+        MODUL_MATE_GATE_ENFORCEMENT="true",
+        BITGET_DEMO_ENABLED="false",
+    )
+    svc = LiveBrokerOrderService(s, repo, MagicMock(), bus=None)  # type: ignore[arg-type]
+    conn = MagicMock()
+    ex_g = MagicMock()
+    ex_c = MagicMock()
+    ex_g.fetchone.return_value = _row(admin_live=True, contract=True, subscription=True)
+    ex_c.fetchone.return_value = None
+    conn.execute.side_effect = [ex_g, ex_c]
+    with patch(
+        "live_broker.orders.service.psycopg.connect",
+        return_value=_pg_context(conn),
+    ):
+        with pytest.raises(BitgetRestError) as ei:
+            svc._assert_modul_mate_policy_allows_exchange_submit(allow_safety_bypass=False)
+    assert "no_active_commercial_contract" in str(ei.value)
+    assert ei.value.classification == "policy_blocked"
+    repo.record_audit_trail.assert_called_once()
+    assert (
+        repo.record_audit_trail.call_args[0][0]["details_json"]["policy_violation_reason"]
+        == "no_active_commercial_contract"
+    )
 
 
 def test_modul_mate_demo_ok_for_seed_like_row(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -251,6 +294,6 @@ def test_modul_mate_demo_blocked_when_no_demo_mode(monkeypatch: pytest.MonkeyPat
     assert str(ei.value) == "modul_mate_demo_trading_not_permitted"
     repo.record_audit_trail.assert_called_once()
     assert (
-        repo.record_audit_trail.call_args[0][0]["details_json"]["policy_reason"]
+        repo.record_audit_trail.call_args[0][0]["details_json"]["policy_violation_reason"]
         == "demo_trading_not_permitted"
     )

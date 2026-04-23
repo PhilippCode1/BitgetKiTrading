@@ -11,8 +11,9 @@ from uuid import UUID, uuid4
 import psycopg
 from psycopg.rows import dict_row
 from shared_py.billing_wallet import fetch_prepaid_balance_list_usd, prepaid_allows_new_trade
-from shared_py.modul_mate_db_gates import fetch_tenant_modul_mate_gates
+from shared_py.modul_mate_db_gates import assert_execution_allowed, fetch_tenant_modul_mate_gates
 from shared_py.product_policy import (
+    ExecutionPolicyViolationError,
     demo_trading_allowed,
     live_trading_allowed,
     order_placement_permissions,
@@ -165,77 +166,104 @@ class LiveBrokerOrderService:
                 message="commercial_gates_require_database_url",
                 retryable=False,
             )
-        with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
-            gates = fetch_tenant_modul_mate_gates(conn, tenant_id=tid)
-        if gates is None:
+        mode = "DEMO" if self._settings.bitget_demo_enabled else "LIVE"
+        try:
+            with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
+                assert_execution_allowed(conn, tenant_id=tid, mode=mode)
+        except ExecutionPolicyViolationError as pe:
+            self._modul_mate_violation_audit(
+                exc=pe, tenant_id=tid, bitget_demo_enabled=self._settings.bitget_demo_enabled
+            )
+            if pe.reason == "tenant_modul_mate_gates_missing":
+                raise BitgetRestError(
+                    classification="policy_blocked",
+                    message=(
+                        f"modul_mate_gates_missing: kein Eintrag fuer tenant_id={tid!r} "
+                        "in app.tenant_modul_mate_gates"
+                    ),
+                    retryable=False,
+                ) from pe
+            if pe.reason == "no_active_commercial_contract" and mode == "LIVE":
+                raise BitgetRestError(
+                    classification="policy_blocked",
+                    message=(
+                        f"no_active_commercial_contract: fehlender oder nicht "
+                        f"abgeschlossener contract_workflow fuer tenant_id={tid!r} (LIVE)"
+                    ),
+                    retryable=False,
+                ) from pe
+            if mode == "DEMO":
+                raise BitgetRestError(
+                    classification="policy_blocked",
+                    message="modul_mate_demo_trading_not_permitted",
+                    retryable=False,
+                ) from pe
+            raise BitgetRestError(
+                classification="policy_blocked",
+                message="modul_mate_live_trading_not_permitted",
+                retryable=False,
+            ) from pe
+
+    def _modul_mate_violation_audit(
+        self,
+        *,
+        exc: ExecutionPolicyViolationError,
+        tenant_id: str,
+        bitget_demo_enabled: bool,
+    ) -> None:
+        dsn = (self._settings.database_url or "").strip()
+        if not dsn:
+            return
+        try:
+            with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=3) as conn:
+                gates = fetch_tenant_modul_mate_gates(conn, tenant_id=tenant_id)
+        except Exception as exc_db:
             self._record_audit(
                 category="commercial_gate",
                 action="denied",
                 severity="critical",
                 scope="tenant",
-                scope_key=tid,
+                scope_key=tenant_id,
                 source="live-broker",
                 internal_order_id=None,
                 symbol=None,
                 details={
-                    "reason": "tenant_modul_mate_gates_missing",
-                    "tenant_id": tid,
-                    "bitget_demo_enabled": self._settings.bitget_demo_enabled,
+                    "reason": "audit_snapshot_failed",
+                    "tenant_id": tenant_id,
+                    "policy_violation_reason": exc.reason,
+                    "err": str(exc_db)[:200],
                 },
             )
-            raise BitgetRestError(
-                classification="policy_blocked",
-                message=(
-                    f"modul_mate_gates_missing: kein Eintrag fuer tenant_id={tid!r} "
-                    "in app.tenant_modul_mate_gates"
-                ),
-                retryable=False,
-            )
-        perms = order_placement_permissions(gates)
-        gate_snapshot = {
-            "tenant_id": tid,
-            "gates": asdict(gates),
-            "can_place_demo_orders": perms.can_place_demo_orders,
-            "can_place_live_orders": perms.can_place_live_orders,
-            "commercial_execution_mode": perms.commercial_execution_mode.value,
-            "bitget_demo_enabled": self._settings.bitget_demo_enabled,
-        }
-        if self._settings.bitget_demo_enabled:
-            if not demo_trading_allowed(gates):
-                self._record_audit(
-                    category="commercial_gate",
-                    action="denied",
-                    severity="critical",
-                    scope="tenant",
-                    scope_key=tid,
-                    source="live-broker",
-                    internal_order_id=None,
-                    symbol=None,
-                    details={**gate_snapshot, "policy_reason": "demo_trading_not_permitted"},
-                )
-                raise BitgetRestError(
-                    classification="policy_blocked",
-                    message="modul_mate_demo_trading_not_permitted",
-                    retryable=False,
-                )
+            return
+        if gates is None:
+            gate_snapshot = {
+                "reason": "tenant_modul_mate_gates_missing",
+                "policy_violation_reason": exc.reason,
+                "tenant_id": tenant_id,
+                "bitget_demo_enabled": bitget_demo_enabled,
+            }
         else:
-            if not live_trading_allowed(gates):
-                self._record_audit(
-                    category="commercial_gate",
-                    action="denied",
-                    severity="critical",
-                    scope="tenant",
-                    scope_key=tid,
-                    source="live-broker",
-                    internal_order_id=None,
-                    symbol=None,
-                    details={**gate_snapshot, "policy_reason": "live_trading_not_permitted"},
-                )
-                raise BitgetRestError(
-                    classification="policy_blocked",
-                    message="modul_mate_live_trading_not_permitted",
-                    retryable=False,
-                )
+            perms = order_placement_permissions(gates)
+            gate_snapshot = {
+                "tenant_id": tenant_id,
+                "gates": asdict(gates),
+                "can_place_demo_orders": perms.can_place_demo_orders,
+                "can_place_live_orders": perms.can_place_live_orders,
+                "commercial_execution_mode": perms.commercial_execution_mode.value,
+                "bitget_demo_enabled": bitget_demo_enabled,
+                "policy_violation_reason": exc.reason,
+            }
+        self._record_audit(
+            category="commercial_gate",
+            action="denied",
+            severity="critical",
+            scope="tenant",
+            scope_key=tenant_id,
+            source="live-broker",
+            internal_order_id=None,
+            symbol=None,
+            details=gate_snapshot,
+        )
 
     def create_order(
         self,

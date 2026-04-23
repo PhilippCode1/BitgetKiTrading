@@ -48,6 +48,8 @@ export function SignalDetailTechnicalCollapsible({
 }: Props) {
   const tm = (key: string) => t(`pages.signalsDetail.techMetrics.${key}`);
   const tf = (key: string) => t(`pages.signalsDetail.techFields.${key}`);
+  const bps = t("pages.signalsDetail.techUnitBps");
+  const unknownLabel = t("pages.signalsDetail.valueUnknown");
 
   const oodDisplay = detail.model_ood_alert
     ? t("pages.signalsDetail.techOodValueAlert", {
@@ -65,7 +67,8 @@ export function SignalDetailTechnicalCollapsible({
   const operatorRelease =
     detail.operator_release_exists === true
       ? t("pages.signalsDetail.techOperatorReleaseYes", {
-          source: detail.operator_release_source ?? "unknown",
+          source:
+            detail.operator_release_source?.trim() || unknownLabel,
         })
       : detail.operator_release_exists === false
         ? t("pages.signalsDetail.boolNo")
@@ -108,21 +111,21 @@ export function SignalDetailTechnicalCollapsible({
             <div>
               {detail.expected_return_bps == null
                 ? "—"
-                : `${formatNum(detail.expected_return_bps, 1)} bps`}
+                : `${formatNum(detail.expected_return_bps, 1)}${bps}`}
             </div>
           </TechRow>
           <TechRow label={tm("expMae")}>
             <div>
               {detail.expected_mae_bps == null
                 ? "—"
-                : `${formatNum(detail.expected_mae_bps, 1)} bps`}
+                : `${formatNum(detail.expected_mae_bps, 1)}${bps}`}
             </div>
           </TechRow>
           <TechRow label={tm("expMfe")}>
             <div>
               {detail.expected_mfe_bps == null
                 ? "—"
-                : `${formatNum(detail.expected_mfe_bps, 1)} bps`}
+                : `${formatNum(detail.expected_mfe_bps, 1)}${bps}`}
             </div>
           </TechRow>
           <TechRow label={tm("uncertainty")}>

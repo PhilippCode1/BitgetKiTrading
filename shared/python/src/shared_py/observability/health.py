@@ -1,5 +1,13 @@
 from __future__ import annotations
 
+"""HTTP-/Readiness-Helper fuer Postgres, Redis, Peer-URLs (merge).
+
+Worker-Prometheus-Heartbeats (`worker_heartbeat_timestamp`) leben in
+:mod:`shared_py.observability.metrics` (``touch_worker_heartbeat``). Dort setzen
+Worker-Schleifen und (optional) Hintergrund-Tasks in festem Intervall das Gauge —
+nicht in diesem Modul. Blockierend sind hier nur synchrones ``time.sleep`` in
+``check_redis_url``-Retries, nicht HTTP-Peer-Pruefungen (ThreadPool).
+"""
 import json
 import time
 import urllib.error
@@ -9,6 +17,12 @@ from typing import Any
 
 import psycopg
 import redis
+
+from shared_py.redis_client import (
+    create_sync_connection_pool,
+    exponential_backoff_sec,
+    sync_redis_from_pool,
+)
 
 
 def _split_peer_urls(raw: str) -> list[str]:
@@ -120,7 +134,8 @@ def check_redis_url(
     """Redis PING mit optionalem Retry (transiente Socket-/Timeouts).
 
     `retries` = zusaetzliche Versuche nach dem ersten (insgesamt 1 + retries).
-    Kurzer Backoff zwischen Versuchen (Docker/Netz-Flakes).
+    Exponentieller Backoff + kurzer Jitter (Docker/Netz/Last). Je Versuch
+    kurzlebiger ConnectionPool, danach harter Disconnect.
     """
     u = str(url or "").strip()
     if not u:
@@ -128,27 +143,35 @@ def check_redis_url(
     attempts = max(1, int(retries) + 1)
     last_err = "ping_failed"
     for attempt in range(attempts):
-        client: redis.Redis | None = None
+        pool = create_sync_connection_pool(
+            u,
+            decode_responses=True,
+            max_connections=2,
+            socket_connect_timeout=timeout_sec,
+            socket_timeout=timeout_sec,
+            health_check_interval=0,
+        )
+        client: redis.Redis = sync_redis_from_pool(
+            pool,
+            health_check_interval=0,
+        )
         try:
-            client = redis.Redis.from_url(
-                u,
-                socket_connect_timeout=timeout_sec,
-                socket_timeout=timeout_sec,
-                health_check_interval=0,
-            )
             if client.ping():
                 return True, "ok"
             last_err = "ping_failed"
         except Exception as exc:
             last_err = str(exc)[:200]
         finally:
-            if client is not None:
-                try:
-                    client.close()
-                except Exception:
-                    pass
+            try:
+                client.close()
+            except Exception:
+                pass
+            try:
+                pool.disconnect()
+            except Exception:
+                pass
         if attempt + 1 < attempts:
-            time.sleep(0.05 * float(attempt + 1))
+            time.sleep(exponential_backoff_sec(attempt, base=0.05, cap=1.5))
     return False, last_err
 
 

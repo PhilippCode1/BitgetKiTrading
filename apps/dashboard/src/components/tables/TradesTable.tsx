@@ -1,18 +1,36 @@
 "use client";
 
 import { useI18n } from "@/components/i18n/I18nProvider";
+import { DataTableSkeleton } from "@/components/ui/DataTableSkeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { formatNum, formatTsMs } from "@/lib/format";
 import type { PaperTradeRow } from "@/lib/types";
 
 type Props = Readonly<{
   trades: PaperTradeRow[];
+  isLoading?: boolean;
 }>;
 
-export function TradesTable({ trades }: Props) {
+export function TradesTable({ trades, isLoading = false }: Props) {
   const { t } = useI18n();
   const dash = t("tables.paperTrades.emDash");
+  if (isLoading) {
+    return (
+      <DataTableSkeleton
+        columnCount={8}
+        ariaLabelKey="ui.emptyState.tableLoading"
+      />
+    );
+  }
   if (trades.length === 0) {
-    return <p className="muted">{t("tables.paperTrades.empty")}</p>;
+    return (
+      <EmptyState
+        icon="activity"
+        titleKey="tables.paperTrades.emptyTitle"
+        descriptionKey="tables.paperTrades.emptyDescription"
+        nextStepKey="tables.paperTrades.emptyNextStep"
+      />
+    );
   }
   return (
     <>

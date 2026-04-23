@@ -29,7 +29,12 @@ class BaseTradingAgent(ABC):
 
     @abstractmethod
     async def analyze(self, context: dict[str, Any]) -> dict[str, Any]:
-        """Erzeugt eine vollständige Agent-Nachricht (JSON-Objekt, schema-valide)."""
+        """
+        Erzeugt eine vollständige Agent-Nachricht (JSON-Objekt, schema-valide).
+
+        ``context`` kann lückenhaft sein: fehlende Slices (News, Book, etc.) klar benennen,
+        nicht ersetzen — siehe Operator-Readonly-Format in ``knowledge.retrieval``.
+        """
 
     async def get_confidence_score(self) -> float:
         """Letzte Konfidenz nach erfolgreichem ``analyze`` (sonst 0.0)."""

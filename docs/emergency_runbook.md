@@ -65,4 +65,8 @@ Gateway-Mutationen erfordern **sichere Auth** (`audited_sensitive` / `live_broke
 | `live-broker:execution-guard:public_probe_fail`        | Public-Probe vor Submit fehlgeschlagen                               |
 | `live-broker:safety-latch:armed:duplicate_recovery`    | Safety-Latch nach Duplicate-Recovery-Failure                         |
 
-Siehe auch: `docs/live_broker.md`, `docs/recovery_runbook.md` (Restart, Exchange-Wahrheit, Divergenz-Metriken), `docs/Deploy.md`.
+Siehe auch: `docs/live_broker.md`, `docs/recovery_runbook.md` (Restart, Exchange-Wahrheit, Divergenz-Metriken, **Postgres-Restore-DR**), `docs/Deploy.md`.
+
+**CI/Integration:** Synchroner Abbruch bei aktivem Safety-Latch (ohne Exchange-Order) wird in
+`tests/integration/test_kill_switch_behavior.py` mit migrierter `TEST_DATABASE_URL` geprueft
+(siehe `docs/recovery_runbook.md` Abschnitt 8).

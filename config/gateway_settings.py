@@ -251,6 +251,23 @@ class GatewaySettings(BaseServiceSettings):
         default="default",
         alias="COMMERCIAL_DEFAULT_TENANT_ID",
     )
+    live_broker_gateway_live_policy_enforce: bool = Field(
+        default=True,
+        alias="LIVE_BROKER_GATEWAY_LIVE_POLICY_ENFORCE",
+        description=(
+            "Vor live-broker Mutationen (Gateway): Tenant benoetigt abgeschlossenen "
+            "commercial_contract_workflow + Live-Gates in DB (Fail-Fast 403)."
+        ),
+    )
+    live_broker_gateway_live_policy_cache_ttl_sec: int = Field(
+        default=60,
+        ge=0,
+        le=3600,
+        alias="LIVE_BROKER_GATEWAY_LIVE_POLICY_CACHE_TTL_SEC",
+        description=(
+            "Redis-Cache fuer gueltigen Live-Status (0 = kein Cache, nur DB)."
+        ),
+    )
     commercial_meter_secret: str = Field(
         default="",
         alias="COMMERCIAL_METER_SECRET",

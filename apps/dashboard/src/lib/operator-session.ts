@@ -1,41 +1,49 @@
 import { publicEnv } from "@/lib/env";
-import { fetchGatewayUpstream } from "@/lib/gateway-upstream-fetch";
+import {
+  type OperatorSession,
+  resolveOperatorSessionFromToken,
+} from "@/lib/operator-jwt";
 import { serverEnv } from "@/lib/server-env";
 
+export type { OperatorSession };
+
 /**
- * Prueft, ob der Next.js-Server das Gateway fuer Admin-Lesezugriff authentifizieren kann.
- * Keine Secrets werden an den Browser geleakt.
+ * Kryptographisch bzw. serverseitig gepruefter Operator-Status (DASHBOARD_GATEWAY_AUTHORIZATION).
+ * `role === 'admin'` gemaess gateway_roles (admin:read|write) und ohne Kunden-Portal-Block (customer in portal_roles).
+ * Kein Abgleich mit NEXT_PUBLIC_*-Build-Flags.
  */
-export async function canAccessAdminViaServer(): Promise<boolean> {
-  const auth = serverEnv.gatewayAuthorizationHeader;
-  const base = serverEnv.apiGatewayUrl.replace(/\/$/, "");
-  if (!auth) return false;
-  try {
-    const res = await fetchGatewayUpstream("/v1/admin/rules", auth, {
-      timeoutMs: 8000,
-    });
-    return res.ok;
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    console.warn(
-      "[dashboard] GET /v1/admin/rules probe failed (Admin-Nav ausgeblendet)",
-      {
-        base,
-        error: msg,
-      },
-    );
-    return false;
-  }
+export async function getOperatorSession(): Promise<OperatorSession | null> {
+  return resolveOperatorSessionFromToken(
+    serverEnv.gatewayAuthorizationHeader,
+    serverEnv.gatewayJwtSecret,
+  );
 }
 
-/** Admin-Navigation: nur bei gueltiger serverseitiger Gateway-Auth. */
+/**
+ * @deprecated zugunsten getOperatorSession() / role === "admin" — Bezeichnung bleibt fuer bestehende Server-Components.
+ */
+export async function canAccessAdminViaServer(): Promise<boolean> {
+  if (!publicEnv.enableAdmin) {
+    return false;
+  }
+  const s = await getOperatorSession();
+  return s?.role === "admin";
+}
+
+/** Admin-Navigation: nur bei gueltigem Admin-Claim in DASHBOARD_GATEWAY_AUTHORIZATION. */
 export async function resolveShowAdminNav(): Promise<boolean> {
-  if (!publicEnv.enableAdmin) return false;
-  return canAccessAdminViaServer();
+  if (!publicEnv.enableAdmin) {
+    return false;
+  }
+  const s = await getOperatorSession();
+  return s?.role === "admin";
 }
 
 /** Strategie-Lifecycle-Mutationen: gleiche Schwelle wie Admin-Nav. */
 export async function resolveStrategyMutationsVisible(): Promise<boolean> {
-  if (!publicEnv.enableAdmin) return false;
-  return canAccessAdminViaServer();
+  if (!publicEnv.enableAdmin) {
+    return false;
+  }
+  const s = await getOperatorSession();
+  return s?.role === "admin";
 }

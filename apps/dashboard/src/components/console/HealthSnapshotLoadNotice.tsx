@@ -2,11 +2,13 @@ import Link from "next/link";
 
 import { SystemStatusCard } from "@/components/system-comms/SystemStatusCard";
 import { SystemStatusCardActions } from "@/components/system-comms/SystemStatusCardActions";
+import type { GatewayFetchErrorInfo } from "@/lib/gateway-fetch-errors";
+import { formatTechnicalDetailForPre } from "@/lib/server-payload-text";
 import { consolePath } from "@/lib/console-paths";
 import type { TranslateFn } from "@/lib/user-facing-fetch-error";
 
 type Props = Readonly<{
-  error: string | null;
+  error: GatewayFetchErrorInfo | null;
   diagnostic: boolean;
   t: TranslateFn;
 }>;
@@ -28,7 +30,7 @@ export function HealthSnapshotLoadNotice({ error, diagnostic, t }: Props) {
           "systemComms.healthSnapshot.step2",
           "systemComms.healthSnapshot.step3",
         ]}
-        technical={error}
+        technical={formatTechnicalDetailForPre(error.technical)}
         showTechnical={diagnostic}
         diagnosticSummaryLabel={t("ui.diagnostic.summary")}
         t={t}

@@ -1,4 +1,5 @@
 import { isApiFetchError, type ApiFetchError } from "@/lib/api-fetch-errors";
+import { formatTechnicalDetailForPre } from "@/lib/server-payload-text";
 import {
   classifyFetchError,
   type FetchErrorKind,
@@ -50,7 +51,7 @@ function technicalFromError(raw: string, err: unknown): string {
       2,
     );
   }
-  return raw.slice(0, 4000);
+  return formatTechnicalDetailForPre(raw, 4000);
 }
 
 /**
@@ -79,7 +80,7 @@ export function buildProductMessageFromFetchError(
     id: `fetch:${dedupeKey}`,
     dedupeKey,
     severity,
-    areaLabel: t("productMessage.area.thisView"),
+    areaLabel: t("productMessage.area.apiData"),
     headline: t(`${prefix}.headline`),
     summary: t(`${prefix}.summary`),
     impact: t(`${prefix}.impact`),

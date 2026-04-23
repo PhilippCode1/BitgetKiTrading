@@ -4,6 +4,14 @@ from __future__ import annotations
 
 from llm_orchestrator.agents.tsfm_types import TsfmSemanticSynthesis, TsfmSignalCandidatePayloadV1
 
+# Operator-/War-Room-Prompt: fehlende Marktdaten ehrlich benennen (mit Prompt-Manifest)
+OPERATOR_MARKET_DATA_GAP_DIRECTIVE_DE = (
+    "Falls in READONLY_KONTEXT explizit Hinweise wie leeres Orderbook oder "
+    "\"[KEINE NEWS VERFÜGBAR]\" o. ae. vorkommen: weise in der Antwort sichtbar "
+    "darauf hin, dass diese Marktdaten fuer die Einschätzung fehlten — "
+    "erfinde sie nicht und halluziniere keine Preis-/Buch-Details."
+)
+
 
 def synthesize_tsfm_signal(tsfm: TsfmSignalCandidatePayloadV1) -> TsfmSemanticSynthesis:
     pv = tsfm.forecast_preview
@@ -15,6 +23,12 @@ def synthesize_tsfm_signal(tsfm: TsfmSignalCandidatePayloadV1) -> TsfmSemanticSy
         slope = 0.0
     else:
         slope = 0.0
+    gap_note = ""
+    if not pv:
+        gap_note = (
+            "Hinweis: Kein Forecast-Preview in den Eingabedaten — semantische Schicht reduziert, "
+            "keine Richtung aus dem Patch ableitbar. "
+        )
     if slope > 0.0008:
         bias = "long"
     elif slope < -0.0008:
@@ -42,6 +56,7 @@ def synthesize_tsfm_signal(tsfm: TsfmSignalCandidatePayloadV1) -> TsfmSemanticSy
             f"semantische Sicherheit {syn_c:.0%} (Rohkonfidenz {base_c:.0%})."
         )
     narrative = (
+        f"{gap_note}"
         f"Zero-Shot Pattern Recognition des Foundation Models ({tsfm.model_id or 'timesfm'}): "
         f"{trend_de}. {mr_phrase} "
         f"Richtungstendenz: {('Long' if bias == 'long' else 'Short' if bias == 'short' else 'Neutral')}."

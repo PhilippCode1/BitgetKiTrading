@@ -10,7 +10,7 @@ from psycopg.rows import dict_row
 from pydantic import BaseModel, Field
 
 from api_gateway.audit import record_gateway_audit_line
-from api_gateway.auth import GatewayAuthContext, require_admin_write
+from api_gateway.auth import GatewayAuthContext, require_admin_write_role
 from api_gateway.db import get_database_url
 from api_gateway.db_paper_mutations import (
     paper_account_admin_adjustment,
@@ -67,7 +67,7 @@ def _resolve_account_id(conn: psycopg.Connection[Any], explicit: str | None) -> 
 def admin_paper_deposit_demo(
     request: Request,
     body: PaperDepositBody,
-    auth: Annotated[GatewayAuthContext, Depends(require_admin_write)],
+    auth: Annotated[GatewayAuthContext, Depends(require_admin_write_role)],
 ) -> dict[str, Any]:
     amt = _parse_decimal("amount_usdt", body.amount_usdt)
     dsn = get_database_url()
@@ -96,7 +96,7 @@ def admin_paper_deposit_demo(
 def admin_paper_adjust(
     request: Request,
     body: PaperAdjustBody,
-    auth: Annotated[GatewayAuthContext, Depends(require_admin_write)],
+    auth: Annotated[GatewayAuthContext, Depends(require_admin_write_role)],
 ) -> dict[str, Any]:
     delta = _parse_decimal("delta_usdt", body.delta_usdt)
     dsn = get_database_url()
@@ -125,7 +125,7 @@ def admin_paper_adjust(
 def admin_paper_reset_demo(
     request: Request,
     body: PaperResetBody,
-    auth: Annotated[GatewayAuthContext, Depends(require_admin_write)],
+    auth: Annotated[GatewayAuthContext, Depends(require_admin_write_role)],
 ) -> dict[str, Any]:
     initial = _parse_decimal("new_initial_equity_usdt", body.new_initial_equity_usdt)
     if initial < 0:

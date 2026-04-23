@@ -9,6 +9,7 @@ from uuid import UUID
 from fastapi import Body, Header, HTTPException, Request
 
 from api_gateway.audit import record_gateway_audit_line, record_gateway_auth_failure
+from api_gateway.deps import verify_live_trading_capability
 from api_gateway.auth import (
     GatewayAuthContext,
     _HEADER_INTERNAL,
@@ -74,6 +75,7 @@ class LiveBrokerSafetyMutationGuard:
                 redis_client=get_rate_limit_redis(),
             )
             extra["manual_action_jti"] = claims.get("jti")
+        verify_live_trading_capability(auth)
         record_gateway_audit_line(request, auth, self.audit_action, extra=extra)
         return auth, body
 
@@ -130,6 +132,7 @@ class LiveBrokerOperatorReleaseGuard:
                 redis_client=get_rate_limit_redis(),
             )
             extra["manual_action_jti"] = claims.get("jti")
+        verify_live_trading_capability(auth)
         record_gateway_audit_line(
             request,
             auth,

@@ -2,7 +2,12 @@
 
 import { useEffect } from "react";
 
+import { looksLikeRawServerPayloadString } from "@/lib/server-payload-text";
+
 import "./globals.css";
+
+const GLOBAL_USER_GENERIC =
+  "Die Anwendung musste wegen einer technischen Störung anhalten. Bitte „Erneut versuchen“ — Details stehen nur in der vollen Shell, nicht in dieser Mindestansicht.";
 
 export default function GlobalError({
   error,
@@ -14,6 +19,12 @@ export default function GlobalError({
   useEffect(() => {
     console.error(error);
   }, [error]);
+
+  const raw = error.message?.trim() ?? "";
+  const isRawApiBlob = raw && looksLikeRawServerPayloadString(raw, 20);
+  const userLine = isRawApiBlob
+    ? GLOBAL_USER_GENERIC
+    : raw || "Die Anwendung konnte nicht gestartet werden.";
 
   return (
     <html lang="de">
@@ -30,8 +41,7 @@ export default function GlobalError({
           Schwerer Fehler
         </h1>
         <p style={{ opacity: 0.85, margin: "0 0 16px", maxWidth: 480 }}>
-          {error.message?.trim() ||
-            "Die Anwendung konnte nicht gestartet werden."}
+          {userLine}
         </p>
         <button
           type="button"

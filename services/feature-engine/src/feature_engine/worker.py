@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import math
 import time
@@ -42,7 +43,7 @@ from shared_py.model_contracts import (
     MODEL_TIMEFRAMES,
     normalize_model_timeframe,
 )
-from shared_py.observability import touch_worker_heartbeat
+from shared_py.observability import arun_periodic_heartbeat
 
 from feature_engine import numeric_hotpath as _num
 from feature_engine.features import (
@@ -141,6 +142,11 @@ class FeatureWorker:
 
     async def run(self) -> None:
         self._stats.running = True
+        hb_stop = asyncio.Event()
+        hb_task = asyncio.create_task(
+            arun_periodic_heartbeat("feature_engine", 10.0, hb_stop),
+            name="feature_engine_heartbeat",
+        )
         try:
             while not self._stop_event.is_set():
                 try:
@@ -154,7 +160,6 @@ class FeatureWorker:
                         self._settings.eventbus_default_block_ms,
                     )
                     self._stats.redis_connected = True
-                    touch_worker_heartbeat("feature_engine")
                     if not items:
                         continue
                     for item in items:
@@ -172,6 +177,10 @@ class FeatureWorker:
                     self._logger.exception("feature worker loop failed", exc_info=exc)
                     await asyncio.sleep(2)
         finally:
+            hb_stop.set()
+            hb_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await hb_task
             self._stats.running = False
             await self.close()
 

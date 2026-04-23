@@ -26,3 +26,17 @@ def is_retryable_http_status(status: int | None) -> bool:
     if status == 429:
         return True
     return 500 <= status <= 599
+
+
+def openai_circuit_trip_on_status(status: int | None) -> bool:
+    """
+    Zaehlt Fehler in ein Fenster zur OPEN-Entscheidung: 5xx, Gateway-Timeout (504).
+    429 (Rate-Limit) oeffnet den nicht-Circuit-Blocker; 4xx (ausser 504) nicht.
+    """
+    if status is None:
+        return True
+    if status == 429:
+        return False
+    if status == 504:
+        return True
+    return 500 <= status <= 599

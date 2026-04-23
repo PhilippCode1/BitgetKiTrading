@@ -1229,11 +1229,16 @@ def build_live_state(
             market_freshness["status"] = "no_candles"
 
     try:
-        import redis
-
         rurl = __import__("os").environ.get("REDIS_URL", "").strip()
         if rurl:
-            r = redis.Redis.from_url(rurl, socket_connect_timeout=2, socket_timeout=2)
+            from shared_py.redis_client import get_or_create_sync_pooled_client
+
+            r = get_or_create_sync_pooled_client(
+                rurl,
+                role="gateway_db_live_state",
+                decode_responses=True,
+                max_connections=8,
+            )
             if r.ping():
                 health_redis = "ok"
             else:

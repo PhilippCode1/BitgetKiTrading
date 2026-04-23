@@ -12,6 +12,7 @@ from api_gateway.auth import GatewayAuthContext, require_sensitive_auth
 from redis import Redis
 from redis.exceptions import RedisError
 from shared_py.eventbus import EVENT_STREAMS
+from shared_py.redis_client import get_or_create_sync_pooled_client
 
 from api_gateway.config import get_gateway_settings
 
@@ -19,7 +20,8 @@ router = APIRouter(prefix="/events", tags=["events"])
 
 
 def _redis() -> Redis:
-    redis_url = os.environ.get("REDIS_URL", "").strip()
+    s = get_gateway_settings()
+    redis_url = s.redis_url.strip() or (os.environ.get("REDIS_URL", "") or "").strip()
     if not redis_url:
         raise HTTPException(
             status_code=503,
@@ -28,11 +30,11 @@ def _redis() -> Redis:
                 "message": "REDIS_URL fehlt",
             },
         )
-    return Redis.from_url(
+    return get_or_create_sync_pooled_client(
         redis_url,
+        role="gateway_events",
         decode_responses=True,
-        socket_connect_timeout=5,
-        socket_timeout=5,
+        max_connections=48,
     )
 
 

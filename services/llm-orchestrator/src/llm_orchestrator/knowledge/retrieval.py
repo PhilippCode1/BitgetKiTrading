@@ -4,11 +4,212 @@ import hashlib
 import json
 import logging
 import re
+import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable, TypeVar
 
 logger = logging.getLogger("llm_orchestrator.knowledge")
+
+# Kurze Deckel fuer Block-Serialisierung (kein Endlos-Haengen bei pathologischem JSON)
+_CONTEXT_SECTION_TIMEOUT_SEC = 1.5
+_CONTEXT_FETCH_LOG_PREFIX = "operator_readonly_context"
+
+T = TypeVar("T")
+
+# Explizite Platzhalter fuer fehlende/leere Marktdaten (BFF liefert Teil-JSON)
+PLACEHOLDER_NO_NEWS = "[KEINE NEWS VERFÜGBAR]"
+PLACEHOLDER_NO_ORDERBOOK = "[KEIN ORDERBUCH-SNAPSHOT VERFÜGBAR]"
+PLACEHOLDER_NO_SIGNALS = "[KEINE SIGNAL-DATEN VERFÜGBAR]"
+PLACEHOLDER_NO_CHART = "[KEIN CHART-/KERZENSNAPSHOT VERFÜGBAR]"
+PLACEHOLDER_SECTION_ERROR = "[ABSCHNITT VORLAEUFIG NICHT LESBAR]"
+
+
+def _run_with_timeout(
+    fn: Callable[[], T], *, timeout_sec: float, on_timeout: T, label: str
+) -> T:
+    """Isolierter Block mit kurzem Timeout (Thread + future), damit pathologische Work nicht blockiert."""
+    t0 = time.perf_counter()
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        fut = pool.submit(fn)
+        try:
+            out = fut.result(timeout=timeout_sec)
+        except Exception as exc:
+            dt = time.perf_counter() - t0
+            logger.warning(
+                "%s: abschnitt=%s nach %.3fs: %s",
+                _CONTEXT_FETCH_LOG_PREFIX,
+                label,
+                dt,
+                type(exc).__name__,
+            )
+            return on_timeout
+    return out
+
+
+def _is_empty_value(v: Any) -> bool:
+    if v is None:
+        return True
+    if v is False:
+        return False
+    if isinstance(v, str) and not v.strip():
+        return True
+    if isinstance(v, (list, tuple, dict, set)) and len(v) == 0:
+        return True
+    return False
+
+
+def _first_present(ctx: dict[str, Any], *keys: str) -> Any:
+    for k in keys:
+        if k in ctx and not _is_empty_value(ctx.get(k)):
+            return ctx.get(k)
+    return None
+
+
+def _serialize_block(label: str, data: Any, empty_placeholder: str) -> str:
+    if _is_empty_value(data):
+        return f"{label}:\n{empty_placeholder}"
+    try:
+        if isinstance(data, (dict, list)):
+            text = json.dumps(data, ensure_ascii=False, default=str, indent=2)
+        else:
+            text = str(data)
+    except (TypeError, ValueError) as exc:
+        logger.warning(
+            "%s: serialisierung %s: %s", _CONTEXT_FETCH_LOG_PREFIX, label, exc
+        )
+        return f"{label}:\n{PLACEHOLDER_SECTION_ERROR}"
+    if not (text or "").strip():
+        return f"{label}:\n{empty_placeholder}"
+    return f"{label}:\n{text.strip()}"
+
+
+def _section(
+    label: str,
+    data: Any,
+    empty_ph: str,
+    *,
+    timeout_sec: float = _CONTEXT_SECTION_TIMEOUT_SEC,
+) -> str:
+    def _build() -> str:
+        return _serialize_block(label, data, empty_ph)
+
+    return _run_with_timeout(
+        _build, timeout_sec=timeout_sec, on_timeout=f"{label}:\n{PLACEHOLDER_SECTION_ERROR}", label=label
+    )
+
+
+def format_operator_readonly_pro_symbol(
+    readonly_context: dict[str, Any] | None,
+    *,
+    max_total_chars: int = 10_000,
+) -> str:
+    """
+    Baut den READONLY-Block fuer Operator-Explain: News, Orderbook, Signale, Chart
+    in isolierten logischen (und bei Serialisierung timeout-geschuetzten) Schritten.
+    Fehlende oder leere Quellen: explizite Platzhalter, kein Abbruch des LLM-Requests.
+    """
+    if not isinstance(readonly_context, dict):
+        return (
+            f"symbol:\n(ungueltiger Kontext — kein JSON-Objekt)\n\n"
+            f"news:\n{PLACEHOLDER_NO_NEWS}\n\n"
+            f"orderbook:\n{PLACEHOLDER_NO_ORDERBOOK}\n\n"
+            f"signals:\n{PLACEHOLDER_NO_SIGNALS}\n\n"
+            f"chart:\n{PLACEHOLDER_NO_CHART}"
+        )[:max_total_chars]
+
+    ctx = readonly_context
+    parts: list[str] = []
+
+    # Symbol / Instrument (fuer Pro-Symbol-Bezug; kein harter Abbruch wenn fehlt)
+    def _meta() -> str:
+        lines: list[str] = []
+        for key in ("symbol", "instrument", "pair", "product_id"):
+            v = ctx.get(key)
+            if v is not None and str(v).strip():
+                lines.append(f"{key}={v!s}")
+        if not lines:
+            return "symbol:\n(nicht explizit gesetzt — Kontext trotzdem nutzen, fehlende Marktdaten benennen)"
+        return "symbol:\n" + "\n".join(lines)
+
+    parts.append(
+        _run_with_timeout(
+            _meta,
+            timeout_sec=0.5,
+            on_timeout="symbol:\n(nicht explizit gesetzt)",
+            label="symbol",
+        )
+    )
+
+    news_d = _first_present(ctx, "news", "news_context", "headlines", "news_items")
+    parts.append(
+        _section("news", news_d, PLACEHOLDER_NO_NEWS),
+    )
+    ob_d = _first_present(
+        ctx, "orderbook", "order_book", "book", "liquidity", "orderbook_snapshot"
+    )
+    parts.append(
+        _section("orderbook", ob_d, PLACEHOLDER_NO_ORDERBOOK),
+    )
+    sig_d = _first_present(
+        ctx, "signals", "signal", "signal_row", "signal_snapshot", "signal_context"
+    )
+    parts.append(
+        _section("signals", sig_d, PLACEHOLDER_NO_SIGNALS),
+    )
+    ch_d = _first_present(
+        ctx, "chart", "candles", "ohlc", "klines", "bars", "price_series"
+    )
+    parts.append(
+        _section("chart", ch_d, PLACEHOLDER_NO_CHART),
+    )
+
+    # Weitere Schluessel (ohne Doppel) als zusaetzlicher Kontext, best-effort
+    used = {
+        "symbol",
+        "instrument",
+        "pair",
+        "product_id",
+        "news",
+        "news_context",
+        "headlines",
+        "news_items",
+        "orderbook",
+        "order_book",
+        "book",
+        "liquidity",
+        "orderbook_snapshot",
+        "signals",
+        "signal",
+        "signal_row",
+        "signal_snapshot",
+        "signal_context",
+        "chart",
+        "candles",
+        "ohlc",
+        "klines",
+        "bars",
+        "price_series",
+    }
+    extra: dict[str, Any] = {k: v for k, v in ctx.items() if k not in used}
+    if extra:
+
+        def _extra() -> str:
+            return _serialize_block("zusaetzlicher_kontext", extra, "")
+
+        ex = _run_with_timeout(
+            _extra,
+            timeout_sec=_CONTEXT_SECTION_TIMEOUT_SEC,
+            on_timeout="zusaetzlicher_kontext:\n[ZUSATZ Nicht serialisierbar in Zeitbudget]",
+            label="extra",
+        )
+        parts.append(ex)
+
+    out = "\n\n".join(parts)
+    if len(out) > max_total_chars:
+        out = out[: max_total_chars] + "\n…"
+    return out
 
 # Task -> erlaubte Manifest-Tags (kuratiert, keine freie Websuche)
 TASK_TAG_ALLOWLIST: dict[str, frozenset[str]] = {

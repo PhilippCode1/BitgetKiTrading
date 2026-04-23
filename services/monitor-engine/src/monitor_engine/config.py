@@ -45,6 +45,23 @@ class MonitorEngineSettings(BaseServiceSettings):
         alias="MONITOR_READINESS_BOOT_GRACE_MS",
         description="Nach Prozessstart: /ready erlaubt fehlenden ersten Scheduler-Tick nur innerhalb dieses Fensters.",
     )
+    monitor_http_ready_fails_to_degrade: int = Field(
+        default=2,
+        ge=1,
+        le=10,
+        alias="MONITOR_HTTP_READY_FAILS_TO_DEGRADE",
+        description=(
+            "Kern-HTTP-Requests /ready: so viele aufeinanderfolgende JSON ready=false, "
+            "ehe der Check als 'degraded' (statt transiente Warnung) zaehlt."
+        ),
+    )
+    monitor_scheduler_stale_multiplier: float = Field(
+        default=1.35,
+        ge=1.0,
+        le=3.0,
+        alias="MONITOR_SCHEDULER_STALE_MULTIPLIER",
+        description="Erweitert die Altersgrenze fuer 'letzter Monitor-Tick' (transiente Last/Spikes).",
+    )
 
     monitor_engine_port: int = Field(default=8110, alias="MONITOR_ENGINE_PORT")
     database_url: str = Field(alias="DATABASE_URL")

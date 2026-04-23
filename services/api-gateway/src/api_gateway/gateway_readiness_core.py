@@ -6,6 +6,7 @@ Redis PING) muessen mit der ersten Phase in ``app.ready`` identisch bleiben.
 
 from __future__ import annotations
 
+import time
 from typing import Any
 
 from shared_py.observability import check_postgres, check_redis_url, merge_ready_details
@@ -15,6 +16,9 @@ from api_gateway.db import check_postgres_schema_for_ready
 from api_gateway.readiness_util import effective_database_dsn, effective_redis_url
 
 READINESS_CONTRACT_VERSION = 1
+# Wenn nur Redis im ersten Snapshot ausfaellt, Postgres ok: kurz warten, dann zweiter Snapshot
+# (vermeidet 500/False-Positives bei 50ms-Lastpeaks).
+READINESS_REDIS_TRANSIENT_RECHECK_SEC = 0.15
 
 
 def gateway_readiness_core_parts_raw() -> dict[str, tuple[bool, str]]:
@@ -47,9 +51,27 @@ def gateway_readiness_core_parts_raw() -> dict[str, tuple[bool, str]]:
     return parts
 
 
+def gateway_readiness_core_parts_resilient() -> dict[str, tuple[bool, str]]:
+    """Wie :func:`gateway_readiness_core_parts_raw`, plus ein vollstaendiger Re-Check nach
+    transiente-Redis-Flake, wenn beide Postgres-Kern-Checks true sind.
+    """
+    parts = gateway_readiness_core_parts_raw()
+    if parts.get("redis", (True, ""))[0]:
+        return parts
+    s = get_gateway_settings()
+    dsn = effective_database_dsn(s)
+    rurl = effective_redis_url(s)
+    if not dsn.strip() or not (rurl or "").strip():
+        return parts
+    if not (parts.get("postgres", (False, ""))[0] and parts.get("postgres_schema", (False, ""))[0]):
+        return parts
+    time.sleep(READINESS_REDIS_TRANSIENT_RECHECK_SEC)
+    return gateway_readiness_core_parts_raw()
+
+
 def gateway_readiness_core_snapshot() -> dict[str, Any]:
     """Kompakte Snapshot-Daten fuer System-Health (gleiche Logik wie /ready-Kern)."""
-    parts = gateway_readiness_core_parts_raw()
+    parts = gateway_readiness_core_parts_resilient()
     core_ok, checks = merge_ready_details(parts)
     return {
         "contract_version": READINESS_CONTRACT_VERSION,

@@ -61,11 +61,35 @@ def bootstrap_env_consistency_issues(
             f"(Host vs. Container). Variable: {name}."
         )
 
+    _strict_no_loopback = profile in ("staging", "shadow", "production")
+    _url_keys_reject_loopback: tuple[str, ...] = (
+        "API_GATEWAY_URL",
+        "DASHBOARD_URL",
+        "FRONTEND_URL",
+        "APP_BASE_URL",
+        "NEXT_PUBLIC_API_BASE_URL",
+        "NEXT_PUBLIC_WS_BASE_URL",
+    )
+    for name in _url_keys_reject_loopback:
+        raw = (env.get(name) or "").strip()
+        if not raw:
+            continue
+        probe = raw.replace("ws://", "http://", 1).replace("wss://", "https://", 1)
+        if _strict_no_loopback and url_host_is_loopback(probe):
+            issues.append(
+                f"  {name}: in {profile!r} unzulaessig: Host ist localhost/127.0.0.1/::1. "
+                f"Staging/Production: echte Dienst-Namen (Docker, z. B. http://api-gateway:8000) "
+                f"oder oeffentliche/DNS-URLs, keine Host-Loopbacks. {_truth(name)}"
+            )
+
     for name in ("API_GATEWAY_URL", "NEXT_PUBLIC_API_BASE_URL", "NEXT_PUBLIC_WS_BASE_URL"):
         raw = (env.get(name) or "").strip()
         if not raw:
             continue
         probe = raw.replace("ws://", "http://", 1).replace("wss://", "https://", 1)
+        if name == "API_GATEWAY_URL" and profile in ("staging", "shadow", "production"):
+            # Container-Deploy: api-gateway/… ist richtig; 127.0.0.1 dagegen wird oben abgelehnt.
+            continue
         if url_host_is_docker_compose_service(probe):
             hint_port = "ws://127.0.0.1:8000" if name == "NEXT_PUBLIC_WS_BASE_URL" else "http://127.0.0.1:8000"
             issues.append(
@@ -82,9 +106,10 @@ def bootstrap_env_consistency_issues(
             continue
         if prod_like and url_host_is_loopback(v):
             issues.append(
-                f"  {key}: localhost/127.0.0.1 in {profile!r} — "
-                f"Worker laufen im Container-Netz; Health-URLs brauchen Dienstnamen "
-                f"(z. B. http://market-stream:8010/ready), nicht Host-Loopback. {_truth(key)}"
+                f"  {key}: localhost/127.0.0.1/::1 in {profile!r} unzulaessig — Health-URL muss im "
+                f"Container erreichbar sein: http(s)://<dienstname>:<port> (Docker) oder externes DNS, "
+                f"nicht Host-Loopback (z. B. http://market-stream:8010/ready). "
+                f"In production zwingend Paritaet mit dem Laufzeit-Netz. {_truth(key)}"
             )
 
     rr = (env.get("READINESS_REQUIRE_URLS") or "").strip()

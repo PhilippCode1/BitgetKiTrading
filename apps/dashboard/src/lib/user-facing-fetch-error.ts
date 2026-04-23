@@ -116,3 +116,12 @@ export function translateFetchError(
     refreshHint: t("ui.refreshHint"),
   };
 }
+
+/** Kurzer, lokalisierter Nutzertext — für Server-Seiten ohne Roh-Gateway-JSON. */
+export function userFacingBodyForFetchFailure(
+  reason: unknown,
+  t: TranslateFn,
+): string {
+  const k = classifyFetchError(reason);
+  return t(`ui.fetchError.${k}.body`);
+}

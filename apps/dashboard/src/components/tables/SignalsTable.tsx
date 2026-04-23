@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 
-import { EmptyStateHelp } from "@/components/help/EmptyStateHelp";
 import type { TranslateFn } from "@/components/i18n/I18nProvider";
+import { DataTableSkeleton } from "@/components/ui/DataTableSkeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { useI18n } from "@/components/i18n/I18nProvider";
 import { consolePath } from "@/lib/console-paths";
 import {
@@ -16,6 +17,7 @@ import type { SignalRecentItem } from "@/lib/types";
 
 type Props = Readonly<{
   items: SignalRecentItem[];
+  isLoading?: boolean;
 }>;
 
 function dirClass(d: string): string {
@@ -137,19 +139,34 @@ function cashYesNo(v: boolean | null | undefined, t: TranslateFn): string {
   return opGateYesNo(v, t);
 }
 
-export function SignalsTable({ items }: Props) {
+export function SignalsTable({ items, isLoading = false }: Props) {
   const { t } = useI18n();
+
+  if (isLoading) {
+    return (
+      <DataTableSkeleton
+        columnCount={12}
+        rowCount={8}
+        ariaLabelKey="signalsTable.skeletonAria"
+        listClassName="signals-mobile-cards"
+        tableWrapClassName="signals-table-wide"
+      />
+    );
+  }
 
   if (items.length === 0) {
     return (
-      <EmptyStateHelp
+      <EmptyState
+        icon="layers"
+        className="empty-state-help"
         titleKey="help.signals.emptyTitle"
-        bodyKey="help.signals.emptyBody"
+        descriptionKey="help.signals.emptyBody"
         stepKeys={[
           "help.signals.step1",
           "help.signals.step2",
           "help.signals.step3",
         ]}
+        cta={{ labelKey: "ui.emptyState.resetFilters", href: consolePath("signals") }}
         commsPhase="partial"
         showActions
       />

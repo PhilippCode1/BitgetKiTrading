@@ -2,6 +2,7 @@
 # Pytest Unit + Integration (Coverage append), Coverage-Gates, Wheel-Build,
 # pip/pnpm Audit, Dashboard, Docker Compose + Config + Healthcheck + KI-Orchestrator-Smoke
 #
+# Playwright (pnpm e2e): Job compose_healthcheck — fehlgeschlagener Schritt = Exit 1, Job rot.
 # Merge auf main/master: alle Jobs Pflicht (Branch-Protection im Remote einrichten).
 # Zeitplan: woechentlich Python+Dashboard ohne Compose (Kosten/Laufzeit).
 name: ci
@@ -208,6 +209,11 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Typecheck (turbo, dashboard + shared-ts)
         run: pnpm check-types
+      - name: Dashboard i18n-Keys (release_sanity; tsc+Jest via Turbo + test:ci)
+        env:
+          RELEASE_SANITY_DASHBOARD_NO_DUP_TSC: "1"
+          RELEASE_SANITY_DASHBOARD_NO_DUP_JEST: "1"
+        run: python3 tools/release_sanity_checks.py --only-dashboard-pnpm
       - name: Prettier (Repo-Root, wie pnpm format:check)
         run: pnpm format:check
       - name: Dashboard test + build
@@ -271,8 +277,9 @@ jobs:
         if: success()
         env:
           E2E_BASE_URL: http://127.0.0.1:3000
+        shell: bash
         run: |
           set -euo pipefail
           pnpm install --frozen-lockfile
           pnpm exec playwright install chromium --with-deps
-          pnpm exec playwright test -c e2e/playwright.config.ts
+          pnpm e2e

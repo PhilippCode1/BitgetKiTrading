@@ -2,7 +2,8 @@
 """
 Validiert .env-Dateien gegen Profil-Pflichtvariablen (keine <SET_ME> / leer).
 Nutzt config/required_secrets_matrix.json plus bedingte Regeln (LLM, Telegram, Live-Trading).
-Zusaetzlich: Host-vs.-Container-URL-Konsistenz (config/bootstrap_env_checks.py),
+Zusaetzlich: Host-vs.-Container-URL-Konsistenz (config/bootstrap_env_checks.py;
+bei profile staging/shadow/production: kein localhost/127.0.0.1/::1 in API_GATEWAY_URL, DASHBOARD_URL, FRONTEND_URL, … (siehe bootstrap_env_checks),
 NEXT_PUBLIC_*-Namen ohne Secret-Muster, Gateway->LLM-Basis mindestens eine URL.
 
 Nach JWT-Mint (lokal): erneut mit --with-dashboard-operator aufrufen.
@@ -68,8 +69,9 @@ _ENV_VALUE_HINTS: dict[str, str] = {
         "--env-file .env.local --update-env-file -> DASHBOARD_GATEWAY_AUTHORIZATION."
     ),
     "API_GATEWAY_URL": (
-        "Next.js Server -> Gateway: Host-Dev http://127.0.0.1:8000; Dashboard-Container http://api-gateway:8000. "
-        "Nicht mit NEXT_PUBLIC_API_BASE_URL verwechseln (Browser)."
+        "Lokal: http://127.0.0.1:8000. Staging/Production: kein Host-Loopback; "
+        "in Container typisch http://api-gateway:8000 oder oeffentliche BFF-URL. "
+        "Nicht mit NEXT_PUBLIC_API_BASE_URL (Browser) verwechseln — siehe STAGING_PARITY.md."
     ),
     "NEXT_PUBLIC_API_BASE_URL": "Oeffentliche HTTP-Basis fuer den Browser/Build - keine Secrets, nur http(s) zum Gateway.",
     "NEXT_PUBLIC_WS_BASE_URL": "Oeffentliche WS-Basis (ws:// oder wss://) - keine Secrets.",

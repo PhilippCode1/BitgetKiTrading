@@ -22,7 +22,7 @@ import {
 } from "@/lib/console-params";
 import { resolveConsoleChartSymbolTimeframe } from "@/lib/console-chart-context";
 import { publicEnv } from "@/lib/env";
-import { gatewayFetchErrorMessage } from "@/lib/gateway-fetch-errors";
+import { userFacingBodyForFetchFailure } from "@/lib/user-facing-fetch-error";
 import { getServerTranslator } from "@/lib/i18n/server-translate";
 import { getRequestLocale } from "@/lib/i18n/server";
 import { prettyJsonLine } from "@/lib/live-broker-console";
@@ -83,35 +83,35 @@ export default async function ShadowLivePage({
   if (dRes.status === "fulfilled") decisionsRes = dRes.value;
   else
     sectionErrors.push(
-      `${t("pages.shadowLive.sectionDecisions")}: ${gatewayFetchErrorMessage(dRes.reason)}`,
+      `${t("pages.shadowLive.sectionDecisions")}: ${userFacingBodyForFetchFailure(dRes.reason, t)}`,
     );
 
   let fillsRes: LiveBrokerFillsResponse | undefined;
   if (fRes.status === "fulfilled") fillsRes = fRes.value;
   else
     sectionErrors.push(
-      `${t("pages.shadowLive.sectionFills")}: ${gatewayFetchErrorMessage(fRes.reason)}`,
+      `${t("pages.shadowLive.sectionFills")}: ${userFacingBodyForFetchFailure(fRes.reason, t)}`,
     );
 
   let paperRes: PaperTradesResponse | undefined;
   if (pRes.status === "fulfilled") paperRes = pRes.value;
   else
     sectionErrors.push(
-      `${t("pages.shadowLive.sectionPaper")}: ${gatewayFetchErrorMessage(pRes.reason)}`,
+      `${t("pages.shadowLive.sectionPaper")}: ${userFacingBodyForFetchFailure(pRes.reason, t)}`,
     );
 
   let liveStateRes: LiveStateResponse | undefined;
   if (lRes.status === "fulfilled") liveStateRes = lRes.value;
   else
     sectionErrors.push(
-      `${t("pages.shadowLive.sectionLiveState")}: ${gatewayFetchErrorMessage(lRes.reason)}`,
+      `${t("pages.shadowLive.sectionLiveState")}: ${userFacingBodyForFetchFailure(lRes.reason, t)}`,
     );
 
   let healthRes: SystemHealthResponse | undefined;
   if (hRes.status === "fulfilled") healthRes = hRes.value;
   else
     sectionErrors.push(
-      `${t("pages.shadowLive.sectionHealth")}: ${gatewayFetchErrorMessage(hRes.reason)}`,
+      `${t("pages.shadowLive.sectionHealth")}: ${userFacingBodyForFetchFailure(hRes.reason, t)}`,
     );
 
   const decisions = decisionsRes?.items ?? [];

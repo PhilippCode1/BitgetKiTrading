@@ -4,10 +4,11 @@ Laedt .env.local (oder angegebene Datei), setzt API_GATEWAY_URL / DASHBOARD_URL
 wie Get-DevEdgeHost (COMPOSE_EDGE_BIND), startet rc_health_edge.
 
 Gemeinsamer Einstieg fuer: rc_health.ps1, rc_health.sh, CI, pnpm smoke.
+Exit-Code: wie rc_health_edge (0 gruen, 1 Fehler/Degradation / stress-Fail).
 """
-
 from __future__ import annotations
 
+import argparse
 import os
 import subprocess
 import sys
@@ -42,9 +43,39 @@ def _edge_host_from_env(data: dict[str, str]) -> str:
     return raw
 
 
-def main(argv: list[str]) -> int:
+def _parse_args(argv: list[str]) -> argparse.Namespace:
+    p = argparse.ArgumentParser(
+        description="Lade ENV und starte rc_health_edge (Quality Gate).",
+    )
+    p.add_argument(
+        "env_file",
+        nargs="?",
+        default=".env.local",
+        help="dotenv-Datei relativ zum Repo-Root (Default: .env.local)",
+    )
+    p.add_argument(
+        "--stress",
+        action="store_true",
+        help="Weiterreichen: mehrfache vollstaendige Health-Pruefungen (siehe rc_health_edge).",
+    )
+    p.add_argument(
+        "--stress-rounds",
+        type=int,
+        help="Fuer --stress, optional (Default aus rc_health_edge).",
+    )
+    p.add_argument(
+        "--stress-interval-sec",
+        type=float,
+        help="Fuer --stress, optional.",
+    )
+    return p.parse_args(argv)
+
+
+def main(arg_list: list[str] | None = None) -> int:
+    argv = arg_list if arg_list is not None else sys.argv[1:]
+    args = _parse_args(argv)
     root = Path(__file__).resolve().parents[1]
-    env_name = argv[1] if len(argv) > 1 else ".env.local"
+    env_name = (args.env_file or "").strip() or ".env.local"
     env_path = root / env_name
     if not env_path.is_file():
         print(f"FEHLT: {env_path} (Pfad relativ zum Repo-Root)", file=sys.stderr)
@@ -68,8 +99,16 @@ def main(argv: list[str]) -> int:
     gu = os.environ.get("API_GATEWAY_URL")
     du = os.environ.get("DASHBOARD_URL")
     print(f"rc_health_runner: API_GATEWAY_URL={gu} DASHBOARD_URL={du}", file=sys.stderr)
-    return subprocess.call([sys.executable, str(script)])
+    ext: list[str] = []
+    if args.stress:
+        ext.append("--stress")
+        if args.stress_rounds is not None:
+            ext += ["--stress-rounds", str(int(args.stress_rounds))]
+        if args.stress_interval_sec is not None:
+            ext += ["--stress-interval-sec", str(float(args.stress_interval_sec))]
+    rc = subprocess.call([sys.executable, str(script), *ext])
+    return 0 if int(rc) == 0 else 1
 
 
 if __name__ == "__main__":
-    raise SystemExit(main(sys.argv))
+    raise SystemExit(main(sys.argv[1:]))

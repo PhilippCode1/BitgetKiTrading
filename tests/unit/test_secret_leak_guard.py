@@ -12,6 +12,13 @@ def test_scrub_plaintext_openai_style() -> None:
     assert "[REDACTED" in out
 
 
+def test_scrub_plaintext_bitget_env_line() -> None:
+    s = "BITGET_API_SECRET=not_leaking_this_value_12345"
+    out = scrub_plaintext(s)
+    assert "not_leaking" not in out
+    assert "BITGET_API_SECRET=***" in out
+
+
 def test_scrub_audit_payload_strips_secret_keys() -> None:
     d = scrub_audit_payload({"api_key": "x", "nested": {"password": "y", "ok": 1}}, max_depth=4)
     assert isinstance(d, dict)

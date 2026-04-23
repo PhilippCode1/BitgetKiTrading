@@ -1,18 +1,36 @@
 "use client";
 
 import { useI18n } from "@/components/i18n/I18nProvider";
+import { DataTableSkeleton } from "@/components/ui/DataTableSkeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { formatNum, formatTsMs } from "@/lib/format";
 import type { PaperOpenPosition } from "@/lib/types";
 
 type Props = Readonly<{
   positions: PaperOpenPosition[];
+  isLoading?: boolean;
 }>;
 
-export function OpenPositionsTable({ positions }: Props) {
+export function OpenPositionsTable({ positions, isLoading = false }: Props) {
   const { t } = useI18n();
   const dash = t("tables.paperOpen.emDash");
+  if (isLoading) {
+    return (
+      <DataTableSkeleton
+        columnCount={9}
+        ariaLabelKey="ui.emptyState.tableLoading"
+      />
+    );
+  }
   if (positions.length === 0) {
-    return <p className="muted">{t("tables.paperOpen.empty")}</p>;
+    return (
+      <EmptyState
+        icon="wallet"
+        titleKey="tables.paperOpen.emptyTitle"
+        descriptionKey="tables.paperOpen.emptyDescription"
+        nextStepKey="tables.paperOpen.emptyNextStep"
+      />
+    );
   }
   return (
     <>

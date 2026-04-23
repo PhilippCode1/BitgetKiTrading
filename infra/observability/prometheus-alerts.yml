@@ -2,10 +2,67 @@
 # Auswertung: Prometheus; Zustellung typischerweise Alertmanager -> alert-engine/Webhook.
 # runbook: Pfad im Repo (Anker in docs/monitoring_runbook.md).
 #
+# P0 / P1 Struktur
+#   - P0: Gruppe p0_production_blocker — Seitenauslösung, Latenz- oder Live-Handel.
+#   - P1/P2: ubrige `groups` — ueblicherweise reaktives On-Call je `severity: warning` vs
+#     `severity: critical` in den `labels` (Grafana/Alertmanager-Routen bündeln nach Label).
 # Laerm reduzieren: Alertmanager-Gruppierung + inhibit_rules — siehe
 # infra/observability/alertmanager-inhibit-rules.example.yml
 
 groups:
+  - name: p0_production_blocker
+    rules:
+      - alert: GatewayHighErrorRate
+        expr: |
+          sum(rate(http_requests_total{service="api_gateway"}[2m])) > 0.01
+            and
+          (
+            sum(rate(http_request_errors_total{error_class="5xx", service="api_gateway"}[2m]))
+            /
+            sum(rate(http_requests_total{service="api_gateway"}[2m]))
+          ) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          alert_tier: p0
+          category: edge
+        annotations:
+          summary: "API-Gateway: 5xx-Quote ueber 5% (2m)"
+          description: "Anteil 5xx zu allen Gateway-HTTP-Anfragen (service=api_gateway) >0.05 — Upstream, DB, Redis, Deploy pruefen."
+          runbook: "docs/monitoring_runbook.md#http-errors"
+          promql_note: "Optional Feinsicht: http_request_errors_total{error_class=5xx} by (http_route)."
+
+      - alert: LiveBrokerDegraded
+        expr: |
+          (
+            (time() - worker_heartbeat_timestamp{service="live_broker"}) > 180
+          )
+          or live_safety_latch_active > 0
+          or (live_reconcile_age_ms > 0 and live_reconcile_age_ms > 90000)
+        for: 3m
+        labels:
+          severity: critical
+          alert_tier: p0
+          category: trading
+        annotations:
+          summary: "Live-Broker: Heartbeat/Tick unsichtbar ODER Safety/Reconcile rot"
+          description: "Prozess-Heartbeat >3m (180s) oder live_safety_latch_active, oder Reconcile-Alter &gt;90s laut monitor-engine-Gauges."
+          runbook: "docs/monitoring_runbook.md#reconcile-lag"
+          promql_note: "worker_heartbeat_timestamp=live_broker, live_safety_latch_active, live_reconcile_age_ms"
+
+      - alert: MarketStreamLag
+        expr: data_freshness_seconds{datapoint="candles_1m"} > 5
+        for: 2m
+        labels:
+          severity: critical
+          alert_tier: p0
+          category: data
+        annotations:
+          summary: "Marktdaten: Kerzen-Frische &gt;5s (Staleness)"
+          description: "data_freshness_seconds{candles_1m} &gt;5 — 1m-Kerzen inkl. market-stream/Aggregation veraltet; schnell WS/Bitget/Pipeline pruefen."
+          runbook: "docs/monitoring_runbook.md#candle-gaps--stale"
+          promql_note: "Gleiche Zeitreihe wie `DataStaleCandles1m`, aber strenger (5s vs. 180s)."
+
   - name: bitget_trading_safety
     rules:
       - alert: KillSwitchActive
@@ -391,3 +448,42 @@ groups:
           summary: "Spezialisten-Disagreement kritisch"
           description: "Sehr hoher Dissent/Router-Konflikt-Anteil — Signal-Forensik und Regime."
           runbook: "docs/monitoring_runbook.md#specialist-disagreement-severe"
+
+  - name: llm_orchestrator_slo
+    rules:
+      - alert: LlmHighErrorRate
+        expr: |
+          sum(rate(llm_structured_runs_total{service="llm_orchestrator", outcome="failure"}[5m])) > 0.001
+            and
+          (
+            sum(rate(llm_structured_runs_total{service="llm_orchestrator", outcome="failure"}[5m]))
+            /
+            sum(rate(llm_structured_runs_total{service="llm_orchestrator"}[5m]))
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          category: inference
+        annotations:
+          summary: "LLM-Orchestrator: Fehlerquote (Run-Final) &gt; 5%"
+          description: "run_structured failure vs. alle Laeufe; Ursaachen: Timeouts, Provider, Schema/JSON, Guardrails — llm-logs, circuit, OPENAI, Cache pruefen."
+          runbook: "docs/monitoring_runbook.md#llm-structured-failures"
+          promql_note: "Fehlerquote: failure / (success+failure); Metrik llm_structured_runs_total; Zusatz: llm_parsing_errors_total, http_request_errors_total."
+
+      - alert: LlmHighLatency
+        expr: |
+          sum(rate(llm_request_duration_seconds_count{service="llm_orchestrator", task_type="operator_explain"}[10m])) > 0.001
+            and
+          histogram_quantile(
+            0.95,
+            sum by (le) (rate(llm_request_duration_seconds_bucket{service="llm_orchestrator", task_type="operator_explain"}[10m]))
+          ) > 15
+        for: 10m
+        labels:
+          severity: warning
+          category: inference
+        annotations:
+          summary: "LLM: Operator-Explain p95 &gt; 15s (Provider-Roundtrip)"
+          description: "Nur Echt-OpenAI-Aufrufe; Histogram llm_request_duration_seconds task_type=operator_explain — Modell, Promptgroesse, Netz, Rate-Limit pruefen."
+          runbook: "docs/monitoring_runbook.md#llm-latency-operator-explain"
+          promql_note: "Histogram llm_request_duration_seconds{task_type=operator_explain} — Redis-Cache-Hits sind nicht in diesem Histogramm."

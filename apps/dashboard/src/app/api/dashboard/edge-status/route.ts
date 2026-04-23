@@ -4,7 +4,6 @@ import { NextResponse } from "next/server";
 
 import { runGatewayBootstrapProbe } from "@/lib/gateway-bootstrap-probe";
 import type { GatewayBootstrapRootCause } from "@/lib/gateway-bootstrap-probe";
-import { publicEnv } from "@/lib/env";
 import { gatewayBaseUrl } from "@/lib/gateway-upstream";
 import { serverEnv } from "@/lib/server-env";
 
@@ -136,9 +135,7 @@ export async function GET() {
   return NextResponse.json({
     apiGatewayUrl: serverEnv.apiGatewayUrl,
     gatewayAuthorizationConfigured: hasAuth,
-    /** Build-Zeit-Flag (NEXT_PUBLIC_ADMIN_USE_SERVER_PROXY); sensible /v1-Pfade laufen serverseitig. */
-    useServerAdminProxy: publicEnv.useServerAdminProxy,
-    /** Immer true: kein Operator-JWT im Client-Bundle, nur BFF traegt DASHBOARD_GATEWAY_AUTHORIZATION. */
+    /** Sensible /v1-Pfade nur serverseitig; BFF traegt DASHBOARD_GATEWAY_AUTHORIZATION (kein public Build-Flag). */
     bffV1ProxyServerOnly: true,
     edgeDiagnostic,
     rootCause: probe.rootCause,

@@ -23,3 +23,10 @@ def validate_against_schema(schema: dict[str, Any], instance: dict[str, Any]) ->
 def validator_for(schema: dict[str, Any]) -> Draft202012Validator:
     Draft202012Validator.check_schema(schema)
     return Draft202012Validator(schema)
+
+
+def format_schema_errors_for_prompt(errors: list[str], *, max_items: int = 12) -> str:
+    """Für Repair-Prompt: kompakte, deterministische Fehlertexte."""
+    n = max(1, int(max_items))
+    parts = [str(x).strip() for x in (errors or []) if str(x).strip()][:n]
+    return "; ".join(parts) if parts else "unbekannter Schemafehler"

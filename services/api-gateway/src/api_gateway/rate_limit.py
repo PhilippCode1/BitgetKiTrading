@@ -9,30 +9,37 @@ from typing import Callable
 
 from fastapi import Request, Response
 from redis import Redis
+from redis.client import ConnectionPool
 from redis.exceptions import RedisError
 from starlette.middleware.base import BaseHTTPMiddleware
+from shared_py.redis_client import connect_sync_redis_with_init_backoff
 
 from api_gateway.config import get_gateway_settings
 from api_gateway.errors import http_error_envelope
 
 logger = logging.getLogger("api_gateway.rate_limit")
 
+_rl_pool: ConnectionPool | None = None
 _rl_redis: Redis | None = None
 
 
 def get_rate_limit_redis() -> Redis | None:
-    global _rl_redis
+    global _rl_pool, _rl_redis
     if _rl_redis is not None:
         return _rl_redis
     url = get_gateway_settings().redis_url.strip()
     if not url:
         return None
-    _rl_redis = Redis.from_url(
+    result = connect_sync_redis_with_init_backoff(
         url,
         decode_responses=False,
-        socket_connect_timeout=2,
-        socket_timeout=2,
+        max_connections=64,
+        init_retries=5,
     )
+    if result is None:
+        logger.error("rate_limit redis: could not connect after init retries")
+        return None
+    _rl_pool, _rl_redis = result
     return _rl_redis
 
 SENSITIVE_PREFIXES: tuple[str, ...] = (

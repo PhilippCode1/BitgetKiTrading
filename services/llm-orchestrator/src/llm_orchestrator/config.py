@@ -54,6 +54,16 @@ class LLMOrchestratorSettings(BaseServiceSettings):
     llm_cache_ttl_sec: int = Field(default=3600, alias="LLM_CACHE_TTL_SEC")
     llm_max_retries: int = Field(default=3, alias="LLM_MAX_RETRIES")
     llm_timeout_ms: int = Field(default=30_000, alias="LLM_TIMEOUT_MS")
+    llm_request_timeout_ms_fast: int = Field(
+        default=10_000,
+        alias="LLM_REQUEST_TIMEOUT_MS_FAST",
+        description="Timeout ms fuer schnelle Tasks (news, kurze Klassifikation).",
+    )
+    llm_request_timeout_ms_deep: int = Field(
+        default=30_000,
+        alias="LLM_REQUEST_TIMEOUT_MS_DEEP",
+        description="Timeout ms fuer lange/Reasoning-Tasks (z. B. operator_explain).",
+    )
     llm_use_fake_provider: bool = Field(default=False, alias="LLM_USE_FAKE_PROVIDER")
     llm_max_prompt_chars: int = Field(default=48_000, alias="LLM_MAX_PROMPT_CHARS")
 
@@ -64,7 +74,12 @@ class LLMOrchestratorSettings(BaseServiceSettings):
         alias="LLM_BACKOFF_JITTER_RATIO",
     )
     llm_circuit_fail_threshold: int = Field(
-        default=5, alias="LLM_CIRCUIT_FAIL_THRESHOLD"
+        default=3, alias="LLM_CIRCUIT_FAIL_THRESHOLD"
+    )
+    llm_circuit_window_sec: int = Field(
+        default=60,
+        alias="LLM_CIRCUIT_WINDOW_SEC",
+        description="Schiebefenster-Sekunden fuer 5xx/Timeout-Zaehlung.",
     )
     llm_circuit_open_sec: int = Field(default=60, alias="LLM_CIRCUIT_OPEN_SEC")
 
@@ -179,6 +194,27 @@ class LLMOrchestratorSettings(BaseServiceSettings):
             raise ValueError("LLM_TIMEOUT_MS ueberschreitet 600000 (10 Minuten)")
         return v
 
+    @field_validator("llm_request_timeout_ms_fast")
+    @classmethod
+    def _req_fast_ms(cls, v: int) -> int:
+        if v < 1_000 or v > 120_000:
+            raise ValueError("LLM_REQUEST_TIMEOUT_MS_FAST muss 1000..120000 sein")
+        return v
+
+    @field_validator("llm_request_timeout_ms_deep")
+    @classmethod
+    def _req_deep_ms(cls, v: int) -> int:
+        if v < 3_000 or v > 120_000:
+            raise ValueError("LLM_REQUEST_TIMEOUT_MS_DEEP muss 3000..120000 sein")
+        return v
+
+    @field_validator("llm_circuit_window_sec")
+    @classmethod
+    def _circuit_window(cls, v: int) -> int:
+        if v < 5 or v > 3_600:
+            raise ValueError("LLM_CIRCUIT_WINDOW_SEC muss 5..3600 sein")
+        return v
+
     @field_validator("llm_max_prompt_chars")
     @classmethod
     def _prompt_cap(cls, v: int) -> int:
@@ -223,6 +259,14 @@ class LLMOrchestratorSettings(BaseServiceSettings):
         if not 1.0 <= x <= 120.0:
             raise ValueError("WAR_ROOM_AGENT_TIMEOUT_SEC muss zwischen 1 und 120 liegen")
         return x
+
+    @model_validator(mode="after")
+    def _llm_timeouts_and_circuit(self) -> LLMOrchestratorSettings:
+        if self.llm_request_timeout_ms_fast > self.llm_request_timeout_ms_deep:
+            raise ValueError(
+                "LLM_REQUEST_TIMEOUT_MS_FAST muss <= LLM_REQUEST_TIMEOUT_MS_DEEP sein"
+            )
+        return self
 
     @model_validator(mode="after")
     def _validate_provider_requirements(self) -> LLMOrchestratorSettings:

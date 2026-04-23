@@ -1,3 +1,12 @@
+"""
+Lese-Proxys (GET) unter /v1/live-broker/* aus Postgres.
+
+Live-Broker-**Mutationen** (POST: Safety, operator-release) liegen in
+`routes_live_broker_safety`, `routes_live_broker_operator` und rufen dort
+`verify_live_trading_capability` (siehe `api_gateway.deps` + `mutation_deps`) — Fail-Fast 403
+ohne gueltigen Mandanten-Vertrag.
+"""
+
 from __future__ import annotations
 
 import logging

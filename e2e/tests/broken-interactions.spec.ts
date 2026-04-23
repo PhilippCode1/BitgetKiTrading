@@ -4,6 +4,8 @@ import { expect, test } from "@playwright/test";
  * Broken-interaction / dead-link detector (Sprint 1 Prompt B):
  * alle in der Sidebar sichtbaren internen Ziele traversieren, plus Kern-Startpfade.
  * Zusaetzlich: feste kritische Konsole-Pfade + sichere Klicks (kein LLM-Submit).
+ * Tabelle → dynamische [id]-Unterseiten (z. B. Signale/News/Strategien) siehe
+ * e2e/tests/deep-content.spec.ts (Phase 4 In-Content-Crawl).
  * Scheitert bei HTTP-Fehlerantwort, fehlendem main, harten Fehlerbannern oder pageerror.
  */
 async function primeConsoleSession(page: import("@playwright/test").Page) {

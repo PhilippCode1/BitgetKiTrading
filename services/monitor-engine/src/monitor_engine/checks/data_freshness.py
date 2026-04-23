@@ -15,6 +15,8 @@ TF_INTERVAL_MS: dict[str, int] = {
 }
 
 CANONICAL_TFS: tuple[str, ...] = ("1m", "5m", "15m", "1H", "4H")
+# Etwas groesszuegiger bevor "critical" (transiente Last, GC, Block in DB-Pool)
+FRESHNESS_CRITICAL_SLACK: float = 1.12
 
 
 @dataclass
@@ -33,11 +35,28 @@ def _now_ms() -> int:
 def classify_age(age_ms: int | None, thresh_ms: int) -> str:
     if age_ms is None:
         return "critical"
-    if age_ms > thresh_ms:
+    crit = int(int(thresh_ms) * FRESHNESS_CRITICAL_SLACK)
+    if age_ms > crit:
         return "critical"
     if age_ms > int(thresh_ms * 0.7):
         return "warn"
     return "ok"
+
+
+def age_classify_explain(age_ms: int | None, thresh_ms: int) -> str:
+    """Fuer Logs/Details: warum ok/warn/critical."""
+    warn_b = int(thresh_ms * 0.7)
+    crit_b = int(int(thresh_ms) * FRESHNESS_CRITICAL_SLACK)
+    if age_ms is None:
+        return "age_ms=missing (no datapoint) -> critical"
+    if age_ms > crit_b:
+        return (
+            f"age_ms={age_ms} > crit_threshold_ms={crit_b} "
+            f"(base={thresh_ms} slack={FRESHNESS_CRITICAL_SLACK})"
+        )
+    if age_ms > warn_b:
+        return f"age_ms={age_ms} in warn range ({warn_b} < age <={crit_b})"
+    return f"age_ms={age_ms} <= warn_threshold_ms={warn_b} (ok)"
 
 
 def detect_gap_count(timestamps_ms: Sequence[int], expected_interval_ms: int) -> int:
@@ -91,7 +110,12 @@ def load_candle_rows(
                 )
                 ts_list = [int(r[0]) for r in cur.fetchall() if r[0] is not None]
             gap_count = detect_gap_count(ts_list, TF_INTERVAL_MS[tf])
-            details: dict[str, Any] = {"timeframe": tf, "gap_count": gap_count}
+            details: dict[str, Any] = {
+                "timeframe": tf,
+                "gap_count": gap_count,
+                "stale_threshold_ms": thresh,
+                "stale_classify": age_classify_explain(age, thresh),
+            }
             if gap_count > 0 and st == "ok":
                 st = "warn"
             out.append(
@@ -131,7 +155,12 @@ def load_signal_row(
         last_ts_ms=last,
         age_ms=age,
         status=st,
-        details={"table": "app.signals_v1", "timeframe": "1m"},
+        details={
+            "table": "app.signals_v1",
+            "timeframe": "1m",
+            "stale_threshold_ms": stale_ms,
+            "stale_classify": age_classify_explain(age, stale_ms),
+        },
     )
 
 
@@ -161,7 +190,11 @@ def load_drawing_row(
         last_ts_ms=last,
         age_ms=age,
         status=st,
-        details={"timeframe": "1m"},
+        details={
+            "timeframe": "1m",
+            "stale_threshold_ms": stale_ms,
+            "stale_classify": age_classify_explain(age, stale_ms),
+        },
     )
 
 
@@ -183,7 +216,10 @@ def load_news_row(
         last_ts_ms=last,
         age_ms=age,
         status=st,
-        details={},
+        details={
+            "stale_threshold_ms": stale_ms,
+            "stale_classify": age_classify_explain(age, stale_ms),
+        },
     )
 
 
@@ -209,7 +245,10 @@ def load_funding_row(
         last_ts_ms=last,
         age_ms=age,
         status=st,
-        details={},
+        details={
+            "stale_threshold_ms": stale_ms,
+            "stale_classify": age_classify_explain(age, stale_ms),
+        },
     )
 
 
@@ -235,7 +274,10 @@ def load_oi_row(
         last_ts_ms=last,
         age_ms=age,
         status=st,
-        details={},
+        details={
+            "stale_threshold_ms": stale_ms,
+            "stale_classify": age_classify_explain(age, stale_ms),
+        },
     )
 
 

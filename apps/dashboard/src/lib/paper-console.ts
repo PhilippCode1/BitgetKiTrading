@@ -1,8 +1,9 @@
-import { gatewayFetchErrorMessage } from "@/lib/gateway-fetch-errors";
+import { getGatewayFetchErrorInfo } from "@/lib/gateway-fetch-errors";
 import type { PaperTradeRow } from "@/lib/types";
 
-/** @deprecated Prefer {@link gatewayFetchErrorMessage}; bleibt für bestehende Imports. */
-export const paperSectionFetchErrorMessage = gatewayFetchErrorMessage;
+/** @deprecated Technik-Zeile; für UI: `userFacingBodyForFetchFailure` + `t`. */
+export const paperSectionFetchErrorMessage = (reason: unknown) =>
+  getGatewayFetchErrorInfo(reason).technical;
 
 /** Kurzvorschau für Journal-Detail-JSON (kein Scrollen in der Tabelle). */
 export function previewPaperJournalDetail(

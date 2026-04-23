@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """
-CI-Gate: Prod-/Shadow-ENV-Vorlagen ohne aktive gefaehrliche Security-Flags.
+CI-Gate: ENV-Vorlagen ohne aktive Security-Flags und ohne erkennbare Geheimnisse.
 
-Prueft .env.production.example und .env.shadow.example auf verbotene
-Zuweisungen (z. B. DEBUG=true, API_AUTH_MODE=none), ohne Kommentarzeilen.
+Prueft .env.example, .env.production.example, .env.shadow.example auf:
+- verbotene Prod-/Shadow-Flags (z. B. DEBUG=true, API_AUTH_MODE=none) ohne Kommentarzeilen
+- typische API-Key-/Token-Muster (OpenAI sk-*, Bitget-artige Mocks, alte Mock-Praefixe)
 """
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -27,17 +29,148 @@ _FORBIDDEN: tuple[tuple[str, str], ...] = (
     ("PAPER_SIM_MODE", "TRUE"),
 )
 
-_TEMPLATES: tuple[Path, ...] = (
+# Nur Prod-/Shadow: strenge Sicherheits-Flags
+_TEMPLATES_STRICT: tuple[Path, ...] = (
     ROOT / ".env.production.example",
     ROOT / ".env.shadow.example",
 )
+
+# Inkl. .env.example: keine Secrets in Mustern, auch in lokalen Vorlagen
+_TEMPLATES_SECRET_SCAN: tuple[Path, ...] = _TEMPLATES_STRICT + (ROOT / ".env.example",)
+
+# Erlaubte reine Platzhalter (Gross-Kleinschreibung in _norm_val gespiegelt)
+_PLACEHOLDER_MARKERS: frozenset[str] = frozenset(
+    {
+        "",
+        "CHANGEME",
+        "CHANGE_ME",
+        "SET_ME",
+        "SETMEFROMDISCOVERY",
+        "JWT_MIT_GATEWAY_ROLES",  # legacy: .env.example BFF-Hinweis-Token-Label
+    }
+)
+
+
+def _norm_val(v: str) -> str:
+    t = v.strip()
+    t = t.strip('"').strip("'")
+    t = t.strip()
+    if t.lower().startswith("bearer "):
+        t = t[7:].strip()
+    return t
+
+
+def _is_allowed_placeholder_value(val_u: str) -> bool:
+    s = _norm_val(val_u)
+    su = s.upper()
+    if su in _PLACEHOLDER_MARKERS:
+        return True
+    if s.startswith("<") and s.endswith(">") and "SET" in su:
+        return True
+    if s.startswith("<") and s.endswith(">") and "CHANGEME" in su:
+        return True
+    if s.startswith("<") and s.endswith(">") and "OR_" in su:
+        return True  # <SET_ME_or_blank>
+    if s.startswith("<") and s.endswith(">") and "MEFROM" in su:
+        return True  # <SET_*_FROM_DISCOVERY> etc.
+    if s.startswith("<") and s.endswith(">") and "JWT" in su:
+        return True  # <jwt_mit_gateway_roles> o.a.
+    if su.startswith("HTTP://") or su.startswith("HTTPS://") or su.startswith("WS://") or su.startswith("WSS://"):
+        return True
+    if s.startswith("postgresql://") and "<" in s and ">" in s:  # Passwort-Platzhalter in URL
+        return True
+    if s.startswith("redis://"):
+        return True
+    if su in ("RASTER",) or s == "none":
+        return True
+    return False
+
+
+# Alte Mocks: wirklich in Prod nie verwenden, auch nicht als "Syntax only"
+_DANGEROUS_VALUE_SUBSTR: tuple[str, ...] = (
+    "prod_ex_only",
+    "shadow_ex_only",
+    "not-a-real-key",
+    "32_chars",
+    "replace_after_mint",  # dummy JWT-Fragment
+)
+
+# OpenAI / OpenAI-nahe: Project-, org-, org-scoped, legacy sk- lange Kette
+_PAT_OPENAI: tuple[re.Pattern[str], str] = (
+    (
+        re.compile(
+            r"(?i)sk-\s*(?:proj|ant|test|live|or-v1|svcacct)\s*-\s*[A-Za-z0-9_\-]+"
+        ),
+        "OpenAI/vendor sk-(proj|ant|test|...)- style key",
+    ),
+    (
+        re.compile(r"(?i)\bsk-(?:[A-Za-z0-9_-]){20,}\b"),
+        "OpenAI-style `sk-` + long alnum token (use <CHANGEME> in templates)",
+    ),
+)
+
+# JWT-artig: drei Base64url-Segmente (Committ echter/Beispiel-Tokens verhindern)
+_PAT_JWT_THREE: re.Pattern[str] = re.compile(
+    r"eyJ[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}"
+)
+
+# Heuristik: Bitget API Key (Base64-Variante, typ. mit Buchstaben/Zahlen, nur als Einzelwert)
+_PAT_BITGET_API_KEY: re.Pattern[str] = re.compile(
+    r"(?i)BITGET_.*(?:KEY|SECRET|PASSPHRASE|TOKEN)\s*=\s*([A-Za-z0-9+/_-]{20,80})\s*$"
+)
+
+
+def _forbidden_secrets_in_value(
+    val_raw: str,
+) -> list[str]:
+    if _is_allowed_placeholder_value(val_raw):
+        return []
+    msg: list[str] = []
+    l_raw = val_raw
+    l_norm = _norm_val(val_raw)
+    l_u = l_raw.upper()
+
+    for sub in _DANGEROUS_VALUE_SUBSTR:
+        if sub.upper() in l_u:
+            msg.append(f"enthaelt verbotene Mock-Teilfolge: {sub!r}")
+
+    for pat, desc in _PAT_OPENAI:
+        if pat.search(l_raw) or (l_norm and pat.search(l_norm)):
+            msg.append(desc)
+
+    if re.search(r"rk_(?:live|test)_[A-Za-z0-9]{20,}", l_raw):
+        msg.append("Stripe restricted key (rk_live_/rk_test_); nur <CHANGEME> in Vorlagen")
+    if re.search(
+        r"\b(?:sk|pk)_(?:live|test)_[A-Za-z0-9]{20,}\b",
+        l_raw,
+    ):
+        msg.append("Stripe sk_/pk_ live/test key; nur <CHANGEME> in Vorlagen")
+
+    m_bg = _PAT_BITGET_API_KEY.search(l_raw)
+    if m_bg and not l_raw.strip().endswith(">"):
+        b = m_bg.group(1)
+        if b.upper() not in _PLACEHOLDER_MARKERS and "<" not in b:
+            if not (b.startswith("<") and b.endswith(">")):
+                msg.append(
+                    "BITGET_* scheint konkrete Zeichenkette; nutze <CHANGEME> in Vorlagen"
+                )
+
+    for chunk in (l_raw, l_norm):
+        m = _PAT_JWT_THREE.search(chunk)
+        if m and len(m.group(0)) > 30:
+            c_up = chunk.upper()
+            if "JWT_MIT" in c_up or (chunk.strip().startswith("<") and ">" in chunk):
+                continue
+            msg.append("Wert enthaelt JWT-Fragment (eyJ…; nur <CHANGEME> o.ae.)")
+
+    return msg
 
 
 def _strip_comment(line: str) -> str:
     return line.split("#", 1)[0].strip()
 
 
-def _check_file(path: Path) -> list[str]:
+def _check_forbidden_flags(path: Path) -> list[str]:
     if not path.is_file():
         try:
             rel = path.relative_to(ROOT)
@@ -57,29 +190,54 @@ def _check_file(path: Path) -> list[str]:
         val_u = val.strip().strip('"').strip("'").upper()
         for fk, fv in _FORBIDDEN:
             if key_u == fk and val_u == fv:
-                msg = (
-                    f"{path.name}:{lineno}: {fk}={val.strip()} "
-                    "(in Prod/Shadow-Vorlage verboten)"
-                )
+                msg = f"{path.name}:{lineno}: {fk}={val.strip()} (in Prod/Shadow-Vorlage verboten)"
                 errors.append(msg)
+    return errors
+
+
+def _check_secrets_in_templates(path: Path) -> list[str]:
+    if not path.is_file():
+        return []
+    errors: list[str] = []
+    text = path.read_text(encoding="utf-8")
+    for lineno, raw in enumerate(text.splitlines(), 1):
+        line = _strip_comment(raw)
+        if not line or line.startswith("#"):
+            continue
+        if "=" not in line:
+            continue
+        _key, _, val = line.partition("=")
+        v = val.strip()
+        for submsg in _forbidden_secrets_in_value(v):
+            errors.append(
+                f"{path.name}:{lineno}: {submsg} — Wert beginnt: {v[:32]!r}…"
+            )
     return errors
 
 
 def main(argv: list[str] | None = None) -> int:
     args = sys.argv[1:] if argv is None else argv
-    paths: tuple[Path, ...] = (
-        tuple(Path(a).resolve() for a in args) if args else _TEMPLATES
+    files_strict: tuple[Path, ...] = (
+        tuple(Path(a).resolve() for a in args) if args else _TEMPLATES_STRICT
     )
+    files_secret: tuple[Path, ...] = (
+        files_strict
+        if args
+        else _TEMPLATES_SECRET_SCAN
+    )
+
     all_err: list[str] = []
-    for p in paths:
-        all_err.extend(_check_file(p))
+    for p in files_strict:
+        all_err.extend(_check_forbidden_flags(p))
+    for p in files_secret:
+        all_err.extend(_check_secrets_in_templates(p))
     if all_err:
         print("check_production_env_template_security: FAILED", file=sys.stderr)
         print("\n".join(all_err), file=sys.stderr)
         return 1
     print(
         "OK check_production_env_template_security: "
-        "keine verbotenen Security-Flags in Vorlagen."
+        "Vorlagen ohne verbotene Flags/typische Committed-Secrets."
     )
     return 0
 

@@ -24,4 +24,6 @@ class LLMProvider(Protocol):
         timeout_ms: int,
         model: str | None = None,
         system_instructions_de: str | None = None,
+        system_instructions_append_de: str | None = None,
+        task_type: str | None = None,
     ) -> dict[str, Any]: ...

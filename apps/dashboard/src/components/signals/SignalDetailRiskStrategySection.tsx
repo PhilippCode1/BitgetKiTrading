@@ -10,7 +10,7 @@ import type { SignalExplainResponse } from "@/lib/types";
 
 type Translate = (
   key: string,
-  vars?: Record<string, string | number>,
+  vars?: Record<string, string | number | boolean>,
 ) => string;
 
 type Props = Readonly<{
@@ -89,7 +89,7 @@ export function SignalDetailRiskStrategySection({ detail, explain, t }: Props) {
             {t("pages.signalsDetail.rationaleNoTradeLead")}
           </p>
           <ul className="news-list">
-            {summarizeNoTradeReasons(detail).map((line, i) => (
+            {summarizeNoTradeReasons(detail, t).map((line, i) => (
               <li key={`nt-${i}-${line.slice(0, 40)}`}>{line}</li>
             ))}
           </ul>
@@ -107,7 +107,7 @@ export function SignalDetailRiskStrategySection({ detail, explain, t }: Props) {
             {t("pages.signalsDetail.rationaleTradeLead")}
           </p>
           <ul className="news-list">
-            {summarizeTradeRationale(detail).map((line, i) => (
+            {summarizeTradeRationale(detail, t).map((line, i) => (
               <li key={`tr-${i}-${line.slice(0, 40)}`}>{line}</li>
             ))}
           </ul>

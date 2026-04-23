@@ -29,6 +29,11 @@ export type ApiFetchErrorInit = Readonly<{
   cause?: unknown;
 }>;
 
+/**
+ * Standardisierter Fetch-Fehler vom Gateway/BFF. Nutzertexte in der UI nicht aus
+ * `message` ableiten — dafür `buildProductMessageFromFetchError` bzw. `userFacingBodyForFetchFailure`
+ * (Keys `productMessage.fetch.*` / `ui.fetchError.*`).
+ */
 export class ApiFetchError extends Error {
   readonly kind: ApiFetchKind;
   readonly path: string;

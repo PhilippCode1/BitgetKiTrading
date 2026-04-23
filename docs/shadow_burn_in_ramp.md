@@ -78,6 +78,52 @@ Burn-in ist erst belastbar, wenn fuer den aktiven Shadow-Kohortensatz gleichzeit
 - mindestens **3 unterschiedliche Session-Cluster** im Beobachtungsfenster
 - mindestens **1 dokumentierter Stress-/Event-Tag**, falls im Zeitraum real aufgetreten
 
+### Datenbasierter Burn-in-Report (10/10-Evidence)
+
+Fuer die betriebliche Freigabelinie dient ein **auswertbares, reproduzierbares**
+Zertifikat, das die Postgres-Tabellen (nicht ad-hoc Logs) im Rückblick
+belegt. Das Skript
+
+`scripts/verify_shadow_burn_in.py`
+
+führt automatisierte Checks im gewählten **Zeitfenster** (Standard **72h**)
+durch u.a.:
+
+- `live.execution_decisions` (Blockierungen, Fat-Finger-artige
+  Reason/Regex-Treffer)
+- `paper.strategy_events` mit `AUTO_BLOCKED` (Hinweiszähler, kein
+  harter Abbruch)
+- `ops.alerts` (offen + warn/critical im Fenster) als
+  **P0/P1-äquivalenter** Monitoring-Signal-Stack
+- `ops.stream_checks` / `ops.service_checks` (Lag, Latency, `status=fail`)
+- `ops.service_checks` `check_type=health` (max. Lücke je Service als
+  **Heartbeat-Integrität**; konfigurierbares Obergabenniveau)
+- `live.audit_trails` `severity=critical` im Fenster
+
+**Nutzung:**
+
+```text
+# DATABASE_URL muss die Ops-/Live-Postgres-Instanz zeigen (z. B. .env lokal)
+set DATABASE_URL=postgresql://...
+python scripts/verify_shadow_burn_in.py --hours 72
+```
+
+Zusätzliche praktische Flags:
+
+- `--max-pipeline-lag-ms` (z. B. 5000, entspricht „Pipeline-Lag oberhalb
+  5s“-Warnungen, wenn die DB `lag`/`latency_ms` führt)
+- `--max-heartbeat-gap-sec` (Obergrenze für lückenlose
+  `health`-Checks, Default z. B. 600s – an Betrieb anpassen)
+- `--output-md /pfad/zur/shadow_burn_in_cert.md` schreibt denselben
+  Markdown-Report in eine Datei; die Konsole druckt immer den
+  vollständigen Text.
+
+**Ausgabe:** Ein Zertifikat-Block in Markdown. Auf **stderr** erscheint eine
+Kurzzeile `[PASS] …` oder `[FAIL] …` mit Begründung, sodass
+Automationen den Exit-Code (0/1) und die letzte Fehlermeldung parsen
+können. Das Skript **ersetzt** nicht die Kalender-/Kohortenmatrix oben, sondern
+dokumentiert Stabilitäts- und Sicherheits-**Datenrückseite** parallel.
+
 ## Harte Freigabekriterien vor Echtgeld-Mirror
 
 Alle Kriterien muessen gleichzeitig gruen sein. Sonst bleibt das System **shadow-only**.

@@ -2,6 +2,8 @@ import { expect, test } from "@playwright/test";
 
 /**
  * Telegram-Gate: optional Umleitung — Account-Hub stabilisiert Session.
+ * Phase 4: dynamische [id]-Routen (Listenklick → Detail) werden in
+ * e2e/tests/deep-content.spec.ts abgedeckt.
  */
 async function primeConsoleSession(page: import("@playwright/test").Page) {
   await page.goto("/console/account");

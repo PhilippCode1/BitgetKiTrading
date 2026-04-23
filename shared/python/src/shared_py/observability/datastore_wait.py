@@ -7,8 +7,11 @@ from __future__ import annotations
 import logging
 import os
 import time
+from typing import Any
+
 import psycopg
 import redis
+from shared_py.redis_client import create_sync_connection_pool, sync_redis_from_pool
 
 
 def _env_int(name: str, default: int) -> int:
@@ -69,26 +72,42 @@ def wait_for_redis(
     last_err: str | None = None
     while time.monotonic() < deadline:
         attempt += 1
+        client: redis.Redis | None = None
+        pool: Any = None
         try:
-            client = redis.Redis.from_url(
+            pool = create_sync_connection_pool(
                 url.strip(),
                 socket_connect_timeout=5,
                 socket_timeout=5,
             )
-            if client.ping():
+            client = sync_redis_from_pool(pool, health_check_interval=0)
+            if not client.ping():
+                last_err = "ping_failed"
+            else:
                 log.info("%s ready after %s attempt(s)", label, attempt)
                 return
         except Exception as exc:
             last_err = str(exc).split("\n", 1)[0][:200]
-            sleep_s = min(5.0, 0.5 + 0.25 * min(attempt, 12))
-            log.warning(
-                "%s not ready (attempt %s, retry in %.1fs): %s",
-                label,
-                attempt,
-                sleep_s,
-                last_err,
-            )
-            time.sleep(sleep_s)
+        finally:
+            if client is not None:
+                try:
+                    client.close()
+                except Exception:
+                    pass
+            if pool is not None:
+                try:
+                    pool.disconnect()
+                except Exception:
+                    pass
+        sleep_s = min(5.0, 0.5 + 0.25 * min(attempt, 12))
+        log.warning(
+            "%s not ready (attempt %s, retry in %.1fs): %s",
+            label,
+            attempt,
+            sleep_s,
+            last_err,
+        )
+        time.sleep(sleep_s)
     raise RuntimeError(f"{label} nicht bereit nach {limit}s: {last_err}")
 
 

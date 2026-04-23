@@ -268,49 +268,51 @@ async def live_stream(
     max_eps = 10
 
     async def gen() -> AsyncIterator[dict[str, Any]]:
-        import redis.asyncio as aioredis
+        from shared_py.redis_client import get_or_create_async_pooled_client
 
         ts_deque: deque[float] = deque()
-        r = aioredis.from_url(redis_url, decode_responses=True)
+        r = get_or_create_async_pooled_client(
+            redis_url,
+            role="gateway_live_sse",
+            decode_responses=True,
+            max_connections=32,
+        )
         streams = {s: "$" for s in STREAMS}
         last_ping = time.monotonic()
-        try:
-            yield {"event": "ping", "data": json.dumps({"ts_ms": int(time.time() * 1000)})}
-            while True:
-                now_m = time.monotonic()
-                if now_m - last_ping >= ping_sec:
-                    yield {
-                        "event": "ping",
-                        "data": json.dumps({"ts_ms": int(time.time() * 1000)}),
-                    }
-                    last_ping = now_m
-                try:
-                    resp = await r.xread(streams=streams, count=20, block=1000)
-                except Exception as exc:
-                    logger.warning("xread: %s", exc)
-                    await asyncio.sleep(1)
-                    continue
-                if not resp:
-                    await asyncio.sleep(0)
-                    continue
-                for stream_name, messages in resp:
-                    for msg_id, fields in messages:
-                        streams[stream_name] = msg_id
-                        raw = fields.get("data", "{}")
-                        try:
-                            env = json.loads(raw)
-                        except json.JSONDecodeError:
-                            continue
-                        mapped = _map_envelope_to_sse(
-                            env, symbol=sym, timeframe=nft
-                        )
-                        if mapped is None:
-                            continue
-                        ev_name, data = mapped
-                        if not _coalesce_allow(ts_deque, max_eps):
-                            continue
-                        yield {"event": ev_name, "data": data}
-        finally:
-            await r.aclose()
+        yield {"event": "ping", "data": json.dumps({"ts_ms": int(time.time() * 1000)})}
+        while True:
+            now_m = time.monotonic()
+            if now_m - last_ping >= ping_sec:
+                yield {
+                    "event": "ping",
+                    "data": json.dumps({"ts_ms": int(time.time() * 1000)}),
+                }
+                last_ping = now_m
+            try:
+                resp = await r.xread(streams=streams, count=20, block=1000)
+            except Exception as exc:
+                logger.warning("xread: %s", exc)
+                await asyncio.sleep(1)
+                continue
+            if not resp:
+                await asyncio.sleep(0)
+                continue
+            for stream_name, messages in resp:
+                for msg_id, fields in messages:
+                    streams[stream_name] = msg_id
+                    raw = fields.get("data", "{}")
+                    try:
+                        env = json.loads(raw)
+                    except json.JSONDecodeError:
+                        continue
+                    mapped = _map_envelope_to_sse(
+                        env, symbol=sym, timeframe=nft
+                    )
+                    if mapped is None:
+                        continue
+                    ev_name, data = mapped
+                    if not _coalesce_allow(ts_deque, max_eps):
+                        continue
+                    yield {"event": ev_name, "data": data}
 
     return EventSourceResponse(gen())

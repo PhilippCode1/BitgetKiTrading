@@ -11,7 +11,11 @@ from psycopg.rows import dict_row
 from pydantic import BaseModel, Field
 
 from api_gateway.audit import record_gateway_audit_line
-from api_gateway.auth import GatewayAuthContext, require_admin_read, require_admin_write
+from api_gateway.auth import (
+    GatewayAuthContext,
+    require_admin_read_role,
+    require_admin_write_role,
+)
 from api_gateway.config import get_gateway_settings
 from api_gateway.db import get_database_url
 from api_gateway.db_customer_performance import fetch_admin_performance_aggregates
@@ -58,7 +62,7 @@ class StrategyStatusBody(BaseModel):
 @router.get("/llm-governance")
 def admin_llm_governance_get(
     request: Request,
-    auth: Annotated[GatewayAuthContext, Depends(require_admin_read)],
+    auth: Annotated[GatewayAuthContext, Depends(require_admin_read_role)],
 ) -> dict[str, Any]:
     """
     KI-Governance: Prompt-Versionen, Modellzuordnung, Eval-Hinweis (Orchestrator).
@@ -107,7 +111,7 @@ def admin_llm_governance_get(
 )
 def admin_performance_overview(
     request: Request,
-    auth: Annotated[GatewayAuthContext, Depends(require_admin_read)],
+    auth: Annotated[GatewayAuthContext, Depends(require_admin_read_role)],
 ) -> dict[str, Any]:
     record_gateway_audit_line(request, auth, "admin_performance_overview_read")
     now_ms = int(time.time() * 1000)
@@ -122,7 +126,7 @@ def admin_performance_overview(
 )
 def admin_telegram_customer_delivery(
     request: Request,
-    auth: Annotated[GatewayAuthContext, Depends(require_admin_read)],
+    auth: Annotated[GatewayAuthContext, Depends(require_admin_read_role)],
 ) -> dict[str, Any]:
     record_gateway_audit_line(request, auth, "admin_telegram_customer_delivery_read")
     dsn = get_database_url()
@@ -162,7 +166,7 @@ def admin_telegram_customer_delivery(
 @router.get("/console-overview", summary="Admin-Cockpit: Lebenszyklus, Abo, Vertraege, Integrationen")
 def admin_console_overview(
     request: Request,
-    auth: Annotated[GatewayAuthContext, Depends(require_admin_read)],
+    auth: Annotated[GatewayAuthContext, Depends(require_admin_read_role)],
 ) -> dict[str, Any]:
     """Aggregierte Kennzahlen fuer das zentrale Admin-Dashboard (ohne Schreibpfade)."""
     record_gateway_audit_line(request, auth, "admin_console_overview_read")
@@ -216,7 +220,7 @@ def admin_console_overview(
 @router.get("/rules")
 def admin_rules_get(
     request: Request,
-    auth: Annotated[GatewayAuthContext, Depends(require_admin_read)],
+    auth: Annotated[GatewayAuthContext, Depends(require_admin_read_role)],
 ) -> dict[str, Any]:
     record_gateway_audit_line(request, auth, "admin_rules_read")
     g = get_gateway_settings()
@@ -238,7 +242,7 @@ def admin_rules_get(
 def admin_rules_post(
     request: Request,
     body: AdminRulesUpsert,
-    auth: Annotated[GatewayAuthContext, Depends(require_admin_write)],
+    auth: Annotated[GatewayAuthContext, Depends(require_admin_write_role)],
 ) -> dict[str, Any]:
     dsn = get_database_url()
     with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
@@ -259,7 +263,7 @@ def admin_rules_post(
 def admin_strategy_status(
     request: Request,
     body: StrategyStatusBody,
-    auth: Annotated[GatewayAuthContext, Depends(require_admin_write)],
+    auth: Annotated[GatewayAuthContext, Depends(require_admin_write_role)],
 ) -> dict[str, Any]:
     if body.new_status not in _ALLOWED_STATUS:
         raise HTTPException(status_code=400, detail="invalid new_status")

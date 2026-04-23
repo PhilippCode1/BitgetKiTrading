@@ -11,7 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from starlette.requests import Request
 
 from llm_orchestrator.audit_ledger_commit import commit_war_room_to_audit_ledger
-from llm_orchestrator.exceptions import LLMPromptTooLargeError
+from llm_orchestrator.exceptions import LLMPromptTooLargeError, LLMProviderOfflineError
 from llm_orchestrator.service import LLMService, ProviderPref
 from shared_py.service_auth import (
     InternalServiceAuthContext,
@@ -163,12 +163,20 @@ def build_router(
 ) -> APIRouter:
     r = APIRouter()
     require_internal = build_internal_service_dependency(settings)
+    _LLM_EXC = (LLMPromptTooLargeError, LLMProviderOfflineError, RuntimeError)
 
-    def _llm_http_error(exc: LLMPromptTooLargeError | RuntimeError) -> HTTPException:
+    def _llm_http_error(
+        exc: LLMPromptTooLargeError | LLMProviderOfflineError | RuntimeError,
+    ) -> HTTPException:
         if isinstance(exc, LLMPromptTooLargeError):
             return HTTPException(
                 status_code=413,
                 detail={"code": "PROMPT_TOO_LARGE", "message": str(exc)},
+            )
+        if isinstance(exc, LLMProviderOfflineError):
+            return HTTPException(
+                status_code=503,
+                detail=exc.to_http_detail(),
             )
         hint = service.peek_last_structured_failure()
         detail: dict[str, Any] = {"code": "LLM_UNAVAILABLE", "message": str(exc)}
@@ -209,7 +217,7 @@ def build_router(
                 model=structured.model,
                 task_type=structured.task_type,
             )
-        except (LLMPromptTooLargeError, RuntimeError) as exc:
+        except _LLM_EXC as exc:
             raise _llm_http_error(exc) from exc
 
     @r.post("/llm/consensus/war_room")
@@ -252,7 +260,7 @@ def build_router(
                 model=news.model,
                 temperature=news.temperature,
             )
-        except (LLMPromptTooLargeError, RuntimeError) as exc:
+        except _LLM_EXC as exc:
             raise _llm_http_error(exc) from exc
 
     @r.post("/llm/analyst/hypotheses")
@@ -267,7 +275,7 @@ def build_router(
                 model=body.model,
                 temperature=body.temperature,
             )
-        except (LLMPromptTooLargeError, RuntimeError) as exc:
+        except _LLM_EXC as exc:
             raise _llm_http_error(exc) from exc
 
     @r.post("/llm/analyst/context_classification")
@@ -283,7 +291,7 @@ def build_router(
                 model=body.model,
                 temperature=body.temperature,
             )
-        except (LLMPromptTooLargeError, RuntimeError) as exc:
+        except _LLM_EXC as exc:
             raise _llm_http_error(exc) from exc
 
     @r.post("/llm/analyst/post_trade_review")
@@ -298,7 +306,7 @@ def build_router(
                 model=body.model,
                 temperature=body.temperature,
             )
-        except (LLMPromptTooLargeError, RuntimeError) as exc:
+        except _LLM_EXC as exc:
             raise _llm_http_error(exc) from exc
 
     @r.post("/llm/analyst/operator_explain")
@@ -314,7 +322,7 @@ def build_router(
                 model=body.model,
                 temperature=body.temperature,
             )
-        except (LLMPromptTooLargeError, RuntimeError) as exc:
+        except _LLM_EXC as exc:
             raise _llm_http_error(exc) from exc
 
     @r.post("/llm/analyst/safety_incident_diagnosis")
@@ -330,7 +338,7 @@ def build_router(
                 model=body.model,
                 temperature=body.temperature,
             )
-        except (LLMPromptTooLargeError, RuntimeError) as exc:
+        except _LLM_EXC as exc:
             raise _llm_http_error(exc) from exc
 
     @r.post("/llm/analyst/strategy_signal_explain")
@@ -361,7 +369,7 @@ def build_router(
                 model=body.model,
                 temperature=body.temperature,
             )
-        except (LLMPromptTooLargeError, RuntimeError) as exc:
+        except _LLM_EXC as exc:
             raise _llm_http_error(exc) from exc
 
     @r.post("/llm/analyst/ai_strategy_proposal_draft")
@@ -392,7 +400,7 @@ def build_router(
                 model=body.model,
                 temperature=body.temperature,
             )
-        except (LLMPromptTooLargeError, RuntimeError) as exc:
+        except _LLM_EXC as exc:
             raise _llm_http_error(exc) from exc
 
     @r.post("/llm/analyst/strategy_journal_summary")
@@ -408,7 +416,7 @@ def build_router(
                 model=body.model,
                 temperature=body.temperature,
             )
-        except (LLMPromptTooLargeError, RuntimeError) as exc:
+        except _LLM_EXC as exc:
             raise _llm_http_error(exc) from exc
 
     @r.post("/llm/assist/turn")
@@ -432,7 +440,7 @@ def build_router(
                 status_code=422,
                 detail={"code": "ASSIST_ROLE_INVALID", "message": str(exc)},
             ) from exc
-        except (LLMPromptTooLargeError, RuntimeError) as exc:
+        except _LLM_EXC as exc:
             raise _llm_http_error(exc) from exc
 
     return r

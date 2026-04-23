@@ -17,6 +17,32 @@ Normativ ergaenzend zu `docs/emergency_runbook.md`, `docs/live_broker.md`, `docs
 
 Nach Neustart rekonstruiert der Worker den Runtime-Read-Model-Pfad aus **Orders + Snapshots + Fills + Journal-Tail + aktiven Exit-Plaenen** (`LiveBrokerRepository.reconstruct_runtime_state`). Shadow-/Mirror-Freigaben vor Live bleiben in `live.shadow_live_assessments` und `live.execution_operator_releases` nachvollziehbar.
 
+## 1.1. DR-Übung: Postgres-Restore (stündliches Backup, Staging/Prod)
+
+Vor Echtgeld-Go/Operator-Freigabe: **stündliches** Backup mindestens einmal in eine **Klon-Umgebung** (z. B. Staging) einspielen und Lese-/Write-Pfade (Migrationen, Ops-API, Live-Broker-Read) validieren. App-Instanzen vor dem Einspielen stoppen, die leere Zieldatenbank anlegen oder `DROP/CREATE` (Schema-only nicht ausreichend, wenn Inhalte referenziert werden).
+
+**Custom-Format-Dump (üblich, von `pg_dump -Fc` erzeugt):** Ziel-DSN ersetzen; Host/Port/User aus Geheimnissen (nicht in Git).
+
+```bash
+# Variablen: PFAD=Dump vom Objekt-Storage (z. B. stündliches /hourly/…); ZIEL_DSN=postgresql://…@…:5432/dbname
+export PGPASSWORD="…"   # oder .pgpass
+# Bestehende Sessions beenden, dann in eine frische, leere DB (oder ersetzenden Namen) spielen:
+pg_restore \
+  -h "…" -p 5432 -U "…" \
+  -d "${ZIEL_DBNAME}" \
+  --no-owner --no-acl --clean --if-exists -v \
+  "${PFAD}/postgres_hourly_YYYYMMDD_HH.dump"
+# Erfolg: keine fatalen Objektfehler, danach: infra/migrate.py nur falls Schema-Version hinterherhinkt, Smoke-SELECTs, App starten.
+```
+
+**Nur-Schema+Daten-Parallel:** Wenn stattdessen ein reines `pg_dump -F p` (Plain-SQL) im Stunden-Rot verfügbar ist, auf eine **leere** Zieldatenbank:
+
+```bash
+psql "postgresql://…@…:5432/${ZIEL_DBNAME}" -v ON_ERROR_STOP=1 -f "${PFAD}/postgres_hourly_YYYYMMDD_HH.sql"
+```
+
+Nachweis: Ticket mit Zeitstempel, Dump-Label, Ziel-Cluster, ausgeführt von (Rolle) und Stichproben-Queries (u. a. `SELECT max(created_ts) FROM live.reconcile_snapshots`).
+
 ## 2. Reconcile-Loop (Worker-Intervall)
 
 Pro Takt (Standard `LIVE_RECONCILE_INTERVAL_SEC`):
@@ -78,5 +104,6 @@ Siehe `.env.example`: `LIVE_RECONCILE_ORDER_ACK_STALE_SEC`, `LIVE_RECONCILE_PRIV
 | Reconcile-HTTP-Vertrag          | `tests/integration/test_http_stack_recovery.py`        | `GET …/live-broker/reconcile/latest`: bei vorhandenem Snapshot `status`, `details_json` mit `drift`, `recovery_state`, `exchange_probe`, `execution_controls`, `drift.total_count`. `GET /health`: `latest_reconcile` ist Objekt; bei Daten `status` in ok/degraded/fail. |
 | Ops-Summary / Drift             | `tests/integration/test_db_live_recovery_contracts.py` | `fetch_ops_summary`: Drift aus `details_json` → `latest_reconcile_drift_total` (bestehend); **neu:** FK-Kette `reconcile_runs` ↔ `reconcile_snapshots`, Abschluss `status=completed` und Join.                                                                            |
 | Reconcile-Logik (ohne Exchange) | `tests/unit/live_broker/test_reconcile_service.py`     | `LiveReconcileService.run_once`: Safety-Latch, Drift, Paper-Modus, Divergenz-Journal — siehe dort fuer Szenarien.                                                                                                                                                         |
+| Safety-Latch / kein Live-Order  | `tests/integration/test_kill_switch_behavior.py`       | Mit migrierter `TEST_DATABASE_URL`: `safety_latch` `arm` in `live.audit_trails` blockiert `create_order` synchron (`BitgetRestError` `kill_switch`); `evaluate_intent` liefert `live_safety_latch_active` ohne private Exchange-Order; optional Gate-Test `account_paused`.  |
 
 **Compose/CI:** Stack-Tests setzen `INTEGRATION_LIVE_BROKER_URL` bzw. `LIVE_BROKER_URL` und `TEST_DATABASE_URL` (siehe `.github/workflows/ci.yml`, Integration-Job). Ohne laufenden Live-Broker werden HTTP-Tests **skipped**, nicht rot.

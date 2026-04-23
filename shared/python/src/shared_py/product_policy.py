@@ -191,6 +191,17 @@ def exchange_api_connection_allowed(
     return True, "ok"
 
 
+class ExecutionPolicyViolationError(ValueError):
+    """
+    Harter Stopp: LIVE-Ausfuehrung/Submit nicht erlaubt (Vertrag, Gates, Modus).
+    Fuer produktive Live-Broker-Pfade — nicht vor Bitget-Order-API weiterreichen.
+    """
+
+    def __init__(self, message: str, *, reason: str) -> None:
+        super().__init__(message)
+        self.reason = reason
+
+
 def product_policy_descriptor() -> dict[str, str | int | bool]:
     """Diagnose: welche Policy-Version und Kernkonstanten aktiv sind."""
     return {

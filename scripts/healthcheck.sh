@@ -1,5 +1,22 @@
 #!/usr/bin/env bash
+# Optional: vollstaendig wie pnpm rc:health mit Resilienz (Startup-Budget, 0/1) und/oder
+#   HEALTHCHECK_STRESS_MODE=1  -> delegiert an rc_health_edge.py --stress
 set -euo pipefail
+
+_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+: "${HEALTHCHECK_STRESS_MODE:=}"
+
+if [[ "${HEALTHCHECK_STRESS_MODE}" == "1" || "${HEALTHCHECK_STRESS_MODE}" == "true" ]]; then
+  if command -v python >/dev/null 2>&1; then
+    _PY="python"
+  elif command -v python3 >/dev/null 2>&1; then
+    _PY="python3"
+  else
+    echo "FAIL healthcheck: python/python3 fehlt" >&2
+    exit 1
+  fi
+  exec env PYTHONPATH="$_ROOT" "$_PY" "$_ROOT/scripts/rc_health_edge.py" --stress
+fi
 
 : "${API_GATEWAY_URL:=http://localhost:8000}"
 : "${MARKET_STREAM_URL:=http://localhost:8010}"
@@ -95,7 +112,10 @@ checks = payload.get("checks") or {}
 failed = []
 if isinstance(checks, dict):
     for key, value in checks.items():
-        if isinstance(value, (list, tuple)) and value and not bool(value[0]):
+        if isinstance(value, dict) and value.get("ok") is False:
+            detail = str(value.get("detail", "failed"))[:200]
+            failed.append(f"{key}: {detail}")
+        elif isinstance(value, (list, tuple)) and value and not bool(value[0]):
             detail = value[1] if len(value) > 1 else "failed"
             failed.append(f"{key}:{detail}")
 

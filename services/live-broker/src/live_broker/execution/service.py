@@ -7,6 +7,11 @@ from dataclasses import asdict
 from decimal import Decimal
 from typing import Any, cast
 
+import psycopg
+from psycopg.rows import dict_row
+from shared_py.modul_mate_db_gates import assert_execution_allowed
+from shared_py.product_policy import ExecutionPolicyViolationError
+
 from shared_py.bitget import (
     BitgetInstrumentCatalog,
     BitgetInstrumentMetadataService,
@@ -32,6 +37,7 @@ from live_broker.persistence.repo import LiveBrokerRepository
 from live_broker.private_rest import BitgetRestError
 
 logger = logging.getLogger("live_broker.execution")
+SECURITY = logging.getLogger("live_broker.security")
 
 
 def _intent_under_survival_mode(intent: ExecutionIntentRequest) -> ExecutionIntentRequest:
@@ -117,6 +123,28 @@ class LiveExecutionService:
 
     def set_truth_state_fn(self, fn: Callable[[], dict[str, Any]] | None) -> None:
         self._truth_state_fn = fn
+
+    def _assert_db_live_execution_policy(self) -> None:
+        if not self._settings.commercial_gates_enforced_for_exchange_submit:
+            return
+        dsn = (self._settings.database_url or "").strip()
+        if not dsn:
+            raise ExecutionPolicyViolationError(
+                "LIVE-Execution: DATABASE_URL fehlt bei aktivem commercial gate",
+                reason="database_url_required_for_gates",
+            )
+        tid = (self._settings.modul_mate_gate_tenant_id or "default").strip()
+        try:
+            with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
+                assert_execution_allowed(conn, tenant_id=tid, mode="LIVE")
+        except ExecutionPolicyViolationError as exc:
+            SECURITY.warning(
+                "[SECURITY_WARNING] execution blocked tenant_id=%s reason=%s msg=%s",
+                tid,
+                exc.reason,
+                str(exc)[:500],
+            )
+            raise
 
     def _maybe_publish_operator_intel_execution(
         self,
@@ -359,6 +387,11 @@ class LiveExecutionService:
         survival_lock = bool(truth.get("survival_execution_lock"))
         intent_eval = _intent_under_survival_mode(intent) if survival else intent
 
+        requested_mode = intent_eval.requested_runtime_mode
+        effective_mode = self._effective_runtime_mode(requested_mode)
+        if effective_mode == "live":
+            self._assert_db_live_execution_policy()
+
         preview = self._exchange_client.build_order_preview(intent_eval)
         probe = (
             self._exchange_client.probe_exchange()
@@ -373,8 +406,6 @@ class LiveExecutionService:
             }
         )
 
-        requested_mode = intent_eval.requested_runtime_mode
-        effective_mode = self._effective_runtime_mode(requested_mode)
         catalog_entry = self._resolve_catalog_entry(intent_eval)
         metadata = self._resolve_metadata(intent_eval)
         signal_payload = self._signal_payload(intent_eval)

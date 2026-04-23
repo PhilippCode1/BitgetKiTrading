@@ -152,6 +152,7 @@ const SIMPLE_SECTIONS: readonly NavSection[] = [
 ];
 
 type Props = Readonly<{
+  /** Server-only: true nur bei getOperatorSession().role === "admin" (DASHBOARD_GATEWAY_AUTHORIZATION), niemals von Client-ENV. */
   showAdminNav: boolean;
   uiMode?: UiMode;
 }>;

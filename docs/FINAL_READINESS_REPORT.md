@@ -11,10 +11,13 @@ Dieses Dokument ist der **ehrliche Abschlussstand** des Prompt-Packs. Es trennt:
 - welche Punkte noch **intern offen** sind
 - welche Punkte **rein extern** bleiben
 
+Management nutzt ausschließlich **`docs/LaunchChecklist.md`** als abnahmefähige Single Source of Truth (mit Signoff-Tabelle).  
+Technische Gates: `python tools/release_sanity_checks.py` muss im Release-Pfad grün laufen; Burn-in-„Zertifikat“: `python scripts/verify_shadow_burn_in.py` (siehe `docs/shadow_burn_in_ramp.md`).
+
 Es ersetzt nicht:
 
 - `docs/LAUNCH_DOSSIER.md`
-- `docs/LaunchChecklist.md`
+- `docs/LaunchChecklist.md` (laufend zu pflegen)
 - `docs/shadow_burn_in_ramp.md`
 - `docs/operator_sops.md`
 

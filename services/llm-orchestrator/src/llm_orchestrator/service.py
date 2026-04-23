@@ -31,10 +31,16 @@ from llm_orchestrator.events.llm_failed import publish_llm_failed
 from llm_orchestrator.exceptions import (
     GuardrailViolation,
     LLMPromptTooLargeError,
+    LLMProviderOfflineError,
     RetryableLLMError,
 )
 from llm_orchestrator.guardrails import validate_task_output
-from llm_orchestrator.knowledge.retrieval import KnowledgeRetriever, RetrievedChunk
+from llm_orchestrator.knowledge.retrieval import (
+    KnowledgeRetriever,
+    RetrievedChunk,
+    format_operator_readonly_pro_symbol,
+)
+from llm_orchestrator.llm_metrics import record_parsing_error, record_structured_run_outcome
 from llm_orchestrator.paths import (
     llm_knowledge_dir,
     load_json_schema,
@@ -51,17 +57,32 @@ from llm_orchestrator.prompt_governance import (
 from llm_orchestrator.prompt_governance.templates import build_assistant_turn_user_prompt
 from llm_orchestrator.providers.fake_provider import FakeProvider
 from llm_orchestrator.providers.openai_provider import OpenAIProvider
-from llm_orchestrator.retry.backoff import sleep_backoff
+from llm_orchestrator.retry.backoff import openai_circuit_trip_on_status, sleep_backoff
 from llm_orchestrator.retry.circuit import CircuitBreaker
 from llm_orchestrator.validation.schema_validate import (
     SchemaValidationError,
+    format_schema_errors_for_prompt,
     validate_against_schema,
+)
+from llm_orchestrator.validation.structured_fallback import build_structured_fallback
+from llm_orchestrator.validation.structured_repair import (
+    REPAIR_SYSTEM_APPEND_DE,
+    build_repair_user_prompt,
 )
 from shared_py.eventbus import RedisStreamBus
 
 logger = logging.getLogger("llm_orchestrator.service")
 
 ProviderPref = Literal["auto", "openai"]
+
+# Schnelle Klassifikations-/News-Tasks: hartes niedrigeres Timeout (siehe config)
+_LLM_FAST_TIMEOUT_TASKS = frozenset(
+    {
+        "news_summary",
+        "analyst_hypotheses",
+        "analyst_context_classification",
+    }
+)
 
 
 def _classify_structured_failure(last_error: str) -> str:
@@ -98,6 +119,7 @@ class LLMService:
         self._circuit = CircuitBreaker(
             fail_threshold=settings.llm_circuit_fail_threshold,
             open_seconds=settings.llm_circuit_open_sec,
+            window_seconds=settings.llm_circuit_window_sec,
         )
         self._fake = FakeProvider()
         self._openai = OpenAIProvider(settings=settings)
@@ -187,6 +209,8 @@ class LLMService:
             ),
             "structured_output": {
                 "llm_timeout_ms": self._settings.llm_timeout_ms,
+                "llm_request_timeout_ms_fast": self._settings.llm_request_timeout_ms_fast,
+                "llm_request_timeout_ms_deep": self._settings.llm_request_timeout_ms_deep,
                 "llm_max_retries": self._settings.llm_max_retries,
                 "llm_max_prompt_chars": self._settings.llm_max_prompt_chars,
             },
@@ -245,6 +269,18 @@ class LLMService:
         if task_type in high_tasks:
             return self._settings.openai_model_high_reasoning
         return self._settings.openai_model_primary
+
+    def _llm_request_timeout_ms(self, task_type: str | None) -> int:
+        t = (task_type or "").strip()
+        if t in _LLM_FAST_TIMEOUT_TASKS:
+            return min(
+                self._settings.llm_request_timeout_ms_fast,
+                self._settings.llm_timeout_ms,
+            )
+        return min(
+            self._settings.llm_request_timeout_ms_deep,
+            self._settings.llm_timeout_ms,
+        )
 
     def _chain(
         self, preference: ProviderPref, resolved_openai_model: str
@@ -319,14 +355,18 @@ class LLMService:
         prompt: str,
         task_type: str | None,
         retrieval_chunks: list[RetrievedChunk] | None,
+        provenance_extras: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         out = dict(base)
-        out["provenance"] = self._build_provenance(
+        prov = self._build_provenance(
             schema_json=schema_json,
             prompt=prompt,
             task_type=task_type,
             retrieval_chunks=retrieval_chunks,
         )
+        if provenance_extras:
+            prov = {**prov, **provenance_extras}
+        out["provenance"] = prov
         return out
 
     def governance_summary(self) -> dict[str, Any]:
@@ -419,8 +459,10 @@ class LLMService:
         model: str | None = None,
         task_type: str | None = None,
         provenance_retrieval_chunks: list[RetrievedChunk] | None = None,
+        structured_fallback_binds: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         if len(prompt) > self._settings.llm_max_prompt_chars:
+            record_structured_run_outcome(task_type, "failure")
             raise LLMPromptTooLargeError(
                 f"prompt_len={len(prompt)} max={self._settings.llm_max_prompt_chars}"
             )
@@ -453,6 +495,7 @@ class LLMService:
         try:
             chain = self._chain(provider_preference, resolved_model)
         except RuntimeError as exc:
+            record_structured_run_outcome(task_type, "failure")
             self._record_last_structured_failure(
                 failure_class="no_provider_configured",
                 message=str(exc),
@@ -461,6 +504,7 @@ class LLMService:
             raise
         providers_tried: list[str] = []
         last_error = ""
+        req_timeout_ms = self._llm_request_timeout_ms(task_type)
 
         for prov, chain_model in chain:
             prov_key = prov.name
@@ -477,10 +521,13 @@ class LLMService:
                     validate_against_schema(schema_json, cached)
                     validate_task_output(cached, task_type=task_type)
                 except GuardrailViolation:
+                    record_structured_run_outcome(task_type, "failure")
                     raise
                 except SchemaValidationError as exc:
                     logger.warning("cache invalidiert: %s", exc.errors)
+                    record_parsing_error(task_type, "schema_validation")
                 else:
+                    record_structured_run_outcome(task_type, "success")
                     return self._finalize_response(
                         {
                             "ok": True,
@@ -498,45 +545,38 @@ class LLMService:
             providers_tried.append(prov_key)
 
             if self._circuit.is_open(prov_key):
+                if prov_key == "openai":
+                    record_structured_run_outcome(task_type, "failure")
+                    raise LLMProviderOfflineError()
                 last_error = f"circuit_open:{prov_key}"
                 continue
 
-            success = False
             for attempt in range(self._settings.llm_max_retries):
+                def _validate_out(obj: dict[str, Any]) -> None:
+                    validate_against_schema(schema_json, obj)
+                    validate_task_output(obj, task_type=task_type)
+
+                raw0: dict[str, Any] | None = None
                 try:
-                    raw = prov.generate_structured(
+                    raw0 = prov.generate_structured(
                         schema_json,
                         prompt,
                         temperature=temperature,
-                        timeout_ms=self._settings.llm_timeout_ms,
+                        timeout_ms=req_timeout_ms,
                         model=use_model if prov_key == "openai" else None,
                         system_instructions_de=sys_de or None,
+                        task_type=task_type,
                     )
-                    validate_against_schema(schema_json, raw)
-                    validate_task_output(raw, task_type=task_type)
                 except GuardrailViolation:
+                    record_structured_run_outcome(task_type, "failure")
                     raise
-                except SchemaValidationError as exc:
-                    last_error = f"validation:{exc.errors[:3]}"
-                    logger.warning(
-                        "schema validation failed attempt=%s provider=%s err=%s",
-                        attempt,
-                        prov_key,
-                        last_error,
-                    )
-                    if attempt + 1 < self._settings.llm_max_retries:
-                        sleep_backoff(
-                            attempt,
-                            base_sec=self._settings.llm_backoff_base_sec,
-                            max_sec=min(
-                                self._settings.llm_backoff_max_sec,
-                                5.0,
-                            ),
-                            jitter_ratio=self._settings.llm_backoff_jitter_ratio,
-                        )
-                    continue
                 except RetryableLLMError as exc:
                     last_error = str(exc)
+                    st = getattr(exc, "status_code", None)
+                    if prov_key == "openai" and openai_circuit_trip_on_status(
+                        st if isinstance(st, int) else None
+                    ):
+                        self._circuit.record_upstream_degraded(prov_key)
                     logger.warning(
                         "retryable llm error attempt=%s provider=%s: %s",
                         attempt,
@@ -553,19 +593,38 @@ class LLMService:
                 except Exception as exc:  # pragma: no cover - Netzwerk
                     last_error = str(exc)
                     logger.exception("provider %s failed: %s", prov_key, exc)
-                    self._circuit.record_failure(prov_key)
+                    if prov_key == "openai":
+                        self._circuit.record_upstream_degraded(prov_key)
                     break
+                if raw0 is None:
+                    continue
+                last_schema: SchemaValidationError | None = None
+                try:
+                    _validate_out(raw0)
+                except GuardrailViolation:
+                    record_structured_run_outcome(task_type, "failure")
+                    raise
+                except SchemaValidationError as exc0:
+                    last_schema = exc0
+                    last_error = f"validation:{exc0.errors[:3]}"
+                    record_parsing_error(task_type, "schema_validation")
+                    logger.warning(
+                        "schema validation (primary) attempt=%s provider=%s err=%s",
+                        attempt,
+                        prov_key,
+                        last_error,
+                    )
                 else:
-                    self._cache.set_json(ckey, raw)
+                    self._cache.set_json(ckey, raw0)
                     self._circuit.record_success(prov_key)
-                    success = True
+                    record_structured_run_outcome(task_type, "success")
                     return self._finalize_response(
                         {
                             "ok": True,
                             "cached": False,
                             "provider": prov.name,
                             "model": use_model,
-                            "result": raw,
+                            "result": raw0,
                         },
                         schema_json=schema_json,
                         prompt=prompt,
@@ -573,8 +632,130 @@ class LLMService:
                         retrieval_chunks=provenance_retrieval_chunks,
                     )
 
-            if not success:
-                self._circuit.record_failure(prov_key)
+                if last_schema is not None and raw0 is not None:
+                    err_txt = format_schema_errors_for_prompt(last_schema.errors)
+                    repair_user = build_repair_user_prompt(
+                        original_prompt=prompt,
+                        invalid_json_object=raw0,
+                        error_text=err_txt,
+                    )
+                    repair_sys = REPAIR_SYSTEM_APPEND_DE.format(error=err_txt)
+                    last_schema2: SchemaValidationError = last_schema
+                    raw1: dict[str, Any] | None = None
+                    try:
+                        raw1 = prov.generate_structured(
+                            schema_json,
+                            repair_user,
+                            temperature=temperature,
+                            timeout_ms=req_timeout_ms,
+                            model=use_model if prov_key == "openai" else None,
+                            system_instructions_de=sys_de or None,
+                            system_instructions_append_de=repair_sys,
+                            task_type=task_type,
+                        )
+                    except GuardrailViolation:
+                        record_structured_run_outcome(task_type, "failure")
+                        raise
+                    except (RetryableLLMError, Exception) as rexc:
+                        last_error = str(rexc)
+                        if isinstance(rexc, RetryableLLMError):
+                            st2 = getattr(rexc, "status_code", None)
+                            if prov_key == "openai" and openai_circuit_trip_on_status(
+                                st2 if isinstance(st2, int) else None
+                            ):
+                                self._circuit.record_upstream_degraded(prov_key)
+                        logger.warning(
+                            "schema repair (llm) fehlgeschlagen attempt=%s provider=%s: %s",
+                            attempt,
+                            prov_key,
+                            rexc,
+                        )
+                    if raw1 is not None:
+                        try:
+                            _validate_out(raw1)
+                        except GuardrailViolation:
+                            record_structured_run_outcome(task_type, "failure")
+                            raise
+                        except SchemaValidationError as exc1:
+                            last_schema2 = exc1
+                            last_error = f"validation:{exc1.errors[:3]}"
+                            record_parsing_error(task_type, "schema_validation_repair")
+                            logger.warning(
+                                "schema validation (repair) failed attempt=%s: %s",
+                                attempt,
+                                last_error,
+                            )
+                        else:
+                            self._cache.set_json(ckey, raw1)
+                            self._circuit.record_success(prov_key)
+                            record_structured_run_outcome(task_type, "success")
+                            return self._finalize_response(
+                                {
+                                    "ok": True,
+                                    "cached": False,
+                                    "provider": prov.name,
+                                    "model": use_model,
+                                    "result": raw1,
+                                },
+                                schema_json=schema_json,
+                                prompt=prompt,
+                                task_type=task_type,
+                                retrieval_chunks=provenance_retrieval_chunks,
+                            )
+                    # Statischer Struktur-Fallback (garantiert schema-konform, bei bekannten $id-Mappings)
+                    try:
+                        raw_fb = build_structured_fallback(
+                            schema_json,
+                            task_type=task_type,
+                            last_schema_error=last_schema2,
+                            fallback_binds=structured_fallback_binds,
+                        )
+                        _validate_out(raw_fb)
+                    except GuardrailViolation:
+                        record_structured_run_outcome(task_type, "failure")
+                        raise
+                    except Exception as fbx:
+                        last_error = f"structured_fallback:{fbx!s}"
+                        record_parsing_error(task_type, "schema_fallback")
+                        logger.exception(
+                            "strukturierter Fallback gescheitert attempt=%s provider=%s",
+                            attempt,
+                            prov_key,
+                        )
+                        if attempt + 1 < self._settings.llm_max_retries:
+                            sleep_backoff(
+                                attempt,
+                                base_sec=self._settings.llm_backoff_base_sec,
+                                max_sec=min(
+                                    self._settings.llm_backoff_max_sec,
+                                    5.0,
+                                ),
+                                jitter_ratio=self._settings.llm_backoff_jitter_ratio,
+                            )
+                        continue
+                    self._circuit.record_success(prov_key)
+                    record_structured_run_outcome(task_type, "success")
+                    return self._finalize_response(
+                        {
+                            "ok": True,
+                            "cached": False,
+                            "provider": prov.name,
+                            "model": use_model,
+                            "result": raw_fb,
+                        },
+                        schema_json=schema_json,
+                        prompt=prompt,
+                        task_type=task_type,
+                        retrieval_chunks=provenance_retrieval_chunks,
+                        provenance_extras={
+                            "llm_derived": False,
+                            "from_schema_fallback": True,
+                            "schema_fallback_note_de": (
+                                "Struktur-Fallback: Ergebnis erfüllt jsonschema, "
+                                "wurde aber nicht zuverlässig vom KI-Modell erzeugt."
+                            ),
+                        },
+                    )
 
         try:
             publish_llm_failed(
@@ -592,6 +773,7 @@ class LLMService:
             message=last_error or "alle Provider fehlgeschlagen",
             task_type=task_type,
         )
+        record_structured_run_outcome(task_type, "failure")
         raise RuntimeError(last_error or "alle Provider fehlgeschlagen")
 
     def run_news_summary(
@@ -731,7 +913,9 @@ class LLMService:
         model: str | None = None,
         temperature: float = 0.2,
     ) -> dict[str, Any]:
-        qctx = self._trunc_json(readonly_context_json, max_chars=10_000)
+        qctx = format_operator_readonly_pro_symbol(
+            readonly_context_json, max_total_chars=10_000
+        )
         rq = f"{question_de}\n{qctx}"
         rchunks = self._retriever.retrieve("operator_explain", rq)
         rag = self._retriever.format_for_prompt(rchunks)
@@ -904,6 +1088,7 @@ class LLMService:
             model=model,
             task_type=task_type,
             provenance_retrieval_chunks=rchunks,
+            structured_fallback_binds={"assist_role_echo": assist_role},
         )
         reply = str(out.get("result", {}).get("assistant_reply_de") or "")
         hist_after = self._assist_conv.append_exchange(

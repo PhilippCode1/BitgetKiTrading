@@ -10,9 +10,11 @@
 .EXAMPLE
   pwsh scripts/rc_health.ps1
   pwsh scripts/rc_health.ps1 -EnvFile .env.local
+  pwsh scripts/rc_health.ps1 -Stress
 #>
 param(
-    [string] $EnvFile = ".env.local"
+  [string] $EnvFile = ".env.local",
+  [switch] $Stress
 )
 
 $ErrorActionPreference = "Stop"
@@ -25,5 +27,10 @@ Assert-DevEnvFile -RepoRoot $Root -EnvFile $EnvFile
 $py = Get-Command python -ErrorAction SilentlyContinue
 if (-not $py) { $py = Get-Command python3 -ErrorAction Stop }
 
-& $py.Source (Join-Path $PSScriptRoot "rc_health_runner.py") $EnvFile
+$rcRunner = Join-Path $PSScriptRoot "rc_health_runner.py"
+if ($Stress) {
+  & $py.Source $rcRunner "--stress" $EnvFile
+} else {
+  & $py.Source $rcRunner $EnvFile
+}
 exit $LASTEXITCODE

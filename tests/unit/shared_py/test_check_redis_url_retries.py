@@ -30,7 +30,7 @@ def test_check_redis_url_empty_url(check_redis_url) -> None:
 def test_check_redis_url_retries_then_ok(check_redis_url) -> None:
     calls = {"n": 0}
 
-    def fake_from_url(*_a, **_kw) -> MagicMock:
+    def fake_from_pool(_pool, **_kw) -> MagicMock:
         m = MagicMock()
         idx = calls["n"]
         calls["n"] += 1
@@ -40,7 +40,15 @@ def test_check_redis_url_retries_then_ok(check_redis_url) -> None:
             m.ping.return_value = True
         return m
 
-    with patch("shared_py.observability.health.redis.Redis.from_url", side_effect=fake_from_url):
+    with (
+        patch(
+            "shared_py.observability.health.create_sync_connection_pool", return_value=MagicMock()
+        ),
+        patch(
+            "shared_py.observability.health.sync_redis_from_pool",
+            side_effect=fake_from_pool,
+        ),
+    ):
         ok, detail = check_redis_url("redis://127.0.0.1:6379/0", timeout_sec=1.0, retries=2)
     assert ok is True
     assert detail == "ok"
@@ -50,25 +58,35 @@ def test_check_redis_url_retries_then_ok(check_redis_url) -> None:
 def test_check_redis_url_no_retry_on_first_success(check_redis_url) -> None:
     calls = {"n": 0}
 
-    def fake_from_url(*_a, **_kw) -> MagicMock:
+    def fake_from_pool(_pool, **_kw) -> MagicMock:
         calls["n"] += 1
         m = MagicMock()
         m.ping.return_value = True
         return m
 
-    with patch("shared_py.observability.health.redis.Redis.from_url", side_effect=fake_from_url):
+    with (
+        patch(
+            "shared_py.observability.health.create_sync_connection_pool", return_value=MagicMock()
+        ),
+        patch("shared_py.observability.health.sync_redis_from_pool", side_effect=fake_from_pool),
+    ):
         ok, detail = check_redis_url("redis://127.0.0.1:6379/0", retries=2)
     assert ok is True
     assert calls["n"] == 1
 
 
 def test_check_redis_url_all_fail_returns_last_error(check_redis_url) -> None:
-    def fake_from_url(*_a, **_kw) -> MagicMock:
+    def fake_from_pool(_pool, **_kw) -> MagicMock:
         m = MagicMock()
         m.ping.side_effect = redis.TimeoutError("Timeout reading from socket")
         return m
 
-    with patch("shared_py.observability.health.redis.Redis.from_url", side_effect=fake_from_url):
+    with (
+        patch(
+            "shared_py.observability.health.create_sync_connection_pool", return_value=MagicMock()
+        ),
+        patch("shared_py.observability.health.sync_redis_from_pool", side_effect=fake_from_pool),
+    ):
         ok, detail = check_redis_url("redis://127.0.0.1:6379/0", timeout_sec=0.1, retries=1)
     assert ok is False
     assert "Timeout" in detail

@@ -946,6 +946,76 @@ body {
   border-top: 1px solid var(--border-subtle);
 }
 
+/* Wiederverwendbarer Leerzustand (u. a. Tabellen) */
+.empty-state {
+  margin: 12px 0;
+  padding: 16px 18px;
+}
+
+.empty-state__row {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.empty-state__icon {
+  flex-shrink: 0;
+  color: var(--fg-muted);
+  opacity: 0.9;
+}
+
+.empty-state__text {
+  min-width: 0;
+  flex: 1;
+}
+
+.empty-state__title {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.empty-state__body {
+  margin: 0 0 8px;
+  line-height: 1.45;
+}
+
+.empty-state__next {
+  margin: 0 0 10px;
+  line-height: 1.45;
+}
+
+.empty-state__steps-label {
+  margin: 0 0 6px;
+}
+
+.empty-state__steps {
+  margin: 0 0 10px;
+  padding-left: 1.25rem;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.empty-state__steps li {
+  margin-bottom: 4px;
+}
+
+.empty-state__cta {
+  margin-top: 8px;
+}
+
+.empty-state__actions {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* Kompat: früher nur Titel-Größe für Hilf-Leerzustand */
+.empty-state.empty-state-help .empty-state__title {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
 .console-fetch-notice-actions {
   display: flex;
   flex-wrap: wrap;
@@ -1037,6 +1107,75 @@ body {
 .data-table--dense td {
   padding: 4px 6px;
   font-size: 0.78rem;
+}
+
+/* Tabellen-Skelett (Ladezustand) */
+.data-table-skeleton__wrap {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--r-md);
+  background: var(--bg-surface);
+}
+
+.data-table-skeleton__wrap .data-table tbody tr:hover td {
+  background: var(--bg-surface);
+}
+
+.data-table-skeleton__shimmer {
+  display: block;
+  border-radius: var(--r-sm);
+  min-height: 0.6rem;
+  background: var(--bg-inset);
+  animation: page-loading-shimmer 1.2s ease-in-out infinite;
+}
+
+.data-table-skeleton__th,
+.data-table-skeleton__td {
+  display: block;
+  width: 100%;
+  max-width: 6rem;
+}
+
+.data-table-skeleton__td {
+  min-height: 0.6rem;
+}
+
+.data-table-skeleton--mobile {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.data-table-skeleton--mobile .data-table-skeleton__card {
+  min-height: 0;
+  padding: 12px 14px;
+  margin: 0;
+}
+
+.data-table-skeleton__bar--title {
+  max-width: 8rem;
+  min-height: 0.8rem;
+  margin-bottom: 8px;
+}
+
+.data-table-skeleton__bar--short {
+  max-width: 7rem;
+}
+
+.data-table-skeleton__bar--tiny {
+  min-height: 0.55rem;
+  max-width: 3.2rem;
+}
+
+.data-table-skeleton__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
 }
 
 .mono-small {
@@ -1712,6 +1851,14 @@ details.reasons > summary {
 .app-error-fallback__card {
   max-width: 520px;
   width: 100%;
+}
+
+.app-error-fallback__card:has(.app-error-fallback__message) {
+  max-width: min(100%, 720px);
+}
+
+.app-error-fallback__digest {
+  margin-top: 8px;
 }
 
 .app-error-fallback__title {

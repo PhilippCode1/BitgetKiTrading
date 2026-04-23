@@ -3,8 +3,16 @@
 Release-Gate: HTTP-Smokes (Gateway), optional RC-Health + KI-Orchestrator,
 Dashboard-HTML-Probes, optional Playwright-E2E (Nutzerreisen).
 
-Zuerst: tools/production_selfcheck.py (Modul-Mate-Gates, Kern-pytests,
-check_contracts).
+Ablauf (hart, Exit 1 bei Fehler):
+  1) check_production_env_template_security.py
+  2) check_contracts.py
+  3) release_sanity_checks.py --include-dashboard-pnpm
+  4) production_selfcheck.py
+  5) API-Integration, Health, Probes, optional E2E
+
+Zusaetzlich enthaelt production_selfcheck die gleichen Contract-/Env-Gates
+(redundante Absicherung).
+
 Qualitaetsvertrag Merge vs. Release:
 docs/cursor_execution/07_ci_and_release_contract.md
 
@@ -50,6 +58,36 @@ def main() -> int:
     )
     args = ap.parse_args()
     with_e2e = args.with_e2e or os.environ.get("PLAYWRIGHT_E2E", "").strip() == "1"
+
+    # Harte Vorgates (unabhaengig von production_selfcheck; keine Fehler verschlucken)
+    for script in (
+        "check_production_env_template_security.py",
+        "check_contracts.py",
+    ):
+        if run([py, str(root / "tools" / script)], cwd=root) != 0:
+            print(
+                f"\nRELEASE GATE: FEHLGESCHLAGEN ({script})",
+                file=sys.stderr,
+            )
+            return 1
+
+    if (
+        run(
+            [
+                py,
+                str(root / "tools" / "release_sanity_checks.py"),
+                "--include-dashboard-pnpm",
+            ],
+            cwd=root,
+        )
+        != 0
+    ):
+        print(
+            "\nRELEASE GATE: FEHLGESCHLAGEN "
+            "(release_sanity_checks, inkl. Dashboard tsc/jest/locale)",
+            file=sys.stderr,
+        )
+        return 1
 
     if run([py, str(root / "tools" / "production_selfcheck.py")], cwd=root) != 0:
         print("\nRELEASE GATE: FEHLGESCHLAGEN (production_selfcheck)", file=sys.stderr)

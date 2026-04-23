@@ -11,11 +11,12 @@ import {
 
 export { ApiFetchError, isApiFetchError } from "@/lib/api-fetch-errors";
 export type { ApiFetchKind } from "@/lib/api-fetch-errors";
+export type { GatewayFetchErrorInfo } from "@/lib/gateway-fetch-errors";
 import {
   blockedV1MessageForPath,
   getGatewayBootstrapProbeForRequest,
 } from "@/lib/gateway-bootstrap-probe";
-import { gatewayFetchErrorMessage } from "@/lib/gateway-fetch-errors";
+import { getGatewayFetchErrorInfo, type GatewayFetchErrorInfo } from "@/lib/gateway-fetch-errors";
 import { serverEnv } from "@/lib/server-env";
 import {
   fetchGatewayGetWithRetry,
@@ -513,13 +514,13 @@ export const fetchSystemHealthCached = cache(fetchSystemHealth);
  */
 export async function fetchSystemHealthBestEffort(): Promise<{
   health: SystemHealthResponse | null;
-  error: string | null;
+  error: GatewayFetchErrorInfo | null;
 }> {
   try {
     const health = await fetchSystemHealthCached();
     return { health, error: null };
   } catch (e) {
-    return { health: null, error: gatewayFetchErrorMessage(e) };
+    return { health: null, error: getGatewayFetchErrorInfo(e) };
   }
 }
 

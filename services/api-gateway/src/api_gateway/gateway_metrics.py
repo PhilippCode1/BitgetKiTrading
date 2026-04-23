@@ -1,4 +1,10 @@
-"""Prometheus-Metriken: kritische Gateway-Pfade (Muster docs/observability.md)."""
+"""
+Prometheus-Metriken: kritische Gateway-Pfade (Muster docs/observability.md).
+
+Gemeinsame HTTP-SLOs (P95, Slow-Request-WARNING, 4xx/5xx pro Route-Gruppe) liefern
+``shared_py.observability.metrics.instrument_fastapi``:
+`http_request_duration_seconds`, `http_request_errors_total` an ``/metrics``.
+"""
 
 from __future__ import annotations
 

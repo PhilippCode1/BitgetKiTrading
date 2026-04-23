@@ -31,13 +31,15 @@ export default async function OperatorConsoleLayout({ children }: Props) {
   const showAdminNav = await resolveShowAdminNav();
   const uiMode = await getRequestUiMode();
   const probe = await getGatewayBootstrapProbeForRequest();
+  const t = await getServerTranslator();
   let executionTier: ExecutionTierSnapshot | null = null;
   let healthLoadHint: string | null = null;
   const probeBlocks = probe.rootCause !== "ok";
   if (!probeBlocks) {
     const { health, error } = await fetchSystemHealthBestEffort();
     if (error) {
-      healthLoadHint = error.length > 160 ? `${error.slice(0, 159)}…` : error;
+      const hint = t(`ui.fetchError.${error.kind}.body`);
+      healthLoadHint = hint;
     }
     if (health) {
       const rt = health.execution?.execution_runtime as
@@ -50,7 +52,6 @@ export default async function OperatorConsoleLayout({ children }: Props) {
     }
   }
   const healthErr = probeBlocks || Boolean(healthLoadHint);
-  const t = await getServerTranslator();
   return (
     <DashboardShell
       showAdminNav={showAdminNav}

@@ -17,7 +17,12 @@ from shared_py.observability.health import (
     check_redis_url,
     merge_ready_details,
 )
-from shared_py.observability.metrics import instrument_fastapi, touch_worker_heartbeat
+from shared_py.observability.metrics import (
+    arun_periodic_heartbeat,
+    instrument_fastapi,
+    start_thread_periodic_heartbeat,
+    touch_worker_heartbeat,
+)
 
 __all__ = [
     "wait_for_datastores",
@@ -30,6 +35,8 @@ __all__ = [
     "merge_ready_details",
     "instrument_fastapi",
     "touch_worker_heartbeat",
+    "arun_periodic_heartbeat",
+    "start_thread_periodic_heartbeat",
     "log_correlation_fields",
     "new_trace_id",
     "RequestContextLoggingFilter",

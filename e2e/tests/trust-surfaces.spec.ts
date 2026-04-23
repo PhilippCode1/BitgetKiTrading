@@ -7,6 +7,7 @@ import { expect, test } from "@playwright/test";
  * Smoke + Screenshots für Vertrauens- und Einstiegstexte (Lauf 49).
  * Voraussetzung: Dashboard unter E2E_BASE_URL (Standard http://127.0.0.1:3000).
  * globalSetup setzt Locale DE und Onboarding skipped — Konsole ist erreichbar.
+ * Phase 4: Tiefen-Navigation List→Detail: deep-content.spec.ts.
  */
 const ASSET_DIR = path.join(
   __dirname,

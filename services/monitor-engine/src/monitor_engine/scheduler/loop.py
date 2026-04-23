@@ -74,6 +74,7 @@ class MonitorScheduler:
             "open_alert_count": 0,
             "last_error": None,
         }
+        self._http_ready_streak: dict[str, int] = {}
 
     def bind_bus(self, bus: Any) -> None:
         self._bus = bus
@@ -127,7 +128,15 @@ class MonitorScheduler:
         logger.info("run checks start")
         svc_results: list[Any] = []
         for name, base in self.settings.service_urls.items():
-            svc_results.extend(await probe_service(client, name, base))
+            svc_results.extend(
+                await probe_service(
+                    client,
+                    name,
+                    base,
+                    ready_fail_streaks=self._http_ready_streak,
+                    ready_fails_to_degrade=self.settings.monitor_http_ready_fails_to_degrade,
+                )
+            )
         try:
             live_broker_checks = load_live_broker_service_checks(
                 self.settings.database_url,
