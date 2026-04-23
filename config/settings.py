@@ -170,6 +170,27 @@ class BaseServiceSettings(BaseSettings):
     )
     enable_debug_metrics: bool = Field(default=False, alias="ENABLE_DEBUG_METRICS")
 
+    worker_gc_interval_messages: int = Field(
+        default=0,
+        ge=0,
+        le=10_000_000,
+        alias="WORKER_GC_INTERVAL_MESSAGES",
+        description=(
+            "Optional: ``gc.collect()`` in synchronen Worker-Schleifen alle N Nachrichten "
+            "(0=deaktiviert; fuer lange 24/7-Laeufe vorsichtig tunen)."
+        ),
+    )
+    worker_gc_interval_async_loops: int = Field(
+        default=0,
+        ge=0,
+        le=10_000_000,
+        alias="WORKER_GC_INTERVAL_ASYNC_LOOPS",
+        description=(
+            "Optional: ``gc.collect()`` in periodischen asyncio-Schleifen alle N Iterationen "
+            "(0=deaktiviert)."
+        ),
+    )
+
     app_name: str = Field(default="bitget-btc-ai", alias="APP_NAME")
     app_base_url: str = Field(default="", alias="APP_BASE_URL")
     frontend_url: str = Field(default="", alias="FRONTEND_URL")

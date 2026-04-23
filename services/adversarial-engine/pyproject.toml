@@ -1,0 +1,34 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "adversarial-engine"
+version = "0.1.0"
+description = "Adversarial Market Simulator (WGAN-GP) fuer Stress-Szenarien / toxische Trainings-Batches."
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.112",
+  "httpx>=0.27",
+  "numpy>=1.26,<3",
+  "pyarrow>=18,<19",
+  "pydantic>=2.6",
+  "pydantic-settings>=2",
+  "python-json-logger>=2.0.7",
+  "torch>=2.2,<3",
+  "uvicorn[standard]>=0.27",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/adversarial_engine"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

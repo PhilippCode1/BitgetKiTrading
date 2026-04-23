@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import gc
 import logging
 import time
 from contextlib import asynccontextmanager
@@ -44,6 +45,7 @@ from market_stream.storage.candles_repo import CandlesRepository
 from market_stream.storage.orderbook_repo import OrderBookRepository
 from market_stream.storage.ticker_repo import TickerRepository
 from market_stream.storage.trades_repo import TradesRepository
+from market_stream.vpin_telemetry import VpinTelemetry, VpinTelemetrySettings
 
 
 class MarketStreamSettings(BitgetSettings):
@@ -128,6 +130,26 @@ class MarketStreamSettings(BitgetSettings):
         default=86400,
         alias="EVENTBUS_DEDUPE_TTL_SEC",
     )
+    market_stream_vpin_enabled: bool = Field(
+        default=True,
+        alias="MARKET_STREAM_VPIN_ENABLED",
+        description="VPIN/Toxizitaet aus Trades + Best-Bid/Ask (Lee-Ready wenn Mid verfuegbar).",
+    )
+    market_stream_vpin_bucket_volume: float = Field(
+        default=5.0,
+        alias="MARKET_STREAM_VPIN_BUCKET_VOLUME",
+        description="Volumen pro VPIN-Bucket (Basiskontrakte / Coin-Einheiten wie Bitget-Trade-Size).",
+    )
+    market_stream_vpin_window_buckets: int = Field(
+        default=50,
+        alias="MARKET_STREAM_VPIN_WINDOW_BUCKETS",
+        description="Rollierendes Fenster abgeschlossener Buckets fuer ToxicityScore.",
+    )
+    market_stream_vpin_publish_interval_sec: int = Field(
+        default=5,
+        alias="MARKET_STREAM_VPIN_PUBLISH_INTERVAL_SEC",
+        description="Intervall fuer events:orderflow_toxicity (Sekunden).",
+    )
     bitget_candle_initial_load_limit: int = Field(
         default=300,
         alias="BITGET_CANDLE_INITIAL_LOAD_LIMIT",
@@ -186,6 +208,28 @@ class MarketStreamSettings(BitgetSettings):
     def _validate_feed_health_interval(cls, value: int) -> int:
         if not 3 <= value <= 600:
             raise ValueError("MARKET_STREAM_FEED_HEALTH_INTERVAL_SEC muss 3..600 sein")
+        return value
+
+    @field_validator("market_stream_vpin_bucket_volume")
+    @classmethod
+    def _validate_vpin_bucket(cls, value: float) -> float:
+        x = float(value)
+        if not (x > 0.0 and x.is_finite()):
+            raise ValueError("MARKET_STREAM_VPIN_BUCKET_VOLUME muss endlich und > 0 sein")
+        return x
+
+    @field_validator("market_stream_vpin_window_buckets")
+    @classmethod
+    def _validate_vpin_window(cls, value: int) -> int:
+        if value < 1 or value > 10_000:
+            raise ValueError("MARKET_STREAM_VPIN_WINDOW_BUCKETS muss 1..10000 sein")
+        return value
+
+    @field_validator("market_stream_vpin_publish_interval_sec")
+    @classmethod
+    def _validate_vpin_publish_interval(cls, value: int) -> int:
+        if not 1 <= value <= 300:
+            raise ValueError("MARKET_STREAM_VPIN_PUBLISH_INTERVAL_SEC muss 1..300 sein")
         return value
 
     @field_validator("bitget_candle_initial_load_limit")
@@ -304,6 +348,7 @@ class MarketStreamRuntime:
             ws_mode=settings.market_stream_ws_mode,
             started_at_ms=int(time.time() * 1000),
         )
+        self._feed_health_gc_loops = 0
         self._provider_diagnostics = ProviderDiagnostics()
         self._redis_sink = RedisStreamSink(settings.redis_url, logger=self._logger)
         self._slippage_sink = RedisStreamSink(
@@ -316,6 +361,18 @@ class MarketStreamRuntime:
             dedupe_ttl_sec=settings.eventbus_dedupe_ttl_sec,
             default_block_ms=settings.eventbus_default_block_ms,
             default_count=settings.eventbus_default_count,
+            logger=self._logger,
+        )
+        self._vpin_telemetry = VpinTelemetry(
+            settings=VpinTelemetrySettings(
+                enabled=settings.market_stream_vpin_enabled,
+                bucket_volume=settings.market_stream_vpin_bucket_volume,
+                window_buckets=settings.market_stream_vpin_window_buckets,
+                publish_interval_sec=settings.market_stream_vpin_publish_interval_sec,
+            ),
+            symbol=self._bitget_settings.symbol,
+            event_bus=self._event_bus,
+            instrument=self._bitget_settings.instrument_identity(),
             logger=self._logger,
         )
         self._postgres_sink = PostgresRawSink(
@@ -353,6 +410,7 @@ class MarketStreamRuntime:
         self._trades_collector = TradesCollector(
             bitget_settings=self._bitget_settings,
             trades_repo=self._trades_repo,
+            on_trades_batch=self._vpin_telemetry.on_trades,
             logger=self._logger,
         )
         self._ticker_collector = TickerCollector(
@@ -374,6 +432,8 @@ class MarketStreamRuntime:
             checksum_levels=settings.orderbook_checksum_levels,
             resync_on_mismatch=settings.orderbook_resync_on_mismatch,
             slippage_sizes_usdt=settings.slippage_sizes_usdt,
+            event_bus=self._event_bus,
+            on_best_quote=self._vpin_telemetry.on_best_quote,
             logger=self._logger,
         )
         self._gapfill_worker = BitgetRestGapFillWorker(
@@ -422,6 +482,7 @@ class MarketStreamRuntime:
         self._orderbook_collector.bind_resync_action(self._resync_orderbook)
         self._runner_task: asyncio.Task[None] | None = None
         self._feed_health_task: asyncio.Task[None] | None = None
+        self._vpin_publish_task: asyncio.Task[None] | None = None
         self._catalog_refresh_task: asyncio.Task[None] | None = None
 
     async def start(self) -> None:
@@ -483,6 +544,11 @@ class MarketStreamRuntime:
             self._feed_health_loop(),
             name="market-stream-feed-health",
         )
+        if self._vpin_telemetry.runs_publish_loop:
+            self._vpin_publish_task = asyncio.create_task(
+                self._vpin_telemetry.publish_loop(),
+                name="market-stream-vpin-publish",
+            )
         self._catalog_refresh_task = asyncio.create_task(
             self._catalog_refresh_loop(),
             name="market-stream-catalog-refresh",
@@ -499,6 +565,10 @@ class MarketStreamRuntime:
             self._catalog_refresh_task.cancel()
             await asyncio.gather(self._catalog_refresh_task, return_exceptions=True)
             self._catalog_refresh_task = None
+        if self._vpin_publish_task is not None:
+            self._vpin_publish_task.cancel()
+            await asyncio.gather(self._vpin_publish_task, return_exceptions=True)
+            self._vpin_publish_task = None
         if self._feed_health_task is not None:
             self._feed_health_task.cancel()
             await asyncio.gather(self._feed_health_task, return_exceptions=True)
@@ -559,6 +629,9 @@ class MarketStreamRuntime:
             "last_seq_channel_key": self._stats.last_seq_channel_key,
             "bitget_ws_stream": self._ws_stream_telemetry(),
             "ingest": self._ingest_feed_snapshot(),
+            "vpin_toxicity_0_1": self._vpin_telemetry.toxicity_score(),
+            "vpin_publish_loop": self._vpin_telemetry.runs_publish_loop,
+            "vpin_completed_buckets": self._vpin_telemetry.completed_buckets(),
         }
 
     def stats_payload(self) -> dict[str, object]:
@@ -592,6 +665,9 @@ class MarketStreamRuntime:
             **self._orderbook_collector.stats_payload(),
             **self._candle_collector.stats_payload(),
             "ingest": self._ingest_feed_snapshot(),
+            "vpin_toxicity_0_1": self._vpin_telemetry.toxicity_score(),
+            "vpin_publish_loop": self._vpin_telemetry.runs_publish_loop,
+            "vpin_completed_buckets": self._vpin_telemetry.completed_buckets(),
         }
 
     def _ingest_feed_snapshot(self) -> dict[str, Any]:
@@ -726,8 +802,12 @@ class MarketStreamRuntime:
 
     async def _feed_health_loop(self) -> None:
         interval = float(self._settings.market_stream_feed_health_interval_sec)
+        gc_every = int(self._settings.worker_gc_interval_async_loops or 0)
         while True:
             await asyncio.sleep(interval)
+            self._feed_health_gc_loops += 1
+            if gc_every > 0 and self._feed_health_gc_loops % gc_every == 0:
+                gc.collect(0)
             try:
                 touch_worker_heartbeat("market_stream")
                 ok, reason, ages = self._evaluate_data_freshness()

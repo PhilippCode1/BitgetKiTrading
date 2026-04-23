@@ -12,6 +12,9 @@ class StubRedis:
         self._acks: list[tuple[str, str, str]] = []
         self._counter = 0
 
+    def close(self) -> None:
+        return
+
     def ping(self) -> bool:
         return True
 

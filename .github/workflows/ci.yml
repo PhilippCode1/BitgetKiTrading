@@ -55,7 +55,7 @@ jobs:
         run: >-
           bash -n scripts/start_all.sh scripts/healthcheck.sh scripts/deploy.sh
           scripts/integration_compose_smoke.sh scripts/wait_compose_healthy.sh
-          scripts/rc_health.sh
+          scripts/rc_health.sh tools/run_tests.sh
 
       - name: Release sanity (Secrets / Ballast / Compose-Bindings)
         run: python tools/release_sanity_checks.py

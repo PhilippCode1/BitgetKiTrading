@@ -4,6 +4,7 @@ import logging
 from dataclasses import asdict
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
+import random
 from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
@@ -35,6 +36,16 @@ from shared_py.observability.execution_forensic import redact_nested_mapping
 from live_broker.config import LiveBrokerSettings
 from live_broker.control_plane.capabilities import assert_write_capability
 from live_broker.events import publish_system_alert
+from live_broker.orders.passive_order_manager import (
+    chase_price_within_slippage,
+    coalesce_orderflow_imbalance,
+    orderflow_wall_against_side,
+    passive_limit_price,
+    passive_maker_trace_enabled,
+    passive_params_from_sources,
+    passive_anchor_decimal,
+    plan_iceberg_sizes,
+)
 from live_broker.orders.models import (
     CancelAllOrdersRequest,
     EmergencyFlattenRequest,
@@ -373,6 +384,34 @@ class LiveBrokerOrderService:
             )
         self._assert_submit_runtime_gates(allow_safety_bypass=False, operation="replace")
         existing = self._require_local_order(str(request.internal_order_id))
+        if request.new_price is not None:
+            tj = dict(existing.get("trace_json") or {})
+            pm = tj.get("predatory_passive_maker")
+            if isinstance(pm, dict) and pm.get("enabled") and pm.get("rewritten_from") == "market":
+                anchor = passive_anchor_decimal(tj, str(existing.get("price") or ""))
+                if anchor is not None and anchor > 0:
+                    np = self._to_decimal(request.new_price)
+                    if np is not None:
+                        params = passive_params_from_sources(
+                            settings_max_slippage_bps=self._settings.live_passive_max_slippage_bps_default,
+                            settings_slices=self._settings.live_passive_iceberg_slices_default,
+                            settings_imbalance_pause_ms=self._settings.live_passive_imbalance_pause_ms,
+                            settings_imbalance_threshold=self._settings.live_passive_imbalance_against_threshold,
+                            trace=tj,
+                        )
+                        if not chase_price_within_slippage(
+                            anchor_price=anchor,
+                            new_limit_price=np,
+                            max_slippage_bps=params.max_slippage_bps,
+                        ):
+                            raise BitgetRestError(
+                                classification="validation",
+                                message=(
+                                    "passive_maker_chase_exceeds_max_slippage: "
+                                    f"anchor={anchor} new_price={np} max_bps={params.max_slippage_bps}"
+                                ),
+                                retryable=False,
+                            )
         self._assert_kill_switch_allows_existing_order(existing, operation="replace")
         new_internal_order_id = request.new_internal_order_id or uuid4()
         existing_new = self._repo.get_order_by_internal_id(str(new_internal_order_id))
@@ -1252,6 +1291,9 @@ class LiveBrokerOrderService:
             "safety_latch_active": safety_latch_active,
             "live_order_replace_enabled": self._settings.live_order_replace_enabled,
             "live_safety_latch_on_reconcile_fail": self._settings.live_safety_latch_on_reconcile_fail,
+            "predatory_passive_maker_default": self._settings.live_predatory_passive_maker_default,
+            "passive_max_slippage_bps_default": self._settings.live_passive_max_slippage_bps_default,
+            "passive_iceberg_slices_default": self._settings.live_passive_iceberg_slices_default,
         }
 
     def _can_submit_order(self, *, allow_safety_bypass: bool) -> bool:
@@ -2295,6 +2337,103 @@ class LiveBrokerOrderService:
                 retryable=False,
             )
 
+    def _maybe_apply_passive_maker_rewrite(
+        self,
+        request: OrderCreateRequest,
+        trace_merged: dict[str, Any],
+        *,
+        effective_family: str,
+        product_type: str,
+        margin_mode_for_profile: str | None,
+        internal_order_id: UUID,
+    ) -> OrderCreateRequest:
+        """Market-Open (Futures) -> Post-Only Limit am Best-Bid/Ask; erste Iceberg-Tranche."""
+        if request.reduce_only or effective_family != "futures":
+            return request
+        if request.order_type != "market":
+            return request
+        if not passive_maker_trace_enabled(
+            settings_default=self._settings.live_predatory_passive_maker_default,
+            trace=trace_merged,
+        ):
+            return request
+        if self._exchange_client is None:
+            return request
+        params = passive_params_from_sources(
+            settings_max_slippage_bps=self._settings.live_passive_max_slippage_bps_default,
+            settings_slices=self._settings.live_passive_iceberg_slices_default,
+            settings_imbalance_pause_ms=self._settings.live_passive_imbalance_pause_ms,
+            settings_imbalance_threshold=self._settings.live_passive_imbalance_against_threshold,
+            trace=trace_merged,
+        )
+        imb = coalesce_orderflow_imbalance(trace_merged)
+        if orderflow_wall_against_side(
+            side=request.side,
+            orderflow_imbalance=imb,
+            threshold=params.imbalance_against_threshold,
+        ):
+            raise BitgetRestError(
+                classification="validation",
+                message=(
+                    "passive_maker_orderbook_wall: orderflow gegen unsere Seite "
+                    f"(imbalance={imb}, threshold={params.imbalance_against_threshold}, "
+                    f"suggested_pause_ms={params.imbalance_pause_ms})"
+                ),
+                retryable=True,
+            )
+        try:
+            snap = self._exchange_client.get_market_snapshot_for_family(
+                request.symbol,
+                market_family=effective_family,
+                product_type=product_type if effective_family == "futures" else None,
+                margin_account_mode=margin_mode_for_profile,
+            )
+        except Exception as exc:
+            raise BitgetRestError(
+                classification="validation",
+                message=f"passive_maker_market_snapshot_failed:{str(exc)[:200]}",
+                retryable=False,
+            ) from exc
+        bid = self._to_decimal(snap.get("bid_price"))
+        ask = self._to_decimal(snap.get("ask_price"))
+        if bid is None or ask is None or bid <= 0 or ask <= 0 or ask < bid:
+            raise BitgetRestError(
+                classification="validation",
+                message="passive_maker_invalid_bid_ask_snapshot",
+                retryable=False,
+            )
+        total = self._to_decimal(request.size)
+        if total is None or total <= 0:
+            return request
+        seed = hash((str(trace_merged.get("correlation_id") or ""), str(internal_order_id))) % (2**32)
+        rng = random.Random(seed)
+        slices = plan_iceberg_sizes(total, params.iceberg_slices, rng)
+        first = slices[0]
+        px = passive_limit_price(side=request.side, bid=bid, ask=ask)
+        anchor_s = format(px, "f")
+        prev_pm = trace_merged.get("predatory_passive_maker")
+        prev_d = dict(prev_pm) if isinstance(prev_pm, dict) else {}
+        trace_merged["predatory_passive_maker"] = {
+            **prev_d,
+            "enabled": True,
+            "rewritten_from": "market",
+            "iceberg_planned_sizes": [format(s, "f") for s in slices],
+            "iceberg_slice_index": 0,
+            "passive_anchor_price": anchor_s,
+            "max_slippage_bps": params.max_slippage_bps,
+            "iceberg_slices": params.iceberg_slices,
+        }
+        trace_merged["passive_anchor_price"] = anchor_s
+        trace_merged["passive_maker_fee_target_maker_ratio_0_1"] = 0.9
+        return request.model_copy(
+            update={
+                "order_type": "limit",
+                "force": "post_only",
+                "price": anchor_s,
+                "size": format(first, "f"),
+            }
+        )
+
     def _create_order(
         self,
         request: OrderCreateRequest,
@@ -2420,6 +2559,14 @@ class LiveBrokerOrderService:
             request,
             opening_order=not bool(request.reduce_only),
             allow_safety_bypass=allow_safety_bypass,
+        )
+        request = self._maybe_apply_passive_maker_rewrite(
+            request,
+            trace_merged,
+            effective_family=effective_family,
+            product_type=product_type,
+            margin_mode_for_profile=margin_mode_for_profile,
+            internal_order_id=internal_order_id,
         )
         self._assert_kill_switch_allows_submit(
             operation=action,

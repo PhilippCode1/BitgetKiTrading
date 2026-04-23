@@ -30,8 +30,20 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="Learning-Engine Trainingspipeline (reproduzierbar)")
     p.add_argument(
         "job",
-        choices=("take-trade", "expected-bps", "regime", "specialists-audit", "all"),
-        help="Trainingsjob (specialists-audit: nur Readiness-JSON, kein Training)",
+        choices=(
+            "take-trade",
+            "expected-bps",
+            "regime",
+            "specialists-audit",
+            "rl-smoke",
+            "rl-consensus-ppo",
+            "all",
+        ),
+        help=(
+            "Trainingsjob (specialists-audit: nur Readiness-JSON; "
+            "rl-smoke: Gymnasium-Replay-Episode + Registry-Stub; "
+            "rl-consensus-ppo: optional SB3 auf ConsensusWeightsReplayEnv)"
+        ),
     )
     p.add_argument("--symbol", default=None, help="z.B. <example_symbol>")
     p.add_argument("--no-promote", action="store_true", help="Kein promoted_bool in Registry")

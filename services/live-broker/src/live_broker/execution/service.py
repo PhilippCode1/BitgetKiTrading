@@ -34,6 +34,26 @@ from live_broker.private_rest import BitgetRestError
 logger = logging.getLogger("live_broker.execution")
 
 
+def _intent_under_survival_mode(intent: ExecutionIntentRequest) -> ExecutionIntentRequest:
+    from shared_py.resilience.survival_kernel import apply_survival_signal_overrides
+
+    nested = intent.payload.get("signal_payload")
+    base = dict(nested) if isinstance(nested, dict) else dict(intent.payload)
+    merged = apply_survival_signal_overrides(base)
+    if isinstance(nested, dict):
+        new_payload = {
+            **intent.payload,
+            "signal_payload": merged,
+            "signal_allowed_leverage": 1,
+            "signal_recommended_leverage": 1,
+        }
+    else:
+        new_payload = {**intent.payload, **merged}
+        new_payload["signal_allowed_leverage"] = 1
+        new_payload["signal_recommended_leverage"] = 1
+    return intent.model_copy(update={"leverage": 1, "payload": new_payload})
+
+
 def _coerce_optional_int(value: Any) -> int | None:
     if value in (None, ""):
         return None
@@ -334,7 +354,12 @@ class LiveExecutionService:
         *,
         probe_exchange: bool = True,
     ) -> dict[str, Any]:
-        preview = self._exchange_client.build_order_preview(intent)
+        truth = self._truth_state_fn() or {} if self._truth_state_fn else {}
+        survival = bool(truth.get("survival_mode_active"))
+        survival_lock = bool(truth.get("survival_execution_lock"))
+        intent_eval = _intent_under_survival_mode(intent) if survival else intent
+
+        preview = self._exchange_client.build_order_preview(intent_eval)
         probe = (
             self._exchange_client.probe_exchange()
             if probe_exchange
@@ -348,48 +373,51 @@ class LiveExecutionService:
             }
         )
 
-        requested_mode = intent.requested_runtime_mode
+        requested_mode = intent_eval.requested_runtime_mode
         effective_mode = self._effective_runtime_mode(requested_mode)
-        catalog_entry = self._resolve_catalog_entry(intent)
-        metadata = self._resolve_metadata(intent)
-        signal_payload = self._signal_payload(intent)
+        catalog_entry = self._resolve_catalog_entry(intent_eval)
+        metadata = self._resolve_metadata(intent_eval)
+        signal_payload = self._signal_payload(intent_eval)
         router_arb = _signal_router_arbitration(signal_payload)
-        exit_preview = self._exit_preview(intent)
+        exit_preview = self._exit_preview(intent_eval)
         now_ms = int(time.time() * 1000)
         risk_decision = build_live_trade_risk_decision(
             settings=self._settings,
             repo=self._repo,
-            intent=intent,
+            intent=intent_eval,
             signal_payload=signal_payload,
             now_ms=now_ms,
+            survival_mode_active=survival,
         )
         action, reason = self._decide(
-            intent,
+            intent_eval,
             requested_mode,
             effective_mode,
             probe,
             exit_preview=exit_preview,
             risk_decision=risk_decision,
             shadow_path_simulation=False,
+            survival_execution_lock=survival_lock,
         )
 
         shadow_live_report: dict[str, Any] | None = None
         if effective_mode == "live":
             shadow_action, shadow_reason = self._decide(
-                intent,
+                intent_eval,
                 requested_mode,
                 "shadow",
                 probe,
                 exit_preview=exit_preview,
                 risk_decision=risk_decision,
                 shadow_path_simulation=True,
+                survival_execution_lock=survival_lock,
             )
             shadow_live_report = assess_shadow_live_divergence(
                 shadow_decision=(shadow_action, shadow_reason),
                 live_decision=(action, reason),
                 signal_payload=signal_payload,
                 risk_decision=risk_decision,
-                intent_leverage=intent.leverage,
+                intent_leverage=intent_eval.leverage,
                 now_ms=now_ms,
                 exit_preview=exit_preview,
                 thresholds=self._settings.shadow_live_thresholds(),
@@ -411,25 +439,25 @@ class LiveExecutionService:
         )
 
         record = {
-            "source_service": intent.source_service,
-            "source_signal_id": intent.signal_id,
-            "symbol": intent.symbol,
-            "timeframe": intent.timeframe,
-            "direction": intent.direction,
+            "source_service": intent_eval.source_service,
+            "source_signal_id": intent_eval.signal_id,
+            "symbol": intent_eval.symbol,
+            "timeframe": intent_eval.timeframe,
+            "direction": intent_eval.direction,
             "requested_runtime_mode": requested_mode,
             "effective_runtime_mode": effective_mode,
             "decision_action": action,
             "decision_reason": reason,
-            "order_type": intent.order_type,
-            "leverage": intent.leverage,
-            "approved_7x": intent.approved_7x,
-            "qty_base": intent.qty_base,
-            "entry_price": intent.entry_price,
-            "stop_loss": intent.stop_loss,
-            "take_profit": intent.take_profit,
+            "order_type": intent_eval.order_type,
+            "leverage": intent_eval.leverage,
+            "approved_7x": intent_eval.approved_7x,
+            "qty_base": intent_eval.qty_base,
+            "entry_price": intent_eval.entry_price,
+            "stop_loss": intent_eval.stop_loss,
+            "take_profit": intent_eval.take_profit,
             "payload_json": {
-                **intent.payload,
-                "note": intent.note,
+                **intent_eval.payload,
+                "note": intent_eval.note,
                 "catalog_instrument": (
                     catalog_entry.model_dump(mode="json") if catalog_entry is not None else None
                 ),
@@ -452,8 +480,8 @@ class LiveExecutionService:
                 ),
             },
             "trace_json": {
-                **intent.trace,
-                "source_service": intent.source_service,
+                **intent_eval.trace,
+                "source_service": intent_eval.source_service,
                 "requested_runtime_mode": requested_mode,
                 "effective_runtime_mode": effective_mode,
                 **(
@@ -481,7 +509,7 @@ class LiveExecutionService:
         if ex_id is not None:
             try:
                 pay = signal_payload if isinstance(signal_payload, dict) else {}
-                tr = intent.trace if isinstance(intent.trace, dict) else {}
+                tr = intent_eval.trace if isinstance(intent_eval.trace, dict) else {}
                 forensic = build_live_broker_forensic_snapshot(
                     signal_payload=pay,
                     risk_decision=risk_decision if isinstance(risk_decision, dict) else None,
@@ -498,7 +526,7 @@ class LiveExecutionService:
                         "details_json": {
                             "decision_action": action,
                             "decision_reason": reason,
-                            "symbol": intent.symbol,
+                            "symbol": intent_eval.symbol,
                             "requested_runtime_mode": requested_mode,
                             "effective_runtime_mode": effective_mode,
                             "forensic_snapshot": forensic,
@@ -516,11 +544,11 @@ class LiveExecutionService:
             risk_decision=risk_decision,
             shadow_live_report=shadow_live_report,
             final_reason=reason,
-            intent=intent,
+            intent=intent_eval,
         )
         ev_id = None
-        if isinstance(intent.payload, dict):
-            ev_id = intent.payload.get("event_id")
+        if isinstance(intent_eval.payload, dict):
+            ev_id = intent_eval.payload.get("event_id")
             if ev_id is not None:
                 ev_id = str(ev_id)
         logger.info(
@@ -530,23 +558,23 @@ class LiveExecutionService:
             ),
             action,
             reason,
-            intent.source_service,
-            intent.symbol,
+            intent_eval.source_service,
+            intent_eval.symbol,
             requested_mode,
             effective_mode,
             live_mirror_eligible,
             router_arb.get("router_id"),
             signal_payload.get("stop_fragility_0_1"),
             extra=log_correlation_fields(
-                signal_id=str(intent.signal_id) if intent.signal_id else None,
+                signal_id=str(intent_eval.signal_id) if intent_eval.signal_id else None,
                 execution_id=str(ex_id) if ex_id else None,
                 event_id=ev_id,
-                symbol=str(intent.symbol) if intent.symbol else None,
+                symbol=str(intent_eval.symbol) if intent_eval.symbol else None,
             ),
         )
         self._maybe_publish_operator_intel_execution(
             saved=saved,
-            intent=intent,
+            intent=intent_eval,
             action=str(action),
             reason=str(reason),
             requested_mode=str(requested_mode),
@@ -672,6 +700,41 @@ class LiveExecutionService:
             payload.get("execution_leverage_cap") or payload.get("recommended_leverage")
         )
         signal_allowed_leverage = _coerce_optional_int(payload.get("allowed_leverage"))
+        trace_body: dict[str, Any] = {
+            **envelope.trace,
+            "event_id": envelope.event_id,
+            "event_type": envelope.event_type,
+            "market_family": payload.get("market_family")
+            or instrument.get("market_family")
+            or self._settings.market_family,
+            "signal_trade_action": payload.get("trade_action"),
+            "signal_allowed_leverage": signal_allowed_leverage,
+            "signal_recommended_leverage": _coerce_optional_int(
+                payload.get("recommended_leverage")
+            ),
+            "signal_execution_leverage_cap": _coerce_optional_int(
+                payload.get("execution_leverage_cap")
+            ),
+            "signal_mirror_leverage": _coerce_optional_int(payload.get("mirror_leverage")),
+        }
+        if self._settings.live_predatory_passive_maker_default:
+            pm0 = trace_body.get("predatory_passive_maker")
+            pm0d = dict(pm0) if isinstance(pm0, dict) else {}
+            trace_body["predatory_passive_maker"] = {
+                **pm0d,
+                "enabled": True,
+                "source": "live_broker_settings_default",
+            }
+        sig_pm = payload.get("passive_maker") or payload.get("predatory_passive_maker")
+        if isinstance(sig_pm, dict):
+            base = trace_body.get("predatory_passive_maker")
+            bd = dict(base) if isinstance(base, dict) else {}
+            trace_body["predatory_passive_maker"] = {**bd, **sig_pm}
+        elif sig_pm is True:
+            trace_body["predatory_passive_maker"] = {"enabled": True, "source": "signal_payload"}
+        for k in ("orderflow_imbalance_5", "orderflow_imbalance_10", "orderflow_imbalance_20"):
+            if k in payload:
+                trace_body[k] = payload[k]
         intent = ExecutionIntentRequest(
             source_service="signal-engine",
             signal_id=str(payload.get("signal_id") or envelope.event_id),
@@ -721,21 +784,7 @@ class LiveExecutionService:
                 "signal_leverage_policy_version": payload.get("leverage_policy_version"),
                 "signal_leverage_cap_reasons_json": payload.get("leverage_cap_reasons_json") or [],
             },
-            trace={
-                **envelope.trace,
-                "event_id": envelope.event_id,
-                "event_type": envelope.event_type,
-                "market_family": payload.get("market_family") or instrument.get("market_family") or self._settings.market_family,
-                "signal_trade_action": payload.get("trade_action"),
-                "signal_allowed_leverage": signal_allowed_leverage,
-                "signal_recommended_leverage": _coerce_optional_int(
-                    payload.get("recommended_leverage")
-                ),
-                "signal_execution_leverage_cap": _coerce_optional_int(
-                    payload.get("execution_leverage_cap")
-                ),
-                "signal_mirror_leverage": _coerce_optional_int(payload.get("mirror_leverage")),
-            },
+            trace=trace_body,
         )
         return self.evaluate_intent(intent, probe_exchange=False)
 
@@ -793,6 +842,7 @@ class LiveExecutionService:
         exit_preview: dict[str, Any] | None,
         risk_decision: dict[str, Any],
         shadow_path_simulation: bool = False,
+        survival_execution_lock: bool = False,
     ) -> tuple[str, str]:
         market_family = str(intent.market_family or self._settings.market_family).strip().lower()
         catalog_entry = self._resolve_catalog_entry(intent)
@@ -816,6 +866,8 @@ class LiveExecutionService:
             return "blocked", "direction_not_actionable"
         if market_family == "spot" and intent.direction == "short":
             return "blocked", "spot_short_not_supported"
+        if survival_execution_lock:
+            return "blocked", "survival_execution_lock"
         if risk_decision.get("trade_action") == "do_not_trade":
             return "blocked", str(risk_decision.get("decision_reason") or "shared_risk_blocked")
         if effective_mode == "live":

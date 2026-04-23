@@ -1,0 +1,13 @@
+[build-system]
+requires = ["maturin>=1.7,<2"]
+build-backend = "maturin"
+
+[project]
+name = "apex-core"
+version = "0.1.0"
+requires-python = ">=3.11"
+description = "Rust/PyO3-Kern (apex_core) für Modul Mate / Apex Predator."
+
+[tool.maturin]
+features = ["pyo3/extension-module"]
+module-name = "apex_core"

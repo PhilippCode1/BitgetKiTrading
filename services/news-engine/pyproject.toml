@@ -16,6 +16,7 @@ dependencies = [
   "pydantic-settings",
   "python-json-logger>=2.0.7",
   "redis",
+  "telethon>=1.36.0",
   "uvicorn[standard]",
 ]
 

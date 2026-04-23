@@ -18,6 +18,7 @@ from monitor_engine.alerts.rules import (
     alerts_from_stream_checks,
 )
 from monitor_engine.alerts.trading_sql_alerts import collect_trading_sql_alerts
+from monitor_engine.checks.self_healing_canary import collect_self_healing_canary_alerts
 from monitor_engine.checks.data_freshness import FreshnessRow, load_all_freshness
 from monitor_engine.checks.live_broker import load_live_broker_service_checks
 from monitor_engine.checks.online_drift import load_online_drift_service_check
@@ -284,12 +285,19 @@ class MonitorScheduler:
             logger.warning("collect_trading_sql_alerts failed in scheduler: %s", exc)
             trading_sql_specs = []
 
+        try:
+            canary_specs = collect_self_healing_canary_alerts(self.settings)
+        except Exception as exc:
+            logger.warning("collect_self_healing_canary_alerts failed: %s", exc)
+            canary_specs = []
+
         specs = (
             alerts_from_service_checks(svc_results)
             + alerts_from_stream_checks(stream_rows)
             + alerts_from_freshness(fresh_rows)
             + stalled_specs
             + trading_sql_specs
+            + canary_specs
         )
         specs.sort(
             key=lambda s: (

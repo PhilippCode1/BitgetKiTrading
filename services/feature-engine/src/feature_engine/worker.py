@@ -30,7 +30,7 @@ from shared_py.bitget.metadata import (
     BitgetInstrumentMetadataService,
     BitgetInstrumentResolvedMetadata,
 )
-from shared_py.eventbus import ConsumedEvent, RedisStreamBus
+from shared_py.eventbus import ConsumedEvent, RedisStreamBus, SharedMemoryBus, make_stream_bus_from_url
 from shared_py.input_pipeline_provenance import (
     analyze_sorted_candle_starts,
     build_feature_input_provenance,
@@ -44,18 +44,16 @@ from shared_py.model_contracts import (
 )
 from shared_py.observability import touch_worker_heartbeat
 
+from feature_engine import numeric_hotpath as _num
 from feature_engine.features import (
     OHLC,
     atr_percent,
-    atr_sma,
     build_market_context_features,
     candle_impulse,
     confluence_score,
     momentum_score,
     range_score,
-    rsi_sma,
     simple_return,
-    trend_snapshot,
     volume_zscore,
 )
 from feature_engine.storage import (
@@ -112,11 +110,12 @@ class FeatureWorker:
         self._logger = logger or logging.getLogger("feature_engine.worker")
         self._stats = FeatureWorkerStats()
         self._stop_event = asyncio.Event()
-        self._bus = RedisStreamBus.from_url(
+        self._bus: RedisStreamBus | SharedMemoryBus = make_stream_bus_from_url(
             settings.redis_url,
             dedupe_ttl_sec=settings.eventbus_dedupe_ttl_sec,
             default_block_ms=settings.eventbus_default_block_ms,
             default_count=settings.eventbus_default_count,
+            logger=self._logger,
         )
 
     def stats_payload(self) -> dict[str, object]:
@@ -180,7 +179,7 @@ class FeatureWorker:
         self._stop_event.set()
 
     async def close(self) -> None:
-        await asyncio.to_thread(self._bus.redis.close)
+        await asyncio.to_thread(self._bus.close)
 
     async def _ensure_group(self) -> None:
         if self._stats.group_ready:
@@ -195,6 +194,13 @@ class FeatureWorker:
     async def _handle_item(self, item: ConsumedEvent) -> None:
         self._stats.consumed_events += 1
         self._stats.last_event_id = item.envelope.event_id
+        if item.envelope.event_type != "candle_close":
+            await self._ack(item)
+            self._logger.debug(
+                "feature worker ignoriert event_type=%s (nur candle_close wird persistiert)",
+                item.envelope.event_type,
+            )
+            return
         try:
             feature_row = await self._build_feature_row(item)
             await asyncio.to_thread(self._repo.upsert_feature, feature_row)
@@ -276,6 +282,7 @@ class FeatureWorker:
             raise ValueError("keine Candle-History verfuegbar")
 
         ohlc = [OHLC(o=candle.o, h=candle.h, l=candle.l, c=candle.c) for candle in candles]
+        opens = [candle.o for candle in candles]
         closes = [candle.c for candle in candles]
         highs = [candle.h for candle in candles]
         lows = [candle.l for candle in candles]
@@ -284,15 +291,22 @@ class FeatureWorker:
         timeframe_ms = _timeframe_to_ms(timeframe)
         analysis_ts_ms = _extract_analysis_ts_ms(event, timeframe=timeframe, start_ts_ms=current.start_ts_ms)
 
-        atr_value_raw = atr_sma(ohlc, self._settings.feature_atr_window)
+        atr_value_raw = _num.atr_sma(
+            ohlc,
+            opens,
+            highs,
+            lows,
+            closes,
+            self._settings.feature_atr_window,
+        )
         atrp_value_raw = atr_percent(atr_value_raw, current.c)
-        rsi_value_raw = rsi_sma(closes, self._settings.feature_rsi_window)
+        rsi_value_raw = _num.rsi_sma(closes, self._settings.feature_rsi_window)
         ret_1_raw = simple_return(closes, 1)
         ret_5_raw = simple_return(closes, 5)
         ret_10_raw = simple_return(closes, 10)
         momentum_value_raw = momentum_score(ret_1_raw, ret_5_raw)
         impulse = candle_impulse(current.o, current.h, current.l, current.c)
-        trend = trend_snapshot(closes)
+        trend = _num.trend_snapshot(closes)
         latest_trend_dirs = await asyncio.to_thread(
             self._repo.get_latest_trend_dirs,
             symbol=symbol,

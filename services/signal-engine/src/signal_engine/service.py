@@ -970,6 +970,10 @@ class SignalEngineService:
         self._repo.insert_signal_v1(bundle["db_row"])
         sig_row = dict(bundle["db_row"])
         sig_row["stop_trigger_type"] = self._settings.signal_default_stop_trigger_type
+        snap = sig_row.get("source_snapshot_json")
+        snap = snap if isinstance(snap, dict) else {}
+        fm_tsfm = snap.get("foundation_model_tsfm")
+        fm_tsfm = fm_tsfm if isinstance(fm_tsfm, dict) else None
         explain_inp = ExplainInput(
             signal_row=sig_row,
             structure_state=ctx.structure_state,
@@ -979,6 +983,7 @@ class SignalEngineService:
             drawings=list(ctx.drawings),
             news_row=ctx.news_row,
             last_close=ctx.last_close,
+            foundation_model_tsfm=fm_tsfm,
         )
         exp_bundle = build_explanation_bundle(explain_inp, self._settings)
         self._explain_repo.upsert_for_signal(

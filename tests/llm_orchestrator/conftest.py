@@ -9,8 +9,9 @@ import pytest
 
 REPO = Path(__file__).resolve().parents[2]
 LLM_SRC = REPO / "services" / "llm-orchestrator" / "src"
+SIGNAL_SRC = REPO / "services" / "signal-engine" / "src"
 SHARED_SRC = REPO / "shared" / "python" / "src"
-for p in (LLM_SRC, SHARED_SRC):
+for p in (LLM_SRC, SIGNAL_SRC, SHARED_SRC):
     s = str(p)
     if p.is_dir() and s not in sys.path:
         sys.path.insert(0, s)

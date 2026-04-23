@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bitget-btc-ai.local/schemas/agent_communication.schema.json",
+  "title": "MARL Agent Message",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "agent_id",
+    "status",
+    "confidence_0_1",
+    "rationale_de",
+    "signal_proposal"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "agent-comm-v1"
+    },
+    "agent_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "status": {
+      "type": "string",
+      "enum": ["ok", "degraded", "blocked", "no_op"]
+    },
+    "confidence_0_1": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "rationale_de": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 8000
+    },
+    "signal_proposal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action"],
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": ["none", "buy_bias", "sell_bias", "allow", "veto", "hold_research"]
+        },
+        "symbol": {
+          "type": ["string", "null"]
+        },
+        "timeframe": {
+          "type": ["string", "null"]
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+    "evidence_refs": {
+      "type": "array",
+      "items": { "type": "string", "maxLength": 512 },
+      "maxItems": 64
+    }
+  }
+}

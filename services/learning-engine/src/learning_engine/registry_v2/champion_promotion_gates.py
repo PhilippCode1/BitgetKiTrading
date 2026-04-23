@@ -62,6 +62,21 @@ def evaluate_champion_promotion_gates(
     reasons: list[str] = []
     details: dict[str, Any] = {"model_name": mn}
 
+    if settings.model_promotion_require_adversarial_stress and mn == TAKE_TRADE_MODEL_NAME:
+        mpath = (settings.risk_toxicity_classifier_model_path or "").strip()
+        if not mpath:
+            reasons.append("risk_toxicity_classifier_missing")
+        else:
+            from learning_engine.stress_test.adversarial_stress_pipeline import run_adversarial_stress_suite
+
+            try:
+                sr = run_adversarial_stress_suite(settings)
+                details["adversarial_stress"] = sr.model_dump()
+                if not sr.passed:
+                    reasons.append("adversarial_stress_resilience_below_minimum")
+            except Exception as exc:  # pragma: no cover — Netzwerk/AMS
+                reasons.append(f"adversarial_stress_suite_failed:{exc!s}"[:200])
+
     if mn == TAKE_TRADE_MODEL_NAME:
         cv = mj.get("cv_summary")
         if not isinstance(cv, dict):

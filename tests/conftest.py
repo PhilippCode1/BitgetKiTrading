@@ -22,6 +22,7 @@ if _fixture_py.is_dir():
 _SERVICE_SRC = [
     _ROOT / "services" / name / "src"
     for name in (
+        "audit-ledger",
         "feature-engine",
         "signal-engine",
         "paper-broker",

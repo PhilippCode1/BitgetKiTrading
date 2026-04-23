@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from decimal import Decimal, InvalidOperation
 from typing import TYPE_CHECKING, Any
 
@@ -52,12 +53,17 @@ def build_live_trade_risk_decision(
     intent: "ExecutionIntentRequest",
     signal_payload: dict[str, Any],
     now_ms: int,
+    survival_mode_active: bool = False,
 ) -> dict[str, Any]:
     metrics = build_live_account_risk_metrics(
         settings=settings,
         repo=repo,
         now_ms=now_ms,
     )
+
+    limits = build_trade_risk_limits(settings)
+    if survival_mode_active:
+        limits = replace(limits, min_allowed_leverage=1)
 
     position_notional = None
     projected_margin_usage_pct = metrics["current_margin_usage_pct"]
@@ -85,7 +91,7 @@ def build_live_trade_risk_decision(
 
     decision = evaluate_trade_risk(
         signal=signal_payload,
-        limits=build_trade_risk_limits(settings),
+        limits=limits,
         open_positions_count=metrics["open_positions_count"],
         position_notional_usdt=position_notional,
         position_risk_pct=position_risk_pct,

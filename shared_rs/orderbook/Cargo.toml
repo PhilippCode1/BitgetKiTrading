@@ -1,0 +1,12 @@
+[package]
+name = "orderbook"
+version = "0.1.0"
+edition = "2021"
+description = "Apex Orderbook Core — Bitget-L2/L3 inkrementell, CRC32-Checksum, Mikrostruktur-Metriken."
+
+[dependencies]
+crc32fast = "1.4"
+ordered-float = "4.2"
+
+[lints.rust]
+unsafe_code = "forbid"

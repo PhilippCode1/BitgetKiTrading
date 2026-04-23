@@ -1,0 +1,10 @@
+[package]
+name = "survival_kernel"
+version = "0.1.0"
+edition = "2021"
+description = "Market-regime disruption / Survival-Mode Kern (FFI fuer Python, signal-sicher)"
+
+[lib]
+name = "survival_kernel"
+crate-type = ["cdylib", "rlib"]
+path = "src/lib.rs"

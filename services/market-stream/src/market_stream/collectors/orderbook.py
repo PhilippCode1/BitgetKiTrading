@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from shared_py.bitget import BitgetSettings
+from shared_py.eventbus import STREAM_ORDERBOOK_INCONSISTENCY, EventEnvelope
 
 from market_stream.bitget_ws.subscriptions import Subscription
 from market_stream.metrics.slippage import compute_slippage_metrics
@@ -20,6 +21,7 @@ from market_stream.orderbook.book import (
     OrderBookChecksumError,
     OrderBookSequenceError,
 )
+from market_stream.sinks.eventbus import AsyncRedisEventBus
 from market_stream.sinks.redis_stream import RedisStreamSink
 from market_stream.storage.orderbook_repo import OrderBookRepository
 
@@ -48,11 +50,15 @@ class OrderbookCollector:
         checksum_levels: int,
         resync_on_mismatch: bool,
         slippage_sizes_usdt: list[int],
+        event_bus: AsyncRedisEventBus | None = None,
+        on_best_quote: Callable[[float, float], None] | None = None,
         logger: logging.Logger | None = None,
     ) -> None:
         self._bitget_settings = bitget_settings
         self._orderbook_repo = orderbook_repo
         self._slippage_sink = slippage_sink
+        self._event_bus = event_bus
+        self._on_best_quote = on_best_quote
         self._logger = logger or logging.getLogger("market_stream.orderbook")
         self._book = LocalOrderBook(
             max_levels=max_levels,
@@ -172,6 +178,13 @@ class OrderbookCollector:
                 )
             except OrderBookChecksumError as exc:
                 self._checksum_mismatch_count += 1
+                await self._publish_orderbook_inconsistency(
+                    channel=channel,
+                    ts_ms=ts_ms,
+                    seq=seq,
+                    wire_checksum=checksum,
+                    detail=str(exc),
+                )
                 await self._trigger_resync(reason=f"books5-{exc}")
                 return
             await self._persist_and_publish(
@@ -217,6 +230,13 @@ class OrderbookCollector:
                 self._book.current_checksum(),
                 exc,
             )
+            await self._publish_orderbook_inconsistency(
+                channel=channel,
+                ts_ms=ts_ms,
+                seq=seq,
+                wire_checksum=checksum,
+                detail=str(exc),
+            )
             await self._trigger_resync(reason=f"checksum-mismatch-{checksum}")
             return
         except OrderBookSequenceError as exc:
@@ -250,6 +270,14 @@ class OrderbookCollector:
         *,
         source_channel: str,
     ) -> None:
+        if self._on_best_quote is not None and snapshot.bids and snapshot.asks:
+            try:
+                bid = float(snapshot.bids[0][0])
+                ask = float(snapshot.asks[0][0])
+                self._on_best_quote(bid, ask)
+            except (TypeError, ValueError, IndexError) as exc:
+                self._logger.debug("on_best_quote hook failed: %s", exc)
+
         inserted = await self._orderbook_repo.insert_snapshot(snapshot)
         if inserted:
             self._persisted_snapshots += 1
@@ -284,6 +312,43 @@ class OrderbookCollector:
         if redis_id is not None:
             self._published_slippage_events += 1
             self._last_slippage_ts_ms = snapshot.ts_ms
+
+    async def _publish_orderbook_inconsistency(
+        self,
+        *,
+        channel: str,
+        ts_ms: int,
+        seq: int | None,
+        wire_checksum: int | None,
+        detail: str,
+    ) -> None:
+        if self._event_bus is None:
+            return
+        symbol = self._bitget_settings.symbol
+        try:
+            envelope = EventEnvelope(
+                event_type="orderbook_inconsistency",
+                symbol=symbol,
+                exchange_ts_ms=ts_ms,
+                dedupe_key=f"orderbook_inconsistency:{symbol}:{ts_ms}:{wire_checksum}:{seq}",
+                payload={
+                    "kind": "checksum_mismatch",
+                    "symbol": symbol,
+                    "channel": channel,
+                    "seq": seq,
+                    "wire_checksum": wire_checksum,
+                    "computed_checksum": self._book.current_checksum(),
+                    "detail": detail,
+                },
+                trace={"source": "market_stream.orderbook"},
+            )
+            await self._event_bus.publish(STREAM_ORDERBOOK_INCONSISTENCY, envelope)
+        except Exception as exc:
+            self._logger.warning(
+                "orderbook_inconsistency publish failed symbol=%s error=%s",
+                symbol,
+                exc,
+            )
 
     async def _trigger_resync(self, *, reason: str) -> None:
         self._last_resync_reason = reason

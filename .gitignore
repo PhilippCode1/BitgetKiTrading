@@ -62,6 +62,9 @@ artifacts/release-evidence/*
 artifacts/llm_eval/*
 !artifacts/llm_eval/.gitkeep
 
+# Rust (Maturin / Cargo)
+shared_rs/**/target/
+
 # Python
 __pycache__/
 *.py[cod]

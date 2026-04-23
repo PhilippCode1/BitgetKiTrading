@@ -28,7 +28,35 @@
     { "event_type": "llm_failed", "stream": "events:llm_failed" },
     { "event_type": "dlq", "stream": "events:dlq" },
     { "event_type": "system_alert", "stream": "events:system_alert" },
-    { "event_type": "operator_intel", "stream": "events:operator_intel" }
+    { "event_type": "operator_intel", "stream": "events:operator_intel" },
+    {
+      "event_type": "tsfm_signal_candidate",
+      "stream": "events:tsfm_signal_candidate"
+    },
+    {
+      "event_type": "onchain_whale_detection",
+      "stream": "events:onchain_whale_detection"
+    },
+    {
+      "event_type": "orderbook_inconsistency",
+      "stream": "events:orderbook_inconsistency"
+    },
+    {
+      "event_type": "orderflow_toxicity",
+      "stream": "events:orderflow_toxicity"
+    },
+    {
+      "event_type": "social_sentiment_update",
+      "stream": "events:social_sentiment_update"
+    },
+    {
+      "event_type": "intermarket_correlation_update",
+      "stream": "events:intermarket_correlation_update"
+    },
+    {
+      "event_type": "regime_divergence_detected",
+      "stream": "events:regime_divergence_detected"
+    }
   ],
   "live_sse_streams": [
     "events:candle_close",

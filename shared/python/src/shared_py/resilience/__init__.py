@@ -1,8 +1,27 @@
+"""Resilience: Circuit-Breaker, Backoff und Survival-Mode (Regime-Disruption)."""
+
 from __future__ import annotations
 
 import threading
 import time
 from typing import Any
+
+from shared_py.resilience.survival_kernel import (
+    SYSTEM_ENTER_SURVIVAL_MODE,
+    SYSTEM_EXIT_SURVIVAL_MODE,
+    SurvivalKernelParams,
+    SurvivalMetrics,
+    SurvivalTickResult,
+    apply_survival_signal_overrides,
+    build_safety_incident_diagnosis_survival,
+    merge_survival_truth,
+    process_survival_metrics,
+    publish_survival_hedge_operator_intel,
+    publish_survival_system_events,
+    read_survival_state_from_redis,
+    survival_tick,
+    write_survival_state_to_redis,
+)
 
 
 def compute_backoff_delay(attempt: int, *, base_sec: float, max_sec: float) -> float:
@@ -57,3 +76,24 @@ class CircuitBreaker:
                 "failures": dict(self._failures),
                 "open_until_mono": dict(self._open_until),
             }
+
+
+__all__ = [
+    "SYSTEM_ENTER_SURVIVAL_MODE",
+    "SYSTEM_EXIT_SURVIVAL_MODE",
+    "CircuitBreaker",
+    "SurvivalKernelParams",
+    "SurvivalMetrics",
+    "SurvivalTickResult",
+    "apply_survival_signal_overrides",
+    "build_safety_incident_diagnosis_survival",
+    "compute_backoff_delay",
+    "is_retryable_http_status",
+    "merge_survival_truth",
+    "process_survival_metrics",
+    "publish_survival_hedge_operator_intel",
+    "publish_survival_system_events",
+    "read_survival_state_from_redis",
+    "survival_tick",
+    "write_survival_state_to_redis",
+]

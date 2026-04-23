@@ -75,6 +75,9 @@ def validate_required_secrets(
     Liest Werte aus os.environ oder aus dem Argument ``environ``.
     """
     envmap = environ if environ is not None else os.environ
+    # Entkoppelter gRPC-Worker: keine volle Gateway-/JWT-Matrix (nur Redis + Modell-ENV).
+    if service_name == "inference-server":
+        return
     data = _load_matrix()
     entries: list[dict[str, Any]] = list(data.get("entries") or [])
     phase_key = _matrix_phase_for_boot(settings)

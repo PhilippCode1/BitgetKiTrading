@@ -311,6 +311,10 @@ def evaluate_system_alert(env: EventEnvelope) -> list[AlertIntent]:
 
 def _system_alert_type(alert_key: str | None) -> str:
     key = (alert_key or "").strip().lower()
+    if key == "system_enter_survival_mode":
+        return "SYSTEM_ENTER_SURVIVAL_MODE"
+    if key == "system_exit_survival_mode":
+        return "SYSTEM_EXIT_SURVIVAL_MODE"
     if key.startswith("live-broker:kill-switch"):
         return "LIVE_BROKER_KILL_SWITCH"
     if key.startswith("live-broker:flatten"):
@@ -325,6 +329,7 @@ def _system_alert_type(alert_key: str | None) -> str:
 
 
 _INTEL_KIND_ALERT: dict[str, str] = {
+    "self_healing_proposal": "OPERATOR_INCIDENT",
     "pre_trade_rationale": "OPERATOR_PRE_TRADE",
     "release_pending": "OPERATOR_RELEASE_PENDING",
     "trade_open": "OPERATOR_TRADE_OPEN",

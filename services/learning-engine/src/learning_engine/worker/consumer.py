@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gc
 import logging
 import threading
 import time
@@ -52,6 +53,8 @@ def run_consumer_loop(settings: LearningEngineSettings, stop: threading.Event) -
                 settings.learn_stream_risk_alert,
             ]
         )
+    if settings.self_healing_enabled:
+        streams.append(settings.learn_stream_system_alert)
 
     for s in streams:
         try:
@@ -64,6 +67,9 @@ def run_consumer_loop(settings: LearningEngineSettings, stop: threading.Event) -
     count = settings.eventbus_count
 
     logger.info("learning-engine consumer started group=%s streams=%s", group, len(streams))
+
+    _msg_count = 0
+    _gc_every = int(settings.worker_gc_interval_messages or 0)
 
     while not stop.is_set():
         try:
@@ -119,6 +125,21 @@ def run_consumer_loop(settings: LearningEngineSettings, stop: threading.Event) -
                             stream=stream_name,
                             redis_message_id=msg_id,
                         )
+                    elif (
+                        settings.self_healing_enabled
+                        and stream_name == settings.learn_stream_system_alert
+                        and env.event_type == "system_alert"
+                    ):
+                        from learning_engine.worker.processors_self_healing import (
+                            process_self_healing_system_alert,
+                        )
+
+                        process_self_healing_system_alert(
+                            settings,
+                            env,
+                            stream=stream_name,
+                            redis_message_id=msg_id,
+                        )
                     else:
                         with db_connect(settings.database_url) as conn2:
                             with conn2.transaction():
@@ -135,5 +156,8 @@ def run_consumer_loop(settings: LearningEngineSettings, stop: threading.Event) -
                     r.xack(stream_name, group, msg_id)
                 except Exception as exc:
                     logger.warning("ack failed: %s", exc)
+                _msg_count += 1
+                if _gc_every > 0 and _msg_count % _gc_every == 0:
+                    gc.collect(0)
 
     logger.info("learning-engine consumer stopped")

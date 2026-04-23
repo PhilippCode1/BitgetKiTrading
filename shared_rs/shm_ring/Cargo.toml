@@ -1,0 +1,7 @@
+[package]
+name = "shm_ring"
+version = "0.1.0"
+edition = "2021"
+description = "SPSC-Ringlayout fuer Shared-Memory Eventbus (Referenzimplementierung, cargo test)."
+
+[dependencies]

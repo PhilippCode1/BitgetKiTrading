@@ -68,6 +68,9 @@ class RedisStreamBus:
     def ping(self) -> bool:
         return bool(self.redis.ping())
 
+    def close(self) -> None:
+        self.redis.close()
+
     def publish(self, stream: str, env: EventEnvelope) -> str:
         _validate_stream(stream)
         expected_stream = env.default_stream()

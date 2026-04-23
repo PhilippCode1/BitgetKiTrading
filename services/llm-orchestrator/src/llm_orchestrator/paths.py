@@ -32,3 +32,7 @@ def prompts_dir() -> Path:
 def load_json_schema(filename: str) -> dict[str, Any]:
     p = schemas_dir() / filename
     return json.loads(p.read_text(encoding="utf-8"))
+
+
+def agent_communication_schema_path() -> Path:
+    return schemas_dir() / "agent_communication.schema.json"

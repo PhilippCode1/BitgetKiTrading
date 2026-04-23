@@ -180,3 +180,11 @@ COMMERCE_BILLING_AUTH_FAILURES_1H = Gauge(
     "commerce_billing_auth_failures_1h",
     "gateway_request_audit auth_failure_billing_read in 1h",
 )
+
+# Inference-Server (TimesFM gRPC) — Batch-Latenz (Push via /ops/inference-batch-metric)
+TIMESFM_INFERENCE_BATCH_LATENCY_MS = Histogram(
+    "timesfm_inference_batch_latency_ms",
+    "Zeitreihen-Batch-Inferenz-Latenz in ms (inference-server -> monitor-engine)",
+    ["model_id", "backend"],
+    buckets=(0.5, 1, 2, 5, 10, 25, 50, 100, 250, 500, 1000, 3000, 10000, 30000, 120000),
+)

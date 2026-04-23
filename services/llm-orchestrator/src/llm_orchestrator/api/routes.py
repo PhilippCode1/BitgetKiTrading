@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 from uuid import UUID
 
 _llm_api_log = logging.getLogger("llm_orchestrator.api")
@@ -10,12 +10,16 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from starlette.requests import Request
 
+from llm_orchestrator.audit_ledger_commit import commit_war_room_to_audit_ledger
 from llm_orchestrator.exceptions import LLMPromptTooLargeError
 from llm_orchestrator.service import LLMService, ProviderPref
 from shared_py.service_auth import (
     InternalServiceAuthContext,
     build_internal_service_dependency,
 )
+
+if TYPE_CHECKING:
+    from llm_orchestrator.consensus.war_room import ConsensusOrchestrator
 
 # API-Hardlimit (konfigurierbarer Cap in LLMOrchestratorSettings <= diesem Wert).
 _MAX_PROMPT_CHARS_API = 512_000
@@ -109,6 +113,24 @@ class StrategyJournalSummaryRequest(BaseModel):
     temperature: float = Field(default=0.2, ge=0.0, le=2.0)
 
 
+class WarRoomConsensusRequest(BaseModel):
+    """Markt-Kontext fuer parallele Macro/Quant/Risk-Agenten (War Room)."""
+
+    market_event_json: dict[str, Any] = Field(
+        default_factory=dict,
+        description=(
+            "Optional: news_context, symbol, timeframe, signal_row, direction — "
+            "siehe MARL-Agenten-Dokumentation."
+        ),
+    )
+    agent_timeout_sec: float | None = Field(
+        default=None,
+        ge=1.0,
+        le=120.0,
+        description="Optional: Override fuer WAR_ROOM_AGENT_TIMEOUT_SEC.",
+    )
+
+
 class AssistTurnRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
@@ -133,7 +155,12 @@ class AssistTurnRequest(BaseModel):
         return v
 
 
-def build_router(service: LLMService, *, settings: Any) -> APIRouter:
+def build_router(
+    service: LLMService,
+    *,
+    settings: Any,
+    consensus: "ConsensusOrchestrator | None" = None,
+) -> APIRouter:
     r = APIRouter()
     require_internal = build_internal_service_dependency(settings)
 
@@ -167,6 +194,12 @@ def build_router(service: LLMService, *, settings: Any) -> APIRouter:
         structured: StructuredRequest,
         _auth: InternalServiceAuthContext = Depends(require_internal),
     ) -> dict[str, Any]:
+        """
+        Generischer Structured-Output (Legacy/Escape-Hatch).
+
+        **War-Room / Trading-Konsens:** Nutze ``POST /llm/consensus/war_room`` — dort greifen
+        Macro-, Quant- und Risk-Agent mit Hard-Veto und Audit-Trail (operator_explain).
+        """
         try:
             return service.run_structured(
                 schema_json=structured.output_schema,
@@ -178,6 +211,29 @@ def build_router(service: LLMService, *, settings: Any) -> APIRouter:
             )
         except (LLMPromptTooLargeError, RuntimeError) as exc:
             raise _llm_http_error(exc) from exc
+
+    @r.post("/llm/consensus/war_room")
+    async def llm_consensus_war_room(
+        body: WarRoomConsensusRequest,
+        _auth: InternalServiceAuthContext = Depends(require_internal),
+    ) -> dict[str, Any]:
+        if consensus is None:
+            raise HTTPException(
+                status_code=503,
+                detail={"code": "CONSENSUS_UNAVAILABLE", "message": "ConsensusOrchestrator nicht initialisiert"},
+            )
+        out = await consensus.evaluate(
+            body.market_event_json,
+            agent_timeout_sec=body.agent_timeout_sec,
+        )
+        ledger = await commit_war_room_to_audit_ledger(
+            settings,
+            market_event_json=body.market_event_json,
+            war_room=out,
+        )
+        if ledger:
+            out = {**out, "apex_audit_ledger": ledger}
+        return out
 
     @r.post("/llm/news_summary")
     def llm_news_summary(

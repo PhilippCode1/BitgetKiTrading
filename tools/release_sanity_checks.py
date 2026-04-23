@@ -41,6 +41,7 @@ MAX_SOURCE_BYTES = 12 * 1024 * 1024  # 12 MiB — Build-Ballast
 
 SECRET_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"sk_live_[0-9a-zA-Z]{20,}"), "Stripe live key"),
+    (re.compile(r"sk-(?:proj|test|live)-[A-Za-z0-9_\-]{20,}"), "OpenAI-style API key"),
     (re.compile(r"xox[baprs]-[0-9A-Za-z-]{10,}"), "Slack token"),
     (re.compile(r"-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----"), "PEM private key"),
     (re.compile(r"AKIA[0-9A-Z]{16}"), "AWS access key id"),

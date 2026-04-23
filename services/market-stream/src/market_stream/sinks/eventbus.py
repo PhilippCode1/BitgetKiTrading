@@ -7,7 +7,12 @@ from typing import Any
 
 from redis.exceptions import RedisError
 
-from shared_py.eventbus import EventEnvelope, RedisStreamBus
+from shared_py.eventbus import (
+    EventEnvelope,
+    RedisStreamBus,
+    SharedMemoryBus,
+    make_stream_bus_from_url,
+)
 
 
 class AsyncRedisEventBus:
@@ -25,7 +30,7 @@ class AsyncRedisEventBus:
         self._default_block_ms = default_block_ms
         self._default_count = default_count
         self._logger = logger or logging.getLogger("market_stream.eventbus")
-        self._bus: RedisStreamBus | None = None
+        self._bus: RedisStreamBus | SharedMemoryBus | None = None
         self._last_connect_attempt_monotonic = 0.0
         self._retry_cooldown_sec = 5.0
 
@@ -80,16 +85,17 @@ class AsyncRedisEventBus:
     async def close(self) -> None:
         if self._bus is None:
             return
-        redis_client = self._bus.redis
+        bus = self._bus
         self._bus = None
-        await asyncio.to_thread(redis_client.close)
+        await asyncio.to_thread(bus.close)
 
-    def _connect_sync(self) -> RedisStreamBus:
-        bus = RedisStreamBus.from_url(
+    def _connect_sync(self) -> RedisStreamBus | SharedMemoryBus:
+        bus = make_stream_bus_from_url(
             self._redis_url,
             dedupe_ttl_sec=self._dedupe_ttl_sec,
             default_block_ms=self._default_block_ms,
             default_count=self._default_count,
+            logger=self._logger,
         )
         bus.ping()
         return bus

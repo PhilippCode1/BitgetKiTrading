@@ -64,6 +64,7 @@ class MonitorEngineSettings(BaseServiceSettings):
             "signal-engine=http://localhost:8050,"
             "news-engine=http://localhost:8060,"
             "llm-orchestrator=http://localhost:8070,"
+            "inference-server=http://localhost:8140/ready,"
             "paper-broker=http://localhost:8085,"
             "learning-engine=http://localhost:8090,"
             "alert-engine=http://localhost:8100,"
@@ -191,6 +192,15 @@ class MonitorEngineSettings(BaseServiceSettings):
 
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
     eventbus_dedupe_ttl_sec: int = Field(default=0, alias="EVENTBUS_DEDUPE_TTL_SEC")
+
+    monitor_self_healing_canary_enabled: bool = Field(
+        default=False,
+        alias="MONITOR_SELF_HEALING_CANARY_ENABLED",
+        description=(
+            "Simuliert CRITICAL_RUNTIME_EXCEPTION (falscher REST-Pfad) fuer Self-Healing-Tests. "
+            "In Produktion aus lassen."
+        ),
+    )
 
     @property
     def service_urls(self) -> dict[str, str]:

@@ -22,6 +22,21 @@ class ExchangeStateSyncService:
     ) -> None:
         self._settings = settings
         self._repo = repo
+        self._fill_maker_count = 0
+        self._fill_taker_count = 0
+
+    def liquidity_fill_counters(self) -> dict[str, Any]:
+        m = int(self._fill_maker_count)
+        t = int(self._fill_taker_count)
+        tot = m + t
+        ratio = (m / tot) if tot else None
+        return {
+            "maker_fills": m,
+            "taker_fills": t,
+            "total_fills": tot,
+            "maker_share_0_1": ratio,
+            "maker_share_target_0_1": 0.9,
+        }
 
     def handle_event(self, event: NormalizedPrivateEvent) -> dict[str, Any]:
         if event.event_type == "order":
@@ -219,6 +234,21 @@ class ExchangeStateSyncService:
                     },
                 }
             )
+        is_maker = self._is_maker_fill(item)
+        if is_maker:
+            self._fill_maker_count += 1
+        else:
+            self._fill_taker_count += 1
+        role = "maker" if is_maker else "taker"
+        logger.info(
+            "liquidity_fill role=%s tradeScope=%s symbol=%s side=%s baseVol=%s price=%s",
+            role,
+            self._text(item.get("tradeScope")),
+            self._text(item.get("symbol")) or event.inst_id or self._settings.symbol,
+            self._text(item.get("side")) or "?",
+            self._text(item.get("baseVolume")),
+            self._text(item.get("price")),
+        )
         return self._repo.record_fill(
             {
                 "internal_order_id": internal_order_id,
@@ -230,7 +260,7 @@ class ExchangeStateSyncService:
                 "size": self._text(item.get("baseVolume")) or "0",
                 "fee": self._first_fee_amount(item),
                 "fee_coin": self._first_fee_coin(item) or self._settings.effective_margin_coin,
-                "is_maker": self._is_maker_fill(item),
+                "is_maker": is_maker,
                 "exchange_ts_ms": self._text(item.get("uTime"))
                 or self._text(item.get("cTime"))
                 or str(event.exchange_ts_ms),

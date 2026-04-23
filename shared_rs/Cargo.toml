@@ -1,0 +1,16 @@
+[workspace]
+resolver = "2"
+members = [
+    "apex_audit_ledger",
+    "apex_core",
+    "indicators",
+    "orderbook",
+    "shm_ring",
+    "survival_kernel",
+    "onchain_impact",
+]
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1

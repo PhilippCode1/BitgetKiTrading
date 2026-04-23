@@ -22,6 +22,7 @@ x-service-defaults: &service-defaults
 # Passwort ausschliesslich POSTGRES_PASSWORD (muss mit postgresql://user:pass@ uebereinstimmen).
 x-app-runtime-env: &app-runtime-env
   BITGET_USE_DOCKER_DATASTORE_DSN: "true"
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
   CONFIG_ENV_FILE: ${COMPOSE_ENV_FILE:-.env.local}
   DATABASE_URL_DOCKER: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-bitget_ai}
   REDIS_URL_DOCKER: redis://redis:6379/0
@@ -32,6 +33,10 @@ x-app-runtime-env: &app-runtime-env
   BITGET_WATCHLIST_SYMBOLS: ${BITGET_WATCHLIST_SYMBOLS:-BTCUSDT,ETHUSDT}
   FEATURE_SCOPE_SYMBOLS: ${FEATURE_SCOPE_SYMBOLS:-BTCUSDT,ETHUSDT}
   SIGNAL_SCOPE_SYMBOLS: ${SIGNAL_SCOPE_SYMBOLS:-BTCUSDT,ETHUSDT}
+
+# Build-Args fuer Rust/Maturin (apex_core) in kritischen Python-Services; siehe jeweilige Dockerfiles.
+x-rust-extension-build-args: &rust-extension-build-args
+  RUST_TOOLCHAIN: ${RUST_TOOLCHAIN:-stable}
 
 networks:
   bitget_ai_net:
@@ -92,6 +97,8 @@ services:
     build:
       context: .
       dockerfile: services/market-stream/Dockerfile
+      args:
+        <<: *rust-extension-build-args
     container_name: bitget_ai_market_stream
     environment:
       <<: *app-runtime-env
@@ -118,10 +125,14 @@ services:
     build:
       context: .
       dockerfile: services/feature-engine/Dockerfile
+      args:
+        <<: *rust-extension-build-args
     container_name: bitget_ai_feature_engine
     environment:
       <<: *app-runtime-env
       READINESS_REQUIRE_URLS: http://market-stream:8010/ready
+      CORRELATION_GRAPH_ENABLED: ${CORRELATION_GRAPH_ENABLED:-false}
+      CORRELATION_PUBLISH_INTERVAL_SEC: ${CORRELATION_PUBLISH_INTERVAL_SEC:-60}
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -244,6 +255,8 @@ services:
     environment:
       <<: *app-runtime-env
       READINESS_REQUIRE_URLS: http://llm-orchestrator:8070/ready
+      SOCIAL_INFERENCE_BASE_URL: http://inference-server:8140
+      SOCIAL_PIPELINE_ENABLED: ${SOCIAL_PIPELINE_ENABLED:-false}
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -252,6 +265,8 @@ services:
       redis:
         condition: service_healthy
       llm-orchestrator:
+        condition: service_healthy
+      inference-server:
         condition: service_healthy
     healthcheck:
       test:
@@ -264,6 +279,32 @@ services:
       start_period: 45s
       retries: 25
 
+  audit-ledger:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: services/audit-ledger/Dockerfile
+    container_name: bitget_ai_audit_ledger
+    environment:
+      <<: *app-runtime-env
+      SERVICE_NAME: audit-ledger
+      AUDIT_LEDGER_PORT: "8098"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'python -c "import urllib.request; urllib.request.urlopen(''http://127.0.0.1:8098/ready'', timeout=6).read()"',
+        ]
+      interval: 10s
+      timeout: 8s
+      start_period: 20s
+      retries: 25
+
   llm-orchestrator:
     <<: *service-defaults
     build:
@@ -272,8 +313,16 @@ services:
     container_name: bitget_ai_llm_orchestrator
     environment:
       <<: *app-runtime-env
+      AUDIT_LEDGER_BASE_URL: http://audit-ledger:8098
+      AUDIT_LEDGER_COMMIT_REQUIRED: "true"
     depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
       redis:
+        condition: service_healthy
+      audit-ledger:
         condition: service_healthy
     healthcheck:
       test:
@@ -285,6 +334,34 @@ services:
       timeout: 8s
       start_period: 25s
       retries: 30
+
+  # TimesFM / Zeitreihen-Foundation-Model (gRPC). GPU: zusaetzlich docker-compose.inference-gpu.yml mergen.
+  inference-server:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: services/inference-server/Dockerfile
+    container_name: bitget_ai_inference_server
+    environment:
+      <<: *app-runtime-env
+      INFERENCE_GRPC_PORT: "50051"
+      INFERENCE_HTTP_PORT: "8140"
+      MONITOR_ENGINE_BASE_URL: http://monitor-engine:8110
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'python -c "import urllib.request; urllib.request.urlopen(''http://127.0.0.1:8140/ready'', timeout=6).read()"',
+        ]
+      interval: 15s
+      timeout: 10s
+      start_period: 20s
+      retries: 20
 
   paper-broker:
     <<: *service-defaults
@@ -323,6 +400,30 @@ services:
       start_period: 60s
       retries: 25
 
+  adversarial-engine:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: services/adversarial-engine/Dockerfile
+    container_name: bitget_ai_adversarial_engine
+    environment:
+      <<: *app-runtime-env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'python -c "import urllib.request; urllib.request.urlopen(''http://127.0.0.1:8145/ready'', timeout=15).read()"',
+        ]
+      interval: 20s
+      timeout: 18s
+      start_period: 240s
+      retries: 35
+
   learning-engine:
     <<: *service-defaults
     build:
@@ -332,6 +433,8 @@ services:
     environment:
       <<: *app-runtime-env
       READINESS_REQUIRE_URLS: http://paper-broker:8085/ready
+      # Optional: AMS — kein harter depends_on, damit Learning ohne schweren Torch-Build startet.
+      ADVERSARIAL_ENGINE_BASE_URL: http://adversarial-engine:8145
     volumes:
       - backtest_artifacts:/app/services/learning-engine/artifacts/backtests
     depends_on:
@@ -362,11 +465,44 @@ services:
       start_period: 60s
       retries: 25
 
+  onchain-sniffer:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: services/onchain-sniffer/Dockerfile
+    container_name: bitget_ai_onchain_sniffer
+    environment:
+      <<: *app-runtime-env
+      ETH_WS_URL: ${ETH_WS_URL:-}
+      ETH_HTTP_URL: ${ETH_HTTP_URL:-}
+      SOLANA_WS_URL: ${SOLANA_WS_URL:-}
+      ONCHAIN_MIN_NOTIONAL_USD: ${ONCHAIN_MIN_NOTIONAL_USD:-500000}
+      ONCHAIN_ETH_USD_MARK: ${ONCHAIN_ETH_USD_MARK:-3500}
+      ONCHAIN_POOL_TVL_USD_HINT: ${ONCHAIN_POOL_TVL_USD_HINT:-50000000}
+      ONCHAIN_IMPACT_LIB_PATH: ${ONCHAIN_IMPACT_LIB_PATH:-}
+      ONCHAIN_ETH_LISTENER_ENABLED: ${ONCHAIN_ETH_LISTENER_ENABLED:-true}
+      ONCHAIN_SOLANA_LISTENER_ENABLED: ${ONCHAIN_SOLANA_LISTENER_ENABLED:-false}
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'python -c "import urllib.request; urllib.request.urlopen(''http://127.0.0.1:8096/ready'', timeout=6).read()"',
+        ]
+      interval: 15s
+      timeout: 12s
+      start_period: 30s
+      retries: 20
+
   live-broker:
     <<: *service-defaults
     build:
       context: .
       dockerfile: services/live-broker/Dockerfile
+      args:
+        <<: *rust-extension-build-args
     container_name: bitget_ai_live_broker
     environment:
       <<: *app-runtime-env
@@ -420,6 +556,7 @@ services:
       HEALTH_URL_ALERT_ENGINE: http://alert-engine:8100/ready
       HEALTH_URL_MONITOR_ENGINE: http://monitor-engine:8110/ready
       HEALTH_URL_LIVE_BROKER: http://live-broker:8120/ready
+      HEALTH_URL_ONCHAIN_SNIFFER: http://onchain-sniffer:8096/ready
       # Ueberschreibt .env.local Loopback: Gateway-Container braucht Docker-Dienstnamen bei BITGET_USE_DOCKER_DATASTORE_DSN.
       LLM_ORCH_BASE_URL: http://llm-orchestrator:8070
       LIVE_BROKER_BASE_URL: http://live-broker:8120
@@ -506,7 +643,7 @@ services:
     environment:
       <<: *app-runtime-env
       READINESS_REQUIRE_URLS: http://api-gateway:8000/ready
-      MONITOR_SERVICE_URLS: api-gateway=http://api-gateway:8000,market-stream=http://market-stream:8010,feature-engine=http://feature-engine:8020,structure-engine=http://structure-engine:8030,drawing-engine=http://drawing-engine:8040,signal-engine=http://signal-engine:8050,news-engine=http://news-engine:8060,llm-orchestrator=http://llm-orchestrator:8070,paper-broker=http://paper-broker:8085,learning-engine=http://learning-engine:8090,alert-engine=http://alert-engine:8100,live-broker=http://live-broker:8120
+      MONITOR_SERVICE_URLS: api-gateway=http://api-gateway:8000,market-stream=http://market-stream:8010,feature-engine=http://feature-engine:8020,structure-engine=http://structure-engine:8030,drawing-engine=http://drawing-engine:8040,signal-engine=http://signal-engine:8050,news-engine=http://news-engine:8060,llm-orchestrator=http://llm-orchestrator:8070,audit-ledger=http://audit-ledger:8098/ready,inference-server=http://inference-server:8140/ready,paper-broker=http://paper-broker:8085,learning-engine=http://learning-engine:8090,onchain-sniffer=http://onchain-sniffer:8096/ready,alert-engine=http://alert-engine:8100,live-broker=http://live-broker:8120
       MONITOR_STREAMS: events:signal_created,events:trade_opened,events:trade_updated,events:trade_closed,events:candle_close,events:news_scored,events:market_feed_health,events:system_alert,events:dlq
       THRESH_LIVE_RECONCILE_STALE_MS: 90000
       THRESH_LIVE_ERROR_LOOKBACK_MS: 900000

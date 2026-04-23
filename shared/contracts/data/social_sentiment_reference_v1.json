@@ -1,0 +1,18 @@
+{
+  "schema_version": "1",
+  "description": "Referenz-Texte fuer Panik- vs. Euphorie-Zentroid (Embeddings werden zur Laufzeit berechnet und in Redis gecacht).",
+  "panic_texts_en": [
+    "massive liquidation cascade incoming everyone selling",
+    "crypto market crash fear panic sell everything",
+    "exchange insolvency rumors bank run on stablecoins",
+    "regulator bans crypto emergency shutdown",
+    "black swan event markets in freefall"
+  ],
+  "euphoria_texts_en": [
+    "ETF approved spot bitcoin institutional adoption",
+    "all time high breakout euphoria risk on rally",
+    "major bank launches crypto custody mainstream adoption",
+    "halving supply shock bullish repricing",
+    "Fed pivot dovish liquidity flood risk assets surge"
+  ]
+}

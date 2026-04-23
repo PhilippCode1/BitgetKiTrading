@@ -8,8 +8,10 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from starlette.requests import Request
 
+from llm_orchestrator.agents.registry import AgentRegistry
 from llm_orchestrator.api.routes import build_router
 from llm_orchestrator.config import LLMOrchestratorSettings
+from llm_orchestrator.consensus.war_room import ConsensusOrchestrator
 from llm_orchestrator.constants import LLM_ORCHESTRATOR_API_CONTRACT_VERSION
 from llm_orchestrator.exceptions import GuardrailViolation
 from llm_orchestrator.service import LLMService
@@ -48,12 +50,27 @@ def create_app() -> FastAPI:
         description=(
             "Analystenlayer: strukturierte LLM-Ausgaben (JSON-Schema, Validation, Cache, "
             "Circuit-Breaker, Provider-Fallback) mit kuratiertem Retrieval aus docs/llm_knowledge. "
+            "War-Room: POST /llm/consensus/war_room aggregiert Macro/Quant/Risk (Risk-Veto). "
             "Keine Orderhoheit, kein Strategie-Tuning, kein Tool-Calling. "
             "Provider: OpenAI (Prod), Fake nur via LLM_USE_FAKE_PROVIDER (nicht shadow/production)."
         ),
     )
     app.state.service = service
-    app.include_router(build_router(service, settings=settings))
+    agent_registry = AgentRegistry.build_default(
+        settings=settings,
+        feature_engine_base_url=settings.feature_engine_base_url.rstrip("/"),
+    )
+    app.state.consensus_orchestrator = ConsensusOrchestrator(
+        agent_registry,
+        settings=settings,
+    )
+    app.include_router(
+        build_router(
+            service,
+            settings=settings,
+            consensus=app.state.consensus_orchestrator,
+        )
+    )
 
     @app.exception_handler(GuardrailViolation)
     async def _guardrail_violation_handler(

@@ -1,0 +1,14 @@
+[package]
+name = "apex_audit_ledger"
+version = "0.1.0"
+edition = "2021"
+description = "SHA-256 Hash-Kette fuer Apex Predator Audit Ledger (War-Room / Konsens)."
+
+[lib]
+crate-type = ["lib"]
+
+[dependencies]
+sha2 = "0.10"
+
+[dev-dependencies]
+hex = "0.4"

@@ -174,6 +174,38 @@ class LiveBrokerSettings(BitgetSettings):
         default=None,
         alias="LIVE_EXECUTION_MAX_SPREAD_HALF_BPS_MARKET",
     )
+    live_predatory_passive_maker_default: bool = Field(
+        default=False,
+        alias="LIVE_PREDATORY_PASSIVE_MAKER_DEFAULT",
+        description=(
+            "Signal-Events: trace.predatory_passive_maker setzen (Market-Opens werden "
+            "im Order-Service zu post-only Limit am Best-Bid/Ask umgeschrieben, Futures)."
+        ),
+    )
+    live_passive_max_slippage_bps_default: float = Field(
+        default=25.0,
+        alias="LIVE_PASSIVE_MAX_SLIPPAGE_BPS_DEFAULT",
+        description="Max. Abweichung vom Anchor-Preis fuer Chase-Replace (Basis-Punkte).",
+    )
+    live_passive_iceberg_slices_default: int = Field(
+        default=4,
+        alias="LIVE_PASSIVE_ICEBERG_SLICES_DEFAULT",
+        ge=1,
+        le=500,
+        description="Anzahl Tranchen (nur erste wird pro Submit platziert; Plan im Trace).",
+    )
+    live_passive_imbalance_pause_ms: int = Field(
+        default=400,
+        alias="LIVE_PASSIVE_IMBALANCE_PAUSE_MS",
+        ge=0,
+        le=60_000,
+        description="Hinweis-Dauer im Fehlertext wenn Safety-Latch Orderbuch-Wall erkennt.",
+    )
+    live_passive_imbalance_against_threshold: float = Field(
+        default=0.55,
+        alias="LIVE_PASSIVE_IMBALANCE_AGAINST_THRESHOLD",
+        description="|Imbalance| groesser als Schwelle gegen unsere Seite -> kein Submit (retry).",
+    )
     live_preset_stop_min_distance_bps: float | None = Field(
         default=None,
         alias="LIVE_PRESET_STOP_MIN_DISTANCE_BPS",

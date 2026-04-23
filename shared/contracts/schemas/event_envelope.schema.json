@@ -43,7 +43,14 @@
         "llm_failed",
         "dlq",
         "system_alert",
-        "operator_intel"
+        "operator_intel",
+        "tsfm_signal_candidate",
+        "onchain_whale_detection",
+        "orderbook_inconsistency",
+        "orderflow_toxicity",
+        "social_sentiment_update",
+        "intermarket_correlation_update",
+        "regime_divergence_detected"
       ]
     },
     "symbol": { "type": "string", "minLength": 1 },

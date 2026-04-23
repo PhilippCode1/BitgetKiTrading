@@ -145,6 +145,24 @@ class FakeProvider:
                     ],
                 },
             }
+        if schema_json.get("title") == "MARL Agent Message":
+            return {
+                "schema_version": "agent-comm-v1",
+                "agent_id": "macro_analyst",
+                "status": "ok",
+                "confidence_0_1": 0.5,
+                "rationale_de": (
+                    "[TEST-PROVIDER — kein OpenAI-Aufruf] Makro-Stub: News-Kontext nur strukturell "
+                    "beruecksichtigt; siehe admin_operations_assist Governance im Prompt."
+                ),
+                "signal_proposal": {
+                    "action": "hold_research",
+                    "symbol": None,
+                    "timeframe": None,
+                    "payload": {"macro_fake": True},
+                },
+                "evidence_refs": ["admin_operations_assist.instruction_de.txt"],
+            }
         if "assistant-turn" in sid:
             base = _fake_object_from_schema(schema_json)
             base.update(

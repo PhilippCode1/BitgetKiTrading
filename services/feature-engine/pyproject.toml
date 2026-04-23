@@ -9,18 +9,24 @@ description = "Feature engine for candle-based market features in the Bitget mar
 requires-python = ">=3.11"
 dependencies = [
   "fastapi",
+  "grpcio>=1.71,<2",
   "httpx",
+  "numpy>=1.26,<2",
+  "pandas>=2.2,<3",
+  "protobuf>=5.26,<6",
   "prometheus_client>=0.20.0",
   "psycopg[binary]",
   "pydantic",
   "pydantic-settings",
   "python-json-logger>=2.0.7",
   "redis",
+  "scipy>=1.14,<2",
   "uvicorn[standard]",
 ]
 
 [project.optional-dependencies]
 dev = ["pytest"]
+tsfm = ["numba>=0.59"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/feature_engine"]

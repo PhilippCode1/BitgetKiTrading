@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bitget-btc-ai.local/schemas/resilience_score.schema.json",
+  "title": "ResilienceScore",
+  "type": "object",
+  "required": ["schema_version", "resilience_score_0_100", "attacks_total", "attacks_deflected"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "resilience_score_v1"
+    },
+    "resilience_score_0_100": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Anteil erfolgreich abgewehrter AMS-Hochrisiko-Szenarien (Order-Flow-Toxizitaet)."
+    },
+    "attacks_total": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Anzahl simulierter Adversarial-Angriffe im Lauf."
+    },
+    "attacks_deflected": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Angriffe, bei denen der Risk-/Toxizitaets-Pfad korrekt blockierte bzw. eskalierte."
+    },
+    "attack_budget": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Konfiguriertes Budget (z. B. 1000 fuer Champion-Gate)."
+    },
+    "toxicity_threshold": {
+      "type": "number",
+      "description": "Schwelle fuer 'Hochrisiko-AMS' (0..1)."
+    },
+    "classifier_model_path": {
+      "type": ["string", "null"],
+      "description": "Optionaler Pfad zum trainierten sklearn-Modell (joblib)."
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["simulation", "live_monitoring"],
+      "description": "simulation = aktives AMS-Training/Stress; live_monitoring = passives Scoring."
+    },
+    "evaluated_at_ts_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "details": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

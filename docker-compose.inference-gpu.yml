@@ -1,0 +1,9 @@
+# Optional: NVIDIA-GPU fuer inference-server (Docker Compose v2+ mit GPU-Unterstuetzung).
+#
+#   docker compose -f docker-compose.yml -f docker-compose.inference-gpu.yml up -d inference-server
+#
+# Ohne NVIDIA Container Toolkit schlaegt dieser Merge fehl — dann nur Basis-Compose verwenden.
+
+services:
+  inference-server:
+    gpus: all

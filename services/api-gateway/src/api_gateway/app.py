@@ -63,6 +63,7 @@ from api_gateway.routes_commerce_settlement import (
     settlement_admin_router,
     treasury_admin_router,
 )
+from api_gateway.routes_correlation_proxy import router as correlation_proxy_router
 from api_gateway.routes_alerts_proxy import router as alerts_proxy_router
 from api_gateway.routes_db import router as db_router
 from api_gateway.routes_events import router as events_router
@@ -288,6 +289,7 @@ def create_app() -> FastAPI:
     app.include_router(settlement_admin_router)
     app.include_router(db_router)
     app.include_router(events_router)
+    app.include_router(correlation_proxy_router)
     # Live-SSE: bei erzwungenem Auth JWT/Internal-Key oder SSE-Cookie; Dashboard-BFF empfohlen.
     app.include_router(live_router)
     app.include_router(live_broker_proxy_router)

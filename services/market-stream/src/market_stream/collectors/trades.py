@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from typing import Any
@@ -29,10 +30,12 @@ class TradesCollector:
         *,
         bitget_settings: BitgetSettings,
         trades_repo: TradesRepository,
+        on_trades_batch: Callable[[list[TradeRecord]], None] | None = None,
         logger: logging.Logger | None = None,
     ) -> None:
         self._bitget_settings = bitget_settings
         self._trades_repo = trades_repo
+        self._on_trades_batch = on_trades_batch
         self._logger = logger or logging.getLogger("market_stream.trades")
         self._last_trade_ts_ms: int | None = None
         self._last_trade_id: str | None = None
@@ -79,6 +82,11 @@ class TradesCollector:
                 self._logger.warning("failed to parse trade payload error=%s item=%s", exc, item)
                 continue
             trades.append(trade)
+        if trades and self._on_trades_batch is not None:
+            try:
+                self._on_trades_batch(trades)
+            except Exception as exc:
+                self._logger.debug("on_trades_batch hook failed: %s", exc)
         inserted = await self._trades_repo.upsert_trades(trades)
         self._persisted_trades += inserted
         if trades:

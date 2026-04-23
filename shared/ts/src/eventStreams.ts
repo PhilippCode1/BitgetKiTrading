@@ -23,6 +23,13 @@ export const EVENT_TYPE_TO_STREAM = {
   dlq: "events:dlq",
   system_alert: "events:system_alert",
   operator_intel: "events:operator_intel",
+  tsfm_signal_candidate: "events:tsfm_signal_candidate",
+  onchain_whale_detection: "events:onchain_whale_detection",
+  orderbook_inconsistency: "events:orderbook_inconsistency",
+  orderflow_toxicity: "events:orderflow_toxicity",
+  social_sentiment_update: "events:social_sentiment_update",
+  intermarket_correlation_update: "events:intermarket_correlation_update",
+  regime_divergence_detected: "events:regime_divergence_detected",
 } as const;
 
 export type EventBusEventType = keyof typeof EVENT_TYPE_TO_STREAM;

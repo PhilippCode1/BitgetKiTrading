@@ -1,0 +1,10 @@
+[package]
+name = "onchain_impact"
+version = "0.1.0"
+edition = "2021"
+description = "DEX-Mempool Impact: CPMM-Slippage-Schaetzung (FFI fuer onchain-sniffer)"
+
+[lib]
+name = "onchain_impact"
+crate-type = ["cdylib", "rlib"]
+path = "src/lib.rs"

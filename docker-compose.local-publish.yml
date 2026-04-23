@@ -63,3 +63,12 @@ services:
   live-broker:
     ports:
       - "${COMPOSE_LOCAL_PUBLISH_BIND:-127.0.0.1}:8120:8120"
+
+  inference-server:
+    ports:
+      - "${COMPOSE_LOCAL_PUBLISH_BIND:-127.0.0.1}:8140:8140"
+      - "${COMPOSE_LOCAL_PUBLISH_BIND:-127.0.0.1}:50051:50051"
+
+  adversarial-engine:
+    ports:
+      - "${COMPOSE_LOCAL_PUBLISH_BIND:-127.0.0.1}:8145:8145"

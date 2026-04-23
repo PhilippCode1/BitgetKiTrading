@@ -11,6 +11,7 @@ from fastapi import FastAPI
 from news_engine.api.routes_scoring import build_scoring_router
 from news_engine.config import NewsEngineSettings
 from news_engine.storage.repo import NewsRepository
+from news_engine.social.worker import SocialStreamWorker
 from news_engine.worker import NewsIngestWorker
 from shared_py.eventbus import RedisStreamBus
 from shared_py.observability import (
@@ -44,6 +45,7 @@ class NewsEngineRuntime:
             dedupe_ttl_sec=settings.eventbus_dedupe_ttl_sec,
         )
         self._worker = NewsIngestWorker(settings, self._repo, self._bus, logger=self._logger)
+        self._social = SocialStreamWorker(settings, self._bus, logger_=self._logger)
 
     @property
     def repo(self) -> NewsRepository:
@@ -81,6 +83,7 @@ class NewsEngineRuntime:
             "database_ok": db_ok,
             "redis_ok": redis_ok,
             **self._worker.stats_payload(),
+            **self._social.stats_payload(),
         }
 
 
@@ -95,9 +98,11 @@ def create_app() -> FastAPI:
     async def lifespan(app: FastAPI):
         app.state.runtime = runtime
         await runtime._worker.start_background()
+        await runtime._social.start_background()
         try:
             yield
         finally:
+            await runtime._social.stop()
             await runtime._worker.stop()
 
     app = FastAPI(

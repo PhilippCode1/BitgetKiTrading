@@ -44,6 +44,45 @@ class LearningEngineSettings(BaseServiceSettings):
     )
     learn_stream_risk_alert: str = Field(default="events:risk_alert", alias="LEARN_STREAM_RISK_ALERT")
     learn_consume_optional_streams: bool = Field(default=True, alias="LEARN_CONSUME_OPTIONAL_STREAMS")
+    learn_stream_system_alert: str = Field(default="events:system_alert", alias="LEARN_STREAM_SYSTEM_ALERT")
+
+    self_healing_enabled: bool = Field(default=False, alias="SELF_HEALING_ENABLED")
+    self_healing_trigger_svc_critical: bool = Field(
+        default=False,
+        alias="SELF_HEALING_TRIGGER_SVC_CRITICAL",
+        description="Zusaetzlich: svc:* critical system_alerts (ohne CRITICAL_RUNTIME_EXCEPTION).",
+    )
+    llm_orchestrator_base_url: str = Field(
+        default="http://127.0.0.1:8070",
+        alias="LLM_ORCHESTRATOR_BASE_URL",
+        description="Structured-LLM fuer Self-Healing-Diagnose.",
+    )
+    audit_ledger_base_url: str = Field(
+        default="",
+        alias="AUDIT_LEDGER_BASE_URL",
+        description="Optional: Audit-Ledger verify-chain als Kontext (keine Stacktraces).",
+    )
+    self_healing_sandbox_timeout_sec: float = Field(
+        default=420.0,
+        ge=30.0,
+        le=3600.0,
+        alias="SELF_HEALING_SANDBOX_TIMEOUT_SEC",
+    )
+    self_healing_apply_enabled: bool = Field(
+        default=False,
+        alias="SELF_HEALING_APPLY_ENABLED",
+        description="Nur nach expliziter Freigabe: Patch anwenden (gefaehrlich).",
+    )
+    self_healing_apply_path_prefixes: str = Field(
+        default="services/,shared/python/",
+        alias="SELF_HEALING_APPLY_PATH_PREFIXES",
+        description="CSV erlaubter relativer Pfad-Praefixe fuer APPLY.",
+    )
+    self_healing_docker_restart: str = Field(
+        default="",
+        alias="SELF_HEALING_DOCKER_RESTART",
+        description="Optional: Compose-Service-Name fuer docker compose restart (leer=aus).",
+    )
 
     news_context_lookback_ms: int = Field(default=3_600_000, alias="NEWS_CONTEXT_LOOKBACK_MS")
     news_context_lookahead_ms: int = Field(default=900_000, alias="NEWS_CONTEXT_LOOKAHEAD_MS")
@@ -91,6 +130,40 @@ class LearningEngineSettings(BaseServiceSettings):
     learning_adwin_metric: str = Field(default="pnl_net_usdt", alias="LEARNING_ADWIN_METRIC")
     learning_enable_mlflow: bool = Field(default=False, alias="LEARNING_ENABLE_MLFLOW")
     mlflow_tracking_uri: str = Field(default="", alias="MLFLOW_TRACKING_URI")
+
+    adversarial_engine_base_url: str = Field(
+        default="http://adversarial-engine:8145",
+        alias="ADVERSARIAL_ENGINE_BASE_URL",
+        description="HTTP-Basis fuer AMS toxische Batches (Proxy unter /learning/adversarial/toxic-batch).",
+    )
+    model_promotion_require_adversarial_stress: bool = Field(
+        default=False,
+        alias="MODEL_PROMOTION_REQUIRE_ADVERSARIAL_STRESS",
+        description="Champion-Promotion: 1000er AMS-Stresstest + Resilience >= Schwelle.",
+    )
+    adversarial_stress_attack_count: int = Field(
+        default=1000,
+        ge=100,
+        le=50_000,
+        alias="ADVERSARIAL_STRESS_ATTACK_COUNT",
+    )
+    adversarial_stress_trap_toxicity_threshold: float = Field(
+        default=0.72,
+        ge=0.0,
+        le=1.0,
+        alias="ADVERSARIAL_STRESS_TRAP_TOXICITY_THRESHOLD",
+    )
+    model_promotion_min_resilience_score_0_100: float = Field(
+        default=90.0,
+        ge=0.0,
+        le=100.0,
+        alias="MODEL_PROMOTION_MIN_RESILIENCE_SCORE_0_100",
+    )
+    risk_toxicity_classifier_model_path: str = Field(
+        default="",
+        alias="RISK_TOXICITY_CLASSIFIER_MODEL_PATH",
+        description="joblib-Pfad (RandomForest) fuer AMS-Stress + Risk-Governor-Export.",
+    )
 
     @field_validator("learning_adwin_metric")
     @classmethod

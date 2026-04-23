@@ -31,6 +31,13 @@ EventType = Literal[
     "dlq",
     "system_alert",
     "operator_intel",
+    "tsfm_signal_candidate",
+    "onchain_whale_detection",
+    "orderbook_inconsistency",
+    "orderflow_toxicity",
+    "social_sentiment_update",
+    "intermarket_correlation_update",
+    "regime_divergence_detected",
 ]
 
 
@@ -82,6 +89,13 @@ STREAM_LLM_FAILED = EVENT_TYPE_TO_STREAM["llm_failed"]
 STREAM_DLQ = EVENT_TYPE_TO_STREAM["dlq"]
 STREAM_SYSTEM_ALERT = EVENT_TYPE_TO_STREAM["system_alert"]
 STREAM_OPERATOR_INTEL = EVENT_TYPE_TO_STREAM["operator_intel"]
+STREAM_TSFM_SIGNAL_CANDIDATE = EVENT_TYPE_TO_STREAM["tsfm_signal_candidate"]
+STREAM_ONCHAIN_WHALE_DETECTION = EVENT_TYPE_TO_STREAM["onchain_whale_detection"]
+STREAM_ORDERBOOK_INCONSISTENCY = EVENT_TYPE_TO_STREAM["orderbook_inconsistency"]
+STREAM_ORDERFLOW_TOXICITY = EVENT_TYPE_TO_STREAM["orderflow_toxicity"]
+STREAM_SOCIAL_SENTIMENT_UPDATE = EVENT_TYPE_TO_STREAM["social_sentiment_update"]
+STREAM_INTERMARKET_CORRELATION_UPDATE = EVENT_TYPE_TO_STREAM["intermarket_correlation_update"]
+STREAM_REGIME_DIVERGENCE_DETECTED = EVENT_TYPE_TO_STREAM["regime_divergence_detected"]
 
 
 class EventEnvelope(BaseModel):

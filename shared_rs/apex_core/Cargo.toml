@@ -1,0 +1,26 @@
+[package]
+name = "apex_core"
+version = "0.1.0"
+edition = "2021"
+description = "PyO3-Erweiterung (Modul Mate / Apex Predator) — rechenintensive Kernpfade außerhalb des Python-GIL."
+
+[lib]
+name = "apex_core"
+crate-type = ["cdylib"]
+
+[dependencies]
+indicators = { path = "../indicators" }
+orderbook = { path = "../orderbook" }
+ndarray = { version = "0.16", default-features = false, features = ["std"] }
+pyo3 = { version = "0.23", features = ["extension-module"] }
+# NumPy-Interop für spätere zero-copy Pipelines (PyArray*). `numpy` 0.23 bindet PyO3 0.23 intern;
+# es gibt keine separaten `pyo3-*`-Features mehr (vgl. rust-numpy 0.23 `Cargo.toml`).
+numpy = { version = "0.23", default-features = false }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# Hinweis: `pydantic-core` ist primär ein Python-Native-Modul (Pydantic v2). Für strukturierte
+# Validierung/Serialisierung an der Rust-Grenze nutzen wir hier `serde`/`serde_json`; bei Bedarf
+# können später spezialisierte Crates ergänzt werden.
+
+[lints.rust]
+unused_crate_dependencies = "allow"

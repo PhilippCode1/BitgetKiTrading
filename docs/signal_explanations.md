@@ -112,6 +112,24 @@ Dort liegen unter anderem:
 Damit sieht der Operator nicht nur **was** entschieden wurde, sondern auch
 welcher fachliche Playbook-Rahmen die Entscheidung getragen oder blockiert hat.
 
+## Foundation Model (TimesFM, Prompt 9)
+
+Wenn der Signal-Pipeline-Kontext ein **TimesFM**-Ergebnis liefert, kann
+`source_snapshot_json.foundation_model_tsfm` (oder das gleiche Objekt als
+`ExplainInput.foundation_model_tsfm`) gesetzt werden. Die Explain-Engine
+blendet es dann unter `explain_long_json.sections.decision_pipeline.foundation_model_tsfm`
+sowie im Markdown unter **Endentscheid → Foundation Model (TimesFM)** ein.
+
+Empfohlene Felder (frei erweiterbar, `additionalProperties`):
+
+- `summary_de` — Kurztext, z. B. dass die Bewertung auf **Zero-Shot Pattern Recognition**
+  eines **Foundation Models** (TimesFM) basiert, inkl. Konfidenz und Horizont.
+- `model_id`, `confidence_0_1`, `directional_bias` — faktenbasierte Metadaten.
+
+Die Kern-Scoring-Pipeline der Signal-Engine bleibt deterministisch; das
+Foundation Model erscheint nur als **erklaerbarer Zusatzkontext**, sobald
+Upstream-Komponenten ihn befuellen.
+
 ## Versionierung
 
 - `SIGNAL_EXPLAIN_VERSION` wird in DB und in `explain_long_json.explain_version` gespeichert.

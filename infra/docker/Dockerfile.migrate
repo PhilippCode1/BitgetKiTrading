@@ -1,9 +1,12 @@
+# syntax=docker/dockerfile:1
 # Einmaliger Migrations-Job fuer Compose (service_completed_successfully).
+# Slim + minimale Build-Schichten (schneller Push/Pull).
 FROM python:3.11.15-slim-bookworm
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV PIP_NO_CACHE_DIR=1
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 WORKDIR /app
 
 RUN python -m pip install --upgrade "pip<26"

@@ -41,6 +41,7 @@ from live_broker.private_ws.sync import ExchangeStateSyncService
 from live_broker.reconcile.service import LiveReconcileService
 from live_broker.worker import LiveBrokerWorker
 from shared_py.bitget import BitgetInstrumentCatalog, BitgetInstrumentMetadataService
+from shared_py.resilience import merge_survival_truth
 from shared_py.eventbus import RedisStreamBus
 from shared_py.observability import (
     append_peer_readiness_checks,
@@ -217,17 +218,20 @@ class LiveBrokerRuntime:
                 safety_latch = self.repo.safety_latch_is_active()
             except Exception:
                 safety_latch = False
-            return {
-                "truth_channel_ok": ws_ok or catchup_fresh,
-                "truth_reason": "reconcile_snapshot_unavailable",
-                "drift_blocked": True,
-                "drift_total": -1,
-                "snapshot_missing": 0,
-                "snapshot_stale": 0,
-                "ws_connected": ws_ok,
-                "last_rest_catchup_age_ms": (now_ms - catchup_ms) if catchup_ms else None,
-                "safety_latch_blocks_live": safety_latch,
-            }
+            return merge_survival_truth(
+                {
+                    "truth_channel_ok": ws_ok or catchup_fresh,
+                    "truth_reason": "reconcile_snapshot_unavailable",
+                    "drift_blocked": True,
+                    "drift_total": -1,
+                    "snapshot_missing": 0,
+                    "snapshot_stale": 0,
+                    "ws_connected": ws_ok,
+                    "last_rest_catchup_age_ms": (now_ms - catchup_ms) if catchup_ms else None,
+                    "safety_latch_blocks_live": safety_latch,
+                },
+                redis=self.bus.redis,
+            )
 
         details = snap.get("details_json") or {}
         drift = details.get("drift") or {}
@@ -252,17 +256,20 @@ class LiveBrokerRuntime:
             safety_latch = self.repo.safety_latch_is_active()
         except Exception:
             safety_latch = False
-        return {
-            "truth_channel_ok": truth_channel_ok,
-            "truth_reason": truth_reason,
-            "drift_blocked": drift_blocked,
-            "drift_total": total,
-            "snapshot_missing": missing,
-            "snapshot_stale": stale,
-            "ws_connected": ws_ok,
-            "last_rest_catchup_age_ms": (now_ms - catchup_ms) if catchup_ms else None,
-            "safety_latch_blocks_live": safety_latch,
-        }
+        return merge_survival_truth(
+            {
+                "truth_channel_ok": truth_channel_ok,
+                "truth_reason": truth_reason,
+                "drift_blocked": drift_blocked,
+                "drift_total": total,
+                "snapshot_missing": missing,
+                "snapshot_stale": stale,
+                "ws_connected": ws_ok,
+                "last_rest_catchup_age_ms": (now_ms - catchup_ms) if catchup_ms else None,
+                "safety_latch_blocks_live": safety_latch,
+            },
+            redis=self.bus.redis,
+        )
 
     def _run_ws_client_sync(self) -> None:
         try:
@@ -360,6 +367,7 @@ class LiveBrokerRuntime:
             "latest_reconcile": latest_reconcile,
             "worker": self.worker.stats_payload(),
             "private_ws": self._private_ws_telemetry(),
+            "fill_liquidity": self.exchange_state_sync.liquidity_fill_counters(),
             "exchange_truth": self.execution_service.truth_status_snapshot(),
             "instrument": (
                 self.catalog_entry.identity().model_dump(mode="json")
@@ -375,6 +383,7 @@ class LiveBrokerRuntime:
 
     def health_payload(self) -> dict[str, Any]:
         runtime = self.runtime_payload()
+        fill_liquidity = runtime.get("fill_liquidity") or {}
         latest_reconcile = runtime.get("latest_reconcile") or {}
         latest_status = str(latest_reconcile.get("status") or "ok")
         persistence_ok = bool(runtime["persistence"]["schema_ready"])
@@ -408,6 +417,7 @@ class LiveBrokerRuntime:
             "latest_reconcile": latest_reconcile,
             "bitget_rest": bitget_rest_health,
             "commercial_gates": runtime.get("commercial_gates"),
+            "fill_liquidity": fill_liquidity,
         }
 
     def ready_payload(self) -> dict[str, Any]:

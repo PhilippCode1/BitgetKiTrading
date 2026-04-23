@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package apex.timesfm.v1;
+
+// Zero-Shot-Zeitreihenvorhersage (TimesFM / Foundation-Model-Backend).
+service TimesFmInference {
+  // Batch: mehrere Assets gleichzeitig (GPU-freundliche Bündelung serverseitig).
+  rpc PredictBatch(PredictBatchRequest) returns (PredictBatchResponse);
+
+  // Bidirektionales Streaming: kontinuierliche Tick-Updates -> inkrementelle Vorhersagen.
+  rpc StreamTicks(stream TickFrame) returns (stream PredictionFrame);
+}
+
+message TimeSeries {
+  string asset_id = 1;
+  // Rohbytes float32 little-endian, Laenge = length * sizeof(float32)
+  bytes values_f32_le = 2;
+  int32 length = 3;
+}
+
+message PredictBatchRequest {
+  repeated TimeSeries series = 1;
+  int32 forecast_horizon = 2;
+  string model_id = 3;
+}
+
+message ForecastTensor {
+  string asset_id = 1;
+  bytes forecast_f32_le = 2;
+  int32 horizon = 3;
+}
+
+message PredictBatchResponse {
+  repeated ForecastTensor forecasts = 1;
+  string backend = 2;
+  string model_id = 3;
+}
+
+message TickFrame {
+  string asset_id = 1;
+  double price = 2;
+  int64 ts_ms = 3;
+  int32 seq = 4;
+}
+
+message PredictionFrame {
+  string asset_id = 1;
+  bytes point_forecast_f32_le = 2;
+  int32 horizon = 3;
+  int64 computed_ts_ms = 4;
+  string backend = 5;
+}

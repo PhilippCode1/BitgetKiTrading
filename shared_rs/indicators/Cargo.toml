@@ -1,0 +1,8 @@
+[package]
+name = "indicators"
+version = "0.1.0"
+edition = "2021"
+description = "Reine Rust-Indikatoren (ATR/RSI/EMA) für Apex — ohne PyO3."
+
+[dependencies]
+ndarray = { version = "0.16", default-features = false, features = ["std"] }

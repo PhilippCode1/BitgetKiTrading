@@ -298,7 +298,7 @@ def build_long_json(inp: ExplainInput, settings: SignalEngineSettings) -> dict[s
             "playbook_context": _playbook_context_section(inp),
             "uncertainty_breakdown": _uncertainty_breakdown_section(inp),
             "why_not_direction": _why_not_direction(inp),
-            "decision_pipeline": _decision_pipeline_section(s, rj),
+            "decision_pipeline": _decision_pipeline_section(inp, rj),
             "peripheral_boundary": _peripheral_boundary_section(s, rj),
         },
     }
@@ -326,9 +326,10 @@ def _uncertainty_breakdown_section(inp: ExplainInput) -> dict[str, Any]:
 
 
 def _decision_pipeline_section(
-    signal_row: dict[str, Any],
+    inp: ExplainInput,
     reasons_json: dict[str, Any],
 ) -> dict[str, Any]:
+    signal_row = inp.signal_row
     dcf = reasons_json.get("decision_control_flow")
     if not isinstance(dcf, dict):
         dcf = {}
@@ -354,7 +355,7 @@ def _decision_pipeline_section(
         )
     ntp = dcf.get("no_trade_path") if isinstance(dcf.get("no_trade_path"), dict) else {}
     edb = dcf.get("end_decision_binding") if isinstance(dcf.get("end_decision_binding"), dict) else {}
-    return {
+    out: dict[str, Any] = {
         "pipeline_version": dcf.get("pipeline_version"),
         "ordered_phases_de": lines,
         "phases_structured": phases_structured,
@@ -363,6 +364,14 @@ def _decision_pipeline_section(
         "no_trade_path": ntp,
         "raw_phase_ids": [p.get("id") for p in (dcf.get("phases") or []) if isinstance(p, dict)],
     }
+    fm = inp.foundation_model_tsfm
+    if not fm:
+        snap = signal_row.get("source_snapshot_json")
+        if isinstance(snap, dict) and isinstance(snap.get("foundation_model_tsfm"), dict):
+            fm = snap["foundation_model_tsfm"]
+    if isinstance(fm, dict) and fm:
+        out["foundation_model_tsfm"] = fm
+    return out
 
 
 def _peripheral_boundary_section(
@@ -603,6 +612,15 @@ def build_long_md_de(
                 )
         for tag in (ntp.get("abstention_reasons_top") or [])[:10]:
             lines.append(f"  - Abstention: `{tag}`")
+    fm = dp.get("foundation_model_tsfm")
+    if isinstance(fm, dict) and fm.get("summary_de"):
+        lines.append("")
+        lines.append("### Foundation Model (TimesFM)")
+        lines.append(f"- {fm.get('summary_de')}")
+        if fm.get("model_id"):
+            lines.append(f"- Modell: `{fm.get('model_id')}`")
+        if fm.get("confidence_0_1") is not None:
+            lines.append(f"- Modell-Konfidenz (0..1): `{fm.get('confidence_0_1')}`")
     lines.append("")
     lines.append("## Randkomponenten (News / LLM-Grenze)")
     pb = long_json["sections"].get("peripheral_boundary") or {}

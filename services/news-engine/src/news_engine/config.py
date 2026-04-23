@@ -85,6 +85,49 @@ class NewsEngineSettings(BaseServiceSettings):
         alias="NEWS_LLM_PROBE_TIMEOUT_SEC",
         description="Kurzer HTTP-Check Orchestrator /health — unabhängig vom langen news_summary-Timeout.",
     )
+
+    # --- Apex Social Sentiment (X + Telegram, Embeddings via inference-server) ---
+    social_pipeline_enabled: bool = Field(default=False, alias="SOCIAL_PIPELINE_ENABLED")
+    social_inference_base_url: str = Field(
+        default="http://inference-server:8140",
+        alias="SOCIAL_INFERENCE_BASE_URL",
+    )
+    social_reference_json_path: str | None = Field(
+        default=None,
+        alias="SOCIAL_REFERENCE_JSON_PATH",
+        description="Optional: Pfad zu social_sentiment_reference_v1.json (Repo-Default sonst).",
+    )
+    social_embed_cache_ttl_sec: int = Field(default=86_400, alias="SOCIAL_EMBED_CACHE_TTL_SEC")
+    social_roll_alpha: float = Field(default=0.35, alias="SOCIAL_ROLL_ALPHA")
+    social_spam_min_followers: int = Field(default=120, alias="SOCIAL_SPAM_MIN_FOLLOWERS")
+    social_spam_reject_missing_followers: bool = Field(
+        default=False,
+        alias="SOCIAL_SPAM_REJECT_MISSING_FOLLOWERS",
+    )
+    social_spam_max_posts_per_window: int = Field(default=25, alias="SOCIAL_SPAM_MAX_POSTS_PER_WINDOW")
+    social_spam_window_sec: int = Field(default=600, alias="SOCIAL_SPAM_WINDOW_SEC")
+
+    social_x_enabled: bool = Field(default=False, alias="SOCIAL_X_ENABLED")
+    twitter_bearer_token: str | None = Field(default=None, alias="TWITTER_BEARER_TOKEN")
+    social_x_rule_value: str = Field(
+        default="(bitcoin OR btc OR etf OR crypto OR ethereum OR eth) lang:en -is:retweet",
+        alias="SOCIAL_X_RULE_VALUE",
+    )
+    social_x_replace_rules_on_start: bool = Field(
+        default=False,
+        alias="SOCIAL_X_REPLACE_RULES_ON_START",
+        description="true: loescht alle bestehenden Filter-Rules und setzt genau eine Apex-Rule (Vorsicht Produktion).",
+    )
+
+    social_telegram_enabled: bool = Field(default=False, alias="SOCIAL_TELEGRAM_ENABLED")
+    telegram_api_id: int | None = Field(default=None, alias="TELEGRAM_API_ID")
+    telegram_api_hash: str | None = Field(default=None, alias="TELEGRAM_API_HASH")
+    telegram_session_string: str | None = Field(default=None, alias="TELEGRAM_SESSION_STRING")
+    telegram_alpha_channels: str = Field(
+        default="",
+        alias="TELEGRAM_ALPHA_CHANNELS",
+        description="Komma-separierte @handles oder numerische Channel-IDs.",
+    )
     news_score_max_llm_delta: int = Field(default=15, alias="NEWS_SCORE_MAX_LLM_DELTA")
     news_score_publish_events: bool = Field(default=True, alias="NEWS_SCORE_PUBLISH_EVENTS")
     news_max_ingest_item_age_ms: int = Field(
@@ -131,6 +174,20 @@ class NewsEngineSettings(BaseServiceSettings):
     def _probe_timeout(cls, v: float) -> float:
         if v < 0.5 or v > 30.0:
             raise ValueError("NEWS_LLM_PROBE_TIMEOUT_SEC ausserhalb 0.5..30")
+        return v
+
+    @field_validator("social_roll_alpha")
+    @classmethod
+    def _social_roll_alpha(cls, v: float) -> float:
+        if not 0.01 <= v <= 0.99:
+            raise ValueError("SOCIAL_ROLL_ALPHA muss 0.01..0.99 sein")
+        return v
+
+    @field_validator("social_spam_min_followers", "social_spam_max_posts_per_window", "social_spam_window_sec")
+    @classmethod
+    def _social_spam_positive(cls, v: int) -> int:
+        if v < 0:
+            raise ValueError("Social-Spam-Schwellen duerfen nicht negativ sein")
         return v
 
     def keyword_list(self) -> list[str]:

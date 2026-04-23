@@ -22,7 +22,13 @@ from .envelope import (
     STREAM_NEWS_ITEM_CREATED,
     STREAM_NEWS_SCORED,
     STREAM_OPERATOR_INTEL,
+    STREAM_ORDERBOOK_INCONSISTENCY,
+    STREAM_ORDERFLOW_TOXICITY,
     STREAM_RISK_ALERT,
+    STREAM_TSFM_SIGNAL_CANDIDATE,
+    STREAM_SOCIAL_SENTIMENT_UPDATE,
+    STREAM_INTERMARKET_CORRELATION_UPDATE,
+    STREAM_REGIME_DIVERGENCE_DETECTED,
     STREAM_SIGNAL_CREATED,
     STREAM_STRATEGY_REGISTRY_UPDATED,
     STREAM_STRUCTURE_UPDATED,
@@ -35,6 +41,7 @@ from .envelope import (
     event_stream_for_type,
 )
 from .redis_streams import ConsumedEvent, RedisStreamBus
+from .shared_memory import SharedMemoryBus, make_stream_bus_from_url
 
 __all__ = [
     "ConsumedEvent",
@@ -50,6 +57,8 @@ __all__ = [
     "stable_json_dumps",
     "LIVE_SSE_STREAMS",
     "RedisStreamBus",
+    "SharedMemoryBus",
+    "make_stream_bus_from_url",
     "STREAM_CANDLE_CLOSE",
     "STREAM_DLQ",
     "STREAM_DRAWING_UPDATED",
@@ -65,6 +74,12 @@ __all__ = [
     "STREAM_RISK_ALERT",
     "STREAM_SIGNAL_CREATED",
     "STREAM_OPERATOR_INTEL",
+    "STREAM_ORDERBOOK_INCONSISTENCY",
+    "STREAM_ORDERFLOW_TOXICITY",
+    "STREAM_TSFM_SIGNAL_CANDIDATE",
+    "STREAM_SOCIAL_SENTIMENT_UPDATE",
+    "STREAM_INTERMARKET_CORRELATION_UPDATE",
+    "STREAM_REGIME_DIVERGENCE_DETECTED",
     "STREAM_SYSTEM_ALERT",
     "STREAM_STRUCTURE_UPDATED",
     "STREAM_TRADE_OPENED",

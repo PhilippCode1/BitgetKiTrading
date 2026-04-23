@@ -16,3 +16,4 @@ class ExplainInput:
     drawings: list[dict[str, Any]]
     news_row: dict[str, Any] | None
     last_close: float | None
+    foundation_model_tsfm: dict[str, Any] | None = None

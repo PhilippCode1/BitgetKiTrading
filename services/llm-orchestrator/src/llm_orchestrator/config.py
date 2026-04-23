@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import ClassVar
+from typing import ClassVar, Literal
 
 from config.settings import BaseServiceSettings, _is_blank_or_placeholder
 from pydantic import Field, field_validator, model_validator
@@ -93,6 +93,66 @@ class LLMOrchestratorSettings(BaseServiceSettings):
         description="Max. gespeicherte Verlaufs-Nachrichten (user+assistant) pro Konversation.",
     )
 
+    feature_engine_base_url: str = Field(
+        default="http://127.0.0.1:8020",
+        alias="FEATURE_ENGINE_BASE_URL",
+        description="Basis-URL der Feature-Engine fuer Quant-Analyst im War-Room.",
+    )
+    war_room_agent_timeout_sec: float = Field(
+        default=25.0,
+        alias="WAR_ROOM_AGENT_TIMEOUT_SEC",
+        description="Pro-Agent-Timeout (asyncio.wait_for) fuer den ConsensusOrchestrator.",
+    )
+    learning_engine_base_url: str = Field(
+        default="http://127.0.0.1:8090",
+        alias="LEARNING_ENGINE_BASE_URL",
+        description="Basis-URL learning-engine fuer TimesFM/War-Room-Audit (optional).",
+    )
+    tsfm_learning_feedback_enabled: bool = Field(
+        default=True,
+        alias="TSFM_LEARNING_FEEDBACK_ENABLED",
+        description="Nach War-Room POST /learning/tsfm-war-room-audit (async, best-effort).",
+    )
+    audit_ledger_base_url: str = Field(
+        default="",
+        alias="AUDIT_LEDGER_BASE_URL",
+        description="Basis-URL des audit-ledger Microservice (War-Room-Commit vor Antwort).",
+    )
+    audit_ledger_commit_required: bool = Field(
+        default=False,
+        alias="AUDIT_LEDGER_COMMIT_REQUIRED",
+        description="Wenn true: ohne erfolgreichen Ledger-Commit keine War-Room-Antwort.",
+    )
+
+    risk_governor_ams_mode: Literal["live", "simulation", "off"] = Field(
+        default="live",
+        alias="RISK_GOVERNOR_AMS_MODE",
+        description="live=Veto-Eskalation bei hoher AMS-Toxizitaet; simulation=nur Eval im Payload; off=aus.",
+    )
+    risk_governor_toxicity_model_path: str | None = Field(
+        default=None,
+        alias="RISK_GOVERNOR_TOXICITY_MODEL_PATH",
+        description="joblib RandomForest (gleiche Features wie AMS-Trainingspfad).",
+    )
+    risk_governor_toxicity_veto_threshold_0_1: float = Field(
+        default=0.66,
+        ge=0.0,
+        le=1.0,
+        alias="RISK_GOVERNOR_TOXICITY_VETO_THRESHOLD_0_1",
+    )
+    risk_governor_vpin_mode: Literal["live", "simulation", "off"] = Field(
+        default="live",
+        alias="RISK_GOVERNOR_VPIN_MODE",
+        description="live=VPIN-Hard-Veto bei hohem Orderflow-Toxizitaets-Score; simulation=nur Eval; off=aus.",
+    )
+    risk_governor_vpin_veto_threshold_0_1: float = Field(
+        default=0.8,
+        ge=0.0,
+        le=1.0,
+        alias="RISK_GOVERNOR_VPIN_VETO_THRESHOLD_0_1",
+        description="Schwelle fuer VPIN/Toxizitaet aus market-stream (context vpin_toxicity_0_1).",
+    )
+
     eventbus_dedupe_ttl_sec: int = Field(default=0, alias="EVENTBUS_DEDUPE_TTL_SEC")
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
 
@@ -155,6 +215,14 @@ class LLMOrchestratorSettings(BaseServiceSettings):
         if v < 2 or v > 200:
             raise ValueError("LLM_ASSIST_MAX_HISTORY_MESSAGES muss 2..200 sein")
         return v
+
+    @field_validator("war_room_agent_timeout_sec")
+    @classmethod
+    def _war_room_timeout(cls, v: float) -> float:
+        x = float(v)
+        if not 1.0 <= x <= 120.0:
+            raise ValueError("WAR_ROOM_AGENT_TIMEOUT_SEC muss zwischen 1 und 120 liegen")
+        return x
 
     @model_validator(mode="after")
     def _validate_provider_requirements(self) -> LLMOrchestratorSettings:
