@@ -10,11 +10,12 @@ liegt in den Services. Secrets und personenbezogene Daten gehoeren nicht in dies
 from __future__ import annotations
 
 from dataclasses import dataclass
+from decimal import Decimal
 from enum import Enum
-from typing import Literal
+from typing import Any, Literal, Mapping
 
 PRODUCT_BRIEF_DOCUMENT_ID = "PRODUCT_BRIEF_MODUL_MATE"
-PRODUCT_POLICY_MODULE_VERSION = "1.0.0"
+PRODUCT_POLICY_MODULE_VERSION = "1.1.0"
 
 # --- [FEST] Stakeholder-Vorgaben ---
 
@@ -212,3 +213,32 @@ def product_policy_descriptor() -> dict[str, str | int | bool]:
         "trial_period_days": TRIAL_PERIOD_DAYS,
         "require_active_subscription_for_live_trading": REQUIRE_ACTIVE_SUBSCRIPTION_FOR_LIVE_TRADING,
     }
+
+
+def plan_entitlement_key_enabled(
+    entitlements_json: Mapping[str, Any] | None, *, key: str
+) -> bool:
+    """
+    Liest bool aus ``commercial_plan_definitions.entitlements_json`` (Migration 594/623).
+
+    True nur bei explizit wahren Werten; fehlender Key = nicht freigeschaltet.
+    """
+    if not key or not entitlements_json:
+        return False
+    v = entitlements_json.get(key)
+    if v is True:
+        return True
+    if v in (1, "1", "true", "True", "yes", "YES"):
+        return True
+    if isinstance(v, str) and v.strip().lower() in ("true", "1", "yes"):
+        return True
+    return False
+
+
+def prepaid_balance_sufficient(
+    balance_list_usd: Decimal | str | float | int, *, min_list_usd: Decimal | str | float
+) -> bool:
+    """Kunden-Prepaid (List-USD) mindestens ``min_list_usd`` (kommerzielle Leistung)."""
+    b = balance_list_usd if isinstance(balance_list_usd, Decimal) else Decimal(str(balance_list_usd))
+    m = min_list_usd if isinstance(min_list_usd, Decimal) else Decimal(str(min_list_usd))
+    return b >= m

@@ -1,18 +1,45 @@
 # Beispiel: Alertmanager inhibit_rules — vor Deploy Label in eurer Prometheus-Installation pruefen.
-# Ziel: weniger „Lawine“, wenn mehrere Alerts dieselbe Datenfluss-Ursache haben; P0-Priorisierung
-# (alert_tier=p0) in routing.yml nutzen, hier nur Duplikat-Reduktion.
+# Ziel: P1/Warnung unterdruecken, sobald ein P0-Alarm derselben SLO-/Ops-Lane (inhibit_slo) bzw. category aktiv ist;
+# P0 in routing (alert_tier=p0) bevorzugen, hier Inhibit-Reduktion.
 #
-# Einbindung: in alertmanager.yml unter top-level `inhibit_rules:` mergen oder diese Datei per include.
+# Einbindung: in alertmanager.yml unter top-level `inhibit_rules:` mergen oder dieses Beispiel kopieren.
 #
-# Hinweis: `equal` muss zu den tatsaechlichen Alert-Labels passen (job, cluster, env, …).
+# Hinweis: `equal` muss exakt in Quelle und Ziel gesetzt sein (hier: inhibit_slo, category).
 
 inhibit_rules:
+  # P0: Gateway-5xx — verwandte Auth-Noise reduzieren (selbe http_gateway-Lane)
   - source_matchers:
-      - alertname = "LiveBrokerDegraded"
+      - alertname = "GatewayHighErrorRate"
+    target_matchers:
+      - alertname = "GatewayAuthAnomalies"
+    equal: ["inhibit_slo"]
+    # Beide tragen `inhibit_slo: http_gateway` in prometheus-alerts.yml
+
+  # P0: live-broker up=0 — weitere live_broker-Alarme duerfen nicht parallel eskalieren
+  - source_matchers:
+      - alertname = "LiveBrokerDown"
+    target_matchers:
+      - alertname = "LiveBrokerProcessHeartbeatStale"
+    equal: ["inhibit_slo"]
+
+  - source_matchers:
+      - alertname = "LiveBrokerDown"
     target_matchers:
       - alertname = "ReconcileLagHigh"
     equal: ["category"]
-    # P0-Blocker schlaegt mit Reconcile ueberein: nur ein aktives Ticket (category=trading).
+    # trading-Blatt; Live-Broker nicht erreichbar erklaert oft abgelaufene Reconcile-Views
+
+  # P0: Kerzen-Pipeline &gt;5s — doppelte/altbekannte Folge-Alarme (P1) unterdruecken
+  - source_matchers:
+      - alertname = "MarketPipelineLag"
+    target_matchers:
+      - alertname = "DataStaleCandles1m"
+    equal: ["inhibit_slo"]
+  - source_matchers:
+      - alertname = "MarketPipelineLag"
+    target_matchers:
+      - alertname = "SignalPipelineLagP95High"
+    equal: ["inhibit_slo"]
 
   - source_matchers:
       - alertname = "DataStaleCandles1m"

@@ -4,6 +4,7 @@ import copy
 import logging
 from typing import Any
 
+from llm_orchestrator.guardrails import validate_task_output
 from llm_orchestrator.validation.schema_validate import (
     SchemaValidationError,
     validate_against_schema,
@@ -122,8 +123,13 @@ def _fallback_by_known_id(
     key: str,
     *,
     fallback_binds: dict[str, Any],
+    user_visible_de: str | None = None,
 ) -> dict[str, Any] | None:
-    m = f"{FALLBACK_TEXT_DE} (Schema-Fallback, keine Live-KI-Formatierung)."
+    m = (
+        user_visible_de
+        if user_visible_de is not None
+        else f"{FALLBACK_TEXT_DE} (Schema-Fallback, keine Live-KI-Formatierung)."
+    )
 
     if "news-summary" in key:
         return {
@@ -246,14 +252,23 @@ def build_structured_fallback(
     task_type: str | None,
     last_schema_error: SchemaValidationError,
     fallback_binds: dict[str, Any] | None = None,
+    repair_failure_de: str | None = None,
 ) -> dict[str, Any]:
     if task_type:
         logger.debug("build_structured_fallback task_type=%s", task_type)
     binds: dict[str, Any] = dict(fallback_binds or {})
     key = _schema_id_key(schema_json)
     err_preview = (last_schema_error.errors or [])[:3]
-
-    cand = _fallback_by_known_id(key, fallback_binds=binds)
+    uvis: str | None = None
+    rfd = (repair_failure_de or "").strip()
+    if rfd:
+        uvis = (
+            f"{FALLBACK_TEXT_DE} (JSON-Selbstreparatur gescheitert. Validator: {rfd}) "
+            f"{NOTE_NON_AUTH_DE}"
+        )
+    cand = _fallback_by_known_id(
+        key, fallback_binds=binds, user_visible_de=uvis
+    )
     if isinstance(cand, dict):
         try:
             validate_against_schema(schema_json, cand)
@@ -277,4 +292,39 @@ def build_structured_fallback(
     if not isinstance(gen, dict):
         raise RuntimeError("strukturierter Fallback: Synthese liefert kein Objekt")
     validate_against_schema(schema_json, gen)
+    return gen
+
+
+def build_graceful_degradation_result(
+    schema_json: dict[str, Any],
+    *,
+    task_type: str | None,
+    public_message_de: str,
+    fallback_binds: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """
+    Schema-konforme Fail-Closed-Nutzlast ohne Live-LLM; HTTP 200, orchestrator_status=degraded.
+    """
+    msg = (public_message_de or "").strip() or FALLBACK_TEXT_DE
+    binds: dict[str, Any] = dict(fallback_binds or {})
+    key = _schema_id_key(schema_json)
+    cand = _fallback_by_known_id(
+        key, fallback_binds=binds, user_visible_de=msg
+    )
+    if isinstance(cand, dict):
+        validate_against_schema(schema_json, cand)
+        validate_task_output(cand, task_type=task_type)
+        return cand
+    try:
+        gen = _synthesize_minimal(
+            schema_json, schema_json, string_default=msg, depth=36
+        )
+    except (KeyError, TypeError, RecursionError, ValueError) as exc:
+        raise RuntimeError(
+            f"graceful_degradation: Synthese abgebrochen: {exc!s}"
+        ) from exc
+    if not isinstance(gen, dict):
+        raise RuntimeError("graceful_degradation: Synthese liefert kein Objekt")
+    validate_against_schema(schema_json, gen)
+    validate_task_output(gen, task_type=task_type)
     return gen

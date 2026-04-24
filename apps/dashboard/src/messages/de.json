@@ -296,7 +296,7 @@
     },
     "paperTrades": {
       "empty": "Keine geschlossenen Trades.",
-      "emptyTitle": "Noch keine geschlossenen Trades",
+      "emptyTitle": "Keine abgeschlossenen Trades",
       "emptyDescription": "Hier erscheint die Historie, sobald eine Position beendet ist.",
       "emptyNextStep": "Offene Positionen oben prüfen oder weitere Trades abwarten; die Equity-Kurve wächst mit jeder Schließung.",
       "thClosed": "Schluss",
@@ -668,13 +668,19 @@
       "safetyDiagErrQuestionLong": "Die Frage ist länger als erlaubt (max. 8000 Zeichen).",
       "safetyDiagErrIncomplete": "Der Dienst hat Daten zurückgegeben, die wir nicht auswerten konnten (Zusammenfassung fehlt). Bitte erneut versuchen.",
       "assistLayerTitle": "Assistenzschicht (mehrstufig)",
-      "assistLayerLead": "Vier Rollen existieren im Produkt insgesamt — hier die beiden für Betrieb und Marktlogik. Jede Registerkarte ist ein eigenes Segment: eigener Verlauf, eigene Kontext-Keys, keine Vermischung mit Konto-Assist auf der Account-Seite.",
+      "assistLayerLead": "Vier Rollen existieren im Produkt insgesamt — auf dieser Seite drei: Betrieb, Marktlogik und Risk-Ablehnungen. Jede Registerkarte ist ein eigenes Segment: eigener Verlauf, eigene Kontext-Keys, keine Vermischung mit Konto-Assist auf der Account-Seite.",
       "assistSegmentScopeNote": "Tab wechseln startet automatisch eine neue Konversations-ID und leert die Anzeige — damit stimmen UI und Server-Speicher (Redis, nach Assist-Rolle getrennt) überein.",
       "assistConversationHint": "Konversation:",
       "assistNewConversation": "Neue Konversation",
       "assistTabsAria": "Assistenz-Rolle",
       "assistTabAdminOps": "Plattform & Betrieb",
       "assistTabStrategy": "Strategie & Signale",
+      "assistTabOpsRisk": "Risk & Ablehnungen",
+      "assistContextHintOpsRisk": "Erlaubt: decision_brief, trade_lifecycle_golden, risk_rejection_inquiry (per „Kontext laden“ aus der Forensik einer execution_id befuellbar).",
+      "assistOpsRiskLoadLabel": "execution_id (UUID) aus Live-Broker-Forensik",
+      "assistOpsRiskLoadButton": "Kontext aus Forensik laden",
+      "assistOpsRiskLoadHelp": "Laedt den Golden-Record- und Policy-Kontext fuer diesen Trade; danach die Frage stellen (z. B. warum abgelehnt).",
+      "assistOpsRiskLoadErr": "Kontext konnte nicht geladen werden. Pruefe die UUID und Berechtigungen (Forensik).",
       "assistMessageLabel": "Nachricht (Deutsch)",
       "assistMessagePlaceholder": "z. B. Was bedeutet dieser Alert im Plattform-Kontext?",
       "assistContextLabel": "Optionaler SERVER_KONTEXT (JSON-Objekt)",
@@ -996,13 +1002,17 @@
       "lineageNo": "nein",
       "sectionDecisions": "Decisions",
       "sectionFills": "Fills",
+      "sectionRuntime": "Live-Broker-Runtime (Reconcile)",
       "sectionPaper": "Paper-Trades",
       "sectionLiveState": "Live-State / data_lineage",
       "sectionHealth": "System-Health (Ausführungsspur)",
+      "mLatchPolicy": "Shadow↔Live-Redis-Latch (REQUIRE_SHADOW_MATCH_BEFORE_LIVE):",
+      "mLatchOn": "aktiv — Warte {timeoutMs} ms, Key-TTL {ttlSec} s (shadow:match:{{execution_id}})",
       "divergenceTitle": "Divergenz (Stichprobe)",
       "divergenceLead": "Felder aus execution payload (shadow_live_divergence). „—“ bei Shadow≈Live = kein Abgleichswert, nicht automatisch „ok“.",
       "divergenceEmpty": "Keine Divergenz-Zeilen im aktuellen Entscheidungsfenster.",
       "thShadowLive": "Shadow≈Live",
+      "thRedisLatch": "Shadow-Latch",
       "thRuntime": "Effektiver Modus",
       "thHard": "Hard-Viol.",
       "thSoft": "Soft-Viol.",
@@ -1015,6 +1025,12 @@
         "unknown": "— (kein Wert)",
         "match": "Übereinstimmend",
         "mismatch": "Abweichung"
+      },
+      "latchCell": {
+        "unknown": "—",
+        "gripped": "Latch OK",
+        "miss": "Kein Latch",
+        "skipped": "n. z. (Gate aus)"
       }
     },
     "noTrade": {
@@ -1107,6 +1123,12 @@
       "lineageThTrade": "Trading",
       "lineageThStatus": "Trading-Status",
       "lineageThChart": "Chart",
+      "lineageThPipelineLag": "Pipeline-Lag",
+      "lineageThVpin": "VPIN",
+      "pulseStreamLabel": "Market-Stream",
+      "pulseLagLabel": "{ms} ms",
+      "pulseNoSse": "Kein Live-SSE (Polling/Gateway prüfen)",
+      "pulseNotOtherSymbol": "—",
       "lineageOpenChart": "Chart öffnen",
       "lineageNoHealth": "Keine Health-Daten (Gateway nicht erreichbar oder Session).",
       "lineageWsPublicMissing": "Keine öffentliche WS-Telemetrie im Health-Payload.",
@@ -1778,6 +1800,11 @@
       "repairing": "Server prüft Health und Edge erneut …",
       "sectionNarrative": "KI-Analyse (regelbasiert)",
       "sectionHealing": "Was die Plattform gerade selbst heilt",
+      "sectionAutoRecover": "Automatisierte Wiederherstellung (stateless Worker)",
+      "sectionAutoRecoverLead": "Der Monitor-Engine speichert die Phase in ops.self_healing_state. Bei CRITICAL wird ein RECOVERY_REQUESTED-Event veröffentlicht und ein Neustart ausgelöst (Standard: Mock). Max. 3 Neustarts pro Stunde und Dienst.",
+      "autoRecoverDegradedOnly": "Manueller Neustart (API) greift nur, wenn die Phase „degraded“ ist. Nach 3 Neustarts in einer Stunde folgt HTTP 429 (Loop-Schutz).",
+      "recoveryTimelineAria": "Letzte Self-Healing-Zeitleiste",
+      "noRecoveryTimelineYet": "Noch keine Einträge (Tabelle leer oder Migration fehlt).",
       "sectionManual": "Nicht automatisch behebbar",
       "sectionManualLead": "Einträge, die Konfiguration, Secrets, Migrationen oder manuelles Eingreifen brauchen — die Oberfläche kann nur erneut messen und verlinken.",
       "sectionIncidents": "Alle erkannten Vorfälle",
@@ -1809,7 +1836,8 @@
         "openHealth": "System & Status",
         "openDiagnostics": "Zentrale Diagnose (Tabelle)",
         "edgeJson": "Edge-Status (JSON)",
-        "serverRecheck": "Erneut prüfen (Server)"
+        "serverRecheck": "Erneut prüfen (Server)",
+        "restartWorker": "Neustart anfordern ({name})"
       },
       "history": {
         "snapshotSummary": "Snapshot: {n} Vorfälle im Index.",
@@ -1825,7 +1853,7 @@
         "edgeOk": "Edge-Diagnose: der letzte Bootstrap-Lauf blockierte /v1-Lesen nicht — falls dennoch rote Felder sichtbar sind, gezielt Worker-Health prüfen.",
         "worst": "Schwerpunkte (Auszug): {list}.",
         "noWorst": "Keine degradierten oder ausgefallenen Komponenten im letzten Lauf.",
-        "footer": "Hinweis: Worker-Neustarts, Docker-Compose und Geheimnisse werden hier nicht automatisch geändert — dafür Runbooks und sichere Deploy-Pfade nutzen."
+        "footer": "Hinweis: stateless Worker kann die Monitor-Engine bei CRITICAL automatisch neu starten (siehe Abschnitt oben). Docker/Compose und Secrets erfordern weiter kontrollierte Rollouts."
       },
       "categories": {
         "platform": "Plattform & Gateway",
@@ -3009,6 +3037,7 @@
       "failedHint": "Seite neu laden oder Verbindung prüfen. Den API-Pfad siehst du in den technischen Details."
     },
     "incident": {
+      "customerShellBannerDefault": "Plattform gerade nicht voll erreichbar — Inhalte können fehlen oder veraltet sein.",
       "regionLabel": "Zentrale Betriebsmeldung",
       "cascadeTitle": "Gemeinsame Datenquelle gestört",
       "cascadeBody": "{count} Bereiche konnten nicht geladen werden — vermutlich dieselbe Ursache (Plattform, Netzwerk oder abgelaufene Sitzung), nicht voneinander unabhängige Einzelfehler.",
@@ -3021,6 +3050,11 @@
       "heartbeatDegraded": "Plattform: eingeschränkt erreichbar",
       "heartbeatOk": "Plattform: erreichbar",
       "heartbeatChecking": "Plattform: wird geprüft …",
+      "liveSseCONNECTING": "Live-SSE: verbinden …",
+      "liveSseCONNECTED": "Live-SSE: verbunden (Stream)",
+      "liveSseDISCONNECTED": "Live-SSE: kein aktiver Stream",
+      "liveSseRECONNECTING": "Live-SSE: verbinde erneut …",
+      "liveSseGAVE_UP": "Live-SSE: gestoppt (Max. Wiederholungen) — Polling",
       "modules": {
         "health": "System-Health",
         "liveState": "Live-State / Signale",
@@ -3061,6 +3095,11 @@
       "home": "Zur Startseite",
       "openConsole": "Zur Konsole",
       "openCustomerPortal": "Zum Kundenportal"
+    },
+    "globalError": {
+      "title": "Schwerer Fehler",
+      "body": "Die Anwendung musste anhalten. Bitte „Erneut versuchen“ — rohe technische Texte erscheinen in dieser Mindestansicht bewusst nicht.",
+      "reload": "Erneut versuchen"
     },
     "bool": {
       "yes": "ja",
@@ -3176,6 +3215,10 @@
       "bad_gateway": {
         "title": "Dienst vorübergehend gestört",
         "body": "Ein Teil der Plattform antwortet gerade nicht wie erwartet. Das ist meist vorübergehend — bitte später erneut versuchen."
+      },
+      "rate_limited": {
+        "title": "Zu viele Anfragen",
+        "body": "Die Plattform bremst deine Anfragen kurz — warte einen Moment und lade die Seite neu."
       },
       "server_error": {
         "title": "Serverfehler",
@@ -3300,6 +3343,14 @@
         "appDoing": "Retries und Circuit-Breaker auf Serverseite begrenzen Schäden; die Oberfläche zeigt den Zustand transparent.",
         "userAction": "„System & Status“ und Verbindungsdiagnose öffnen; bei anhaltendem Zustand Betrieb mit Zeitstempel informieren."
       },
+      "rate_limited": {
+        "headline": "Anfragen-Limit der Plattform erreicht",
+        "summary": "Die API bremst vorübergehend, um Last oder Missbrauch zu begrenzen — deine Anfrage wurde nicht dauerhaft abgelehnt.",
+        "impact": "Einige Datenfelder erscheinen verzögert oder nicht; laufende Sitzung bleibt in der Regel intakt.",
+        "urgency": "Mittel — kurz warten und moderater aufrufen.",
+        "appDoing": "Wir wenden exponentielles Warten bzw. serverseitige Drosseln an, um die Dienste zu schützen.",
+        "userAction": "Einen Moment warten, dann „Neu laden“; automatische Polling-Intervalle nicht extrem verkürzen."
+      },
       "server_error": {
         "headline": "Unerwarteter Serverfehler",
         "summary": "Die Plattform ist erreichbar, aber bei der Verarbeitung ist etwas Internes schiefgelaufen.",
@@ -3356,6 +3407,8 @@
       "toOps": "Ops-Lage",
       "chartsNoCandles": "Noch keine Kerzen: Daten werden evtl. geladen, oder Symbol/Zeitfenster passt nicht zu dem, was die Plattform speichert. Siehe „Woher kommen die Marktdaten?“ unten.",
       "emptyStateBanner": "Hinweis:",
+      "safetyHaltTitle": "Global Halt — Live-Broker Safety Latch aktiv",
+      "safetyHaltBody": "Die Plattform hat die automatische Execution angehalten. Keine Aktionen im Live-Terminal, bis der Betrieb den Latch aufhebt. Health (Live-Broker) prüfen.",
       "familyDash": "family —",
       "dbLabel": "Historie",
       "redisLabel": "Live-Puffer",
@@ -3729,16 +3782,44 @@
   },
   "customerPortal": {
     "metaTitle": "Kundenportal | Modul Mate",
+    "sidebarTrustLine": "Ihre wichtigsten Angaben an einem Ort — klar, ohne technische Operator-Funktionen.",
     "nav": {
       "aria": "Hauptnavigation Kundenportal",
-      "dashboard": "Dashboard",
-      "contract": "Mein Vertrag",
-      "billing": "Abrechnung",
-      "performance": "Performance"
+      "overview": "Übersicht",
+      "performance": "Performance",
+      "contractAndBilling": "Vertrag & Abrechnung",
+      "helpSupport": "Hilfe & Support"
     },
     "overviewTitle": "Übersicht",
-    "overviewLead": "Kurzüberblick — getrennt von der Operator-Konsole; Anbindung an Ihre Vertrags- und Nutzungsdaten folgt.",
-    "placeholder": "Diese Seite ist vorerst ein Platzhalter.",
-    "backToProduct": "Zur Produktseite"
+    "overviewSubhead": "Kontostand & aktive Strategie",
+    "overviewLead": "Hier erscheinen in Kürze Ihr Vertragskontext, Saldos und der Status freigegebener Strategien — getrennt von der Operator-Konsole.",
+    "placeholder": "Diese Sektion ist vorerst ein Platzhalter.",
+    "backToProduct": "Zur Produktseite",
+    "accountBilling": {
+      "title": "Vertrag & Abrechnung",
+      "contractHeading": "Ihr Vertrag",
+      "billingHeading": "Ihre Abrechnung"
+    },
+    "help": {
+      "title": "Hilfe & Support",
+      "lead": "Hier finden Sie Antworten, Kontaktwege und Hinweise — ohne Eingriff in technische Systemsteuerung."
+    },
+    "performancePage": {
+      "title": "Performance",
+      "lead": "Gewinn- und Verlustverläufe erscheinen hier, sobald Ihre Anbindung aktiv ist — ohne Roh-Signale oder Operator-Details.",
+      "tableRow1": "Q4 2025 (Demo)",
+      "tableRow2": "Q3 2025 (Demo)",
+      "colPeriod": "Zeitraum",
+      "colView": "Ansicht",
+      "openDetail": "Details"
+    },
+    "performanceDetail": {
+      "back": "Zurück zur Performance-Übersicht",
+      "title": "Performance ({id})",
+      "lead": "Kurzverlauf zu Ihrem ausgewählten Zeitraum (Demo-Daten).",
+      "chartCaption": "Kurve (Demo)",
+      "chartAria": "Performance-Verlauf (Demo)",
+      "demoNote": "Diese Darstellung nutzt feste Demo-Punkte — keine Live-Börsendaten."
+    }
   }
 }

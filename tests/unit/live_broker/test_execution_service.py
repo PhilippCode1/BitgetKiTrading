@@ -5,6 +5,8 @@ import time
 from pathlib import Path
 from uuid import uuid4
 
+from unittest.mock import patch
+
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -26,6 +28,27 @@ from shared_py.eventbus import EventEnvelope
 from tests.fixtures.family_runtime_matrix import FAMILY_RUNTIME_CASES
 
 
+@pytest.fixture(autouse=True)
+def _stub_live_m604_firewall_for_drift_unit_tests(
+    request: pytest.FixtureRequest,
+) -> object:
+    """
+    Drift/Shadow-Tests: keine reale M604-DB. Commercial-Tests: eigene Datei.
+    """
+    fspath = str(
+        getattr(request, "path", None) or getattr(request, "fspath", None) or ""
+    )
+    if "test_execution_commercial_policy_gate" in fspath:
+        yield
+        return
+    with patch.object(
+        LiveExecutionService,
+        "_assert_db_live_execution_policy",
+        lambda _self: None,
+    ):
+        yield
+
+
 class _FakeExchangeClient:
     def build_order_preview(self, intent) -> dict[str, object]:
         return {"symbol": intent.symbol, "leverage": intent.leverage}
@@ -40,6 +63,7 @@ class _FakeExchangeClient:
 class _FakeRepo:
     def __init__(self) -> None:
         self.records: list[dict[str, object]] = []
+        self.audit_trails: list[dict[str, object]] = []
         self.snapshots: dict[str, list[dict[str, object]]] = {
             "account": [],
             "positions": [],
@@ -49,7 +73,9 @@ class _FakeRepo:
         self.online_drift_state: dict[str, object] | None = None
 
     def record_execution_decision(self, record: dict[str, object]) -> dict[str, object]:
-        out = {**record, "execution_id": str(uuid4())}
+        raw_e = record.get("execution_id")
+        eid = str(raw_e) if raw_e is not None else str(uuid4())
+        out = {**record, "execution_id": eid}
         self.records.append(out)
         return out
 
@@ -58,6 +84,11 @@ class _FakeRepo:
 
     def record_shadow_live_assessment(self, **kwargs: object) -> None:
         return None
+
+    def record_audit_trail(self, record: dict[str, object]) -> dict[str, object]:
+        d = dict(record)
+        self.audit_trails.append(d)
+        return {"id": 1, **d}
 
     def list_latest_exchange_snapshots(
         self,
@@ -90,6 +121,9 @@ class _FakeRepo:
 
     def fetch_online_drift_state(self) -> dict[str, object] | None:
         return self.online_drift_state
+
+    def list_live_positions(self) -> list[dict[str, object]]:
+        return []
 
 
 class _FakeCatalog:
@@ -604,10 +638,20 @@ def test_evaluate_intent_shadow_live_allows_when_aligned_with_gate(
             }
         },
     )
-    out = service.evaluate_intent(intent, probe_exchange=False)
+    eid = str(uuid4())
+    with patch(
+        "live_broker.execution.service.wait_for_shadow_match_latch",
+        return_value={"ok": True, "waited_ms": 0, "key": f"shadow:match:{eid}"},
+    ):
+        intent = intent.model_copy(
+            update={"payload": {**intent.payload, "execution_id": eid}}
+        )
+        out = service.evaluate_intent(intent, probe_exchange=False)
     assert out["decision_action"] == "live_candidate_recorded"
     sld = out["payload_json"]["shadow_live_divergence"]
     assert sld["match_ok"] is True
+    sml = out["payload_json"]["shadow_match_latch"]
+    assert sml.get("ok") is True
     assert out["payload_json"]["live_mirror_eligible"] is True
 
 
@@ -780,3 +824,72 @@ def test_handle_signal_event_preserves_margin_family_context(
     assert out["payload_json"]["market_family"] == "margin"
     assert out["payload_json"]["margin_account_mode"] == "crossed"
     assert out["trace_json"]["market_family"] == "margin"
+
+
+def test_paper_broker_outage_blocks_live_no_redis_shadow_match_latch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    DoD: Fällt der Paper-Shadow (kein Redis-Key) aus, blockiert der Live-Broker
+    trotz in-process-Shadow-Alignment — ``shadow_match_latch_miss``.
+    """
+    monkeypatch.setenv("RISK_MAX_POSITION_RISK_PCT", "0.5")
+    eid = str(uuid4())
+    settings = _settings(
+        monkeypatch,
+        EXECUTION_MODE="live",
+        LIVE_TRADE_ENABLE="true",
+        LIVE_BROKER_ENABLED="true",
+        STRATEGY_EXEC_MODE="auto",
+        SHADOW_TRADE_ENABLE="false",
+        REQUIRE_SHADOW_MATCH_BEFORE_LIVE="true",
+    )
+    repo = _repo_with_clean_live_snapshots()
+    service = LiveExecutionService(settings, _FakeExchangeClient(), repo)  # type: ignore[arg-type]
+    now_ms = int(time.time() * 1000)
+    intent = ExecutionIntentRequest(
+        source_service="signal-engine",
+        signal_id="sig-latch-fail",
+        symbol="BTCUSDT",
+        direction="long",
+        requested_runtime_mode="live",
+        leverage=12,
+        qty_base="0.001",
+        entry_price="50000",
+        stop_loss="49900",
+        take_profit="51000",
+        payload={
+            "execution_id": eid,
+            "signal_payload": {
+                "execution_id": eid,
+                "trade_action": "allow_trade",
+                "decision_state": "accepted",
+                "rejection_state": False,
+                "signal_strength_0_100": 90,
+                "probability_0_1": 0.8,
+                "risk_score_0_100": 80,
+                "expected_return_bps": 14.0,
+                "expected_mae_bps": 15.0,
+                "expected_mfe_bps": 28.0,
+                "allowed_leverage": 12,
+                "recommended_leverage": 12,
+                "shadow_divergence_0_1": 0.04,
+                "analysis_ts_ms": now_ms - 10_000,
+            },
+        },
+    )
+    with patch(
+        "live_broker.execution.service.wait_for_shadow_match_latch",
+        return_value={
+            "ok": False,
+            "waited_ms": 500,
+            "key": f"shadow:match:{eid}",
+            "error": "shadow_match_key_absent",
+        },
+    ):
+        out = service.evaluate_intent(intent, probe_exchange=False)
+    assert out["decision_action"] == "blocked"
+    assert out["decision_reason"] == "shadow_match_latch_miss"
+    sml = out["payload_json"]["shadow_match_latch"]
+    assert sml.get("ok") is False
+    assert out["payload_json"]["live_mirror_eligible"] is False

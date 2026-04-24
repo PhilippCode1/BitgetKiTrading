@@ -111,3 +111,33 @@ def fetch_champion_run_joined(
         (model_name, scope_type, scope_key),
     ).fetchone()
     return dict(row) if row else None
+
+
+def fetch_challenger_run_joined(
+    conn: psycopg.Connection[Any],
+    *,
+    model_name: str,
+    scope_type: str,
+    scope_key: str,
+) -> dict[str, Any] | None:
+    row = conn.execute(
+        """
+        SELECT r.run_id, r.model_name, r.version, r.dataset_hash, r.metrics_json, r.promoted_bool,
+               r.artifact_path, r.target_name, r.output_field, r.calibration_method, r.metadata_json,
+               r.created_ts,
+               g.role AS registry_role,
+               g.calibration_status AS registry_calibration_status,
+               g.activated_ts AS registry_activated_ts,
+               g.scope_type AS registry_scope_type,
+               g.scope_key AS registry_scope_key,
+               g.notes AS registry_notes
+        FROM app.model_runs r
+        INNER JOIN app.model_registry_v2 g
+            ON g.run_id = r.run_id AND g.model_name = r.model_name
+        WHERE r.model_name = %s AND g.role = 'challenger'
+          AND g.scope_type = %s AND g.scope_key = %s
+        LIMIT 1
+        """,
+        (model_name, scope_type, scope_key),
+    ).fetchone()
+    return dict(row) if row else None

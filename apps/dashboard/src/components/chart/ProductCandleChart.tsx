@@ -1,10 +1,23 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   createChart,
   type IChartApi,
   type ISeriesApi,
+} from "lightweight-charts";
+import type {
+  CandlestickData,
+  HistogramData,
+  Time,
 } from "lightweight-charts";
 
 import {
@@ -14,6 +27,7 @@ import {
 import {
   applyLlmChartLayer,
   clearLlmChartLayer,
+  type LlmChartBaselineHandle,
   type LlmChartPriceLineHandle,
 } from "@/components/live/overlays/applyLlmChartLayer";
 import {
@@ -21,8 +35,11 @@ import {
   clearStrategyOverlayPriceLines,
   type StrategyOverlayPriceLineHandle,
 } from "@/components/live/overlays/applyStrategyOverlayPriceLines";
+import type { LlmFilledPriceZone } from "@/lib/chart/llm-chart-annotations";
 import {
+  buildLlmZonePopoverText,
   candleStatsFromBars,
+  chartTimeToUnixSeconds,
   sanitizeLlmChartAnnotations,
 } from "@/lib/chart/llm-chart-annotations";
 import {
@@ -30,10 +47,23 @@ import {
   type ProductCandleBar,
 } from "@/lib/chart/map-candles";
 import {
+  type PayloadCandleClose,
+  parsePayloadCandleClose,
+  TICKER_LABEL_THROTTLE_MS,
+} from "@/lib/chart/payload-candle-close";
+import {
   buildProductChartOptions,
   PRODUCT_CHART_COLORS,
 } from "@/lib/chart/product-chart-theme";
 import type { StrategyOverlayLayerId } from "@/lib/chart/strategy-overlay-model";
+
+export type ProductCandleChartHandle = {
+  /**
+   * Kerze direkt in die Series (lightweight-charts) schreiben — ohne Parent-State.
+   * Akzeptiert Schema payload_candle_close; alternative Aliase per parsePayloadCandleClose.
+   */
+  applyCandleClose: (payload: PayloadCandleClose | unknown) => void;
+};
 
 export type ProductCandleChartReadyContext = Readonly<{
   chart: IChartApi;
@@ -57,6 +87,8 @@ export type ProductStrategyPriceOverlayProps = Readonly<{
 type Props = Readonly<{
   candles: readonly ProductCandleBar[];
   showVolume?: boolean;
+  /** Letzter Schlusskurs als Pill (max. alle {@link TICKER_LABEL_THROTTLE_MS} ms) */
+  showThrottledLastClosePill?: boolean;
   loading?: boolean;
   errorMessage?: string | null;
   emptyMessage?: string | null;
@@ -81,6 +113,8 @@ type Props = Readonly<{
   llmChartLayerEnabled?: boolean;
   /** Wenn false (Default), werden keine KI-Overlays gesetzt oder Marker geleert. */
   llmChartIntegration?: boolean;
+  /** KI-Begruendung (z. B. strategy_explanation_de) — Sanitize-Rollen + Popover-Text. */
+  llmChartRationaleDe?: string | null;
 }>;
 
 function resolveOverlay(
@@ -98,26 +132,35 @@ function resolveOverlay(
 /**
  * Kerzen + optionales Volumen (Histogramm), Crosshair/Zeitachse, Theme wie Konsole.
  * Ueber {@link onReady} koennen Overlays (News, Linien) andocken.
+ * Imperative Live-Updates: ref.applyCandleClose — ohne vollstaendige React-Re-Render pro Tick.
  */
-export function ProductCandleChart({
-  candles,
-  showVolume = true,
-  loading = false,
-  errorMessage,
-  emptyMessage,
-  hideEmptyOverlay = false,
-  className,
-  height = 420,
-  /** Bei true: nach jedem Daten-Update fitContent (fuer statische Seiten; Live-Stream eher false). */
-  fitContentOnData = false,
-  onReady,
-  ariaLabel,
-  strategyPriceOverlay = null,
-  onStrategyCrosshairHint,
-  llmChartAnnotationsRaw = null,
-  llmChartLayerEnabled = true,
-  llmChartIntegration = false,
-}: Props) {
+export const ProductCandleChart = forwardRef<
+  ProductCandleChartHandle,
+  Props
+>(function ProductCandleChart(
+  {
+    candles,
+    showVolume = true,
+    showThrottledLastClosePill = false,
+    loading = false,
+    errorMessage,
+    emptyMessage,
+    hideEmptyOverlay = false,
+    className,
+    height = 420,
+    /** Bei true: nach jedem Daten-Update fitContent (fuer statische Seiten; Live-Stream eher false). */
+    fitContentOnData = false,
+    onReady,
+    ariaLabel,
+    strategyPriceOverlay = null,
+    onStrategyCrosshairHint,
+    llmChartAnnotationsRaw = null,
+    llmChartLayerEnabled = true,
+    llmChartIntegration = false,
+    llmChartRationaleDe = null,
+  },
+  ref,
+) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
@@ -127,12 +170,67 @@ export function ProductCandleChart({
   );
   const llmPriceHandlesRef = useRef<LlmChartPriceLineHandle[]>([]);
   const llmLineSeriesRef = useRef<ISeriesApi<"Line">[]>([]);
+  const llmBaselineSeriesRef = useRef<LlmChartBaselineHandle[]>([]);
+  const llmHitZonesRef = useRef<
+    ReadonlyArray<{ zone: LlmFilledPriceZone; text: string }>
+  >([]);
+  const [llmZonePopover, setLlmZonePopover] = useState<{
+    x: number;
+    y: number;
+    text: string;
+  } | null>(null);
   const strategyOverlayPropRef = useRef(strategyPriceOverlay);
   strategyOverlayPropRef.current = strategyPriceOverlay;
   const crosshairHintRef = useRef(onStrategyCrosshairHint);
   crosshairHintRef.current = onStrategyCrosshairHint;
   const onReadyRef = useRef(onReady);
   onReadyRef.current = onReady;
+
+  /** Fuer schnelle Prefix-Vergleiche: letzte bekannte Candles-Prop-Referenzen. */
+  const lastCandlesPropsRef = useRef<readonly ProductCandleBar[] | null>(null);
+  const showVolumeRef = useRef(showVolume);
+  showVolumeRef.current = showVolume;
+
+  const [throttledLabelClose, setThrottledLabelClose] = useState<
+    number | null
+  >(null);
+  const lastLabelFlushAtRef = useRef(0);
+  const labelTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const labelPendingRef = useRef<number | null>(null);
+
+  const nowMs = () =>
+    globalThis.performance?.now?.() ?? Date.now();
+
+  const scheduleThrottledLabel = useCallback(
+    (close: number) => {
+      if (!showThrottledLastClosePill) {
+        return;
+      }
+      labelPendingRef.current = close;
+      if (labelTimerRef.current != null) {
+        return;
+      }
+      const t = nowMs();
+      if (
+        lastLabelFlushAtRef.current === 0 ||
+        t - lastLabelFlushAtRef.current >= TICKER_LABEL_THROTTLE_MS
+      ) {
+        if (labelPendingRef.current != null) {
+          setThrottledLabelClose(labelPendingRef.current);
+        }
+        lastLabelFlushAtRef.current = t;
+        return;
+      }
+      labelTimerRef.current = setTimeout(() => {
+        labelTimerRef.current = null;
+        if (labelPendingRef.current != null) {
+          setThrottledLabelClose(labelPendingRef.current);
+        }
+        lastLabelFlushAtRef.current = nowMs();
+      }, TICKER_LABEL_THROTTLE_MS - (t - lastLabelFlushAtRef.current));
+    },
+    [showThrottledLastClosePill],
+  );
 
   const overlay = useMemo(
     () =>
@@ -147,6 +245,54 @@ export function ProductCandleChart({
 
   const mountChart = !errorMessage;
 
+  const applyPayloadToChart = useCallback(
+    (p: PayloadCandleClose) => {
+      const series = candleSeriesRef.current;
+      if (!series) {
+        return;
+      }
+      const tSec = Math.trunc(p.start_ts_ms / 1000) as Time;
+      const cdl: CandlestickData = {
+        time: tSec,
+        open: p.open,
+        high: p.high,
+        low: p.low,
+        close: p.close,
+      };
+      series.update(cdl);
+      if (showVolumeRef.current) {
+        const v = volumeSeriesRef.current;
+        if (v) {
+          const vol = p.usdt_vol ?? p.quote_vol ?? 0;
+          const up = p.close >= p.open;
+          const hist: HistogramData = {
+            time: tSec,
+            value: vol,
+            color: up
+              ? PRODUCT_CHART_COLORS.volumeUp
+              : PRODUCT_CHART_COLORS.volumeDown,
+          };
+          v.update(hist);
+        }
+      }
+      scheduleThrottledLabel(p.close);
+    },
+    [scheduleThrottledLabel],
+  );
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      applyCandleClose: (raw: unknown) => {
+        const p = parsePayloadCandleClose(raw);
+        if (p) {
+          applyPayloadToChart(p);
+        }
+      },
+    }),
+    [applyPayloadToChart],
+  );
+
   useEffect(() => {
     if (!mountChart) {
       chartRef.current = null;
@@ -155,7 +301,9 @@ export function ProductCandleChart({
       return;
     }
     const el = containerRef.current;
-    if (!el) return;
+    if (!el) {
+      return;
+    }
 
     const chart = createChart(el, {
       ...buildProductChartOptions(),
@@ -196,7 +344,9 @@ export function ProductCandleChart({
     onReadyRef.current?.({ chart, candleSeries, volumeSeries });
 
     const ro = new ResizeObserver(() => {
-      if (!containerRef.current || !chartRef.current) return;
+      if (!containerRef.current || !chartRef.current) {
+        return;
+      }
       const box = containerRef.current;
       chartRef.current.applyOptions({
         width: box.clientWidth,
@@ -216,6 +366,7 @@ export function ProductCandleChart({
         candleSeriesRef.current,
         llmPriceHandlesRef.current,
         llmLineSeriesRef.current,
+        llmBaselineSeriesRef.current,
       );
       chart.remove();
       chartRef.current = null;
@@ -227,8 +378,9 @@ export function ProductCandleChart({
   useEffect(() => {
     const series = candleSeriesRef.current;
     const chart = chartRef.current;
-    if (!series || !chart) return;
-
+    if (!series || !chart) {
+      return;
+    }
     const o = strategyOverlayPropRef.current;
     const hintCb = crosshairHintRef.current;
 
@@ -264,9 +416,13 @@ export function ProductCandleChart({
       const y = param.point.y;
       let best: { dist: number; hint: string } | null = null;
       for (const line of live.lines) {
-        if (live.visible[line.id] === false) continue;
+        if (live.visible[line.id] === false) {
+          continue;
+        }
         const cy = series.priceToCoordinate(line.price);
-        if (cy == null) continue;
+        if (cy == null) {
+          continue;
+        }
         const dist = Math.abs(cy - y);
         if (dist < 14 && (!best || dist < best.dist)) {
           best = { dist, hint: line.hint };
@@ -291,15 +447,71 @@ export function ProductCandleChart({
   useEffect(() => {
     const series = candleSeriesRef.current;
     const vol = volumeSeriesRef.current;
-    if (!series) return;
-    series.setData(mapped.candles);
-    if (vol && showVolume) {
-      vol.setData(mapped.volume);
+    if (!series) {
+      return;
     }
-    if (fitContentOnData && mapped.candles.length > 0) {
+
+    const m = mapped;
+    const prev = lastCandlesPropsRef.current;
+    if (m.candles.length === 0) {
+      series.setData([]);
+      if (vol && showVolume) {
+        vol.setData([]);
+      }
+      lastCandlesPropsRef.current = candles;
+      if (candles.length === 0) {
+        if (labelTimerRef.current) {
+          clearTimeout(labelTimerRef.current);
+          labelTimerRef.current = null;
+        }
+        setThrottledLabelClose(null);
+        lastLabelFlushAtRef.current = 0;
+        labelPendingRef.current = null;
+      }
+      return;
+    }
+
+    if (
+      prev != null &&
+      prev.length > 0 &&
+      candles.length > 0 &&
+      candles.length === prev.length
+    ) {
+      let samePrefix = true;
+      for (let i = 0; i < candles.length - 1; i++) {
+        if (candles[i] !== prev[i]) {
+          samePrefix = false;
+          break;
+        }
+      }
+      if (samePrefix && m.candles.length > 0) {
+        const lastC = m.candles[m.candles.length - 1]!;
+        series.update(lastC);
+        if (vol && showVolume && m.volume.length) {
+          vol.update(m.volume[m.volume.length - 1]!);
+        }
+        lastCandlesPropsRef.current = candles;
+        scheduleThrottledLabel(lastC.close);
+        if (fitContentOnData) {
+          chartRef.current?.timeScale().fitContent();
+        }
+        return;
+      }
+    }
+
+    series.setData(m.candles);
+    if (vol && showVolume) {
+      vol.setData(m.volume);
+    }
+    lastCandlesPropsRef.current = candles;
+    const end = mapped.candles[mapped.candles.length - 1];
+    if (end) {
+      scheduleThrottledLabel(end.close);
+    }
+    if (fitContentOnData && m.candles.length > 0) {
       chartRef.current?.timeScale().fitContent();
     }
-  }, [mapped, showVolume, fitContentOnData]);
+  }, [mapped, candles, showVolume, fitContentOnData, scheduleThrottledLabel]);
 
   useEffect(() => {
     const chart = chartRef.current;
@@ -313,7 +525,9 @@ export function ProductCandleChart({
         series,
         llmPriceHandlesRef.current,
         llmLineSeriesRef.current,
+        llmBaselineSeriesRef.current,
       );
+      llmHitZonesRef.current = [];
       return;
     }
     if (!llmChartLayerEnabled) {
@@ -322,17 +536,28 @@ export function ProductCandleChart({
         series,
         llmPriceHandlesRef.current,
         llmLineSeriesRef.current,
+        llmBaselineSeriesRef.current,
       );
+      llmHitZonesRef.current = [];
       return;
     }
     const stats = candleStatsFromBars(candles);
-    const model = sanitizeLlmChartAnnotations(llmChartAnnotationsRaw, stats);
+    const model = sanitizeLlmChartAnnotations(
+      llmChartAnnotationsRaw,
+      stats,
+      { rationaleHint: llmChartRationaleDe?.trim() || undefined },
+    );
+    llmHitZonesRef.current = model.filledZones.map((z) => ({
+      zone: z,
+      text: buildLlmZonePopoverText(z, llmChartRationaleDe),
+    }));
     applyLlmChartLayer(
       chart,
       series,
       model,
       llmPriceHandlesRef.current,
       llmLineSeriesRef.current,
+      llmBaselineSeriesRef.current,
     );
     return () => {
       clearLlmChartLayer(
@@ -340,15 +565,85 @@ export function ProductCandleChart({
         series,
         llmPriceHandlesRef.current,
         llmLineSeriesRef.current,
+        llmBaselineSeriesRef.current,
       );
     };
   }, [
     llmChartIntegration,
     llmChartLayerEnabled,
     llmChartAnnotationsRaw,
+    llmChartRationaleDe,
     candles.length,
     candles,
   ]);
+
+  useEffect(() => {
+    const chart = chartRef.current;
+    const series = candleSeriesRef.current;
+    if (!chart || !series) {
+      return;
+    }
+    if (!llmChartIntegration || !llmChartLayerEnabled) {
+      setLlmZonePopover(null);
+      return;
+    }
+
+    const onMove = (param: {
+      point?: { x: number; y: number } | null;
+      time?: Time;
+    }) => {
+      if (!param.point) {
+        setLlmZonePopover(null);
+        return;
+      }
+      if (param.time === undefined) {
+        setLlmZonePopover(null);
+        return;
+      }
+      const tU = chartTimeToUnixSeconds(param.time);
+      if (tU == null) {
+        setLlmZonePopover(null);
+        return;
+      }
+      const price = series.coordinateToPrice(param.point.y);
+      if (price == null) {
+        setLlmZonePopover(null);
+        return;
+      }
+      for (let i = llmHitZonesRef.current.length - 1; i >= 0; i -= 1) {
+        const row = llmHitZonesRef.current[i]!;
+        const z = row.zone;
+        const t0u = chartTimeToUnixSeconds(z.time0);
+        const t1u = chartTimeToUnixSeconds(z.time1);
+        if (t0u == null || t1u == null) {
+          continue;
+        }
+        const tMin = Math.min(t0u, t1u);
+        const tMax = Math.max(t0u, t1u);
+        if (tU < tMin || tU > tMax) {
+          continue;
+        }
+        const pHi = Math.max(z.priceHigh, z.priceLow);
+        const pLo = Math.min(z.priceHigh, z.priceLow);
+        if (price < pLo || price > pHi) {
+          continue;
+        }
+        setLlmZonePopover({
+          x: param.point.x,
+          y: param.point.y,
+          text: row.text,
+        });
+        return;
+      }
+      setLlmZonePopover(null);
+    };
+
+    chart.subscribeCrosshairMove(onMove);
+    return () => {
+      chart.unsubscribeCrosshairMove(onMove);
+      setLlmZonePopover(null);
+    };
+  }, [llmChartIntegration, llmChartLayerEnabled, llmChartAnnotationsRaw, candles]);
 
   const frameMessage =
     overlay === "error"
@@ -356,6 +651,9 @@ export function ProductCandleChart({
       : overlay === "empty"
         ? (emptyMessage ?? null)
         : null;
+
+  const showPill =
+    showThrottledLastClosePill && throttledLabelClose != null && !errorMessage;
 
   return (
     <ProductChartFrame
@@ -365,11 +663,36 @@ export function ProductCandleChart({
       minHeight={height}
       ariaLabel={ariaLabel}
     >
-      <div
-        ref={containerRef}
-        className="product-chart-frame__plot"
-        style={{ width: "100%", height: `${height}px` }}
-      />
+      <div className="product-chart-frame__plot-wrap">
+        {showPill ? (
+          <span
+            className="product-chart-frame__last-tick"
+            title=""
+            aria-hidden
+          >
+            {throttledLabelClose}
+          </span>
+        ) : null}
+        <div
+          ref={containerRef}
+          className="product-chart-frame__plot"
+          style={{ width: "100%", height: `${height}px` }}
+        />
+        {llmZonePopover ? (
+          <div
+            className="llm-chart-zone-popover"
+            role="tooltip"
+            style={{ left: llmZonePopover.x, top: llmZonePopover.y }}
+          >
+            {llmZonePopover.text}
+          </div>
+        ) : null}
+      </div>
     </ProductChartFrame>
   );
-}
+});
+
+ProductCandleChart.displayName = "ProductCandleChart";
+
+export type { PayloadCandleClose } from "@/lib/chart/payload-candle-close";
+export { TICKER_LABEL_THROTTLE_MS } from "@/lib/chart/payload-candle-close";

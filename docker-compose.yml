@@ -117,7 +117,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          'python -c "import urllib.request; urllib.request.urlopen(''http://127.0.0.1:8010/ready'', timeout=8).read()"',
+          'python -c "import urllib.request; urllib.request.urlopen(''http://market-stream:8010/ready'', timeout=8).read()"',
         ]
       interval: 10s
       timeout: 12s
@@ -150,7 +150,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          'python -c "import urllib.request; urllib.request.urlopen(''http://127.0.0.1:8020/ready'', timeout=6).read()"',
+          'python -c "import urllib.request; urllib.request.urlopen(''http://feature-engine:8020/ready'', timeout=6).read()"',
         ]
       interval: 10s
       timeout: 12s
@@ -179,7 +179,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          'python -c "import urllib.request; urllib.request.urlopen(''http://127.0.0.1:8030/ready'', timeout=6).read()"',
+          'python -c "import urllib.request; urllib.request.urlopen(''http://structure-engine:8030/ready'', timeout=6).read()"',
         ]
       interval: 10s
       timeout: 12s
@@ -208,7 +208,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          'python -c "import urllib.request; urllib.request.urlopen(''http://127.0.0.1:8040/ready'', timeout=6).read()"',
+          'python -c "import urllib.request; urllib.request.urlopen(''http://drawing-engine:8040/ready'', timeout=6).read()"',
         ]
       interval: 10s
       timeout: 12s
@@ -243,7 +243,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          'python -c "import urllib.request; urllib.request.urlopen(''http://127.0.0.1:8050/ready'', timeout=8).read()"',
+          'python -c "import urllib.request; urllib.request.urlopen(''http://signal-engine:8050/ready'', timeout=8).read()"',
         ]
       interval: 10s
       timeout: 15s
@@ -276,7 +276,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          'python -c "import urllib.request; urllib.request.urlopen(''http://127.0.0.1:8060/ready'', timeout=6).read()"',
+          'python -c "import urllib.request; urllib.request.urlopen(''http://news-engine:8060/ready'', timeout=6).read()"',
         ]
       interval: 10s
       timeout: 12s
@@ -302,7 +302,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          'python -c "import urllib.request; urllib.request.urlopen(''http://127.0.0.1:8098/ready'', timeout=6).read()"',
+          'python -c "import urllib.request; urllib.request.urlopen(''http://audit-ledger:8098/ready'', timeout=6).read()"',
         ]
       interval: 10s
       timeout: 8s
@@ -332,7 +332,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          'python -c "import urllib.request; urllib.request.urlopen(''http://127.0.0.1:8070/ready'', timeout=6).read()"',
+          'python -c "import urllib.request; urllib.request.urlopen(''http://llm-orchestrator:8070/ready'', timeout=6).read()"',
         ]
       interval: 10s
       timeout: 8s
@@ -360,7 +360,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          'python -c "import urllib.request; urllib.request.urlopen(''http://127.0.0.1:8140/ready'', timeout=6).read()"',
+          'python -c "import urllib.request; urllib.request.urlopen(''http://inference-server:8140/ready'', timeout=6).read()"',
         ]
       interval: 15s
       timeout: 10s
@@ -397,7 +397,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          'python -c "import urllib.request; urllib.request.urlopen(''http://127.0.0.1:8085/ready'', timeout=8).read()"',
+          'python -c "import urllib.request; urllib.request.urlopen(''http://paper-broker:8085/ready'', timeout=8).read()"',
         ]
       interval: 10s
       timeout: 15s
@@ -421,7 +421,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          'python -c "import urllib.request; urllib.request.urlopen(''http://127.0.0.1:8145/ready'', timeout=15).read()"',
+          'python -c "import urllib.request; urllib.request.urlopen(''http://adversarial-engine:8145/ready'', timeout=15).read()"',
         ]
       interval: 20s
       timeout: 18s
@@ -462,7 +462,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          'python -c "import urllib.request; urllib.request.urlopen(''http://127.0.0.1:8090/ready'', timeout=8).read()"',
+          'python -c "import urllib.request; urllib.request.urlopen(''http://learning-engine:8090/ready'', timeout=8).read()"',
         ]
       interval: 10s
       timeout: 15s
@@ -493,7 +493,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          'python -c "import urllib.request; urllib.request.urlopen(''http://127.0.0.1:8096/ready'', timeout=6).read()"',
+          'python -c "import urllib.request; urllib.request.urlopen(''http://onchain-sniffer:8096/ready'', timeout=6).read()"',
         ]
       interval: 15s
       timeout: 12s
@@ -526,7 +526,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          'python -c "import urllib.request; urllib.request.urlopen(''http://127.0.0.1:8120/ready'', timeout=8).read()"',
+          'python -c "import urllib.request; urllib.request.urlopen(''http://live-broker:8120/ready'', timeout=8).read()"',
         ]
       interval: 10s
       timeout: 15s
@@ -597,7 +597,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          'python -c "import json,urllib.request;r=urllib.request.urlopen(''http://127.0.0.1:8000/ready'',timeout=8);j=json.loads(r.read().decode());raise SystemExit(0 if j.get(''ready'') is True else 1)"',
+          'python -c "import json,urllib.request;r=urllib.request.urlopen(''http://api-gateway:8000/ready'',timeout=8);j=json.loads(r.read().decode());raise SystemExit(0 if j.get(''ready'') is True else 1)"',
         ]
       interval: 10s
       timeout: 12s
@@ -631,7 +631,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          'python -c "import urllib.request; urllib.request.urlopen(''http://127.0.0.1:8100/ready'', timeout=8).read()"',
+          'python -c "import urllib.request; urllib.request.urlopen(''http://alert-engine:8100/ready'', timeout=8).read()"',
         ]
       interval: 10s
       timeout: 15s
@@ -687,7 +687,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          'python -c "import urllib.request; urllib.request.urlopen(''http://127.0.0.1:8110/ready'', timeout=10).read()"',
+          'python -c "import urllib.request; urllib.request.urlopen(''http://monitor-engine:8110/ready'', timeout=10).read()"',
         ]
       interval: 10s
       timeout: 18s
@@ -722,7 +722,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          'node -e "fetch(''http://127.0.0.1:3000/api/health'').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"',
+          'node -e "fetch(''http://dashboard:3000/api/health'').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"',
         ]
       interval: 15s
       timeout: 10s

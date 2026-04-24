@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://bitget-btc-ai.local/schemas/payload-market-feed-health-v1.json",
+  "$id": "https://bitget-btc-ai.local/schemas/payload_market_feed_health.schema.json",
   "title": "market_feed_health payload",
   "type": "object",
   "additionalProperties": true,
@@ -17,6 +17,10 @@
     "ready_max_age_ms": { "type": "integer" },
     "orderbook_desynced": { "type": "boolean" },
     "last_gapfill_reason": { "type": ["string", "null"] },
-    "stale_escalation_count": { "type": "integer" }
+    "stale_escalation_count": { "type": "integer" },
+    "exchange_ts_ms": { "type": ["integer", "null"] },
+    "processed_ts_ms": { "type": ["integer", "null"] },
+    "pipeline_lag_ms": { "type": ["integer", "null"] },
+    "vpin_toxicity_0_1": { "type": ["number", "null"] }
   }
 }

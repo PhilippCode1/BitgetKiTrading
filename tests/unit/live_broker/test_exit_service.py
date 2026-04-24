@@ -252,6 +252,7 @@ def test_run_once_submits_runner_trail_close_and_marks_plan_closing(
     preview["tp_plan_json"]["runner"]["armed"] = True
     preview["tp_plan_json"]["runner"]["high_water"] = "101.7"
     preview["tp_plan_json"]["runner"]["trail_stop"] = "100.7"
+    preview["tp_plan_json"]["runner"]["wick_confirm_consecutive_ticks"] = 1
     repo.upsert_exit_plan(preview)
     repo.exchange_snapshots.append(
         {

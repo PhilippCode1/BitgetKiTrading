@@ -22,7 +22,8 @@ from typing import Any, Final
 
 from redis import Redis
 
-from .envelope import EVENT_STREAMS, EventEnvelope, STREAM_DLQ, STREAM_MARKET_TICK
+from .canonical import event_envelope_to_canonical_json_text
+from .envelope import EVENT_STREAMS, STREAM_DLQ, STREAM_MARKET_TICK, EventEnvelope
 from .redis_streams import ConsumedEvent, RedisStreamBus
 
 _LOG = logging.getLogger(__name__)
@@ -194,7 +195,7 @@ def _arrow_encode_stream_envelope(stream: str, env: EventEnvelope) -> bytes:
             ("envelope_bin", pa.large_binary()),
         ]
     )
-    raw = env.model_dump_json().encode("utf-8")
+    raw = event_envelope_to_canonical_json_text(env).encode("utf-8")
     batch = pa.record_batch(
         {"stream": pa.array([stream], type=pa.string()), "envelope_bin": pa.array([raw])},
         schema=schema,
@@ -376,7 +377,7 @@ class SharedMemoryBus:
                     return f"shm-{seq}"
                 time.sleep(self._shm_publish_backoff_sec)
             raise ValueError("shm_ring_voll")
-        return str(self.redis.xadd(stream, {"data": env.model_dump_json()}))
+        return str(self.redis.xadd(stream, {"data": event_envelope_to_canonical_json_text(env)}))
 
     def ensure_group(self, stream: str, group: str) -> None:
         _validate_stream_name(stream)
@@ -504,7 +505,7 @@ class SharedMemoryBus:
             key = f"dedupe:{STREAM_DLQ}:{envelope.dedupe_key}"
             if self.redis.set(key, "1", nx=True, ex=self.dedupe_ttl_sec) is None:
                 return "deduped"
-        return str(self.redis.xadd(STREAM_DLQ, {"data": envelope.model_dump_json()}))
+        return str(self.redis.xadd(STREAM_DLQ, {"data": event_envelope_to_canonical_json_text(envelope)}))
 
 
 def _optional_str(value: Any) -> str | None:

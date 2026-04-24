@@ -1,10 +1,12 @@
-# CI — Shell, Release-Sanity, Ruff, Black, Mypy (Kern), Schema, Migrate,
-# Pytest Unit + Integration (Coverage append), Coverage-Gates, Wheel-Build,
-# pip/pnpm Audit, Dashboard, Docker Compose + Config + Healthcheck + KI-Orchestrator-Smoke
+# CI — Shell, Release-Sanity, Ruff, Black, Mypy, Schema, Migrate, Pytest (Coverage),
+# pip/pnpm Audit, Dashboard (Jest/Build/Types), Docker Compose + Health + KI-Smoke,
+# Playwright E2E, zentraler release-approval-gate (braucht alle o.g. + Freeze+Version-Check)
 #
-# Playwright (pnpm e2e): Job compose_healthcheck — fehlgeschlagener Schritt = Exit 1, Job rot.
-# Merge auf main/master: alle Jobs Pflicht (Branch-Protection im Remote einrichten).
-# Zeitplan: woechentlich Python+Dashboard ohne Compose (Kosten/Laufzeit).
+# Playwright (pnpm e2e): Job `compose_healthcheck` — fehlgeschlagener Schritt = Exit 1, Job rot.
+# Job `release-approval-gate` braucht: python, dashboard, compose_healthcheck; bei
+# wöchentlichem Schedule entfällt E2E (Job skipped) und das Gate wertet das als erlaubt
+# (Merge/PR-Checks weiterhin: alle drei grün, siehe step „Upstream-Jobs prüfen“).
+# Branch-Protection: im Remote `release-approval-gate` als required status eintragen.
 name: ci
 
 on:
@@ -19,6 +21,7 @@ on:
 
 jobs:
   python:
+    name: Python (Ruff, pytest, contracts, modul_mate, pip-audit, …)
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -102,6 +105,7 @@ jobs:
           tools/local_stack_doctor.py
           tools/run_llm_eval.py
           tools/validate_eval_baseline.py
+          tools/check_release_approval_gates.py
 
       - name: LLM eval baseline manifest (Prompt 5)
         run: python tools/validate_eval_baseline.py
@@ -118,6 +122,7 @@ jobs:
           tools/local_stack_doctor.py
           tools/run_llm_eval.py
           tools/validate_eval_baseline.py
+          tools/check_release_approval_gates.py
 
       - name: Mypy (kritische shared_py-Module, strict package)
         working-directory: shared/python
@@ -170,10 +175,11 @@ jobs:
         run: |
           coverage run -a -m pytest tests/integration tests/learning_engine -m integration -q
 
-      - name: Coverage gates + XML
+      - name: "Coverage quality gates (blockierend) + XML"
         env:
           CI: "true"
         run: |
+          set -euo pipefail
           python tools/check_coverage_gates.py
           coverage xml
 
@@ -194,6 +200,7 @@ jobs:
           python tools/pip_audit_supply_chain_gate.py
 
   dashboard:
+    name: Dashboard (types, Jest, build, pnpm audit)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -226,6 +233,7 @@ jobs:
 
   compose_healthcheck:
     if: github.event_name != 'schedule'
+    name: Docker Compose + Health + KI-Smoke + Playwright E2E
     runs-on: ubuntu-latest
     timeout-minutes: 75
     steps:
@@ -283,3 +291,39 @@ jobs:
           pnpm install --frozen-lockfile
           pnpm exec playwright install chromium --with-deps
           pnpm e2e
+
+  # Zentrales Merge-Release: alle parallelen Quality-Jobs (Python+Dashboard+Compose/E2E)
+  # + REPO-Freeze (P0/P1 OPEN) + einheitliche Root-Version (package.json/pyproject).
+  release-approval-gate:
+    name: Unified Release Gate (all jobs + FREEZE + version lock)
+    if: always()
+    needs:
+      - python
+      - dashboard
+      - compose_healthcheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Upstream-Job-Ergebnisse pruefen
+        run: |
+          set -euo pipefail
+          p="${{ needs.python.result }}"
+          d="${{ needs.dashboard.result }}"
+          c="${{ needs.compose_healthcheck.result }}"
+          ev="${{ github.event_name }}"
+          echo "python=$p dashboard=$d compose/e2e=$c event=$ev"
+          if [ "$p" != "success" ]; then echo "FAIL: python-Job war nicht gruen"; exit 1; fi
+          if [ "$d" != "success" ]; then echo "FAIL: dashboard-Job war nicht gruen"; exit 1; fi
+          if [ "$c" = "failure" ] || [ "$c" = "cancelled" ]; then echo "FAIL: compose/e2e-Job fehlgeschlagen"; exit 1; fi
+          if [ "$c" = "success" ]; then
+            echo "E2E/Compose gruen"
+            exit 0
+          fi
+          if [ "$c" = "skipped" ] && [ "$ev" = "schedule" ]; then
+            echo "INFO: E2E auf schedule ausgelassen (OK fuer Zeitplan-Job)"; exit 0
+          fi
+          echo "FAIL: compose/e2e-Job wurde nicht ausgefuehren (erwartet bei PR/push, nicht 'skipped')"; exit 1
+
+      - name: REPO-Freeze (P0/P1 OPEN) + Monorepo-Versions-Einheit
+        run: python3 tools/check_release_approval_gates.py

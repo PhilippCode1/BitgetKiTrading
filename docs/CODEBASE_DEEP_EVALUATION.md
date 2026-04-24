@@ -1,6 +1,6 @@
 # Codebase — intensive Bewertung und strenge Produktionsreife
 
-**Stand:** 2026-04-02  
+**Stand:** 2026-04-24 (P83: P0-Software-Luecken in Gap-Matrix geschlossen; Stichtag Befundtexte 2026-04-02)  
 **Ergänzt:** [CODEBASE_ANALYSIS_1_10.md](CODEBASE_ANALYSIS_1_10.md), [FINAL_SCORECARD.md](FINAL_SCORECARD.md)  
 **Kanonische Lücken:** [REPO_FREEZE_GAP_MATRIX.md](REPO_FREEZE_GAP_MATRIX.md), [ROADMAP_10_10_CLOSEOUT.md](ROADMAP_10_10_CLOSEOUT.md), [adr/ADR-0010-roadmap-accepted-residual-risks.md](adr/ADR-0010-roadmap-accepted-residual-risks.md)
 
@@ -8,7 +8,7 @@
 
 - **Intensiv:** Hotspots (Orders, Auth, Events, DB, Supply-Chain), Failure-Blast-Radius für Hochrisiko-Services, Test-Marker-Landschaft, **Ist-CI vs. erweiterter Ruff-Scope** auf `services/` + `shared_py`.
 - **Streng produktionsreif:** An [LAUNCH_DOSSIER.md](LAUNCH_DOSSIER.md) (G0–G5) und [FINAL_READINESS_REPORT.md](FINAL_READINESS_REPORT.md) ausgerichtet — nicht an Feature-Vollständigkeit.
-- **Veto-Regel:** Solange die Gap-Matrix einen **offenen P0** ausweist (Stand Matrix: **BTCUSDT-/Fixture-/Doku-Drift** weiter **major**), ist **„strikt produktionsreif ohne Vorbehalt“ = nein** — unabhängig von hohen Teilscores. Paper-Contract-P0 ist in der Matrix als **erledigt** geführt.
+- **Veto-Regel (aktualisiert P83):** P0-Blocker in [REPO_FREEZE_GAP_MATRIX.md](REPO_FREEZE_GAP_MATRIX.md) sind im **Software-Repo** geschlossen. **„Strikt produktionsreif“** im **organisatorischen** Sinn (Bitget-Freigabe, On-Call, Live-Burn-in-Nachweis in **eurer** Umgebung) bleibt ein **separater** Schritt — siehe [LAUNCH_DOSSIER.md](LAUNCH_DOSSIER.md).
 
 ## 2. Strenge Produktionsreife — Rubrik G0–G5
 
@@ -21,7 +21,7 @@
 | **G4 — Gestufter Ausbau**   | Keine Gate-Regression, Divergenz/Risk verstanden                                         | Tests, Runbooks, [shadow_live_divergence.md](shadow_live_divergence.md)                                                                                                                                                                          | **PARTIAL**                                                                       |
 | **G5 — Production voll**    | Obs, On-Call, Backups, Compliance                                                        | [monitoring_runbook.md](monitoring_runbook.md), [prod_runbook.md](prod_runbook.md), [EXTERNAL_GO_LIVE_DEPENDENCIES.md](EXTERNAL_GO_LIVE_DEPENDENCIES.md)                                                                                         | **PARTIAL / extern** (größtenteils außerhalb Repo)                                |
 
-**Urteil (strikt):** **G0** ist im Repo als **Zielbild der Pipeline** abgebildet. **G1–G3** erfordern **umgebungsgebundene** Nachweise. Mit **offenem P0** (Symbol-/Fixture-Drift) ist **„Production ohne Vorbehalt“ = nein**.
+**Urteil (strikt, Software):** **G0** ist im Repo als **Zielbild der Pipeline** abgebildet. **G1–G3** erfordern **umgebungsgebundene** Nachweise. **P0-Symbol-/Doku-Drift** ist in der Gap-Matrix **erledigt**; verbleibender „Vorbehalt“ = **externe** Go-Live-Schritte, nicht fehlender Kern-Code.
 
 ## 3. Service-Tiefenmatrix (13 + Dashboard)
 
@@ -56,7 +56,7 @@ Quellen: [infra/service-manifest.yaml](../infra/service-manifest.yaml), [REPO_FR
 **signal-engine / market-stream**
 
 - **Worst-Case:** falsche oder veraltete Marktlage → `do_not_trade` verfehlt oder übermäßig; Feed-Stale.
-- **Mitigation:** Risk/Stop-Budget-Tests, Feed-Health-Events, Monitor-Alerts; P0-Symbol-Drift kann Entscheidungen verwässern (Gap-Matrix).
+- **Mitigation:** Risk/Stop-Budget-Tests, Feed-Health-Events, Monitor-Alerts; Multi-Asset-Konsistenz ueber Katalog/Factory (Gap-Matrix: P0 erledigt).
 
 ## 4. Kritische Daten- und Kontrollflüsse
 
@@ -128,7 +128,7 @@ Aus [`.github/workflows/ci.yml`](../.github/workflows/ci.yml):
 
 ## 9. Bewertung — strenge Tiefendimensionen (1–10)
 
-Kalibrierung: **niedriger**, wo CI absichtlich schmal ist oder P0 offen ist.
+Kalibrierung: **niedriger**, wo CI absichtlich schmal ist.
 
 | Dimension                                    | Score | Begründung                                                                                                       |
 | -------------------------------------------- | ----- | ---------------------------------------------------------------------------------------------------------------- |
@@ -139,18 +139,18 @@ Kalibrierung: **niedriger**, wo CI absichtlich schmal ist oder P0 offen ist.
 | Operative Nachvollziehbarkeit (Runbooks/Obs) | **8** | Prometheus/Grafana/Heartbeats, Runbooks; Soak/Chaos = Staging.                                                   |
 | Security-Gates (Supply-Chain + Templates)    | **8** | pip-audit + Prod-ENV-Template-Gate in CI; Rest policy-/ENV-abhängig.                                             |
 | Daten-/Migrationsdisziplin                   | **8** | 73 Migrationen, `migrate.py` in CI; Performance-Audit nicht Teil dieses Dokuments.                               |
-| Symbol-/Multi-Asset-Kohärenz                 | **4** | **P0 major** (BTCUSDT-Reste) in Gap-Matrix — zieht Produktions-Urteil runter.                                    |
+| Symbol-/Multi-Asset-Kohärenz                 | **8** | Katalog + `MarketInstrumentFactory` / Identitaet; P0 in Matrix erledigt (P83).                                     |
 
 ### Binäres Gesamturteil
 
 | Frage                                                   | Antwort                                                                                                                            |
 | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | **Repo merge-fähig laut definierter CI-Pipeline?**      | Ja, wenn CI auf `main` grün ist (**G0**).                                                                                          |
-| **Strikt „Production ohne Vorbehalt“ laut Gap-Matrix?** | **Nein** — offener **P0** Symbol-/Fixture-Drift.                                                                                   |
+| **Strikt „Repo-Software produktionsreif“ laut Gap-Matrix (P0)?** | **Ja** — P0 geschlossen; **Vorbehalt** = Betrieb/Exchange/Compliance (ausserhalb Commit).                        |
 | **Operator-gated Live technisch vorbereitet?**          | **Ja, mit Vorbehalt** — siehe [FINAL_READINESS_REPORT.md](FINAL_READINESS_REPORT.md) und [FINAL_SCORECARD.md](FINAL_SCORECARD.md). |
 
-## 10. Empfohlene nächsten Schritte (für echte Aufwertung)
+## 10. Empfohlene nächsten Schritte (Betrieb jenseits Repo-10/10)
 
-1. P0 Symbol-/Fixture-/Doku-Drift systematisch abbauen ([REPO_TRUTH_MATRIX.md](REPO_TRUTH_MATRIX.md), Gap-Matrix).
-2. Optional: Ruff-Scope schrittweise auf `services/*/src` ausweiten oder Top-Offenders pro Service budgetieren.
-3. Staging-Soak und Notfallübungen laut [TESTING_AND_EVIDENCE.md](TESTING_AND_EVIDENCE.md) dokumentieren (Tickets/Evidenz).
+1. P1/P2 in Gap-Matrix iterativ (Ruff-Scope, Event-Determinismus-Flaeche) — kein P0-Blocker.
+2. Ruff-Scope optional auf `services/*/src` erweitern.
+3. Staging-Soak und Notfalluebungen laut [TESTING_AND_EVIDENCE.md](TESTING_AND_EVIDENCE.md) **in eurer** Umgebung dokumentieren.

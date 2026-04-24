@@ -15,6 +15,7 @@ logger = logging.getLogger("llm_orchestrator.agents.risk_governor")
 def default_risk_governor_settings() -> Any:
     """Minimale Settings-Spiegel fuer ``assess_risk_governor`` ohne volle SignalEngineSettings."""
     return SimpleNamespace(
+        execution_mode="paper",
         signal_max_spread_bps=8.0,
         risk_governor_account_stress_live_only=True,
         risk_max_account_margin_usage=0.35,
@@ -47,6 +48,12 @@ class RiskGovernorAgent(BaseTradingAgent):
 
     - **live**: passives Monitoring — bei hoher Trap-Wahrscheinlichkeit harte Eskalation zu ``veto``.
     - **simulation**: keine harten Overrides; ``payload.ams_toxicity_eval`` fuer RL/Logging.
+
+    **Ablehnungen (Forensik / Operator-Assist):** Führt der Live-Broker ``do_not_trade`` aus,
+    setzt er ``rejection_terminal_code=REJECTED_BY_RISK`` (Risk-Quelle) und hinterlegt
+    Messwerte in der Risk-Sidecar. Der Assist-Pfad **ops_risk** nutzt
+    ``shared_py.observability.risk_rejection_inquiry`` auf Basis der Forensik-Timeline
+    inkl. Golden Record (``trade_lifecycle_audit``).
     """
 
     def __init__(

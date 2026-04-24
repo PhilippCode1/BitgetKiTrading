@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bitget-btc-ai.local/schemas/payload_llm_failed.schema.json",
+  "title": "llm_failed payload (minimale Huell-Validierung)",
+  "type": "object",
+  "additionalProperties": true
+}

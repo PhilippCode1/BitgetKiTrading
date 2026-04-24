@@ -172,7 +172,7 @@ export function SidebarNav({ showAdminNav, uiMode = "pro" }: Props) {
     : base;
 
   return (
-    <aside className="dash-sidebar">
+    <aside className="dash-sidebar" data-e2e="operator-sidebar">
       <Link href="/" className="dash-brand dash-brand-link">
         {uiMode === "simple" ? t("console.brandSimple") : t("console.brand")}
       </Link>

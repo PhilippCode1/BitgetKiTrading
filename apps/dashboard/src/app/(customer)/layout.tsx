@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import { CustomerShell } from "@/components/layout/CustomerShell";
 import { getServerTranslator } from "@/lib/i18n/server-translate";
+import { getDashboardPersonaForServerComponent } from "@/lib/portal-persona";
 
 export const dynamic = "force-dynamic";
 
@@ -21,5 +22,6 @@ type Props = Readonly<{ children: ReactNode }>;
  * Autorisierung: Mandanten-JWT im Cookie `bitget_portal_jwt` (siehe middleware).
  */
 export default async function CustomerPortalLayout({ children }: Props) {
-  return <CustomerShell>{children}</CustomerShell>;
+  const persona = await getDashboardPersonaForServerComponent();
+  return <CustomerShell persona={persona}>{children}</CustomerShell>;
 }

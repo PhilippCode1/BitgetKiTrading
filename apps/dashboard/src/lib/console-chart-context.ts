@@ -3,6 +3,8 @@ import { resolveTradeSymbol } from "@/lib/resolve-trade-symbol";
 
 /**
  * Einheitliche Ableitung von Chart-Symbol und -Zeitfenster aus URL + persistierten Prefs + Defaults.
+ * Bevorzugt `urlSymbol` (z. B. `?symbol=ETHUSDT`) — damit u. a. GET /v1/market-universe/candles und
+ * SSE stets das gewaehlte Asset nutzen, ohne implizit BTCUSDT.
  */
 export function resolveConsoleChartSymbolTimeframe(
   input: Readonly<{

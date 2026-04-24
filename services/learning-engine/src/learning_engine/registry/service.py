@@ -7,11 +7,11 @@ from uuid import UUID
 import psycopg
 import psycopg.errors
 from fastapi import HTTPException
+from shared_py.eventbus import EventEnvelope, RedisStreamBus
+from shared_py.eventbus.envelope import STREAM_STRATEGY_REGISTRY_UPDATED
 
 from learning_engine.config import LearningEngineSettings
 from learning_engine.registry import models, storage
-from shared_py.eventbus import EventEnvelope, RedisStreamBus
-from shared_py.eventbus.envelope import STREAM_STRATEGY_REGISTRY_UPDATED
 
 logger = logging.getLogger("learning_engine.registry")
 
@@ -123,6 +123,21 @@ def set_status(
     if models.requires_promotion_manual_override(old, new) and body.manual_override:
         warnings.append("manual_override: Promotion-Gates (Prompt 23) noch nicht aktiv")
 
+    champion_v: UUID | None = body.champion_version_id
+    if new == "live_champion" and champion_v is not None:
+        got = conn.execute(
+            """
+            SELECT 1 FROM learn.strategy_versions
+            WHERE strategy_id = %s AND strategy_version_id = %s
+            """,
+            (str(strategy_id), str(champion_v)),
+        ).fetchone()
+        if got is None:
+            raise HTTPException(
+                status_code=400,
+                detail="champion_version_id gehoert nicht zu dieser Strategie",
+            )
+
     storage.update_status(
         conn,
         strategy_id=strategy_id,
@@ -130,6 +145,7 @@ def set_status(
         old_status=old,
         reason=body.reason,
         changed_by=body.changed_by,
+        live_champion_version_id=champion_v,
     )
     promoted = storage.list_promoted_names(conn)
     publish_registry_snapshot(
@@ -154,6 +170,12 @@ def get_strategy_detail(conn: psycopg.Connection[Any], strategy_id: UUID) -> dic
 
 
 def list_strategies(conn: psycopg.Connection[Any], status: str | None) -> list[dict[str, Any]]:
-    if status and status not in ("promoted", "candidate", "shadow", "retired"):
+    if status and status not in (
+        "promoted",
+        "live_champion",
+        "candidate",
+        "shadow",
+        "retired",
+    ):
         raise HTTPException(status_code=400, detail="ungueltiger status filter")
     return storage.list_strategies(conn, status=status)

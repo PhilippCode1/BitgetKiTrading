@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import time
 
 from redis.asyncio import Redis
 from redis.exceptions import RedisError
+from shared_py.observability.metrics import inc_pipeline_event_drop, set_pipeline_backpressure_queue_size
 
 from market_stream.normalization.models import NormalizedEvent
 
@@ -54,8 +56,18 @@ class RedisStreamSink:
 
     async def publish(self, event: NormalizedEvent) -> str | None:
         if not await self.connect():
+            with contextlib.suppress(Exception):
+                inc_pipeline_event_drop(
+                    component="market_stream",
+                    reason="redis_sink_unreachable",
+                )
             return None
         if self._redis is None:
+            with contextlib.suppress(Exception):
+                inc_pipeline_event_drop(
+                    component="market_stream",
+                    reason="redis_sink_unreachable",
+                )
             return None
 
         fields: dict[str, str] = {
@@ -74,11 +86,76 @@ class RedisStreamSink:
             if self._maxlen is not None:
                 kwargs["maxlen"] = self._maxlen
                 kwargs["approximate"] = True
-            return await self._redis.xadd(self._stream_key, fields, **kwargs)
+            new_id = await self._redis.xadd(self._stream_key, fields, **kwargs)
+            with contextlib.suppress(Exception):
+                n = int(await self._redis.xlen(self._stream_key))
+                set_pipeline_backpressure_queue_size(stream=self._stream_key, size=n)
+            return new_id
         except (OSError, RedisError) as exc:
+            with contextlib.suppress(Exception):
+                inc_pipeline_event_drop(
+                    component="market_stream",
+                    reason="redis_xadd_failed",
+                )
             self._logger.warning("Redis XADD failed: %s", exc)
             await self.close()
             return None
+
+    async def set_json(
+        self,
+        key: str,
+        data: object,
+        *,
+        ex_sec: int = 120,
+    ) -> bool:
+        """Kurzlebiger Snapshot (z. B. Orderbook Top-5) fuer pre-flight liquidity guard."""
+        if not key or not key.strip():
+            return False
+        if not await self.connect():
+            return False
+        if self._redis is None:
+            return False
+        try:
+            ex = int(ex_sec) if ex_sec and ex_sec > 0 else None
+            if ex is not None and ex < 1:
+                ex = None
+            s = json.dumps(
+                data,
+                separators=(",", ":"),
+                default=str,
+            )
+            if ex is not None:
+                await self._redis.set(name=key, value=s, ex=ex)
+            else:
+                await self._redis.set(name=key, value=s)
+            return True
+        except (OSError, RedisError, TypeError) as exc:
+            self._logger.debug("redis SET failed key=%s: %s", key, exc)
+            return False
+
+    async def set_key_with_ttl(
+        self,
+        key: str,
+        value: str,
+        *,
+        ex_sec: int,
+    ) -> bool:
+        """
+        Einfaches SET mit Ablauf (z. B. market:locked:[symbol] waehrend Orderbook-Resync).
+        """
+        if not key or not key.strip():
+            return False
+        if not await self.connect():
+            return False
+        if self._redis is None:
+            return False
+        try:
+            ex = max(1, int(ex_sec))
+            await self._redis.set(name=key, value=value, ex=ex)
+            return True
+        except (OSError, RedisError, TypeError) as exc:
+            self._logger.debug("redis SET (ttl) failed key=%s: %s", key, exc)
+            return False
 
     async def close(self) -> None:
         if self._redis is None:

@@ -52,25 +52,26 @@ class GatewaySettings(BaseServiceSettings):
 
     database_url: str = Field(default="", alias="DATABASE_URL")
     redis_url: str = Field(default="", alias="REDIS_URL")
-    gateway_readiness_redis_timeout_sec: float = Field(
-        default=5.0,
-        ge=0.5,
-        le=30.0,
-        alias="GATEWAY_READINESS_REDIS_TIMEOUT_SEC",
-        description=(
-            "Timeout (s) pro Redis-PING im Gateway-Kern-Check (/ready). "
-            "Hoeher als Default-Client, um Docker/Last-Spitzen abzufedern."
-        ),
+    gateway_readiness_redis_probe_budget_ms: int = Field(
+        default=500,
+        ge=50,
+        le=5_000,
+        alias="GATEWAY_READINESS_REDIS_PROBE_BUDGET_MS",
+        description="Zeitfenster (ms) fuer schnelle Redis-PING-Retries im GET /ready (Kern-Check).",
     )
-    gateway_readiness_redis_retries: int = Field(
-        default=2,
-        ge=0,
+    gateway_readiness_redis_probe_max_attempts: int = Field(
+        default=3,
+        ge=1,
         le=5,
-        alias="GATEWAY_READINESS_REDIS_RETRIES",
-        description=(
-            "Zusaetzliche PING-Versuche bei Fehler (transiente Timeouts). "
-            "0 = ein einzelner Versuch wie frueher."
-        ),
+        alias="GATEWAY_READINESS_REDIS_PROBE_MAX_ATTEMPTS",
+        description="Max. Redis-PING-Versuche innerhalb des Probe-Budgets.",
+    )
+    gateway_readiness_redis_probe_socket_sec: float = Field(
+        default=0.15,
+        ge=0.05,
+        le=2.0,
+        alias="GATEWAY_READINESS_REDIS_PROBE_SOCKET_SEC",
+        description="Socket-Timeout (s) pro schnellem PING in /ready (niedrig, damit 3x in <500ms).",
     )
     app_port: int = Field(default=8000, alias="APP_PORT")
     cors_allow_origins: str = Field(
@@ -251,6 +252,14 @@ class GatewaySettings(BaseServiceSettings):
         default="default",
         alias="COMMERCIAL_DEFAULT_TENANT_ID",
     )
+    commercial_entitlement_enforce: bool = Field(
+        default=True,
+        alias="COMMERCIAL_ENTITLEMENT_ENFORCE",
+        description=(
+            "402 Payment Required wenn Plan-Entitlement (623) / Prepaid-Kriterium "
+            "fuer Premium-KI (z. B. AI_DEEP_ANALYSIS) nicht erfuellt."
+        ),
+    )
     live_broker_gateway_live_policy_enforce: bool = Field(
         default=True,
         alias="LIVE_BROKER_GATEWAY_LIVE_POLICY_ENFORCE",
@@ -293,6 +302,14 @@ class GatewaySettings(BaseServiceSettings):
         default="50",
         alias="BILLING_CRITICAL_BALANCE_USD",
         description="Prepaid <= dieser Betrag: kritisch niedrig.",
+    )
+    subscription_billing_eur_usd_rate: str = Field(
+        default="1.0",
+        alias="SUBSCRIPTION_BILLING_EUR_USD_RATE",
+        description=(
+            "Abo-Tagesabzuege: Umrechnung 1 EUR -> List-USD fuer app.customer_wallet "
+            "(Vereinfachung/Referenz, PSP-FX getrennt)."
+        ),
     )
 
     profit_fee_module_enabled: bool = Field(

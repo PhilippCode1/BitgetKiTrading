@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import sys
 from pathlib import Path
 
@@ -18,6 +19,7 @@ from signal_engine.config import SignalEngineSettings
 from signal_engine.hybrid_decision import assess_hybrid_decision
 from signal_engine.risk_governor import (
     RISK_GOVERNOR_VERSION,
+    RISK_RAMP_CAP_ENFORCED_EVENT,
     apply_live_ramp_cap,
     assess_risk_governor,
     leverage_escalation_ok,
@@ -28,6 +30,8 @@ from signal_engine.risk_governor import (
 def signal_settings(monkeypatch: pytest.MonkeyPatch) -> SignalEngineSettings:
     monkeypatch.setenv("DATABASE_URL", "postgresql://test:test@127.0.0.1:5432/test")
     monkeypatch.setenv("REDIS_URL", "redis://127.0.0.1:6379/0")
+    monkeypatch.setenv("EXECUTION_MODE", "paper")
+    monkeypatch.setenv("LIVE_BROKER_ENABLED", "false")
     return SignalEngineSettings()
 
 
@@ -181,6 +185,44 @@ def test_hard_block_exchange_health(signal_settings: SignalEngineSettings) -> No
     assert "risk_governor_exchange_health_bad" in gov["universal_hard_block_reasons_json"]
 
 
+def test_vpin_toxic_flow_universal_halt(signal_settings: SignalEngineSettings) -> None:
+    base_snap = _row()["source_snapshot_json"]
+    assert isinstance(base_snap, dict)
+    fs = base_snap.get("feature_snapshot")
+    assert isinstance(fs, dict)
+    ptf = fs.get("primary_tf")
+    assert isinstance(ptf, dict)
+    row = _row(
+        source_snapshot_json={
+            **base_snap,
+            "feature_snapshot": {**fs, "primary_tf": {**ptf, "market_vpin_score": 0.9}},
+        }
+    )
+    gov = assess_risk_governor(settings=signal_settings, signal_row=row, direction="long")
+    assert "RISK_VPIN_HALT" in gov["universal_hard_block_reasons_json"]
+    assert gov["trade_action_recommendation"] == "do_not_trade"
+
+
+def test_vpin_moderate_halves_max_exposure_fraction(
+    signal_settings: SignalEngineSettings,
+) -> None:
+    base_snap = _row()["source_snapshot_json"]
+    assert isinstance(base_snap, dict)
+    fs = base_snap.get("feature_snapshot")
+    assert isinstance(fs, dict)
+    ptf = fs.get("primary_tf")
+    assert isinstance(ptf, dict)
+    row = _row(
+        source_snapshot_json={
+            **base_snap,
+            "feature_snapshot": {**fs, "primary_tf": {**ptf, "market_vpin_score": 0.75}},
+        }
+    )
+    gov = assess_risk_governor(settings=signal_settings, signal_row=row, direction="long")
+    assert "RISK_VPIN_HALT" not in (gov.get("universal_hard_block_reasons_json") or [])
+    assert abs(float(gov["max_exposure_fraction_0_1"]) - 0.5) < 1e-9
+
+
 def test_uncertainty_blocked_phase_hard_stop(signal_settings: SignalEngineSettings) -> None:
     row = _row(uncertainty_gate_phase="blocked")
     gov = assess_risk_governor(settings=signal_settings, signal_row=row, direction="long")
@@ -249,6 +291,7 @@ def test_paper_lane_not_live_ramped(signal_settings: SignalEngineSettings) -> No
 
 def test_apply_live_ramp_cap_unit() -> None:
     class _S:
+        execution_mode = "paper"
         risk_governor_live_ramp_max_leverage = 7
 
     a, r = apply_live_ramp_cap(
@@ -262,6 +305,28 @@ def test_apply_live_ramp_cap_unit() -> None:
     assert a == 7 and r == 7
 
 
+def test_live_mode_caps_leverage_20_to_ramp_and_logs_risk_ramp_cap_enforced(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """DoD: Live haertet gegen RISK_GOVERNOR_LIVE_RAMP_MAX_LEVERAGE, unabhaengig von Lane/Proposal."""
+
+    class _SLive:
+        execution_mode = "live"
+        risk_governor_live_ramp_max_leverage = 7
+
+    caplog.set_level(logging.INFO, logger="signal_engine.risk_governor")
+    a, r = apply_live_ramp_cap(
+        settings=_SLive(),
+        meta_trade_lane="paper_only",
+        allowed_leverage=20,
+        recommended_leverage=20,
+        signal_row={"source_snapshot_json": {}},
+        governor={"version": RISK_GOVERNOR_VERSION},
+    )
+    assert a == 7 and r == 7
+    assert any(RISK_RAMP_CAP_ENFORCED_EVENT in m for m in caplog.messages)
+
+
 def test_leverage_escalation_ok_requires_both_flags() -> None:
     row = {
         "source_snapshot_json": {
@@ -269,3 +334,58 @@ def test_leverage_escalation_ok_requires_both_flags() -> None:
         }
     }
     assert not leverage_escalation_ok(row, {})
+
+
+def test_specialist_ensemble_disagreement_adds_universal_block(
+    signal_settings: SignalEngineSettings,
+) -> None:
+    row = _row(
+        source_snapshot_json={
+            **_row()["source_snapshot_json"],  # type: ignore[arg-type]
+            "specialists": {
+                "adversary_check": {
+                    "reasons": ["ensemble_adversary_edge_dispersion"],
+                    "dissent_score_0_1": 0.2,
+                }
+            },
+        }
+    )
+    gov = assess_risk_governor(settings=signal_settings, signal_row=row, direction="long")
+    assert "risk_governor_specialist_ensemble_disagreement" in (
+        gov.get("universal_hard_block_reasons_json") or []
+    )
+
+
+def test_elevated_market_uncertainty_triggers_universal_block_without_ensemble(
+    signal_settings: SignalEngineSettings,
+) -> None:
+    row = _row(
+        model_uncertainty_0_1=0.55,
+    )
+    gov = assess_risk_governor(settings=signal_settings, signal_row=row, direction="long")
+    assert "risk_governor_elevated_market_uncertainty" in (
+        gov.get("universal_hard_block_reasons_json") or []
+    )
+    assert (gov.get("trade_action_recommendation") or "") == "do_not_trade"
+
+
+def test_market_anomaly_confidence_high_blocks_universal(
+    signal_settings: SignalEngineSettings,
+) -> None:
+    base = _row()
+    ss = base["source_snapshot_json"]
+    assert isinstance(ss, dict)
+    fs = dict(ss.get("feature_snapshot") or {})
+    ptf = dict((fs.get("primary_tf") or {}))
+    ptf["momentum_score"] = 92.0
+    ptf["market_vpin_score"] = 0.4
+    fs["primary_tf"] = ptf
+    row = _row(
+        market_anomaly_confidence_0_1=0.85,
+        source_snapshot_json={**ss, "feature_snapshot": fs},
+    )
+    gov = assess_risk_governor(settings=signal_settings, signal_row=row, direction="long")
+    assert "risk_governor_market_anomaly_confidence_high" in (
+        gov.get("universal_hard_block_reasons_json") or []
+    )
+    assert (gov.get("trade_action_recommendation") or "") == "do_not_trade"

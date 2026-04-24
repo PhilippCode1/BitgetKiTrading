@@ -107,8 +107,14 @@ def fetch_take_trade_training_rows(
     conn: psycopg.Connection[Any],
     *,
     symbol: str | None = None,
+    min_decision_ts_ms: int | None = None,
 ) -> list[dict[str, Any]]:
-    return fetch_target_training_rows(conn, target_field="take_trade_label", symbol=symbol)
+    return fetch_target_training_rows(
+        conn,
+        target_field="take_trade_label",
+        symbol=symbol,
+        min_decision_ts_ms=min_decision_ts_ms,
+    )
 
 
 def fetch_regime_training_rows(
@@ -135,6 +141,7 @@ def fetch_target_training_rows(
     *,
     target_field: str,
     symbol: str | None = None,
+    min_decision_ts_ms: int | None = None,
 ) -> list[dict[str, Any]]:
     if target_field not in _ALLOWED_TRAINING_TARGET_FIELDS:
         raise ValueError(f"unsupported target_field: {target_field!r}")
@@ -148,6 +155,9 @@ def fetch_target_training_rows(
     if symbol:
         sql += " AND symbol = %s"
         params.append(symbol.upper())
+    if min_decision_ts_ms is not None:
+        sql += " AND decision_ts_ms >= %s"
+        params.append(int(min_decision_ts_ms))
     sql += " ORDER BY decision_ts_ms ASC, closed_ts_ms ASC"
     rows = conn.execute(sql, tuple(params)).fetchall()
     return [dict(r) for r in rows]

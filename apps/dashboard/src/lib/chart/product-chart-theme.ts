@@ -22,6 +22,18 @@ export const PRODUCT_CHART_COLORS = {
   llmLine: "rgba(167, 139, 250, 0.92)",
   llmLineMuted: "rgba(167, 139, 250, 0.45)",
   llmMarker: "#c4b5fd",
+  /** Widerstand / Supply-Zone (Short) */
+  llmZoneResistanceTopFill1: "rgba(224, 112, 112, 0.4)",
+  llmZoneResistanceTopFill2: "rgba(224, 112, 112, 0.08)",
+  llmZoneResistanceTopLine: "rgba(224, 112, 112, 0.9)",
+  /** Support / Demand-Zone */
+  llmZoneSupportTopFill1: "rgba(107, 201, 143, 0.32)",
+  llmZoneSupportTopFill2: "rgba(107, 201, 143, 0.08)",
+  llmZoneSupportTopLine: "rgba(107, 201, 143, 0.9)",
+  /** Unspezifische Box */
+  llmZoneNeutralTopFill1: "rgba(167, 139, 250, 0.3)",
+  llmZoneNeutralTopFill2: "rgba(167, 139, 250, 0.06)",
+  llmZoneNeutralTopLine: "rgba(196, 181, 253, 0.85)",
 } as const;
 
 export type ProductChartTheme = typeof PRODUCT_CHART_COLORS;

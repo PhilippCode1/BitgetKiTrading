@@ -2,6 +2,9 @@
 Gemeinsames, schema-stabiles WebSocket-Ereignis-Envelope fuer Bitget v2 (public + private).
 
 Dient Observability, Health und spaetere Aggregation — nicht fuer Hot-Path-Publishing erforderlich.
+
+Hinweis: Der market-stream-WS nutzt (wo vorhanden) serverseitige `seq` aus Push-Payloads;
+Reihenfolge/Luecken laufen ueber `BitgetWsSequenceBuffer` im Service, nicht in diesem Modul.
 """
 
 from __future__ import annotations

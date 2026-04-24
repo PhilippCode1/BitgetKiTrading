@@ -2,6 +2,7 @@
 Postgres-Ladelogik fuer Modul-Mate-Kommerzgates (tenant_modul_mate_gates).
 
 Bezug: infra/migrations/postgres/604_modul_mate_execution_gates.sql
+(physische Tabelle app.tenant_modul_mate_gates, nicht der Dateiname „execution“).
 """
 
 from __future__ import annotations
@@ -13,6 +14,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 from shared_py.commercial_contract_workflow import TenantContractStatus
+from shared_py.postgres_tenant_rls import apply_tenant_rls_guc
 from shared_py.product_policy import (
     CustomerCommercialGates,
     ExecutionPolicyViolationError,
@@ -32,6 +34,7 @@ def fetch_tenant_modul_mate_gates(
     Spalten muessen zu CustomerCommercialGates passen (siehe Migration 604).
     Verbindung sollte row_factory=dict_row nutzen.
     """
+    apply_tenant_rls_guc(conn, tenant_id=tenant_id)
     row = conn.execute(
         """
         SELECT trial_active, contract_accepted, admin_live_trading_granted,
@@ -72,6 +75,67 @@ def fetch_tenant_modul_mate_gates_from_dsn(
         return fetch_tenant_modul_mate_gates(conn, tenant_id=tenant_id)
 
 
+# Standard-INSERT aus 604 (tenant_id=default) — Integritaet fuer Selfchecks / Release
+_M604_DEFAULT_TENANT_SEED: dict[str, bool] = {
+    "trial_active": False,
+    "contract_accepted": True,
+    "admin_live_trading_granted": False,
+    "subscription_active": True,
+    "account_paused": False,
+    "account_suspended": False,
+}
+M604_GATES_TABLE_FQN = "app.tenant_modul_mate_gates"
+
+
+def assert_m604_table_and_policies(
+    database_url: str,
+    *,
+    tenant_id: str = "default",
+    connect_timeout_sec: int = 5,
+) -> CustomerCommercialGates:
+    """
+    Harte M604-Pruefung: Tabelle existiert, Zeile fuer ``tenant_id``,
+    und fuer ``default`` uebereinstimmung mit 604-Seed (Demo-API, kein Live-Fire).
+
+    Raises:
+        RuntimeError: Schema fehlt, Seed fehlt oder weicht (tenant default) ab.
+
+    Returns:
+        Gelesene Gates (gleiche Verbindung wie Pruefung).
+    """
+    with psycopg.connect(
+        database_url,
+        row_factory=dict_row,
+        connect_timeout=connect_timeout_sec,
+    ) as conn:
+        apply_tenant_rls_guc(conn, tenant_id=tenant_id)
+        # Migration 604 legt app.tenant_modul_mate_gates an (Datei *_execution_gates.sql)
+        reg = conn.execute(
+            "SELECT to_regclass(%s) AS t",
+            (M604_GATES_TABLE_FQN,),
+        ).fetchone()
+        if reg is None or reg.get("t") is None:
+            raise RuntimeError(
+                f"Migration-604: Tabelle {M604_GATES_TABLE_FQN} fehlt "
+                f"(to_regclass NULL). Fuehre infra/migrate.py aus."
+            )
+        g = fetch_tenant_modul_mate_gates(conn, tenant_id=tenant_id)
+        if g is None:
+            raise RuntimeError(
+                f"Keine Zeile in {M604_GATES_TABLE_FQN} fuer "
+                f"tenant_id={tenant_id!r} (Migration 604 INSERT / Seeds)."
+            )
+        if tenant_id == "default":
+            for key, want in _M604_DEFAULT_TENANT_SEED.items():
+                have = bool(getattr(g, key, None))
+                if have is not want:
+                    raise RuntimeError(
+                        f"Standard-Policies (604) fuer tenant {tenant_id!r} — "
+                        f"Erwartung {key}={want!r}, Ist={have!r} — DB-Seed/Drift pruefen."
+                    )
+        return g
+
+
 def tenant_has_active_live_commercial_contract(
     conn: psycopg.Connection[Any],
     *,
@@ -81,6 +145,7 @@ def tenant_has_active_live_commercial_contract(
     True, wenn in app.tenant_contract (Migration 608, commercial_contract_workflow)
     ein abgeschlossener Vertrag mit Admin-Freigabe existiert.
     """
+    apply_tenant_rls_guc(conn, tenant_id=tenant_id)
     status = TenantContractStatus.ADMIN_REVIEW_COMPLETE.value
     row = conn.execute(
         """

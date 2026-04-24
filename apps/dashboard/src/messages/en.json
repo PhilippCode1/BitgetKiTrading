@@ -296,7 +296,7 @@
     },
     "paperTrades": {
       "empty": "No closed trades.",
-      "emptyTitle": "No closed trades yet",
+      "emptyTitle": "No closed trades",
       "emptyDescription": "Your history will show here once a position is closed.",
       "emptyNextStep": "Check open positions above, or wait for more trades; the equity curve updates with each close.",
       "thClosed": "Closed",
@@ -668,13 +668,19 @@
       "safetyDiagErrQuestionLong": "The question exceeds the allowed length (max. 8000 characters).",
       "safetyDiagErrIncomplete": "The service returned data we could not interpret (missing summary). Please try again.",
       "assistLayerTitle": "Assistance layer (multi-turn)",
-      "assistLayerLead": "Four assistant roles exist in the product overall — here are the two for operations and market logic. Each tab is its own segment: separate transcript, separate context keys, and no mixing with account assist on the Account page.",
+      "assistLayerLead": "Four assistant roles exist in the product overall — on this page there are three: operations, market logic, and risk rejections. Each tab is its own segment: separate transcript, separate context keys, and no mixing with account assist on the Account page.",
       "assistSegmentScopeNote": "Switching tabs starts a new conversation ID and clears the transcript so the UI matches server storage (Redis, keyed by assist role).",
       "assistConversationHint": "Conversation:",
       "assistNewConversation": "Start new conversation",
       "assistTabsAria": "Assistant role",
       "assistTabAdminOps": "Platform & operations",
       "assistTabStrategy": "Strategy & signals",
+      "assistTabOpsRisk": "Risk & rejections",
+      "assistContextHintOpsRisk": "Allowed: decision_brief, trade_lifecycle_golden, risk_rejection_inquiry (fill via “Load context” from execution forensics).",
+      "assistOpsRiskLoadLabel": "execution_id (UUID) from live-broker forensics",
+      "assistOpsRiskLoadButton": "Load context from forensics",
+      "assistOpsRiskLoadHelp": "Loads the golden record and policy context for that trade; then ask your question (e.g. why it was rejected).",
+      "assistOpsRiskLoadErr": "Could not load context. Check the UUID and permissions (forensics).",
       "assistMessageLabel": "Message (German)",
       "assistMessagePlaceholder": "e.g. What does this alert mean in the platform context?",
       "assistContextLabel": "Optional SERVER_CONTEXT (JSON object)",
@@ -996,13 +1002,17 @@
       "lineageNo": "no",
       "sectionDecisions": "Decisions",
       "sectionFills": "Fills",
+      "sectionRuntime": "Live-broker runtime (reconcile)",
       "sectionPaper": "Paper trades",
       "sectionLiveState": "Live state / data_lineage",
       "sectionHealth": "System health (execution lane)",
+      "mLatchPolicy": "Shadow↔Live Redis latch (REQUIRE_SHADOW_MATCH_BEFORE_LIVE):",
+      "mLatchOn": "on — wait {timeoutMs} ms, key TTL {ttlSec} s (shadow:match:{{execution_id}})",
       "divergenceTitle": "Divergence (sample)",
       "divergenceLead": "Fields from execution payload (shadow_live_divergence). A dash for shadow≈live means no value, not “ok”.",
       "divergenceEmpty": "No divergence rows in the current decision window.",
       "thShadowLive": "Shadow≈live",
+      "thRedisLatch": "Shadow latch",
       "thRuntime": "Effective mode",
       "thHard": "Hard viol.",
       "thSoft": "Soft viol.",
@@ -1015,6 +1025,12 @@
         "unknown": "— (no value)",
         "match": "Match",
         "mismatch": "Mismatch"
+      },
+      "latchCell": {
+        "unknown": "—",
+        "gripped": "Latched (OK)",
+        "miss": "No latch",
+        "skipped": "N/A (gate off)"
       }
     },
     "noTrade": {
@@ -1107,6 +1123,12 @@
       "lineageThTrade": "Trading",
       "lineageThStatus": "Trading status",
       "lineageThChart": "Chart",
+      "lineageThPipelineLag": "Pipeline lag",
+      "lineageThVpin": "VPIN",
+      "pulseStreamLabel": "Market stream",
+      "pulseLagLabel": "{ms} ms",
+      "pulseNoSse": "No live SSE (check gateway / polling)",
+      "pulseNotOtherSymbol": "—",
       "lineageOpenChart": "Open chart",
       "lineageNoHealth": "No health data (gateway unreachable or session).",
       "lineageWsPublicMissing": "No public WS telemetry in health payload.",
@@ -1778,6 +1800,11 @@
       "repairing": "Server is re-running health and edge probes…",
       "sectionNarrative": "AI-style analysis (rule-based)",
       "sectionHealing": "What the platform is healing automatically",
+      "sectionAutoRecover": "Automated recovery timeline (stateless workers)",
+      "sectionAutoRecoverLead": "Monitor-engine stores phase in ops.self_healing_state. On CRITICAL, a RECOVERY_REQUESTED event is published and a restart stub runs (mock by default). Max. 3 restarts per hour per service.",
+      "autoRecoverDegradedOnly": "Manual restart via API only applies when the service phase is “degraded”. After 3 restarts in an hour you will get HTTP 429 (loop protection).",
+      "recoveryTimelineAria": "Recent self-healing timeline",
+      "noRecoveryTimelineYet": "No recovery events yet (table empty or not migrated).",
       "sectionManual": "Not automatically fixable",
       "sectionManualLead": "Items that need configuration, secrets, migrations, or human intervention—the UI can only re-measure and link you to the right surface.",
       "sectionIncidents": "All detected incidents",
@@ -1809,7 +1836,8 @@
         "openHealth": "System & status",
         "openDiagnostics": "Central diagnostics (table)",
         "edgeJson": "Edge status (JSON)",
-        "serverRecheck": "Recheck (server)"
+        "serverRecheck": "Recheck (server)",
+        "restartWorker": "Request restart ({name})"
       },
       "history": {
         "snapshotSummary": "Snapshot: {n} incidents in index.",
@@ -1825,7 +1853,7 @@
         "edgeOk": "Edge diagnosis: the last bootstrap run did not block /v1 reads—if you still see red fields, inspect specific worker health.",
         "worst": "Focus (excerpt): {list}.",
         "noWorst": "No degraded or down components in the last run.",
-        "footer": "Note: worker restarts, docker compose, and secrets are not changed automatically—use runbooks and safe deploy paths."
+        "footer": "Note: stateless workers can be auto-restarted by monitor-engine when checks are CRITICAL (see section above). Docker/compose and secrets still require controlled rollouts."
       },
       "categories": {
         "platform": "Platform & gateway",
@@ -3006,6 +3034,7 @@
       "failedHint": "Reload the page or check connectivity. See technical details for the API path."
     },
     "incident": {
+      "customerShellBannerDefault": "The platform is not fully reachable right now — some content may be missing or stale.",
       "regionLabel": "Central operations notice",
       "cascadeTitle": "Shared data source impaired",
       "cascadeBody": "{count} areas failed to load — likely one shared cause (platform, network, or expired session), not separate unrelated errors.",
@@ -3018,6 +3047,11 @@
       "heartbeatDegraded": "Platform: degraded connectivity",
       "heartbeatOk": "Platform: reachable",
       "heartbeatChecking": "Platform: checking…",
+      "liveSseCONNECTING": "Live-SSE: connecting",
+      "liveSseCONNECTED": "Live-SSE: connected (stream)",
+      "liveSseDISCONNECTED": "Live-SSE: no active stream",
+      "liveSseRECONNECTING": "Live-SSE: reconnecting…",
+      "liveSseGAVE_UP": "Live-SSE: stopped (max retries) — use polling",
       "modules": {
         "health": "System health",
         "liveState": "Live state / signals",
@@ -3058,6 +3092,11 @@
       "home": "Back to home",
       "openConsole": "Open console",
       "openCustomerPortal": "Customer portal"
+    },
+    "globalError": {
+      "title": "Severe error",
+      "body": "The application had to stop. Use “Try again” — raw technical payloads are not shown in this minimal view on purpose.",
+      "reload": "Try again"
     },
     "bool": {
       "yes": "yes",
@@ -3173,6 +3212,10 @@
       "bad_gateway": {
         "title": "Service temporarily impaired",
         "body": "Part of the platform is not responding as expected. This is usually temporary — please try again later."
+      },
+      "rate_limited": {
+        "title": "Too many requests",
+        "body": "The platform is briefly limiting requests. Wait a moment, then reload."
       },
       "server_error": {
         "title": "Server error",
@@ -3297,6 +3340,14 @@
         "appDoing": "Server-side retries and circuit breakers limit damage; the UI shows the state clearly.",
         "userAction": "Open System & status and the connection diagnostic; if it persists, notify operations with a timestamp."
       },
+      "rate_limited": {
+        "headline": "Platform request limit reached",
+        "summary": "The API is briefly throttling to cap load or abuse — your request was not permanently rejected.",
+        "impact": "Some data may appear late or not at all; your session is usually still valid.",
+        "urgency": "Medium — wait briefly and call less aggressively.",
+        "appDoing": "We use backoff and server-side throttles to protect the services.",
+        "userAction": "Wait, then reload; do not set polling intervals very aggressively."
+      },
       "server_error": {
         "headline": "Unexpected server error",
         "summary": "The platform is reachable, but something internal failed while processing.",
@@ -3353,6 +3404,8 @@
       "toOps": "Ops posture",
       "chartsNoCandles": "No candles yet: data may still be loading, or symbol/timeframe does not match what the platform stores. Check “Where does market data come from?” below.",
       "emptyStateBanner": "Note:",
+      "safetyHaltTitle": "Global halt — live-broker safety latch is active",
+      "safetyHaltBody": "Automated execution is paused. No actions in the live terminal until operations clears the latch. Check health (live broker).",
       "familyDash": "family —",
       "dbLabel": "History",
       "redisLabel": "Live buffer",
@@ -3726,16 +3779,44 @@
   },
   "customerPortal": {
     "metaTitle": "Customer portal | Modul Mate",
+    "sidebarTrustLine": "Your key information in one place — clear, without technical operator tools.",
     "nav": {
       "aria": "Customer portal main navigation",
-      "dashboard": "Dashboard",
-      "contract": "My agreement",
-      "billing": "Billing",
-      "performance": "Performance"
+      "overview": "Overview",
+      "performance": "Performance",
+      "contractAndBilling": "Contract & billing",
+      "helpSupport": "Help & support"
     },
     "overviewTitle": "Overview",
-    "overviewLead": "A short introduction — separate from the operator console; data APIs will follow.",
-    "placeholder": "This page is a placeholder for now.",
-    "backToProduct": "Back to product home"
+    "overviewSubhead": "Balance & active strategy",
+    "overviewLead": "Your contract context, balances, and the status of approved strategies will appear here — separate from the operator console.",
+    "placeholder": "This section is a placeholder for now.",
+    "backToProduct": "Back to product home",
+    "accountBilling": {
+      "title": "Contract & billing",
+      "contractHeading": "Your contract",
+      "billingHeading": "Your billing"
+    },
+    "help": {
+      "title": "Help & support",
+      "lead": "Find answers, contact options, and guidance here — with no access to technical system control."
+    },
+    "performancePage": {
+      "title": "Performance",
+      "lead": "Profit and loss curves will appear here once your connection is active — without raw signals or operator detail.",
+      "tableRow1": "Q4 2025 (demo)",
+      "tableRow2": "Q3 2025 (demo)",
+      "colPeriod": "Period",
+      "colView": "View",
+      "openDetail": "Details"
+    },
+    "performanceDetail": {
+      "back": "Back to performance overview",
+      "title": "Performance ({id})",
+      "lead": "Short trend for your selected period (demo data).",
+      "chartCaption": "Curve (demo)",
+      "chartAria": "Performance trend (demo)",
+      "demoNote": "This view uses fixed demo points — not live market data."
+    }
   }
 }

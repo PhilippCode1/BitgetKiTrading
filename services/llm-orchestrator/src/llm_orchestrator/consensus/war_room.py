@@ -19,6 +19,19 @@ from llm_orchestrator.config import LLMOrchestratorSettings
 from llm_orchestrator.paths import load_json_schema
 from llm_orchestrator.validation.schema_validate import validate_against_schema
 from llm_orchestrator.consensus.tsfm_learning_feedback import post_tsfm_war_room_audit
+from llm_orchestrator.knowledge.onchain_macro import (
+    build_readonly_onchain_text,
+    fetch_onchain_macro_context,
+    merge_fetched_onchain_into_context,
+)
+from llm_orchestrator.consensus.specialist_precision import (
+    apply_precision_to_weights,
+    extract_market_regime,
+    fetch_specialist_precision_block,
+    log_weighted_stakes_pre_consensus,
+    precision_0_1_by_agent,
+    precision_stake_multiplier,
+)
 
 logger = logging.getLogger("llm_orchestrator.consensus.war_room")
 
@@ -92,6 +105,11 @@ def _macro_news_shock(macro_m: dict[str, Any], market_event: dict[str, Any]) -> 
     if isinstance(mpl, dict) and bool(mpl.get("news_shock")):
         return True
     return False
+
+
+def _quant_proposes_directional(quant_m: dict[str, Any]) -> bool:
+    a = str((quant_m.get("signal_proposal") or {}).get("action") or "").strip().lower()
+    return a in ("buy_bias", "sell_bias")
 
 
 def _tsfm_long_exposure(quant_m: dict[str, Any]) -> bool:
@@ -229,6 +247,19 @@ class ConsensusOrchestrator:
         Führt Macro, Quant, Risk parallel aus; Risk-Veto stoppt Freigabe;
         Divergenz Makro/Quant -> high_uncertainty.
         """
+        me: dict[str, Any] = copy.deepcopy(market_event) if isinstance(
+            market_event, dict
+        ) else {}
+        if isinstance(market_event, dict):
+            try:
+                fetched = await asyncio.to_thread(
+                    fetch_onchain_macro_context,
+                    self._settings.redis_url,
+                )
+                me = merge_fetched_onchain_into_context(me, fetched)
+            except Exception as exc:  # pragma: no cover — defensiv
+                logger.warning("war_room: onchain_macro: %s", exc)
+
         wall0 = time.perf_counter()
         timeout = self._timeout_sec(agent_timeout_sec)
         agents = [
@@ -237,7 +268,7 @@ class ConsensusOrchestrator:
             self._registry.get(RISK_ID),
         ]
         results = await asyncio.gather(
-            *[self._run_one(a, market_event, timeout) for a in agents],
+            *[self._run_one(a, me, timeout) for a in agents],
             return_exceptions=False,
         )
         by_id = {m["agent_id"]: m for m in results}
@@ -245,9 +276,29 @@ class ConsensusOrchestrator:
         quant_m = by_id[QUANT_ID]
         risk_m = by_id[RISK_ID]
 
+        regime_label = extract_market_regime(me)
+        try:
+            precision_block = await asyncio.to_thread(
+                fetch_specialist_precision_block,
+                self._settings,
+                market_regime=regime_label,
+            )
+        except Exception as exc:  # pragma: no cover
+            logger.warning("war_room: specialist precision block: %s", exc)
+            precision_block = {"status": "error", "specialists": {}}
+        prec_by_agent = precision_0_1_by_agent(
+            precision_block if isinstance(precision_block, dict) else None
+        )
         base_w = dict(self._weights)
-        weights_eff, quant_w_base, quant_w_eff = _consensus_weight_vector(base_w, quant_m)
-        news_shock = _macro_news_shock(macro_m, market_event)
+        w_adj = apply_precision_to_weights(base_w, prec_by_agent)
+        log_weighted_stakes_pre_consensus(
+            market_regime=regime_label,
+            base_weights=base_w,
+            precision_0_1=prec_by_agent,
+            adjusted_weights_unnormalized=w_adj,
+        )
+        weights_eff, quant_w_base, quant_w_eff = _consensus_weight_vector(w_adj, quant_m)
+        news_shock = _macro_news_shock(macro_m, me)
         tsfm_long = _tsfm_long_exposure(quant_m)
         shock_penalty = bool(news_shock and tsfm_long)
         quant_for_score = copy.deepcopy(quant_m)
@@ -288,7 +339,7 @@ class ConsensusOrchestrator:
                 "Quant-Konfidenz fuer den Konsens massiv abgewertet."
             )
 
-        soc = market_event.get("social_context") or {}
+        soc = me.get("social_context") or {}
         if isinstance(soc, dict) and soc:
             try:
                 s_roll = float(soc.get("rolling_sentiment_score") or soc.get("sentiment_score") or 0.0)
@@ -301,6 +352,20 @@ class ConsensusOrchestrator:
                 f"Social-Sentiment (Apex/news-engine): rollierend {s_roll:+.2f}, "
                 f"Momentan {s_inst:+.2f}, Panik-Kosinus {p_cos:.3f}, Euphorie-Kosinus {e_cos:.3f} "
                 f"(Einbettung vs. Referenz-Zentroiden; kein Order-Signal)."
+            )
+        otxt = build_readonly_onchain_text(me)
+        octxm = (me.get("onchain_context") or {}) if isinstance(
+            me.get("onchain_context"), dict
+        ) else {}
+        o_press = float(octxm.get("onchain_whale_pressure_0_1") or 0.0)
+        if otxt.strip():
+            foundation_lines.append(
+                f"On-Chain / Whale (Sniffer-Stream, Kuerzel): Druck-Score {o_press:.2f}. "
+                f"Details: {otxt[:1800]}"
+            )
+        elif o_press > 0:
+            foundation_lines.append(
+                f"On-Chain: Wal-Druck-Indikator {o_press:.2f} (ohne lesbare Textzeilen)."
             )
 
         weighted = 0.0
@@ -325,6 +390,11 @@ class ConsensusOrchestrator:
             lines.append(
                 "Risk-Governor: **Hard-Veto** — Signalgenerierung abgebrochen (Vorrang vor Makro/Quant)."
             )
+            if _quant_proposes_directional(quant_m):
+                lines.append(
+                    "Readiness (konservativ): Quant liefert Richtung (BUY/SELL-Bias), Risk lehnt ab (Veto) — "
+                    "finale Entscheidung bleibt do_not_trade (kein Signal), unabhaengig von Makro/Quant-Konfidenz."
+                )
         elif divergent:
             consensus_status = "high_uncertainty"
             final_action = "none"
@@ -359,13 +429,13 @@ class ConsensusOrchestrator:
         fsha = None
         if isinstance(fcand, dict):
             fsha = fcand.get("forecast_sha256")
-        anchor = market_event.get("last_price") or market_event.get("mark_price")
+        anchor = me.get("last_price") or me.get("mark_price")
         try:
             anchor_f = float(anchor) if anchor is not None else None
         except (TypeError, ValueError):
             anchor_f = None
 
-        social_ctx = market_event.get("social_context")
+        social_ctx = me.get("social_context")
         social_roll = 0.0
         if isinstance(social_ctx, dict):
             try:
@@ -378,6 +448,17 @@ class ConsensusOrchestrator:
                 social_roll = 0.0
 
         foundation_model_audit: dict[str, Any] = {
+            "market_regime_for_precision": regime_label,
+            "specialist_ai_precision_0_1": {
+                a: float(prec_by_agent.get(a) or 0.0) for a in (MACRO_ID, QUANT_ID, RISK_ID)
+            },
+            "specialist_stake_multipliers": {
+                a: float(precision_stake_multiplier(float(prec_by_agent.get(a) or 0.0)))
+                for a in (MACRO_ID, QUANT_ID, RISK_ID)
+            },
+            "specialist_precision_status": str(precision_block.get("status"))
+            if isinstance(precision_block, dict) and precision_block.get("status") is not None
+            else None,
             "tsfm_primary": bool(tsfm_pl.get("tsfm_primary_source")),
             "tsfm_model_confidence_0_1": tsfm_pl.get("tsfm_model_confidence_0_1"),
             "tsfm_directional_bias": tsfm_pl.get("tsfm_directional_bias"),
@@ -388,7 +469,7 @@ class ConsensusOrchestrator:
             "macro_news_shock": news_shock,
             "social_rolling_sentiment_neg1_1": social_roll,
             "onchain_whale_pressure_0_1": float(
-                (market_event.get("onchain_context") or {}).get("onchain_whale_pressure_0_1") or 0.0
+                (me.get("onchain_context") or {}).get("onchain_whale_pressure_0_1") or 0.0
             ),
             "shock_penalty_applied": shock_penalty,
             "quant_confidence_original_0_1": float(quant_m.get("confidence_0_1") or 0.0),
@@ -420,7 +501,7 @@ class ConsensusOrchestrator:
                 "macro_action": str((macro_m.get("signal_proposal") or {}).get("action") or ""),
                 "macro_news_shock": news_shock,
                 "onchain_whale_pressure_0_1": float(
-                    (market_event.get("onchain_context") or {}).get("onchain_whale_pressure_0_1") or 0.0
+                    (me.get("onchain_context") or {}).get("onchain_whale_pressure_0_1") or 0.0
                 ),
                 "consensus_action": final_action,
                 "consensus_status": consensus_status,

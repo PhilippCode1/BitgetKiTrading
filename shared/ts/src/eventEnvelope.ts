@@ -1,5 +1,6 @@
 import { ENVELOPE_SCHEMA_VERSION } from "./contractVersions";
 import type { EventBusEventType } from "./eventStreams";
+import type { EventPayloadByType } from "./payloadTypes";
 
 /** Aligniert zu shared/contracts/schemas/event_envelope.schema.json */
 export type BitgetInstrumentV1 = {
@@ -34,16 +35,22 @@ export type BitgetInstrumentV1 = {
   uses_spot_public_market_data: boolean;
 };
 
-export type EventEnvelopeV1 = {
+type EnvelopeV1Base = {
   schema_version: typeof ENVELOPE_SCHEMA_VERSION;
   event_id: string;
-  event_type: EventBusEventType;
   symbol: string;
   instrument?: BitgetInstrumentV1 | null;
   timeframe?: string | null;
   exchange_ts_ms?: number | null;
   ingest_ts_ms: number;
   dedupe_key?: string | null;
-  payload: Record<string, unknown>;
   trace: Record<string, unknown>;
 };
+
+/** Jeder event_type trägt passenden Payload laut event_envelope + payload_*.json */
+export type EventEnvelopeV1 = {
+  [E in EventBusEventType]: EnvelopeV1Base & {
+    event_type: E;
+    payload: EventPayloadByType[E];
+  };
+}[EventBusEventType];

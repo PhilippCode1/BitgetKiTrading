@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://bitget-btc-ai.local/schemas/payload-trade-lifecycle-v1.json",
+  "$id": "https://bitget-btc-ai.local/schemas/payload_trade_lifecycle.schema.json",
   "title": "trade_opened | trade_updated | trade_closed gemeinsame Kernfelder",
   "type": "object",
   "additionalProperties": true,

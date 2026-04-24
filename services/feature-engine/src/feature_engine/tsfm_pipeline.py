@@ -25,7 +25,12 @@ from shared_py.eventbus import (
     make_stream_bus_from_url,
 )
 from shared_py.online_drift import action_rank, normalize_online_drift_action
-from shared_py.timesfm_client import TimesFmGrpcClient
+from shared_py.inference_governance import record_inference_timeout_state
+from shared_py.timesfm_client import (
+    DEFAULT_INFERENCE_DEADLINE_SEC,
+    InferenceUnavailableError,
+    TimesFmGrpcClient,
+)
 
 try:
     import apex_core as _apex_core  # type: ignore[import-not-found]
@@ -320,13 +325,19 @@ class TsfmPatchConsumer:
         await asyncio.to_thread(self._bus.close)
 
     async def run(self) -> None:
+        conc = int(
+            getattr(self._settings, "feature_tsfm_tick_concurrency", 1) or 1
+        )
         self._logger.info(
-            "tsfm patch consumer gestartet stream=%s group=%s stride=%s target=%s",
+            "tsfm patch consumer gestartet stream=%s group=%s stride=%s target=%s concurrency=%s",
             self._settings.tsfm_tick_stream,
             self._settings.tsfm_tick_group,
             self._settings.tsfm_tick_stride,
             self._settings.tsfm_inference_grpc_target,
+            conc,
         )
+        c_lim = max(1, min(int(conc), 64))
+        work_sem = asyncio.Semaphore(c_lim)
         try:
             while not self._stop.is_set():
                 try:
@@ -345,10 +356,33 @@ class TsfmPatchConsumer:
                     )
                     if not items:
                         continue
-                    for item in items:
-                        await self._handle_item(item)
+                    if c_lim <= 1:
+                        for item in items:
+                            await self._handle_item(item)
+                    else:
+
+                        async def _one(it: ConsumedEvent) -> None:
+                            async with work_sem:
+                                await self._handle_item(it)
+
+                        res = await asyncio.gather(
+                            *(_one(i) for i in items),
+                            return_exceptions=True,
+                        )
+                        for it, r in zip(items, res, strict=True):
+                            if isinstance(r, BaseException) and not isinstance(
+                                r, asyncio.CancelledError
+                            ):
+                                self._logger.error(
+                                    "tsfm item failed event_id=%s: %s",
+                                    it.envelope.event_id,
+                                    r,
+                                )
                 except asyncio.CancelledError:
                     raise
+                except MemoryError as exc:
+                    self._logger.critical("tsfm OOM: %s", exc)
+                    await asyncio.sleep(2.0)
                 except Exception as exc:
                     self._logger.warning("tsfm consumer loop error: %s", exc)
                     await asyncio.sleep(1.0)
@@ -414,7 +448,23 @@ class TsfmPatchConsumer:
                 vec,
                 forecast_horizon=int(self._settings.tsfm_forecast_horizon),
                 model_id=str(self._settings.tsfm_model_id),
+                inference_priority=str(self._settings.tsfm_inference_priority or "live"),
             )
+        except InferenceUnavailableError as exc:
+            self._logger.warning(
+                "tsfm inference unavailable (fail-closed) symbol=%s err=%s",
+                symbol,
+                exc,
+            )
+            try:
+                record_inference_timeout_state(
+                    str(self._settings.redis_url or ""),
+                    symbol,
+                )
+            except Exception:  # noqa: BLE001
+                pass
+            await self._ack(item)
+            return
         except Exception as exc:
             self._logger.warning("tsfm grpc predict failed symbol=%s err=%s", symbol, exc)
             await self._ack(item)
@@ -506,6 +556,7 @@ async def predict_timesfm_patch(
     *,
     forecast_horizon: int,
     model_id: str,
+    inference_priority: str = "live",
 ) -> list[np.ndarray]:
     """Ein Batch mit einer Serie (``context_vector`` als Preis-Proxy-Zeitreihe)."""
     async with TimesFmGrpcClient(grpc_target) as client:
@@ -513,5 +564,6 @@ async def predict_timesfm_patch(
             [("tsfm_ctx", context_vector)],
             forecast_horizon=int(forecast_horizon),
             model_id=model_id,
-            timeout_sec=30.0,
+            timeout_sec=float(DEFAULT_INFERENCE_DEADLINE_SEC),
+            inference_priority=inference_priority,
         )

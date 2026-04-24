@@ -85,6 +85,25 @@ def run_rest_snapshot_catchup(
     try:
         presp = private.list_all_positions(priority=True)
         pitems = _positions_items_from_payload(presp.payload)
+        from live_broker.reconcile.position_drift import notional_from_bitget_item, position_key_from_bitget_item
+
+        for it in pitems:
+            k = position_key_from_bitget_item(it)
+            if k is None:
+                continue
+            try:
+                repo.upsert_live_position_from_bitget(
+                    {
+                        "inst_id": k[0],
+                        "product_type": k[1],
+                        "hold_side": k[2],
+                        "raw_json": it,
+                        "source": "exchange",
+                    },
+                    notional_value=notional_from_bitget_item(it),
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("rest catchup live.positions sync skip: %s", exc)
         grouped_p: dict[str, list[dict[str, Any]]] = {}
         for it in pitems:
             sym = str(it.get("instId") or it.get("symbol") or settings.symbol or "default")

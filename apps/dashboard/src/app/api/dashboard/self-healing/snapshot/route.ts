@@ -9,6 +9,7 @@ import {
 import {
   fetchAlertOutboxRecent,
   fetchMonitorAlertsOpen,
+  fetchSelfHealingStatus,
   fetchSystemHealth,
 } from "@/lib/api";
 import { requireOperatorGatewayAuth } from "@/lib/gateway-bff";
@@ -50,6 +51,21 @@ async function collectRaw(): Promise<SelfHealingRawInputs> {
 
   const probe = await runGatewayBootstrapProbe();
 
+  let self_healing_items = null;
+  let self_healing_error: string | null = null;
+  try {
+    const sh = await fetchSelfHealingStatus();
+    self_healing_items = (sh.items || []).map((i) => ({
+      service_name: i.service_name,
+      health_phase: i.health_phase,
+      updated_ts: i.updated_ts ?? null,
+      restart_events_ts: i.restart_events_ts,
+      timeline: [...(i.timeline ?? [])],
+    }));
+  } catch (e) {
+    self_healing_error = e instanceof Error ? e.message : "self_healing_status_failed";
+  }
+
   return {
     collected_at_ms,
     support_reference,
@@ -58,6 +74,8 @@ async function collectRaw(): Promise<SelfHealingRawInputs> {
     probe,
     open_alerts,
     outbox_items,
+    self_healing_items,
+    self_healing_error,
   };
 }
 

@@ -4,6 +4,7 @@ Anker fuer Prometheus-`runbook`-Annotations (siehe `infra/observability/promethe
 
 | Anker                                                                | Thema                                                 |
 | -------------------------------------------------------------------- | ----------------------------------------------------- |
+| `#p0-slo-und-wiring`                                                 | P0-Alarme, Webhooks, Alertmanager, Slack/Telegram      |
 | `#kill-switch-active`                                                | Kill-Switch                                           |
 | `#safety-latch`                                                      | Safety-Latch                                          |
 | `#reconcile-lag` / `#reconcile-drift`                                | Reconcile                                             |
@@ -28,6 +29,14 @@ Anker fuer Prometheus-`runbook`-Annotations (siehe `infra/observability/promethe
 | `#online-drift-shadow-only`                                          | Drift shadow_only                                     |
 | `#specialist-disagreement-severe`                                    | Spezialisten harte Stufe                              |
 | `#bitget-llm-provider-health`                                        | Bitget/LLM: Keys, Demo vs. Live, Rate-Limits (Health) |
+
+## p0-slo-und-wiring
+
+1. **P0-Regeln (Repo-Quelle):** `infra/observability/prometheus-alerts.yml`, Gruppe `p0_production_blocker` — u. a. `GatewayHighErrorRate` (5% 5xx, 2m, Min-Traffic-Guard), `LiveBrokerDown` (Prometheus-`up{job="live-broker"}==0` 3m, siehe `infra/observability/prometheus.yml` scrape `job_name`), `MarketPipelineLag` (`data_freshness_seconds{datapoint="candles_1m"}>5` 1m, Kerzen- vs. UTC-Alter).
+2. **Prometheus:** `rule_files` muss `prometheus-alerts.yml` referenzieren; lokal/CI: `promtool check rules infra/observability/prometheus-alerts.yml` (siehe Container `prom/prometheus` bzw. installiertes `promtool`) — so werden Syntax- und Regel-Schema-Fehler vor dem Deploy sichtbar.
+3. **Alertmanager:** Keine echten Secrets im Repo. In eurer echten `alertmanager.yml`: `receivers` (z. B. `name: oncall`) mit **`slack_configs`** (Webhook-URL in externem Secret / `-web.external-url` nur fuers UI) oder `webhook_configs` (generischer POST an einen Bot-Adapter). Fuer **Telegram** ueblich: eigener Dienst, der `POST` von Alertmanager annimmt und an die Telegram-Bot-API weitergibt, oder vorgefertigter Alertmanager-Adapter — URL und Token **nie** in Git, nur in Vault/K8s-Secret/CI-Variable.
+4. **Eskalation:** In `route:` nach `matchers` bzw. `match_re` (z. B. `alert_tier="p0"`, `severity="critical"`) stärkeren Receiver wählen; P1-Noise mit `inhibit_rules` dämpfen, Vorlage `infra/observability/alertmanager-inhibit-rules.example.yml` in `inhibit_rules:` integrieren, damit bei aktivem P0 die passenden P1 (`inhibit_slo` / `category` wie in der Datei) nicht doppelt eskalieren.
+5. **Kurztest-Webhook (Dev):** `receiver` → `webhook_configs: [{ url: "https://…", send_resolved: true }]` und einen öffentlich erreichbaren ECHO-/Requestbin-Endpunkt nutzen; in Production ausschließlich authentifizierte Ziele.
 
 ## bitget-llm-provider-health
 

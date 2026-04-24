@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import logging
 import random
@@ -11,8 +12,11 @@ from typing import Any
 
 import websockets
 from shared_py.bitget.config import BitgetSettings
+from shared_py.observability.metrics import inc_pipeline_event_drop
+from shared_py.observability.provider_log import provider_log_extra
 
 from market_stream.bitget_ws.rate_limiter import RateLimiter
+from market_stream.bitget_ws.sequence_buffer import BitgetWsSequenceBuffer
 from market_stream.bitget_ws.subscriptions import Subscription, SubscriptionManager
 from market_stream.gapfill.rest_gapfill import BitgetRestGapFillWorker
 from market_stream.provider_diagnostics import ProviderDiagnostics
@@ -84,6 +88,7 @@ class BitgetPublicWsClient:
         message_handlers: list[MessageHandler] | None = None,
         connected_callbacks: list[ConnectedCallback] | None = None,
         provider_diagnostics: ProviderDiagnostics | None = None,
+        sequence_gap_buffer_ms: float = 500.0,
     ) -> None:
         self._bitget_settings = bitget_settings
         self._rate_limiter = rate_limiter
@@ -112,6 +117,12 @@ class BitgetPublicWsClient:
         self._message_handlers = message_handlers or []
         self._connected_callbacks = connected_callbacks or []
         self._provider_diagnostics = provider_diagnostics
+        self._seq_gap_buffer_ms = float(sequence_gap_buffer_ms)
+        self._seq_buffer = BitgetWsSequenceBuffer(
+            gap_buffer_ms=self._seq_gap_buffer_ms,
+            on_gap_timeout=self._on_sequence_buffer_timeout,
+            logger=self._logger,
+        )
 
         for subscription in initial_subscriptions or []:
             self._subscriptions.add(subscription)
@@ -189,6 +200,7 @@ class BitgetPublicWsClient:
             self._last_pong_monotonic = time.monotonic()
             self._last_inbound_monotonic = time.monotonic()
             self._last_seq_by_key.clear()
+            self._seq_buffer.clear()
             self._stale_escalation_count = 0
             self._stats.tracked_seq_channels = 0
             self._stats.stale_escalation_count = 0
@@ -264,24 +276,31 @@ class BitgetPublicWsClient:
                 self._mark_pong()
                 continue
 
-            event = NormalizedEvent.from_ws_message(decoded)
-            self._stats.last_event_ts_ms = event.ingest_ts_ms
-            canon = event.to_canonical(gap_flag=False)
-            lat = canon.approx_latency_ms()
-            if lat is not None:
-                self._stats.last_ingest_latency_ms = lat
-            if event.exchange_ts_ms is not None:
-                self._stats.last_exchange_ts_ms = int(event.exchange_ts_ms)
-            self._stale_escalation_count = 0
-            self._stats.stale_escalation_count = 0
-            self._handle_subscription_ack(decoded)
-            await self._handle_seq_gap(decoded)
-            await self._publish_event(event)
-            for handler in self._message_handlers:
-                try:
-                    await handler(decoded)
-                except Exception as exc:
-                    self._logger.warning("message handler failed: %s", exc)
+            track_key = _sequence_tracking_key(decoded)
+            ready = await self._seq_buffer.feed(track_key, decoded)
+            if not ready:
+                continue
+
+            for item in ready:
+                event = NormalizedEvent.from_ws_message(item)
+                self._stats.last_event_ts_ms = event.ingest_ts_ms
+                canon = event.to_canonical(gap_flag=False)
+                lat = canon.approx_latency_ms()
+                if lat is not None:
+                    self._stats.last_ingest_latency_ms = lat
+                if event.exchange_ts_ms is not None:
+                    self._stats.last_exchange_ts_ms = int(event.exchange_ts_ms)
+                self._stale_escalation_count = 0
+                self._stats.stale_escalation_count = 0
+                self._handle_subscription_ack(item)
+                k2 = _sequence_tracking_key(item)
+                self._update_seq_published_stats(k2, item)
+                await self._publish_event(event)
+                for handler in self._message_handlers:
+                    try:
+                        await handler(item)
+                    except Exception as exc:
+                        self._logger.warning("message handler failed: %s", exc)
 
     async def _ping_loop(self) -> None:
         while not self._stop_event.is_set():
@@ -353,29 +372,44 @@ class BitgetPublicWsClient:
         self._stats.last_pong_ts_ms = int(time.time() * 1000)
         self._logger.info("WS pong received")
 
-    async def _handle_seq_gap(self, message: dict[str, Any]) -> None:
-        key = _sequence_tracking_key(message)
+    def _update_seq_published_stats(
+        self, key: str | None, message: dict[str, Any]
+    ) -> None:
         if key is None:
             return
         current_seq = extract_sequence(message)
         if current_seq is None:
             return
-        previous_seq = self._last_seq_by_key.get(key)
-        if previous_seq is not None and current_seq > previous_seq + 1:
-            self._stats.gap_events_count += 1
-            self._logger.warning(
-                "sequence gap detected key=%s previous=%s current=%s",
-                key,
-                previous_seq,
-                current_seq,
-            )
-            await self._gapfill_worker.on_gap_detected(
-                reason=f"seq-gap-{key}-{previous_seq}-{current_seq}"
-            )
         self._last_seq_by_key[key] = current_seq
         self._stats.last_seq = current_seq
         self._stats.last_seq_channel_key = key
         self._stats.tracked_seq_channels = len(self._last_seq_by_key)
+
+    async def _on_sequence_buffer_timeout(self, key: str, lost_ticks: int) -> None:
+        sym = key.rsplit(":", 1)[-1] if ":" in key else None
+        self._logger.critical(
+            "CRITICAL_WARNING: market stream sequence gap unresolved after %.0fms key=%s "
+            "lost_ticks=%s — STREAM_GAP_EVENT",
+            self._seq_gap_buffer_ms,
+            key,
+            lost_ticks,
+            extra=provider_log_extra(
+                provider="bitget_ws",
+                event="STREAM_GAP_EVENT",
+                symbol=sym,
+            ),
+        )
+        self._stats.gap_events_count += 1
+        if self._provider_diagnostics is not None:
+            self._provider_diagnostics.record_transport_error(
+                f"STREAM_GAP_EVENT key={key} lost_ticks={lost_ticks}"
+            )
+        await self._gapfill_worker.on_gap_detected(
+            reason=f"STREAM_GAP_EVENT:seq-timeout:{key}:lost={lost_ticks}"
+        )
+        if self._websocket is not None:
+            with contextlib.suppress(Exception):
+                await self._websocket.close()
 
     def _handle_subscription_ack(self, message: dict[str, Any]) -> None:
         event_name = message.get("event")
@@ -408,3 +442,15 @@ class BitgetPublicWsClient:
                 event.inst_id,
                 event.action,
             )
+        elif redis_id is None and not postgres_inserted:
+            with contextlib.suppress(Exception):
+                if self._postgres_sink.raw_persist_enabled:
+                    inc_pipeline_event_drop(
+                        component="bitget_public_ws",
+                        reason="dual_sink_failure",
+                    )
+                else:
+                    inc_pipeline_event_drop(
+                        component="bitget_public_ws",
+                        reason="redis_raw_publish_failed",
+                    )

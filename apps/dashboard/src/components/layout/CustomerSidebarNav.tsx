@@ -4,14 +4,21 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { useI18n } from "@/components/i18n/I18nProvider";
-import { PORTAL_BASE, portalPath } from "@/lib/console-paths";
+import {
+  PORTAL_BASE,
+  portalAccountPath,
+  portalPath,
+} from "@/lib/console-paths";
 
 const LINKS: readonly { href: string; messageKey: string }[] = [
-  { href: PORTAL_BASE, messageKey: "customerPortal.nav.dashboard" },
-  { href: portalPath("contract"), messageKey: "customerPortal.nav.contract" },
-  { href: portalPath("billing"), messageKey: "customerPortal.nav.billing" },
-  { href: portalPath("performance"), messageKey: "customerPortal.nav.performance" },
-];
+    { href: PORTAL_BASE, messageKey: "customerPortal.nav.overview" },
+    { href: portalPath("performance"), messageKey: "customerPortal.nav.performance" },
+    {
+      href: portalAccountPath("billing"),
+      messageKey: "customerPortal.nav.contractAndBilling",
+    },
+    { href: portalPath("help"), messageKey: "customerPortal.nav.helpSupport" },
+  ];
 
 export function CustomerSidebarNav() {
   const pathname = usePathname();
@@ -22,7 +29,7 @@ export function CustomerSidebarNav() {
         {t("public.shellBrand")}
       </Link>
       <p className="dash-sidebar-note muted small">
-        {t("customerPortal.metaTitle")}
+        {t("customerPortal.sidebarTrustLine")}
       </p>
       <Link href="/" className="dash-back-to-product">
         {t("customerPortal.backToProduct")}

@@ -92,15 +92,17 @@ class BitgetInstrumentCatalog:
     ) -> BitgetInstrumentCatalogSnapshot | None:
         if self._memory_snapshot is not None and not self._is_snapshot_stale(self._memory_snapshot):
             return self._memory_snapshot
-        cached = self._load_cached_snapshot()
-        if cached is not None and not self._is_snapshot_stale(cached):
-            self._memory_snapshot = cached
-            return cached
+        # Postgres is source of truth: prefer DB over Redis so admin deletes and re-ingest
+        # (e.g. market-stream startup refresh) are not hidden by a stale full snapshot in cache.
         db_snapshot = self._load_db_snapshot()
         if db_snapshot is not None and not self._is_snapshot_stale(db_snapshot):
             self._memory_snapshot = db_snapshot
             self._cache_snapshot(db_snapshot)
             return db_snapshot
+        cached = self._load_cached_snapshot()
+        if cached is not None and not self._is_snapshot_stale(cached):
+            self._memory_snapshot = cached
+            return cached
         if refresh_if_missing:
             return self.refresh_catalog(refresh_reason=refresh_reason)
         return db_snapshot or cached or self._memory_snapshot

@@ -46,6 +46,17 @@ class RollbackStableBody(BaseModel):
     scope_key: str = Field(default="", max_length=256)
 
 
+class ChallengerScopeBody(BaseModel):
+    model_name: str = Field(..., min_length=1, max_length=128)
+    changed_by: str = Field(default="api", min_length=1, max_length=128)
+    scope_type: str = Field(default="global", max_length=32)
+    scope_key: str = Field(default="", max_length=256)
+
+
+class AutoAssignChampionFromChallengerBody(ChallengerScopeBody):
+    notes: str | None = Field(default=None, max_length=2000)
+
+
 def _require_registry_mutation_secret(
     settings: LearningEngineSettings,
     x_model_registry_mutation_secret: Annotated[str | None, Header()] = None,
@@ -117,17 +128,20 @@ def build_registry_v2_router(settings: LearningEngineSettings) -> APIRouter:
         scope_type: str = "global",
         scope_key: str = "",
         x_model_registry_mutation_secret: Annotated[str | None, Header()] = None,
+        x_model_registry_champion_clear_secret: Annotated[str | None, Header()] = None,
     ) -> dict[str, Any]:
         _require_registry_mutation_secret(settings, x_model_registry_mutation_secret)
         with db_connect(settings.database_url) as conn:
             with conn.transaction():
                 return registry_v2_service.clear_registry_slot(
                     conn,
+                    settings,
                     model_name=model_name.strip(),
                     role="champion",
                     changed_by=changed_by.strip() or "api",
                     scope_type=scope_type.strip(),
                     scope_key=scope_key.strip(),
+                    x_champion_clear_secret=x_model_registry_champion_clear_secret,
                 )
 
     @r.delete("/learning/registry/v2/challenger")
@@ -143,6 +157,7 @@ def build_registry_v2_router(settings: LearningEngineSettings) -> APIRouter:
             with conn.transaction():
                 return registry_v2_service.clear_registry_slot(
                     conn,
+                    settings,
                     model_name=model_name.strip(),
                     role="challenger",
                     changed_by=changed_by.strip() or "api",
@@ -182,6 +197,41 @@ def build_registry_v2_router(settings: LearningEngineSettings) -> APIRouter:
                     model_name=body.model_name.strip(),
                     changed_by=body.changed_by.strip(),
                     reason=body.reason.strip(),
+                    scope_type=body.scope_type.strip(),
+                    scope_key=body.scope_key.strip(),
+                )
+
+    @r.post("/learning/registry/v2/challenger/ready-for-live")
+    def challenger_mark_ready_for_live(
+        body: ChallengerScopeBody,
+        x_model_registry_mutation_secret: Annotated[str | None, Header()] = None,
+    ) -> dict[str, Any]:
+        _require_registry_mutation_secret(settings, x_model_registry_mutation_secret)
+        with db_connect(settings.database_url) as conn:
+            with conn.transaction():
+                return registry_v2_service.mark_challenger_ready_for_live(
+                    conn,
+                    settings,
+                    model_name=body.model_name.strip(),
+                    changed_by=body.changed_by.strip() or "api",
+                    scope_type=body.scope_type.strip(),
+                    scope_key=body.scope_key.strip(),
+                )
+
+    @r.post("/learning/registry/v2/challenger/assign-champion")
+    def challenge_assign_champion(
+        body: AutoAssignChampionFromChallengerBody,
+        x_model_registry_mutation_secret: Annotated[str | None, Header()] = None,
+    ) -> dict[str, Any]:
+        _require_registry_mutation_secret(settings, x_model_registry_mutation_secret)
+        with db_connect(settings.database_url) as conn:
+            with conn.transaction():
+                return registry_v2_service.auto_assign_champion_from_ready_challenger(
+                    conn,
+                    settings,
+                    model_name=body.model_name.strip(),
+                    changed_by=body.changed_by.strip() or "api",
+                    notes=body.notes,
                     scope_type=body.scope_type.strip(),
                     scope_key=body.scope_key.strip(),
                 )

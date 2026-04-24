@@ -7,6 +7,9 @@ export default async function CustomerPortalHomePage() {
   return (
     <div className="panel">
       <h1 style={{ marginTop: 0 }}>{t("customerPortal.overviewTitle")}</h1>
+      <p className="muted" style={{ fontWeight: 500 }}>
+        {t("customerPortal.overviewSubhead")}
+      </p>
       <p className="muted">{t("customerPortal.overviewLead")}</p>
     </div>
   );

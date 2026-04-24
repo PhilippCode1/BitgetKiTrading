@@ -1,15 +1,20 @@
-FROM python:3.11.15-slim-bookworm
+# syntax=docker/dockerfile:1
+# PyTorch: Wheels im Builder, Runtime ohne Compiler.
+FROM python:3.11.15-slim-bookworm AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV PIP_NO_CACHE_DIR=1
 ENV PYTHONPATH=/app:/app/shared/python/src
-
 WORKDIR /app
 
-RUN python -m pip install --upgrade "pip<26" \
-    && addgroup --system appuser \
-    && adduser --system --uid 10001 --ingroup appuser appuser
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends build-essential \
+    && rm -rf /var/lib/apt/lists/* \
+    && python -m pip install --upgrade "pip<26" \
+    && python -m venv /opt/venv
+
+ENV PATH="/opt/venv/bin:$PATH"
 
 COPY constraints-runtime.txt /app/constraints-runtime.txt
 COPY config /app/config
@@ -18,12 +23,33 @@ COPY shared/contracts /app/shared/contracts
 COPY services/adversarial-engine /app/services/adversarial-engine
 
 WORKDIR /app/services/adversarial-engine
-# PyTorch nicht in constraints-runtime; gemeinsame Pakete trotzdem gepinnt.
+# CPU-Wheel (konsistent mit bisherigem single-stage)
+RUN pip install --no-cache-dir "torch>=2.2.0" --index-url "https://download.pytorch.org/whl/cpu"
 RUN pip install --no-cache-dir -c /app/constraints-runtime.txt -e /app/shared/python \
-    && pip install --no-cache-dir -c /app/constraints-runtime.txt -e . \
-    && chown -R appuser:appuser /app
+    && pip install --no-cache-dir -c /app/constraints-runtime.txt -e .
 
-USER appuser
+FROM python:3.11.15-slim-bookworm
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV PIP_NO_CACHE_DIR=1
+ENV PYTHONPATH=/app:/app/shared/python/src
+ENV PATH="/opt/venv/bin:$PATH"
+WORKDIR /app
+
+RUN addgroup --system --gid 10001 modul_mate \
+    && adduser --system --uid 10001 --ingroup modul_mate --home /app modul_mate
+
+COPY --from=builder /opt/venv /opt/venv
+COPY --from=builder /app /app
+
+WORKDIR /app/services/adversarial-engine
+RUN chown -R modul_mate:modul_mate /app
+
+USER modul_mate
 
 EXPOSE 8145
-CMD ["python", "-m", "adversarial_engine.main"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+  CMD /opt/venv/bin/python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8145/health', timeout=4)" || exit 1
+
+CMD ["/opt/venv/bin/python", "-m", "adversarial_engine.main"]

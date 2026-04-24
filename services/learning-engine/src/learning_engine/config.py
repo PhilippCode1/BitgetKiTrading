@@ -89,7 +89,22 @@ class LearningEngineSettings(BaseServiceSettings):
     learn_stop_min_atr_mult: str = Field(default="0.6", alias="LEARN_STOP_MIN_ATR_MULT")
     learn_false_breakout_window_ms: int = Field(default=600_000, alias="LEARN_FALSE_BREAKOUT_WINDOW_MS")
     learn_stale_signal_ms: int = Field(default=3_600_000, alias="LEARN_STALE_SIGNAL_MS")
+    learn_ai_attribution_enabled: bool = Field(
+        default=True,
+        alias="LEARN_AI_ATTRIBUTION_ENABLED",
+        description="Prompt 70: learn.post_trade_review nach trade_closed (KI-Szenario vs. Kerzen).",
+    )
+    learn_ai_attribution_window_ms: int = Field(
+        default=14_400_000,
+        alias="LEARN_AI_ATTRIBUTION_WINDOW_MS",
+        description="Attributions-Fenster (ms) ab decision_ts_ms, default 4h.",
+    )
     learn_max_feature_age_ms: int = Field(default=3_600_000, alias="LEARN_MAX_FEATURE_AGE_MS")
+    learn_apex_war_room_feedback_in_dataset: bool = Field(
+        default=True,
+        alias="LEARN_APEX_WAR_ROOM_FEEDBACK_IN_DATASET",
+        description="take_trade: consensus_penalty/uncertainty aus app.apex_audit_ledger (signal_id).",
+    )
     learn_multi_tf_threshold: int = Field(default=40, alias="LEARN_MULTI_TF_THRESHOLD")
     paper_mmr_base: str = Field(default="0.005", alias="PAPER_MMR_BASE")
     paper_liq_fee_buffer_usdt: str = Field(default="5", alias="PAPER_LIQ_FEE_BUFFER_USDT")
@@ -176,6 +191,7 @@ class LearningEngineSettings(BaseServiceSettings):
     @field_validator(
         "learn_false_breakout_window_ms",
         "learn_stale_signal_ms",
+        "learn_ai_attribution_window_ms",
         "learn_max_feature_age_ms",
         "news_context_lookback_ms",
         "news_context_lookahead_ms",
@@ -236,6 +252,30 @@ class LearningEngineSettings(BaseServiceSettings):
     backtest_kfolds: int = Field(default=5, alias="BACKTEST_KFOLDS")
     train_cv_kfolds: int = Field(default=5, alias="TRAIN_CV_KFOLDS")
     train_cv_embargo_pct: float = Field(default=0.05, alias="TRAIN_CV_EMBARGO_PCT")
+    train_cv_purge_ms: int = Field(
+        default=0,
+        ge=0,
+        alias="TRAIN_CV_PURGE_MS",
+        description="Mindestabstand (ms) vor dem Test-Block: Train-Range darf das Purge+Test+Embargo-Band nicht schneiden.",
+    )
+    train_cv_embargo_time_ms: int = Field(
+        default=0,
+        ge=0,
+        alias="TRAIN_CV_EMBARGO_TIME_MS",
+        description="Embargo in ms nach dem Test; 0 = Spanne * TRAIN_CV_EMBARGO_PCT (wie bisher, in ms).",
+    )
+    train_cv_min_initial_train_pct: float = Field(
+        default=0.1,
+        ge=0.0,
+        le=0.5,
+        alias="TRAIN_CV_MIN_INITIAL_TRAIN_PCT",
+        description="Anteil der Erst-Beobachtungen nur fuer Training vor dem ersten Test-Fold (Walk-Forward).",
+    )
+    train_cv_exclude_prior_test: bool = Field(
+        default=True,
+        alias="TRAIN_CV_EXCLUDE_PRIOR_TEST",
+        description="Walk-Forward: fruehere Test-Indizes nicht in spaeteren Trainings-Folds wiederverwenden.",
+    )
     train_random_state: int = Field(default=42, alias="TRAIN_RANDOM_STATE")
     specialist_family_min_rows: int = Field(
         default=40,
@@ -267,6 +307,39 @@ class LearningEngineSettings(BaseServiceSettings):
     replay_speed_factor: float = Field(default=60.0, alias="REPLAY_SPEED_FACTOR")
     model_calibration_required: bool = Field(default=False, alias="MODEL_CALIBRATION_REQUIRED")
     model_champion_name: str = Field(default="take_trade_prob", alias="MODEL_CHAMPION_NAME")
+    learning_drift_retrain_window_days: int = Field(
+        default=30,
+        alias="LEARNING_DRIFT_RETRAIN_WINDOW_DAYS",
+        ge=1,
+        le=4000,
+        description="Fenster fuer take_trade_prob Retrain nach MSE-Drift (Tage, rueckblickend).",
+    )
+    learning_drift_mse_min_confidence: float = Field(
+        default=0.99,
+        ge=0.5,
+        le=0.9999,
+        alias="LEARNING_DRIFT_MSE_MIN_CONFIDENCE",
+    )
+    learning_drift_retrain_cooldown_sec: int = Field(
+        default=3600,
+        ge=0,
+        alias="LEARNING_DRIFT_RETRAIN_COOLDOWN_SEC",
+    )
+    learning_drift_skip_event_bus: bool = Field(
+        default=False,
+        alias="LEARNING_DRIFT_SKIP_EVENT_BUS",
+        description="Tests/Offline: kein XADD auf Redis bei Drift-Event.",
+    )
+    learning_drift_retrain_inprocess: bool = Field(
+        default=False,
+        alias="LEARNING_DRIFT_RETRAIN_INPROCESS",
+        description="Retrain-Job synchron im Prozess (Tests) statt Subprozess.",
+    )
+    learning_drift_retrain_smoke: bool = Field(
+        default=False,
+        alias="LEARNING_DRIFT_RETRAIN_SMOKE",
+        description="Nur DB-Stubs + PENDING_EVAL, kein Sklearn-Training (CI/Schnelltests).",
+    )
 
     model_promotion_gates_enabled: bool = Field(default=False, alias="MODEL_PROMOTION_GATES_ENABLED")
     model_promotion_min_walk_forward_mean_roc_auc: float = Field(
@@ -313,6 +386,31 @@ class LearningEngineSettings(BaseServiceSettings):
         default=None,
         alias="MODEL_REGISTRY_MUTATION_SECRET",
         description="Wenn gesetzt: POST/DELETE Registry-V2 erfordert Header X-Model-Registry-Mutation-Secret.",
+    )
+    model_challenger_champion_backtest_gate_enabled: bool = Field(
+        default=False,
+        alias="MODEL_CHALLENGER_CHAMPION_BACKTEST_GATE_ENABLED",
+        description="Gate: metadata.champion_challenger_backtest (min. n Trades, Sharpe, DD).",
+    )
+    model_challenger_champion_backtest_min_trades: int = Field(
+        default=500,
+        ge=1,
+        alias="MODEL_CHALLENGER_CHAMPION_BACKTEST_MIN_TRADES",
+    )
+    model_challenger_champion_backtest_require_baseline_match: bool = Field(
+        default=False,
+        alias="MODEL_CHALLENGER_CHAMPION_BASELINE_RUN_MATCH_REQUIRED",
+        description="Wenn true: champion_baseline_run_id muss Live-Champion-Run matchen.",
+    )
+    model_registry_champion_deletion_forbidden: bool = Field(
+        default=True,
+        alias="MODEL_REGISTRY_CHAMPION_DELETION_FORBIDDEN",
+        description="DELETE champion verbieten (Ersatz via POST champion), ausser mit Clear-Secret.",
+    )
+    model_registry_champion_clear_secret: str | None = Field(
+        default=None,
+        alias="MODEL_REGISTRY_CHAMPION_CLEAR_SECRET",
+        description="X-Model-Registry-Champion-Clear-Secret, wenn CHAMPION_DELETION_FORBIDDEN true.",
     )
 
     model_promotion_fail_on_cv_symbol_leakage_take_trade: bool = Field(

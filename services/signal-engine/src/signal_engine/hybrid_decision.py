@@ -17,13 +17,18 @@ from shared_py.meta_trade_decision import (
 from shared_py.signal_contracts import DecisionState, TradeAction
 
 from signal_engine.config import SignalEngineSettings
+from signal_engine.product_family_risk import (
+    effective_min_leverage,
+    market_family_from_signal_row,
+    max_config_risk_leverage,
+)
 from signal_engine.risk_governor import (
     apply_live_ramp_cap,
     assess_risk_governor,
     extract_risk_account_snapshot,
 )
 
-HYBRID_DECISION_POLICY_VERSION = "hybrid-v4"
+HYBRID_DECISION_POLICY_VERSION = "hybrid-v5"
 
 
 def assess_hybrid_decision(
@@ -32,6 +37,7 @@ def assess_hybrid_decision(
     signal_row: dict[str, Any],
 ) -> dict[str, Any]:
     direction = str(signal_row.get("direction") or "").strip().lower()
+    product_family = market_family_from_signal_row(signal_row)
     gov = assess_risk_governor(settings=settings, signal_row=signal_row, direction=direction)
     governor_hard: list[str] = []
     if getattr(settings, "risk_hard_gating_enabled", True):
@@ -126,12 +132,11 @@ def assess_hybrid_decision(
         trade_score=trade_score,
         model_uncertainty=model_uncertainty_for_leverage,
         governor_max_leverage=int(gov["max_leverage_cap"]),
+        market_family=product_family,
     )
     leverage_block_reason = leverage_decision["blocked_reason"]
-    if (
-        final_trade_action == "allow_trade"
-        and leverage_decision["allowed_leverage"] < settings.risk_allowed_leverage_min
-    ):
+    min_lev = effective_min_leverage(product_family, settings.risk_allowed_leverage_min)
+    if final_trade_action == "allow_trade" and leverage_decision["allowed_leverage"] < min_lev:
         final_decision_state = "downgraded"
         final_trade_action = "do_not_trade"
         model_gate_reasons = _unique_strs(
@@ -245,6 +250,7 @@ def assess_hybrid_decision(
     _u = leverage_decision.get("unified_leverage_allocation") or {}
     return {
         "decision_policy_version": HYBRID_DECISION_POLICY_VERSION,
+        "market_family": product_family,
         "decision_confidence_0_1": round(_clamp01(decision_confidence), 6),
         "allowed_leverage": leverage_decision["allowed_leverage"],
         "recommended_leverage": (
@@ -296,6 +302,7 @@ def assess_hybrid_decision(
             "model_gate_reasons": model_gate_reasons,
             "approval_reasons": approval_reasons,
             "inputs": {
+                "market_family": product_family,
                 "market_regime": market_regime or None,
                 "regime_bias": regime_bias or None,
                 "regime_confidence_0_1": regime_confidence,
@@ -424,6 +431,7 @@ def _signal_leverage_decision(
     trade_score: float,
     model_uncertainty: float,
     governor_max_leverage: int,
+    market_family: str = "futures",
 ) -> dict[str, Any]:
     source_snapshot = _as_dict(signal_row.get("source_snapshot_json"))
     feature_snapshot = _as_dict(source_snapshot.get("feature_snapshot"))
@@ -433,15 +441,18 @@ def _signal_leverage_decision(
     data_issues = _unique_strs(
         list(source_snapshot.get("data_issues") or []) + list(signal_row.get("uncertainty_reasons_json") or [])
     )
-    risk_max = max(
-        settings.risk_allowed_leverage_min,
-        min(settings.risk_allowed_leverage_max, 75),
+    config_hi = min(settings.risk_allowed_leverage_max, 75)
+    risk_max = max_config_risk_leverage(
+        market_family,
+        max(settings.risk_allowed_leverage_min, config_hi),
     )
+    eff_min = effective_min_leverage(market_family, settings.risk_allowed_leverage_min)
+    liq_preview = 1 if market_family == "spot" else risk_max
     liq_stress = liquidation_proximity_stress_0_1(
         effective_adverse_bps=expected_mae_bps,
-        preview_leverage=risk_max,
+        preview_leverage=liq_preview,
     )
-    liq_cap_val = cap_from_liquidation_stress(stress_0_1=liq_stress, risk_max=risk_max)
+    liq_cap_val = cap_from_liquidation_stress(stress_0_1=liq_stress, risk_max=max(1, risk_max))
     if liq_cap_val is None:
         liq_cap_val = risk_max
 
@@ -460,6 +471,11 @@ def _signal_leverage_decision(
     else:
         impact_bps = _coerce_float(primary_tf.get("impact_buy_bps_10000"))
 
+    gov_bind_floor = 1 if market_family == "spot" else 7
+    risk_gov_cap = max(
+        gov_bind_floor,
+        min(75, int(governor_max_leverage)),
+    )
     factor_caps = {
         "edge_factor_cap": _cap_from_score(
             _edge_score(
@@ -522,23 +538,25 @@ def _signal_leverage_decision(
         "data_quality_factor_cap": 6
         if data_issues or quality_gate.get("passed") is False
         else risk_max,
-        "risk_governor_cap": max(
-            7, min(75, int(governor_max_leverage)),
-        ),
+        "risk_governor_cap": min(risk_max, risk_gov_cap),
         "instrument_metadata_cap": (
-            max(
-                0,
-                min(
-                    risk_max,
-                    int(instrument_meta.get("leverage_max")),
-                ),
-            )
-            if instrument_meta.get("supports_leverage") is True
-            and instrument_meta.get("leverage_max") not in (None, "")
+            risk_max
+            if market_family == "spot"
             else (
-                0
-                if instrument_meta.get("supports_leverage") is False
-                else risk_max
+                max(
+                    0,
+                    min(
+                        risk_max,
+                        int(instrument_meta.get("leverage_max")),
+                    ),
+                )
+                if instrument_meta.get("supports_leverage") is True
+                and instrument_meta.get("leverage_max") not in (None, "")
+                else (
+                    0
+                    if instrument_meta.get("supports_leverage") is False
+                    else risk_max
+                )
             )
         ),
     }
@@ -546,7 +564,7 @@ def _signal_leverage_decision(
     decision = allocate_integer_leverage(
         requested_leverage=risk_max,
         caps={"model_cap": model_cap},
-        min_leverage=settings.risk_allowed_leverage_min,
+        min_leverage=eff_min,
         max_leverage=risk_max,
         blocked_reason="hybrid_allowed_leverage_below_minimum",
     )
@@ -568,7 +586,7 @@ def _signal_leverage_decision(
         "impact_bps_10000": impact_bps,
         "liquidity_source": liquidity_source or None,
         "liquidation_proximity_stress_0_1": liq_stress,
-        "liquidation_preview_leverage": risk_max,
+        "liquidation_preview_leverage": liq_preview,
     }
     return decision
 

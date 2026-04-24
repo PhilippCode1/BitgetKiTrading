@@ -1,3 +1,7 @@
+"""
+Hilfsmeldungen an den monitor-engine; GPU-/Warteschlangen-Metriken liegen in
+``inference_telemetry`` (P77) und erscheinen am inference-server-``/metrics``.
+"""
 from __future__ import annotations
 
 import asyncio

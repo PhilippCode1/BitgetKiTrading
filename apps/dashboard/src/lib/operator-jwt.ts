@@ -54,9 +54,13 @@ function mapPayloadToSession(payload: JWTPayload): OperatorSession {
   if (isCustomer && !isSuper) {
     return { role: "none", sub };
   }
+  const roleClaim =
+    typeof payload["role"] === "string"
+      ? payload["role"].trim().toLowerCase()
+      : "";
   const hasAdmin =
     gatewayRoles.includes("admin:read") || gatewayRoles.includes("admin:write");
-  if (hasAdmin) {
+  if (hasAdmin && roleClaim === "admin") {
     return { role: "admin", sub };
   }
   return { role: "none", sub };
@@ -73,6 +77,11 @@ function mapPayloadToDashboardPersona(payload: JWTPayload): DashboardPersona {
   );
   if (portal.has("super_admin")) {
     return "operator";
+  }
+  const mainRole =
+    typeof payload["role"] === "string" ? payload["role"].trim().toLowerCase() : "";
+  if (mainRole === "customer") {
+    return "customer";
   }
   if (portal.has("customer")) {
     return "customer";

@@ -8,6 +8,7 @@ import { LiveDataSituationBar } from "@/components/live-data/LiveDataSituationBa
 import {
   fetchLiveBrokerDecisions,
   fetchLiveBrokerFills,
+  fetchLiveBrokerRuntime,
   fetchLiveState,
   fetchPaperTradesRecent,
   fetchSystemHealthCached,
@@ -33,11 +34,13 @@ import {
 import {
   labelsForLineageSegment,
   shadowLiveMatchCellAria,
+  shadowMatchLatchCellAria,
   violationEntryCount,
 } from "@/lib/shadow-live-console";
 import type {
   LiveBrokerDecisionsResponse,
   LiveBrokerFillsResponse,
+  LiveBrokerRuntimeResponse,
   LiveStateResponse,
   PaperTradesResponse,
   SystemHealthResponse,
@@ -72,12 +75,13 @@ export default async function ShadowLivePage({
   const settled = await Promise.allSettled([
     fetchLiveBrokerDecisions(),
     fetchLiveBrokerFills(),
+    fetchLiveBrokerRuntime(),
     fetchPaperTradesRecent({ symbol: sym, limit: 40 }),
     fetchLiveState({ symbol: sym, timeframe: tf, limit: 120 }),
     fetchSystemHealthCached(),
   ]);
 
-  const [dRes, fRes, pRes, lRes, hRes] = settled;
+  const [dRes, fRes, rRes, pRes, lRes, hRes] = settled;
 
   let decisionsRes: LiveBrokerDecisionsResponse | undefined;
   if (dRes.status === "fulfilled") decisionsRes = dRes.value;
@@ -114,6 +118,13 @@ export default async function ShadowLivePage({
       `${t("pages.shadowLive.sectionHealth")}: ${userFacingBodyForFetchFailure(hRes.reason, t)}`,
     );
 
+  let runtimeRes: LiveBrokerRuntimeResponse | undefined;
+  if (rRes.status === "fulfilled") runtimeRes = rRes.value;
+  else
+    sectionErrors.push(
+      `${t("pages.shadowLive.sectionRuntime")}: ${userFacingBodyForFetchFailure(rRes.reason, t)}`,
+    );
+
   const decisions = decisionsRes?.items ?? [];
   const fills = fillsRes?.items ?? [];
   const paperTrades = paperRes?.trades ?? [];
@@ -126,6 +137,7 @@ export default async function ShadowLivePage({
   });
   const divergences = buckets.divergenceRows.slice(0, 15);
 
+  const rt = runtimeRes?.item;
   const allFailed = sectionErrors.length === settled.length;
   const pageError = allFailed ? sectionErrors.join(" · ") : null;
 
@@ -192,6 +204,17 @@ export default async function ShadowLivePage({
         <h2>{t("pages.shadowLive.summaryTitle")}</h2>
         <p className="muted small">{t("pages.shadowLive.summaryFootnote")}</p>
         <ul className="news-list operator-metric-list">
+          {rt && rt.require_shadow_match_before_live ? (
+            <li>
+              {t("pages.shadowLive.mLatchPolicy")}{" "}
+              <strong>
+                {t("pages.shadowLive.mLatchOn", {
+                  timeoutMs: rt.shadow_match_latch_timeout_ms ?? 500,
+                  ttlSec: rt.shadow_match_redis_ttl_sec ?? 300,
+                })}
+              </strong>
+            </li>
+          ) : null}
           <li>
             {t("pages.shadowLive.mLiveCand")}{" "}
             <strong>{outcome.liveCandidates}</strong> /{" "}
@@ -297,6 +320,7 @@ export default async function ShadowLivePage({
                   <th>{t("approvals.thSymbol")}</th>
                   <th>{t("pages.shadowLive.thRuntime")}</th>
                   <th>{t("pages.shadowLive.thShadowLive")}</th>
+                  <th>{t("pages.shadowLive.thRedisLatch")}</th>
                   <th>{t("pages.shadowLive.thMirror")}</th>
                   <th>{t("pages.shadowLive.thHard")}</th>
                   <th>{t("pages.shadowLive.thSoft")}</th>
@@ -311,6 +335,12 @@ export default async function ShadowLivePage({
                   );
                   const matchKey =
                     `pages.shadowLive.matchCell.${matchAria}` as const;
+                  const latchAria = shadowMatchLatchCellAria({
+                    ok: d.shadow_match_latch_ok,
+                    skipped: d.shadow_match_latch_skipped,
+                  });
+                  const latchKey =
+                    `pages.shadowLive.latchCell.${latchAria}` as const;
                   const hardN = violationEntryCount(
                     d.shadow_live_hard_violations,
                   );
@@ -324,6 +354,18 @@ export default async function ShadowLivePage({
                         {d.effective_runtime_mode ?? dash}
                       </td>
                       <td>{t(matchKey)}</td>
+                      <td
+                        className="mono-small"
+                        title={
+                          d.shadow_match_latch_error
+                            ? String(d.shadow_match_latch_error)
+                            : d.shadow_match_latch_waited_ms != null
+                              ? `waited_ms=${d.shadow_match_latch_waited_ms}`
+                              : undefined
+                        }
+                      >
+                        {t(latchKey)}
+                      </td>
                       <td>
                         {d.live_mirror_eligible == null
                           ? dash

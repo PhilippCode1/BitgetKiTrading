@@ -20,6 +20,8 @@ from signal_engine.hybrid_decision import HYBRID_DECISION_POLICY_VERSION, assess
 def signal_settings(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("DATABASE_URL", "postgresql://test:test@127.0.0.1:5432/test")
     monkeypatch.setenv("REDIS_URL", "redis://127.0.0.1:6379/0")
+    monkeypatch.setenv("EXECUTION_MODE", "paper")
+    monkeypatch.setenv("LIVE_BROKER_ENABLED", "false")
     from signal_engine.config import SignalEngineSettings
 
     return SignalEngineSettings()

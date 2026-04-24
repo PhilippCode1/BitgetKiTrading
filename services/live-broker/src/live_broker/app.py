@@ -2,6 +2,7 @@ from __future__ import annotations
 
 # ruff: noqa: E402, I001 - Bootstrap-Reihenfolge / Monorepo-Pfade
 import logging
+import os
 import queue
 import sys
 import threading
@@ -33,12 +34,17 @@ from live_broker.control_plane.service import BitgetControlPlaneService
 from live_broker.exchange_client import BitgetExchangeClient
 from live_broker.execution.service import LiveExecutionService
 from live_broker.exits.service import LiveExitService
+from live_broker.global_halt_latch import GlobalHaltLatch
 from live_broker.orders.service import LiveBrokerOrderService
 from live_broker.persistence.repo import LiveBrokerRepository
 from live_broker.private_rest import BitgetPrivateRestClient, BitgetRestError
 from live_broker.private_ws import BitgetPrivateWsClient, PrivateWsClientStats, NormalizedPrivateEvent
 from live_broker.private_ws.sync import ExchangeStateSyncService
 from live_broker.reconcile.service import LiveReconcileService
+from live_broker.safety_oracle_bootstrap import (
+    join_runtime_safety_oracle_thread,
+    start_runtime_safety_oracle_thread,
+)
 from live_broker.worker import LiveBrokerWorker
 from shared_py.bitget import BitgetInstrumentCatalog, BitgetInstrumentMetadataService
 from shared_py.resilience import merge_survival_truth
@@ -57,6 +63,7 @@ logger = logging.getLogger("live_broker.app")
 class LiveBrokerRuntime:
     def __init__(self, settings: LiveBrokerSettings) -> None:
         self.settings = settings
+        self._strategy_config_guard_failed = False
         self.bus = RedisStreamBus.from_url(
             settings.redis_url,
             dedupe_ttl_sec=settings.eventbus_dedupe_ttl_sec,
@@ -75,6 +82,7 @@ class LiveBrokerRuntime:
         self.repo = LiveBrokerRepository(settings.database_url)
         self.exchange_client = BitgetExchangeClient(settings)
         self.private_rest_client = BitgetPrivateRestClient(settings)
+        self.global_halt = GlobalHaltLatch(settings.redis_url)
         self.order_service = LiveBrokerOrderService(
             settings,
             self.repo,
@@ -82,6 +90,7 @@ class LiveBrokerRuntime:
             bus=self.bus,
             catalog=self.catalog,
             metadata_service=self.metadata_service,
+            global_halt=self.global_halt,
         )
         self.exit_service = LiveExitService(
             settings,
@@ -145,6 +154,7 @@ class LiveBrokerRuntime:
         self.execution_service.set_truth_state_fn(self._truth_state_for_execution)
         self._stop = threading.Event()
         self._worker_thread: threading.Thread | None = None
+        self._safety_oracle_thread: threading.Thread | None = None
         self._ws_thread: threading.Thread | None = None
 
     async def _handle_ws_message(self, event: NormalizedPrivateEvent) -> None:
@@ -280,6 +290,8 @@ class LiveBrokerRuntime:
     def start_background(self) -> None:
         if self._worker_thread is not None:
             return
+        if getattr(self, "_strategy_config_guard_failed", False):
+            return
         try:
             self.catalog.refresh_catalog(refresh_reason="startup")
             self.catalog_entry = self.catalog.current_configured_instrument(
@@ -292,8 +304,25 @@ class LiveBrokerRuntime:
             self.catalog_block_reason = str(exc)
             logger.error("live-broker catalog blocked: %s", exc)
             return
+        dsn = (self.settings.database_url or "").strip()
+        try:
+            from live_broker.strategy_config_guard import should_verify, verify_bound_strategy_version_or_raise
+
+            if dsn and should_verify(self.settings):
+                verify_bound_strategy_version_or_raise(
+                    dsn,
+                    version_id=self.settings.live_broker_strategy_version_id,
+                    expected_hash=self.settings.live_broker_strategy_config_expected_hash,
+                )
+        except Exception as exc:
+            self._strategy_config_guard_failed = True
+            self.catalog_block_reason = f"strategy_registry_config_guard: {exc}"
+            logger.critical("live-broker strategy config guard: %s", exc)
+            return
         self._stop.clear()
-        
+        self.global_halt.start()
+        start_runtime_safety_oracle_thread(self)
+
         self._worker_thread = threading.Thread(
             target=self.worker.run_forever,
             args=(self._stop,),
@@ -314,7 +343,10 @@ class LiveBrokerRuntime:
 
     def stop_background(self) -> None:
         self._stop.set()
-        
+        join_runtime_safety_oracle_thread(self)
+        self.global_halt.stop()
+        self.repo.close()
+
         # WS Client graceful stop
         if self._ws_thread is not None:
             try:
@@ -343,6 +375,7 @@ class LiveBrokerRuntime:
                 schema_detail = str(exc)[:200]
         return {
             "service": "live-broker",
+            "global_halt": self.global_halt.is_halted,
             "execution_mode": self.settings.execution_mode,
             "runtime_mode": self.settings.execution_mode,
             "strategy_execution_mode": self.settings.strategy_execution_mode,
@@ -505,6 +538,27 @@ def create_app(*, start_background: bool = True) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
+        dsn = (settings.database_url or "").strip()
+        skip = (os.environ.get("BITGET_SKIP_MIGRATION_LATCH") or "").strip().lower() in (
+            "1",
+            "true",
+            "yes",
+            "on",
+        )
+        if dsn and not skip:
+            from shared_py.datastore.sqlalchemy_async import create_pooled_async_engine
+            from shared_py.migration_latch import assert_repo_migrations_applied_async
+
+            eng = create_pooled_async_engine(dsn)
+            app.state.db_async_engine = eng
+            try:
+                await assert_repo_migrations_applied_async(eng)
+            except Exception:
+                await eng.dispose()
+                app.state.db_async_engine = None
+                raise
+        else:
+            app.state.db_async_engine = None
         app.state.runtime = runtime
         if start_background:
             runtime.start_background()
@@ -513,6 +567,10 @@ def create_app(*, start_background: bool = True) -> FastAPI:
         finally:
             if start_background:
                 runtime.stop_background()
+            eng = getattr(app.state, "db_async_engine", None)
+            if eng is not None:
+                await eng.dispose()
+                app.state.db_async_engine = None
 
     app = FastAPI(
         title="live-broker",

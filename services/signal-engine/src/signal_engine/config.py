@@ -57,6 +57,15 @@ class SignalEngineSettings(BaseServiceSettings):
         alias="BITGET_MARGIN_ACCOUNT_MODE",
     )
     bitget_margin_coin: str | None = Field(default=None, alias="BITGET_MARGIN_COIN")
+    risk_margin_mmr_halt_threshold_0_1: float = Field(
+        default=0.20,
+        alias="RISK_MARGIN_MMR_HALT_THRESHOLD_0_1",
+        description="Margin: maintenance_margin_rate_0_1 aus Metadaten; darueber kein Sign-Off.",
+    )
+    risk_spot_balance_check_enabled: bool = Field(
+        default=True,
+        alias="RISK_SPOT_BALANCE_CHECK_ENABLED",
+    )
 
     signal_stream: str = Field(default=STREAM_DRAWING_UPDATED, alias="SIGNAL_STREAM")
     signal_group: str = Field(default="signal-engine", alias="SIGNAL_GROUP")

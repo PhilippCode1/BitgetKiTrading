@@ -90,7 +90,7 @@ pnpm run check-locale-de
 - `scripts/check_dashboard_de_copy.mjs`
 - `apps/dashboard/package.json` (Script `check-locale-de`)
 
-## Bekannte offene Punkte
+## Bekannte offene Punkte (i18n-Backlog, kein technischer Launch-Blocker — siehe P83 / `docs/LaunchChecklist.md`)
 
 - **`ops/page.tsx`** und weitere dichte Operator-Tabellen: weiterhin viele lokale Überschriften — nächster sinnvoller Schritt wäre ein `pages.ops.table.*`-Namespace.
 - **`FORBIDDEN_USER_VISIBLE_TERMS`**: automatische Spiegelung ins Dashboard-Skript ist **nicht** erfolgt (Duplikatpflege); bei Bedarf JSON-Export aus Python oder gemeinsame Liste ergänzen.

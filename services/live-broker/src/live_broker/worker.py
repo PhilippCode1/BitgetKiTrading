@@ -10,6 +10,13 @@ from typing import Any
 
 from shared_py.eventbus import RedisStreamBus
 from shared_py.observability import start_thread_periodic_heartbeat
+from shared_py.observability.apex_trace import (
+    finalize_apex_deltas,
+    log_apex_chain_ms,
+    new_apex_trace,
+    now_ns,
+    set_hop,
+)
 
 from live_broker.config import LiveBrokerSettings
 from live_broker.execution.service import LiveExecutionService
@@ -223,7 +230,19 @@ class LiveBrokerWorker:
                                         item.message_id,
                                     )
                                     continue
-                                self._execution_service.handle_signal_event(item.envelope)
+                                t_mq1 = now_ns()
+                                base = item.envelope.apex_trace
+                                if not isinstance(base, dict) or not base:
+                                    base = new_apex_trace()
+                                se = (base.get("hops") or {}).get("signal_engine") or {}
+                                se_out = se.get("t_exit_ns")
+                                mq_in = int(se_out) if se_out is not None else t_mq1
+                                merged_apex = finalize_apex_deltas(
+                                    set_hop(base, "message_queue", mq_in, t_mq1)
+                                )
+                                log_apex_chain_ms(merged_apex, stage="live_broker_message_queue")
+                                env2 = item.envelope.model_copy(update={"apex_trace": merged_apex})
+                                self._execution_service.handle_signal_event(env2)
                                 self._stats["signals_consumed"] += 1
                             else:
                                 self._execution_service.record_paper_reference_event(

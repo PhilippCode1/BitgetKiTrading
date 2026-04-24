@@ -39,6 +39,21 @@ class LiveBrokerSettings(BitgetSettings):
     )
 
     database_url: str = Field(default="", alias="DATABASE_URL")
+    live_broker_strategy_version_id: str = Field(
+        default="",
+        alias="LIVE_BROKER_STRATEGY_VERSION_ID",
+        description="Optional: gebundene learn.strategy_versions.id — Startup prüft Hash gegen DB.",
+    )
+    live_broker_strategy_config_expected_hash: str = Field(
+        default="",
+        alias="LIVE_BROKER_STRATEGY_CONFIG_CHECKSUM",
+        description="SHA-256 (hex) der gebundenen Strategie-Parameter; muss learn.strategy_versions.configuration_hash treffen.",
+    )
+    audit_ledger_internal_url: str = Field(
+        default="",
+        alias="AUDIT_LEDGER_INTERNAL_URL",
+        description="Optional: Base-URL audit-ledger fuer POST /internal/v1/apex-latency/upsert; sonst DB direkt im Live-Broker.",
+    )
     redis_url: str = Field(default="", alias="REDIS_URL")
     live_broker_port: int = Field(default=8120, alias="LIVE_BROKER_PORT")
     live_broker_consumer_group: str = Field(
@@ -149,6 +164,20 @@ class LiveBrokerSettings(BitgetSettings):
         default=False,
         alias="LIVE_RECONCILE_REST_CATCHUP_ON_WS_STALE",
     )
+    live_broker_position_drift_interval_sec: int = Field(
+        default=30,
+        ge=1,
+        le=600,
+        alias="LIVE_BROKER_POSITION_DRIFT_INTERVAL_SEC",
+        description="Aktive Positions-Drift: Abgleich live.positions vs. Bitget (Sekunden).",
+    )
+    live_broker_position_notional_halt_ratio: float = Field(
+        default=0.01,
+        ge=0.0001,
+        le=1.0,
+        alias="LIVE_BROKER_POSITION_NOTIONAL_HALT_RATIO",
+        description="Relativer Notional-Drift (local vs. Exchange) loest system:global_halt aus.",
+    )
     live_broker_block_live_without_exchange_truth: bool = Field(
         default=False,
         alias="LIVE_BROKER_BLOCK_LIVE_WITHOUT_EXCHANGE_TRUTH",
@@ -230,6 +259,21 @@ class LiveBrokerSettings(BitgetSettings):
         default=False,
         alias="LIVE_PROBE_PUBLIC_API_BEFORE_ORDER_SUBMIT",
     )
+    enable_pre_flight_liquidity_guard: bool = Field(
+        default=True,
+        alias="LIVE_ENABLE_PRE_FLIGHT_LIQUIDITY_GUARD",
+        description="Vor Market-Submits: Top-5-Orderbook aus Redis, Slippage-Limit (Prompt 30).",
+    )
+    live_liquidity_guard_max_slippage_bps: str = Field(
+        default="50",
+        alias="LIVE_LIQUIDITY_GUARD_MAX_SLIPPAGE_BPS",
+        description="Max. Slippage vs. Mid in Basispunkten (50 = 0,5 Prozent).",
+    )
+    live_liquidity_guard_strict_no_cache: bool = Field(
+        default=True,
+        alias="LIVE_LIQUIDITY_GUARD_STRICT_NO_CACHE",
+        description="Fehlender Redis-Top5-Snapshot blockt Submit; false = nur Warnung.",
+    )
     live_safety_latch_on_duplicate_recovery_fail: bool = Field(
         default=False,
         alias="LIVE_SAFETY_LATCH_ON_DUPLICATE_RECOVERY_FAIL",
@@ -238,6 +282,22 @@ class LiveBrokerSettings(BitgetSettings):
         default=False,
         alias="LIVE_OPERATOR_INTEL_OUTBOX_ENABLED",
         description="Publiziert operator_intel Events (Telegram via alert-engine Outbox)",
+    )
+    runtime_safety_oracle_enabled: bool = Field(
+        default=True,
+        alias="RUNTIME_SAFETY_ORACLE_ENABLED",
+        description="Prompt 75: periodische Axiom-Pruefung (DB) + global_halt bei Verletzung.",
+    )
+    runtime_safety_oracle_interval_sec: float = Field(
+        default=0.5,
+        ge=0.1,
+        le=30.0,
+        alias="RUNTIME_SAFETY_ORACLE_INTERVAL_SEC",
+    )
+    runtime_safety_max_notional_equity_mult: str = Field(
+        default="10",
+        alias="RUNTIME_SAFETY_MAX_NOTIONAL_EQUITY_MULT",
+        description="Axiom: Summe |Notional| < Equity * Faktor (konservativer Sicherheits-Deckel).",
     )
     stop_trigger_type_default: TriggerType = Field(
         default="mark_price",
@@ -261,6 +321,18 @@ class LiveBrokerSettings(BitgetSettings):
     require_shadow_match_before_live: bool = Field(
         default=False,
         alias="REQUIRE_SHADOW_MATCH_BEFORE_LIVE",
+    )
+    shadow_match_latch_timeout_ms: int = Field(
+        default=500,
+        ge=0,
+        le=60_000,
+        alias="SHADOW_MATCH_LATCH_TIMEOUT_MS",
+    )
+    shadow_match_redis_ttl_sec: int = Field(
+        default=300,
+        ge=1,
+        le=86_400,
+        alias="SHADOW_MATCH_REDIS_TTL_SEC",
     )
     shadow_live_max_timing_skew_ms: int = Field(
         default=180_000,

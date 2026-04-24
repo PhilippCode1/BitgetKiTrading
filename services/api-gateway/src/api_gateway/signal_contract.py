@@ -106,6 +106,9 @@ _LIST_GOVERNOR = (
     "live_execution_block_reasons_json",
     "governor_universal_hard_block_reasons_json",
     "live_execution_clear_for_real_money",
+    "max_leverage_cap",
+    "risk_volatility_clamp_active",
+    "governor_bff_risk_flags_json",
 )
 
 _LIST_EXECUTION = (

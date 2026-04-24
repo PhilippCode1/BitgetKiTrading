@@ -5,13 +5,14 @@ import {
 } from "@/lib/assist-bff";
 
 describe("assist-bff", () => {
-  it("lists four dashboard segments", () => {
-    expect(ASSIST_DASHBOARD_SEGMENTS).toHaveLength(4);
-    expect(new Set(ASSIST_DASHBOARD_SEGMENTS).size).toBe(4);
+  it("lists five dashboard segments", () => {
+    expect(ASSIST_DASHBOARD_SEGMENTS).toHaveLength(5);
+    expect(new Set(ASSIST_DASHBOARD_SEGMENTS).size).toBe(5);
   });
 
   it("isAssistDashboardSegment rejects unknown", () => {
     expect(isAssistDashboardSegment("admin-operations")).toBe(true);
+    expect(isAssistDashboardSegment("ops-risk")).toBe(true);
     expect(isAssistDashboardSegment("evil-segment")).toBe(false);
   });
 

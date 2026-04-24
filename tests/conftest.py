@@ -4,8 +4,26 @@ Gemeinsame pytest-Konfiguration: Repo-Root und Python-Pfade fuer Services.
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
+
+import pytest
+
+
+def pytest_configure(config) -> None:  # noqa: ARG001
+    # Ohne lokale .env: gleiche Default-Symbole wie in PAPER/Bitget-Contract-Tests, damit
+    # Import- und Sammelphase nicht von manuell gesetzten PAPER_DEFAULT_SYMBOL / BITGET_SYMBOL
+    # abhängt (FINAL_READINESS: stabile pytest-Läufe in CI und frischen CLIs).
+    os.environ.setdefault("PAPER_DEFAULT_SYMBOL", "BTCUSDT")
+    os.environ.setdefault("BITGET_SYMBOL", "BTCUSDT")
+
+
+@pytest.fixture(autouse=True)
+def _isolate_host_live_trade_flag_for_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Host-Shell mit LIVE_TRADE_ENABLE=true würde BaseServiceSettings mit EXECUTION_MODE=paper/shadow
+    # invalidieren, bevor Test-Setups greifen. Explizit LIVE setzende Tests überschreiben weiter.
+    monkeypatch.setenv("LIVE_TRADE_ENABLE", "false")
 
 _ROOT = Path(__file__).resolve().parent.parent
 

@@ -5,25 +5,27 @@ import hashlib
 import json
 import logging
 import threading
+import time
 from datetime import UTC, datetime
 from typing import Any, Literal
+from uuid import UUID
 
 from redis import Redis
-
+from shared_py.eventbus import RedisStreamBus
 from shared_py.observability.request_context import get_current_trace_ids
 
-from llm_orchestrator.assist.conversation_store import AssistConversationStore
-from llm_orchestrator.chart_annotation_sanitize import (
-    sanitize_strategy_chart_annotations,
-)
 from llm_orchestrator.assist.context_policy import (
     filter_context_for_role,
     task_type_for_role,
 )
+from llm_orchestrator.assist.conversation_store import AssistConversationStore
 from llm_orchestrator.cache.redis_cache import (
     LLMRedisCache,
     cache_key,
     stable_json_hash,
+)
+from llm_orchestrator.chart_annotation_sanitize import (
+    sanitize_strategy_chart_annotations,
 )
 from llm_orchestrator.config import LLMOrchestratorSettings
 from llm_orchestrator.constants import LLM_ORCHESTRATOR_API_CONTRACT_VERSION
@@ -31,16 +33,27 @@ from llm_orchestrator.events.llm_failed import publish_llm_failed
 from llm_orchestrator.exceptions import (
     GuardrailViolation,
     LLMPromptTooLargeError,
-    LLMProviderOfflineError,
     RetryableLLMError,
 )
 from llm_orchestrator.guardrails import validate_task_output
+from llm_orchestrator.knowledge.onchain_macro import (
+    fetch_onchain_macro_context,
+    merge_fetched_onchain_into_context,
+)
 from llm_orchestrator.knowledge.retrieval import (
     KnowledgeRetriever,
     RetrievedChunk,
     format_operator_readonly_pro_symbol,
 )
-from llm_orchestrator.llm_metrics import record_parsing_error, record_structured_run_outcome
+from llm_orchestrator.llm_metrics import (
+    record_llm_error,
+    record_parsing_error,
+    record_structured_run_outcome,
+)
+from llm_orchestrator.llm_request_metrics_context import (
+    extract_tenant_id_from_object,
+    set_llm_request_metrics,
+)
 from llm_orchestrator.paths import (
     llm_knowledge_dir,
     load_json_schema,
@@ -54,22 +67,31 @@ from llm_orchestrator.prompt_governance import (
     build_strategy_signal_explain_user_prompt,
     load_prompt_manifest,
 )
-from llm_orchestrator.prompt_governance.templates import build_assistant_turn_user_prompt
+from llm_orchestrator.prompt_governance.templates import (
+    build_assistant_turn_user_prompt,
+)
+from llm_orchestrator.quality_feedback_trace import (
+    persist_operator_explain_row,
+    persist_strategy_signal_explain_row,
+)
 from llm_orchestrator.providers.fake_provider import FakeProvider
 from llm_orchestrator.providers.openai_provider import OpenAIProvider
 from llm_orchestrator.retry.backoff import openai_circuit_trip_on_status, sleep_backoff
 from llm_orchestrator.retry.circuit import CircuitBreaker
 from llm_orchestrator.validation.schema_validate import (
     SchemaValidationError,
+    compact_schema_for_repair_prompt,
     format_schema_errors_for_prompt,
     validate_against_schema,
 )
-from llm_orchestrator.validation.structured_fallback import build_structured_fallback
+from llm_orchestrator.validation.structured_fallback import (
+    build_graceful_degradation_result,
+    build_structured_fallback,
+)
 from llm_orchestrator.validation.structured_repair import (
     REPAIR_SYSTEM_APPEND_DE,
     build_repair_user_prompt,
 )
-from shared_py.eventbus import RedisStreamBus
 
 logger = logging.getLogger("llm_orchestrator.service")
 
@@ -82,6 +104,23 @@ _LLM_FAST_TIMEOUT_TASKS = frozenset(
         "analyst_hypotheses",
         "analyst_context_classification",
     }
+)
+
+_MSG_DEGRADE_CIRCUIT_DE = (
+    "Der KI-Provider steht wegen aufeinanderfolgender Fehler voruebergehend "
+    "nicht zur Verfuegung (Fail-Closed; Sicherheitskreis / Circuit offen)."
+)
+_MSG_DEGRADE_TIMEOUT_DE = (
+    "Die Bearbeitung hat die vorgesehene Wartezeit ueberschritten. "
+    "Es wurde eine gueltige Mindeststruktur ohne vollstaendigen KI-Output geliefert."
+)
+_MSG_DEGRADE_UPSTREAM_DE = (
+    "Der KI-Provider konnte die Anfrage nicht abschliessen. "
+    "Es wurde eine gueltige Mindeststruktur ohne vollstaendigen KI-Output geliefert."
+)
+_MSG_DEGRADE_NO_PROVIDER_DE = (
+    "Kein LLM-Provider ist konfiguriert. "
+    "Es wurde eine gueltige Mindeststruktur (Fail-Closed) erzeugt."
 )
 
 
@@ -260,6 +299,7 @@ class LLMService:
                 "strategy_signal_assist",
                 "customer_onboarding_assist",
                 "support_billing_assist",
+                "ops_risk_assist",
             }
         )
         if not task_type:
@@ -369,6 +409,74 @@ class LLMService:
         out["provenance"] = prov
         return out
 
+    def _backoff_duration_sec(self, attempt: int) -> float:
+        exp = min(
+            self._settings.llm_backoff_max_sec,
+            self._settings.llm_backoff_base_sec * (2**attempt),
+        )
+        return exp + exp * self._settings.llm_backoff_jitter_ratio * 0.5
+
+    def _graceful_degradation_out(
+        self,
+        *,
+        schema_json: dict[str, Any],
+        prompt: str,
+        task_type: str | None,
+        retrieval_chunks: list[RetrievedChunk] | None,
+        use_model: str,
+        failure_class: str,
+        last_error: str,
+        llm_error_code: str,
+        public_message_de: str,
+        schema_hash: str,
+        input_hash: str,
+        providers_tried: list[str],
+        structured_fallback_binds: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        result_obj = build_graceful_degradation_result(
+            schema_json,
+            task_type=task_type,
+            public_message_de=public_message_de,
+            fallback_binds=structured_fallback_binds,
+        )
+        try:
+            publish_llm_failed(
+                self._bus,
+                schema_hash=schema_hash,
+                input_hash=input_hash,
+                error=last_error or "graceful_degradation",
+                providers_tried=providers_tried,
+            )
+        except Exception as exc:
+            logger.warning("llm_failed Event nicht publiziert: %s", exc)
+        self._record_last_structured_failure(
+            failure_class=failure_class,
+            message=last_error or "graceful_degradation",
+            task_type=task_type,
+        )
+        record_structured_run_outcome(task_type, "failure")
+        prov_last = providers_tried[-1] if providers_tried else "none"
+        record_llm_error(failure_class, prov_last)
+        return self._finalize_response(
+            {
+                "ok": True,
+                "orchestrator_status": "degraded",
+                "llm_error_code": llm_error_code,
+                "cached": False,
+                "provider": "degraded",
+                "model": use_model,
+                "result": result_obj,
+            },
+            schema_json=schema_json,
+            prompt=prompt,
+            task_type=task_type,
+            retrieval_chunks=retrieval_chunks,
+            provenance_extras={
+                "llm_derived": False,
+                "graceful_degradation": True,
+            },
+        )
+
     def governance_summary(self) -> dict[str, Any]:
         m = load_prompt_manifest()
         baseline = prompts_dir() / "eval_baseline.json"
@@ -458,6 +566,7 @@ class LLMService:
         provider_preference: ProviderPref = "auto",
         model: str | None = None,
         task_type: str | None = None,
+        tenant_id: str | None = None,
         provenance_retrieval_chunks: list[RetrievedChunk] | None = None,
         structured_fallback_binds: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
@@ -477,6 +586,12 @@ class LLMService:
         pf = self._prompt_fingerprint(prompt)
         explicit_model = (model or "").strip()
         resolved_model = explicit_model or self._resolve_model_for_task(task_type)
+        norm_tenant = (tenant_id or "").strip() or "unknown"
+        set_llm_request_metrics(
+            tenant_id=norm_tenant,
+            task_type=task_type,
+            model=resolved_model,
+        )
         rid, cid = get_current_trace_ids()
         logger.info(
             "structured request request_id=%s correlation_id=%s pref=%s schema_hash=%s "
@@ -495,20 +610,36 @@ class LLMService:
         try:
             chain = self._chain(provider_preference, resolved_model)
         except RuntimeError as exc:
-            record_structured_run_outcome(task_type, "failure")
-            self._record_last_structured_failure(
-                failure_class="no_provider_configured",
-                message=str(exc),
+            return self._graceful_degradation_out(
+                schema_json=schema_json,
+                prompt=prompt,
                 task_type=task_type,
+                retrieval_chunks=provenance_retrieval_chunks,
+                use_model=resolved_model,
+                failure_class="no_provider_configured",
+                last_error=str(exc),
+                llm_error_code="LLM_NO_PROVIDER_CONFIGURED",
+                public_message_de=_MSG_DEGRADE_NO_PROVIDER_DE,
+                schema_hash=schema_hash,
+                input_hash=input_hash,
+                providers_tried=[],
+                structured_fallback_binds=structured_fallback_binds,
             )
-            raise
         providers_tried: list[str] = []
         last_error = ""
         req_timeout_ms = self._llm_request_timeout_ms(task_type)
+        deadline = time.perf_counter() + float(
+            self._settings.llm_graceful_failure_deadline_sec
+        )
 
         for prov, chain_model in chain:
             prov_key = prov.name
             use_model = chain_model
+            set_llm_request_metrics(
+                tenant_id=norm_tenant,
+                task_type=task_type,
+                model=use_model,
+            )
             ckey = cache_key(
                 provider=prov.name,
                 model=use_model,
@@ -546,8 +677,21 @@ class LLMService:
 
             if self._circuit.is_open(prov_key):
                 if prov_key == "openai":
-                    record_structured_run_outcome(task_type, "failure")
-                    raise LLMProviderOfflineError()
+                    return self._graceful_degradation_out(
+                        schema_json=schema_json,
+                        prompt=prompt,
+                        task_type=task_type,
+                        retrieval_chunks=provenance_retrieval_chunks,
+                        use_model=use_model,
+                        failure_class="circuit_open",
+                        last_error="circuit_open:openai",
+                        llm_error_code="LLM_PROVIDER_OFFLINE",
+                        public_message_de=_MSG_DEGRADE_CIRCUIT_DE,
+                        schema_hash=schema_hash,
+                        input_hash=input_hash,
+                        providers_tried=providers_tried,
+                        structured_fallback_binds=structured_fallback_binds,
+                    )
                 last_error = f"circuit_open:{prov_key}"
                 continue
 
@@ -556,13 +700,48 @@ class LLMService:
                     validate_against_schema(schema_json, obj)
                     validate_task_output(obj, task_type=task_type)
 
+                if time.perf_counter() >= deadline:
+                    return self._graceful_degradation_out(
+                        schema_json=schema_json,
+                        prompt=prompt,
+                        task_type=task_type,
+                        retrieval_chunks=provenance_retrieval_chunks,
+                        use_model=use_model,
+                        failure_class="retry_exhausted",
+                        last_error="deadline_exceeded",
+                        llm_error_code="LLM_ORCHESTRATOR_TIMEOUT",
+                        public_message_de=_MSG_DEGRADE_TIMEOUT_DE,
+                        schema_hash=schema_hash,
+                        input_hash=input_hash,
+                        providers_tried=providers_tried,
+                        structured_fallback_binds=structured_fallback_binds,
+                    )
+                rem_ms = int((deadline - time.perf_counter()) * 1000) - 50
+                if rem_ms < 100:
+                    return self._graceful_degradation_out(
+                        schema_json=schema_json,
+                        prompt=prompt,
+                        task_type=task_type,
+                        retrieval_chunks=provenance_retrieval_chunks,
+                        use_model=use_model,
+                        failure_class="retry_exhausted",
+                        last_error="deadline_buffer_exceeded",
+                        llm_error_code="LLM_ORCHESTRATOR_TIMEOUT",
+                        public_message_de=_MSG_DEGRADE_TIMEOUT_DE,
+                        schema_hash=schema_hash,
+                        input_hash=input_hash,
+                        providers_tried=providers_tried,
+                        structured_fallback_binds=structured_fallback_binds,
+                    )
+                call_timeout_ms = min(req_timeout_ms, rem_ms)
+
                 raw0: dict[str, Any] | None = None
                 try:
                     raw0 = prov.generate_structured(
                         schema_json,
                         prompt,
                         temperature=temperature,
-                        timeout_ms=req_timeout_ms,
+                        timeout_ms=call_timeout_ms,
                         model=use_model if prov_key == "openai" else None,
                         system_instructions_de=sys_de or None,
                         task_type=task_type,
@@ -583,6 +762,22 @@ class LLMService:
                         prov_key,
                         exc,
                     )
+                    if time.perf_counter() + self._backoff_duration_sec(attempt) > deadline:
+                        return self._graceful_degradation_out(
+                            schema_json=schema_json,
+                            prompt=prompt,
+                            task_type=task_type,
+                            retrieval_chunks=provenance_retrieval_chunks,
+                            use_model=use_model,
+                            failure_class="retry_exhausted",
+                            last_error=str(exc),
+                            llm_error_code="LLM_ORCHESTRATOR_TIMEOUT",
+                            public_message_de=_MSG_DEGRADE_TIMEOUT_DE,
+                            schema_hash=schema_hash,
+                            input_hash=input_hash,
+                            providers_tried=providers_tried,
+                            structured_fallback_binds=structured_fallback_binds,
+                        )
                     sleep_backoff(
                         attempt,
                         base_sec=self._settings.llm_backoff_base_sec,
@@ -634,20 +829,45 @@ class LLMService:
 
                 if last_schema is not None and raw0 is not None:
                     err_txt = format_schema_errors_for_prompt(last_schema.errors)
+                    schema_repair_txt = compact_schema_for_repair_prompt(schema_json)
                     repair_user = build_repair_user_prompt(
                         original_prompt=prompt,
                         invalid_json_object=raw0,
                         error_text=err_txt,
+                        schema_for_repair=schema_repair_txt,
                     )
                     repair_sys = REPAIR_SYSTEM_APPEND_DE.format(error=err_txt)
+                    logger.info(
+                        "json self-repair: trigger task_type=%s err_preview=%s",
+                        task_type or "-",
+                        (last_schema.errors or [])[:2],
+                    )
                     last_schema2: SchemaValidationError = last_schema
                     raw1: dict[str, Any] | None = None
                     try:
+                        r2 = int((deadline - time.perf_counter()) * 1000) - 50
+                        if r2 < 100:
+                            return self._graceful_degradation_out(
+                                schema_json=schema_json,
+                                prompt=prompt,
+                                task_type=task_type,
+                                retrieval_chunks=provenance_retrieval_chunks,
+                                use_model=use_model,
+                                failure_class="retry_exhausted",
+                                last_error="deadline_buffer_exceeded_repair",
+                                llm_error_code="LLM_ORCHESTRATOR_TIMEOUT",
+                                public_message_de=_MSG_DEGRADE_TIMEOUT_DE,
+                                schema_hash=schema_hash,
+                                input_hash=input_hash,
+                                providers_tried=providers_tried,
+                                structured_fallback_binds=structured_fallback_binds,
+                            )
+                        repair_timeout_ms = min(req_timeout_ms, r2)
                         raw1 = prov.generate_structured(
                             schema_json,
                             repair_user,
                             temperature=temperature,
-                            timeout_ms=req_timeout_ms,
+                            timeout_ms=repair_timeout_ms,
                             model=use_model if prov_key == "openai" else None,
                             system_instructions_de=sys_de or None,
                             system_instructions_append_de=repair_sys,
@@ -709,6 +929,9 @@ class LLMService:
                             task_type=task_type,
                             last_schema_error=last_schema2,
                             fallback_binds=structured_fallback_binds,
+                            repair_failure_de=format_schema_errors_for_prompt(
+                                last_schema2.errors
+                            ),
                         )
                         _validate_out(raw_fb)
                     except GuardrailViolation:
@@ -757,24 +980,35 @@ class LLMService:
                         },
                     )
 
-        try:
-            publish_llm_failed(
-                self._bus,
-                schema_hash=schema_hash,
-                input_hash=input_hash,
-                error=last_error or "unknown",
-                providers_tried=providers_tried,
-            )
-        except Exception as exc:
-            logger.warning("llm_failed Event nicht publiziert: %s", exc)
-        fc = _classify_structured_failure(last_error)
-        self._record_last_structured_failure(
-            failure_class=fc,
-            message=last_error or "alle Provider fehlgeschlagen",
-            task_type=task_type,
+        le = (last_error or "").lower()
+        is_timeoutish = (
+            "timeout" in le
+            or "504" in le
+            or "zeiti" in le
+            or "deadline" in le
         )
-        record_structured_run_outcome(task_type, "failure")
-        raise RuntimeError(last_error or "alle Provider fehlgeschlagen")
+        if is_timeoutish:
+            llm_code = "LLM_ORCHESTRATOR_TIMEOUT"
+            msg_de = _MSG_DEGRADE_TIMEOUT_DE
+        else:
+            llm_code = "LLM_UPSTREAM_FAILED"
+            msg_de = _MSG_DEGRADE_UPSTREAM_DE
+        fc = _classify_structured_failure(last_error)
+        return self._graceful_degradation_out(
+            schema_json=schema_json,
+            prompt=prompt,
+            task_type=task_type,
+            retrieval_chunks=provenance_retrieval_chunks,
+            use_model=resolved_model,
+            failure_class=fc,
+            last_error=last_error or "alle Provider fehlgeschlagen",
+            llm_error_code=llm_code,
+            public_message_de=msg_de,
+            schema_hash=schema_hash,
+            input_hash=input_hash,
+            providers_tried=providers_tried,
+            structured_fallback_binds=structured_fallback_binds,
+        )
 
     def run_news_summary(
         self,
@@ -912,9 +1146,20 @@ class LLMService:
         provider_preference: ProviderPref = "auto",
         model: str | None = None,
         temperature: float = 0.2,
+        execution_id: UUID | None = None,
     ) -> dict[str, Any]:
+        ro = (
+            copy.deepcopy(readonly_context_json)
+            if isinstance(readonly_context_json, dict)
+            else {}
+        )
+        try:
+            fetched = fetch_onchain_macro_context(self._settings.redis_url)
+            ro = merge_fetched_onchain_into_context(ro, fetched)
+        except Exception as exc:
+            logger.warning("operator_explain: onchain_macro fetch: %s", exc)
         qctx = format_operator_readonly_pro_symbol(
-            readonly_context_json, max_total_chars=10_000
+            ro, max_total_chars=10_000
         )
         rq = f"{question_de}\n{qctx}"
         rchunks = self._retriever.retrieve("operator_explain", rq)
@@ -924,15 +1169,24 @@ class LLMService:
             readonly_context_json_text=qctx,
             retrieval_block=rag,
         )
-        return self.run_structured(
+        tid = extract_tenant_id_from_object(ro)
+        out = self.run_structured(
             schema_json=self._schema_operator_explain,
             prompt=prompt,
             temperature=temperature,
             provider_preference=provider_preference,
             model=model,
             task_type="operator_explain",
+            tenant_id=tid,
             provenance_retrieval_chunks=rchunks,
         )
+        if execution_id is not None:
+            persist_operator_explain_row(
+                self._settings,
+                execution_id=execution_id,
+                response=out,
+            )
+        return out
 
     def run_safety_incident_diagnosis(
         self,
@@ -967,6 +1221,8 @@ class LLMService:
         *,
         signal_context_json: dict[str, Any],
         focus_question_de: str | None,
+        execution_id: Any | None = None,
+        source_signal_id: Any | None = None,
         provider_preference: ProviderPref = "auto",
         model: str | None = None,
         temperature: float = 0.2,
@@ -992,6 +1248,10 @@ class LLMService:
         )
         res = out.get("result")
         if isinstance(res, dict):
+            exs = (res.get("expected_scenario_de") or "").strip()
+            if not exs:
+                src = (res.get("strategy_explanation_de") or "").strip()
+                res["expected_scenario_de"] = (src[:2000] if src else "—")
             ca = res.get("chart_annotations")
             if ca is not None:
                 fixed, n_ms_fix = sanitize_strategy_chart_annotations(ca)
@@ -1000,6 +1260,22 @@ class LLMService:
                     prov = out.get("provenance")
                     if isinstance(prov, dict):
                         prov["chart_annotation_unix_ms_corrected"] = n_ms_fix
+        ex_u: UUID | None = execution_id if isinstance(execution_id, UUID) else None
+        sig_u: UUID | None = source_signal_id if isinstance(source_signal_id, UUID) else None
+        if ex_u is None and sig_u is None and isinstance(signal_context_json, dict):
+            raw = signal_context_json.get("signal_id")
+            if raw is not None:
+                try:
+                    sig_u = UUID(str(raw))
+                except (TypeError, ValueError):
+                    pass
+        if ex_u is not None or sig_u is not None:
+            persist_strategy_signal_explain_row(
+                self._settings,
+                response=out,
+                execution_id=ex_u,
+                source_signal_id=sig_u,
+            )
         return out
 
     def run_ai_strategy_proposal_draft(
@@ -1087,6 +1363,7 @@ class LLMService:
             provider_preference=provider_preference,
             model=model,
             task_type=task_type,
+            tenant_id=tenant_partition_id,
             provenance_retrieval_chunks=rchunks,
             structured_fallback_binds={"assist_role_echo": assist_role},
         )

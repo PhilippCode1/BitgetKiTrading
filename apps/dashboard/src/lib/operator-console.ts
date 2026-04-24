@@ -97,7 +97,9 @@ export function buildDecisionBuckets(
     (decision) =>
       decision.shadow_live_match_ok === false ||
       hasViolations(decision.shadow_live_hard_violations) ||
-      hasViolations(decision.shadow_live_soft_violations),
+      hasViolations(decision.shadow_live_soft_violations) ||
+      (decision.shadow_match_latch_ok === false &&
+        decision.shadow_match_latch_skipped === false),
   );
   return {
     planQueue,

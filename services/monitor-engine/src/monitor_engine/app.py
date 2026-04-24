@@ -2,6 +2,7 @@ from __future__ import annotations
 
 # ruff: noqa: E402, I001 — Bootstrap-Reihenfolge / Import-Blocks
 import asyncio
+import contextlib
 import logging
 import sys
 import time
@@ -43,17 +44,25 @@ def create_app() -> FastAPI:
     scheduler = MonitorScheduler(settings)
     scheduler.bind_bus(bus)
     loop_task: asyncio.Task[None] | None = None
+    incident_watcher: asyncio.Task[None] | None = None
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        nonlocal loop_task
+        nonlocal loop_task, incident_watcher
         app.state.settings = settings
         app.state.scheduler = scheduler
         app.state.bus = bus
         app.state.boot_ts_ms = int(time.time() * 1000)
         loop_task = asyncio.create_task(scheduler.run_forever(), name="monitor-scheduler")
-        logger.info("monitor-engine started")
+        from monitor_engine.incident_rca.watcher import start_global_halt_watcher
+
+        incident_watcher = start_global_halt_watcher(app)
+        logger.info("monitor-engine started (incident RCA watcher=%s)", settings.monitor_incident_rca_enabled)
         yield
+        if incident_watcher is not None:
+            incident_watcher.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await incident_watcher
         if loop_task is not None:
             loop_task.cancel()
             try:

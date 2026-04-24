@@ -1,5 +1,7 @@
 # AUDIT_REPORT — Vorbericht (Totalaudit Prompt A)
 
+> **P83 (2026-04-24):** Dieser Bericht ist ein **Stichtag-Snapshot** (Runde 5, Commit unten). **Aktueller** technischer Stand, Gates **Phase 1–18** und P0-Abnahme: [SYSTEM_AUDIT_MASTER.md](../SYSTEM_AUDIT_MASTER.md), [LaunchChecklist.md](../LaunchChecklist.md), [REPO_FREEZE_GAP_MATRIX.md](../REPO_FREEZE_GAP_MATRIX.md). Findings in Abschnitt „Executive Summary“ und **FAIL**-Markierungen beschreiben den Befund vom **2026-04-08**, nicht notwendig den heutigen Zustand — Gegenprüfung nur über kanonische Docs und CI.
+
 **Datum (Report):** 2026-04-08 · **Aktive Runde:** **5**  
 **Branch:** `master`  
 **Commit-Hash (HEAD):** `e871b871b4a8cd803edcec50ca763e50cad7078c`  
@@ -143,8 +145,38 @@ Das Repository `bitget-btc-ai` bleibt eine **End-to-End-Zielarchitektur** (Worke
 - **Konfiguration:** ENV/Compose — datengetrieben.  
 - **UI (neu):** `MarketUniverseDataLineagePanel`: Ausfuehrungsmodus, LIVE/SHADOW/PAPER-Pills, letzte Kerze/Signal (Plattform), **market-stream** + **live-broker** Health, WS-Telemetrie-Kurztext, **Broker-Reconcile**, Tabelle **BTCUSDT/ETHUSDT** mit Registry- und Chart-Link; **Pagination** `universePage` (32), `registryPage` (40).  
 - **Families / Spot-Margin-Futures:** weiterhin im Gateway/Produktspec zu verifizieren — **RISK**.  
-- **Backpressure / Zeitreihen-Volumen:** ohne Lasttest **unbelegt** (P1-4).  
+- **Backpressure / Zeitreihen-Volumen (P1-4 / Prompt 80):** Werkzeuge und Leitplanken sind im Repo, **Voll-DoD (30-Min-Referenzlauf) ist lokal/ohne laufende Pipeline nicht ersetzbar** — siehe **P80** unten.  
 - **Beliebiges Symbol:** Chart ueber URL/Symbolwahl moeglich; Orderbook/News/Signals nicht fuer jedes Symbol als Paket garantiert — **FAIL** bis spezifiziert und getestet.
+
+---
+
+## P80 — Scalability Sign-off (High-Frequency Marktuniversum)
+
+**Ziel (DoD):** 500 parallele Symbole × 10 Ticks/s = **5.000 Events/s** Ziel-Last; **Drop-Rate** (Summe `pipeline_event_drop_total` über `market-stream` + `feature-engine` `/metrics`, Delta zum Laufbeginn) **unter 0,01 %**; **kein `MemoryError`** (Feeder/Beobachterprozess); **CPU-Last** lokal (psutil) ohne pathologische Einzelspitze (Werkzeug prüft Stichproben-`cpu_percent`‑Streuung); **Gleichmässige Ziel-Rate** (≥ 85 % des theoretischen Soll-EPS).
+
+| Baustein | Beschreibung |
+|----------|----------------|
+| `tools/hf_universe_stress.py` | `HighFrequencyMockFeeder`: Round-Robin-`market_tick` auf `events:market_tick` (Redis), **dedupe** aus, Ziel-Rate `symbols × ticks_per_sec`. |
+| `FEATURE_TSFM_TICK_CONCURRENCY` | `feature-engine`: `asyncio.Semaphore` in der TSFM-Pipeline, begrenzt offene `asyncio`-Task‑Parallelität (Default **1**). |
+| Metriken | Vor/nach: Summe aller `pipeline_event_drop_total{...}`-Zeilen aus gegebenen `/metrics`‑URLs. |
+| Sign-off-JSON | `--out-json` (z. B. `docs/audit/hf_stress_signoff.json`), Feld `signoff_ok` = Gate über Drop-Rate, Memory, CPU-Fairness, EPS-Ratio. |
+
+**Referenzbefehl (Voll-DoD, 30 Min):** voller Stack, **Redis**, `market-stream` (typ. :8010), `feature-engine` (typ. :8020) erreichbar. Das Skript setzt `sys.path` inkl. Repo-Root; Aufruf aus dem Repository-Verzeichnis:
+
+```text
+python tools/hf_universe_stress.py --duration-sec 1800 --symbols 500 --ticks-per-symbol 10 ^
+  --market-stream-metrics-url http://127.0.0.1:8010/metrics ^
+  --feature-engine-metrics-url http://127.0.0.1:8020/metrics ^
+  --out-json docs/audit/hf_stress_signoff.json
+```
+
+**Einstufung in diesem Report:** *Scalability Sign-off* = **Durchführung +** `signoff_ok: true` **im** `hf_stress_signoff.json` (nach produktionsnahem 30-Min-Lauf) **bzw.** gleichwertiges Artefakt mit identischer Methodik. Ohne solches Artefakt bleibt P1-4 fachlich **dokumentierbar, aber** die Runtime-Nachweis-**Evidenz** aus Runde 5/6 **hängt** am tatsächlichen Durchlauf.
+
+**Kurzlauf (CI/Entwicklung):** Standard-Argumente lassen `market-stream-metrics-url` leer; dann werden **keine** Drops bewertet (`pass_drop_rate` = ok), nur Publish- und EPS-Checks. Mit Stack: dieselben URLs wie im 30-Min-Beispiel setzen.
+
+```text
+python tools/hf_universe_stress.py --duration-sec 10
+```
 
 ---
 
@@ -187,7 +219,7 @@ Das Repository `bitget-btc-ai` bleibt eine **End-to-End-Zielarchitektur** (Worke
 4. **`config:validate`** gegen echte `.env.local` ausstehend.  
 5. **KI:** pytest `llm_eval` grün, aber **kein** Nachweis menschenzentrierter Qualität / Fehlerquoten-SLO.  
 6. **In-Page-Links/Buttons** jenseits Sidebar: weiter **FAIL** vs. Totalprüfung.  
-7. **P1-4** Lastprofil Marktuniversum unbelegt.  
+7. **P1-4** Lastprofil Marktuniversum: **Härtung +** `tools/hf_universe_stress.py` (P80); **Evidenz** = 30-Min-`signoff_ok` bzw. `hf_stress_signoff.json` — **ohne Artefakt** weiterhin inhaltlich *unvollständig* vs. DoD.  
 8. **P1-6** Ribbon vs. `LiveDataSituationBar` — Konflikt-UX offen.
 
 ## Top-Findings (konsolidiert, Runde 3 — historisch)

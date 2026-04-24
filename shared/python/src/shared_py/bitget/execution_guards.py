@@ -131,3 +131,11 @@ def replace_size_safety_reasons(
     if new_size > old_size:
         return ["execution_guard_replace_increase_size_blocked_reduce_only"]
     return []
+
+
+# P75: Runtime-Safety-Oracle (Axiom-Pruefung) — re-export fuer einheitlichen Import
+from shared_py.bitget.runtime_safety_oracle import (  # noqa: E402
+    RuntimeSafetyConfig,
+    RuntimeSafetyOracle,
+    SafetyAxiom,
+)

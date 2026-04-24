@@ -3,8 +3,11 @@
 Validiert .env-Dateien gegen Profil-Pflichtvariablen (keine <SET_ME> / leer).
 Nutzt config/required_secrets_matrix.json plus bedingte Regeln (LLM, Telegram, Live-Trading).
 Zusaetzlich: Host-vs.-Container-URL-Konsistenz (config/bootstrap_env_checks.py;
-bei profile staging/shadow/production: kein localhost/127.0.0.1/::1 in API_GATEWAY_URL, DASHBOARD_URL, FRONTEND_URL, … (siehe bootstrap_env_checks),
+bei profile staging/shadow/production: harter Fehler bei localhost/127.0.0.1/::1
+in u.a. API_GATEWAY_URL, HEALTH_URL_*, CORS_ALLOW_ORIGINS-Segmenten, DATABASE_URL/REDIS_URL (siehe bootstrap_env_checks),
 NEXT_PUBLIC_*-Namen ohne Secret-Muster, Gateway->LLM-Basis mindestens eine URL.
+Nachweis (Exit 1 bei Loopback-API-Gateway):
+``pnpm run config:validate:production:loopback-smoke``.
 
 Nach JWT-Mint (lokal): erneut mit --with-dashboard-operator aufrufen.
 """
@@ -12,6 +15,8 @@ Nach JWT-Mint (lokal): erneut mit --with-dashboard-operator aufrufen.
 from __future__ import annotations
 
 import argparse
+import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -260,6 +265,24 @@ def main() -> int:
         print("", file=sys.stderr)
         print(f"Dokumentation: {_DOC_BASE}", file=sys.stderr)
         return 1
+    if args.profile == "production":
+        child_env = {k: str(v) for k, v in os.environ.items() if v is not None}
+        for k, v in env.items():
+            if (v is not None) and str(v).strip():
+                child_env[k] = str(v).strip()
+        rdb = subprocess.run(
+            [sys.executable, str(_REPO_ROOT / "tools" / "db_production_hardening.py")],
+            cwd=_REPO_ROOT,
+            env=child_env,
+        )
+        if rdb.returncode != 0:
+            print(
+                "FAIL: tools/db_production_hardening.py (MIGRATIONS/LIVE_APP_SCHEMA, "
+                "DB nicht erreichbar, oder Seed-Lock) — vgl. config/schema_master.hash, "
+                "DATABASE_URL",
+                file=sys.stderr,
+            )
+            return 1
     print(f"OK validate_env_profile: {args.profile} {args.env_file}")
     return 0
 

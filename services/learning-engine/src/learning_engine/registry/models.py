@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from enum import Enum
 from typing import Any
+from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from shared_py.bitget.instruments import (
     BitgetInstrumentIdentity,
     MarginAccountMode,
@@ -15,6 +16,7 @@ from shared_py.bitget.instruments import (
 
 class StrategyLifecycleStatus(str, Enum):
     promoted = "promoted"
+    live_champion = "live_champion"
     candidate = "candidate"
     shadow = "shadow"
     retired = "retired"
@@ -249,11 +251,23 @@ class SetStatusRequest(BaseModel):
     reason: str | None = None
     changed_by: str = Field(default="user", min_length=1, max_length=128)
     manual_override: bool = False
+    champion_version_id: UUID | None = None
+
+    @model_validator(mode="after")
+    def _champion_version_if_live(self) -> SetStatusRequest:
+        is_live = self.new_status == StrategyLifecycleStatus.live_champion
+        if is_live and self.champion_version_id is None:
+            raise ValueError("champion_version_id erforderlich (live_champion)")
+        if not is_live and self.champion_version_id is not None:
+            raise ValueError("champion_version_id nur mit live_champion setzen")
+        return self
 
 
 ALLOWED_TRANSITIONS: set[tuple[str, str]] = {
     ("shadow", "candidate"),
     ("candidate", "promoted"),
+    ("promoted", "live_champion"),
+    ("live_champion", "retired"),
     ("promoted", "retired"),
     ("retired", "shadow"),
 }

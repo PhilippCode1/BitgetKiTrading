@@ -43,6 +43,130 @@ class PromotionGateResult:
     details: dict[str, Any]
 
 
+# JSON in model_runs.metadata_json: Shadow-/Simulationsvergleich (Challenger-Run enthaelt beide Seiten)
+_CHAMPION_CHALLENGER_BACKTEST_KEY = "champion_challenger_backtest"
+_CHAMPION_CHALLENGER_BACKTEST_ALIASES = (
+    "shadow_challenger_vs_live_champion",
+    "champion_challenger_simulation",
+)
+
+
+def get_champion_challenger_backtest_block(meta: dict[str, Any]) -> dict[str, Any] | None:
+    raw = meta.get(_CHAMPION_CHALLENGER_BACKTEST_KEY)
+    if not isinstance(raw, dict):
+        for w in _CHAMPION_CHALLENGER_BACKTEST_ALIASES:
+            raw = meta.get(w)
+            if isinstance(raw, dict):
+                break
+    return raw if isinstance(raw, dict) else None
+
+
+def _f(x: Any) -> float | None:
+    if x is None:
+        return None
+    try:
+        return float(x)
+    except (TypeError, ValueError):
+        return None
+
+
+def evaluate_champion_challenger_backtest_gate(
+    *,
+    metadata_json: Any,
+    settings: LearningEngineSettings,
+) -> PromotionGateResult:
+    """
+    Automatisiertes Champion-Challenger-Gate: min. 500 simulierte Trades, Sharpe min. 10% besser,
+    max_de drawdown des Challengers <= Champion, Win-Rate nicht schlechter (wenn vorhanden).
+    """
+    if not settings.model_challenger_champion_backtest_gate_enabled:
+        return PromotionGateResult(
+            True,
+            (),
+            {"champion_challenger_backtest": {"skipped": True, "reason": "gate_disabled"}},
+        )
+
+    meta = parse_metadata_json(metadata_json)
+    bbt = get_champion_challenger_backtest_block(meta)
+    reasons: list[str] = []
+    details: dict[str, Any] = {
+        "champion_challenger_backtest": {
+            "raw_present": bbt is not None,
+        }
+    }
+
+    if bbt is None:
+        reasons.append("champion_challenger_backtest_block_missing")
+        return PromotionGateResult(False, tuple(reasons), details)
+
+    n = bbt.get("n_simulated_trades")
+    if n is None and "n_trades" in bbt:
+        n = bbt.get("n_trades")
+    try:
+        n_tr = int(n)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        n_tr = 0
+    min_n = int(settings.model_challenger_champion_backtest_min_trades)
+    details["champion_challenger_backtest"]["n_simulated_trades"] = n_tr
+    details["champion_challenger_backtest"]["min_trades_required"] = min_n
+    if n_tr < min_n:
+        reasons.append("champion_challenger_backtest_n_trades_below_minimum")
+
+    ch_side = bbt.get("champion")
+    c_side = bbt.get("challenger")
+    if not isinstance(ch_side, dict) or not isinstance(c_side, dict):
+        reasons.append("champion_challenger_backtest_sides_incomplete")
+        return PromotionGateResult(False, tuple(reasons), details)
+
+    sh_c = _f(c_side.get("sharpe_ratio") or c_side.get("sharpe"))
+    sh_h = _f(ch_side.get("sharpe_ratio") or ch_side.get("sharpe"))
+    dd_c = _f(c_side.get("max_drawdown") or c_side.get("max_draw_down"))
+    dd_h = _f(ch_side.get("max_drawdown") or ch_side.get("max_draw_down"))
+    wr_c = _f(c_side.get("win_rate") or c_side.get("winrate"))
+    wr_h = _f(ch_side.get("win_rate") or ch_side.get("winrate"))
+
+    for label, v in (("champion_sharpe", sh_h), ("challenger_sharpe", sh_c)):
+        details["champion_challenger_backtest"][label] = v
+    for label, v in (("champion_max_drawdown", dd_h), ("challenger_max_drawdown", dd_c)):
+        details["champion_challenger_backtest"][label] = v
+    for label, v in (("champion_win_rate", wr_h), ("challenger_win_rate", wr_c)):
+        details["champion_challenger_backtest"][label] = v
+
+    if sh_c is None or sh_h is None:
+        reasons.append("champion_challenger_backtest_sharpe_missing")
+    if dd_c is None or dd_h is None:
+        reasons.append("champion_challenger_backtest_max_drawdown_missing")
+    if sh_c is None or sh_h is None or dd_c is None or dd_h is None:
+        return PromotionGateResult(False, tuple(reasons), details)
+
+    # 10% relative besser: (challenger - champion) / max(|champion|, eps) >= 0.1
+    abs_ch, abs_c = sh_h, sh_c
+    eps = 1e-9
+    rel: float | None
+    if abs(abs_ch) < 1e-12:
+        rel = None
+        if abs_c < 0.1 - 1e-9:
+            reasons.append("champion_challenger_sharpe_improvement_too_low")
+    else:
+        rel = (abs_c - abs_ch) / max(abs(abs_ch), eps)
+        if rel < 0.1 - 1e-9:
+            reasons.append("champion_challenger_sharpe_improvement_below_10_percent")
+    details["champion_challenger_backtest"]["sharpe_relative_improvement"] = rel
+
+    # Gleiches oder niedrigeres Drawdown
+    if dd_c > dd_h + 1e-9:
+        reasons.append("challenger_max_drawdown_worse_than_champion")
+
+    if wr_c is not None and wr_h is not None and wr_c + 1e-9 < wr_h:
+        reasons.append("challenger_win_rate_below_champion")
+
+    ok = len(reasons) == 0
+    details["champion_challenger_backtest"]["pass"] = ok
+    if ok:
+        details["champion_challenger_backtest"]["ready_for_live_eligible"] = True
+    return PromotionGateResult(ok, tuple(reasons), details)
+
+
 def evaluate_champion_promotion_gates(
     *,
     model_name: str,
@@ -242,6 +366,15 @@ def evaluate_champion_promotion_gates(
         details["online_drift_promotion_blocked_tiers"] = sorted(blocked)
         if eff in blocked:
             reasons.append("online_drift_blocks_champion_promotion")
+
+    if settings.model_challenger_champion_backtest_gate_enabled and mn == TAKE_TRADE_MODEL_NAME:
+        cbt = evaluate_champion_challenger_backtest_gate(
+            metadata_json=metadata_json,
+            settings=settings,
+        )
+        cbt_d = cbt.details.get("champion_challenger_backtest", {})
+        details["champion_challenger_backtest"] = cbt_d
+        reasons.extend(list(cbt.reasons))
 
     ok = len(reasons) == 0
     return PromotionGateResult(ok, tuple(reasons), details)

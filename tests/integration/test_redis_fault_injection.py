@@ -2,6 +2,7 @@
 Redis: leichte Fault-Injection / Wiederanlauf ohne externe Tools.
 
 Nutzt TEST_REDIS_URL (CI: DB-Index 1).
+Gezielte Latenz / jeder n-te Aufruf: ``shared_py.chaos`` / ``chaos_recovery_latch`` (Prompt 72).
 """
 
 from __future__ import annotations

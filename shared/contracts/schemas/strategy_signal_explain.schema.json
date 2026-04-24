@@ -158,6 +158,10 @@
       "type": "string",
       "description": "Verstaendliche Zusammenfassung des Signals im Kontext der gelieferten Snapshot-Felder."
     },
+    "expected_scenario_de": {
+      "type": "string",
+      "description": "Erwartungshaltung (4h): Support/Resistance, Reaktion — fuer AI-Attribution; serverseitig mit strategy_explanation_de befuellbar."
+    },
     "risk_and_caveats_de": {
       "type": "string",
       "description": "Risiken, Grenzen der Daten, was der Snapshot nicht abdeckt."

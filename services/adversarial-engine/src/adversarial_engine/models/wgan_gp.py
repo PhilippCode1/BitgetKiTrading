@@ -229,3 +229,104 @@ def wgan_gp_training_step(
     opt_g.step()
 
     return {"loss_c": float(loss_c.detach().cpu()), "loss_g": float(loss_g.detach().cpu())}
+
+
+def boost_log_return_kurtosis(
+    paths: torch.Tensor,
+    *,
+    leptokurtic_mix: float = 0.22,
+) -> torch.Tensor:
+    """
+    Mischt schwere (student-T-aehnliche) Rauschanteile in log-Returns, um Kurtosis/Fat Tails
+    künstlich zu erhöhen, ohne Träger-Shape (B, T, 2) zu verlassen.
+    """
+    if paths.ndim != 3 or paths.shape[-1] != 2:
+        raise ValueError("paths: Shape (B, T, 2) erwartet")
+    a = max(0.0, min(0.55, float(leptokurtic_mix)))
+    if a <= 0.0:
+        return paths
+    b = paths.size(0)
+    t_ = paths.size(1)
+    # schwere Tails: gemischt-Gauss / symmetrische grosse Spikes
+    heavy = torch.randn(b, t_, device=paths.device, dtype=paths.dtype) * (1.6 + 1.2 * torch.rand(1, device=paths.device, dtype=paths.dtype))
+    spike = torch.zeros_like(heavy)
+    n_spike = max(1, t_ // 18)
+    idx = torch.randperm(t_, device=paths.device)[:n_spike]
+    spike[:, idx] = 3.5 * (torch.sign(torch.randn(b, n_spike, device=paths.device, dtype=paths.dtype)))
+    h = 0.65 * heavy + 0.35 * spike
+    out = paths.clone()
+    ch0 = out[:, :, 0] + a * h
+    out[:, :, 0] = ch0
+    return out
+
+
+def inject_wash_trading_depth_oscillation(
+    paths: torch.Tensor,
+    *,
+    period: int = 4,
+) -> torch.Tensor:
+    """
+    Synthese: hohe wechselförmige Orderbuch-Imbalance (L3-naher Proxy) — Muster ähnlich
+    manipuliertem Bid/Ask-Wechselspiel (heuristisch, kein Order-Feed).
+    """
+    if paths.ndim != 3 or paths.shape[-1] != 2:
+        raise ValueError("paths: Shape (B, T, 2) erwartet")
+    p = max(1, int(period))
+    t_ = paths.size(1)
+    t_i = torch.arange(t_, device=paths.device, dtype=torch.float32)
+    osc = (1.1 * torch.sin(2.0 * math.pi * t_i / float(p))).to(paths.dtype)
+    w = (osc.view(1, -1)).expand(paths.size(0), -1)
+    out = paths.clone()
+    out[:, :, 1] = out[:, :, 1] + w
+    return out
+
+
+def inject_liquidation_cascade(
+    paths: torch.Tensor,
+    *,
+    t_start: float = 0.4,
+    width: float = 0.1,
+) -> torch.Tensor:
+    """
+    Fügt kaskadenartige abwärtsgerichtete log-Return-Spitzen in ein Zeitfenster ein
+    (Flash- / Liquidation-Fährte).
+    """
+    if paths.ndim != 3 or paths.shape[-1] != 2:
+        raise ValueError("paths: Shape (B, T, 2) erwartet")
+    t_ = paths.size(1)
+    ts = max(0.0, min(0.95, float(t_start)))
+    w = max(0.01, min(0.2, float(width)))
+    t_axis = torch.linspace(0.0, 1.0, t_, device=paths.device, dtype=paths.dtype)
+    g = torch.exp(-((t_axis - ts) ** 2) / (2.0 * w**2))
+    out = paths.clone()
+    bsz = out.size(0)
+    for i in range(bsz):
+        amp = 2.4 + 0.8 * torch.rand(1, device=paths.device, dtype=paths.dtype).item()
+        out[i, :, 0] = out[i, :, 0] - amp * g
+        # dünnes Orderbuch-Korrelat
+        out[i, :, 1] = out[i, :, 1] - 0.55 * amp * g
+    return out
+
+
+def generate_black_swan_sequence(
+    simulator: AdversarialMarketSimulator,
+    *,
+    batch: int = 1,
+    toxicity_0_1: float = 0.95,
+    seed: int | None = None,
+    leptokurtic_mix: float = 0.3,
+) -> tuple[torch.Tensor, dict[str, Any]]:
+    """
+    Trainierten Generator + heuristische Stress-Hüllen nutzen; danach Fat-Tails, Wash-Muster,
+    Liquidations-Cluster.
+    """
+    base, meta = simulator.generate_paths(
+        batch=max(1, int(batch)),
+        toxicity_0_1=toxicity_0_1,
+        seed=seed,
+    )
+    x = boost_log_return_kurtosis(base, leptokurtic_mix=leptokurtic_mix)
+    x = inject_wash_trading_depth_oscillation(x, period=5)
+    x = inject_liquidation_cascade(x, t_start=0.5, width=0.12)
+    meta2 = {**meta, "black_swan": True, "leptokurtic_mix": float(leptokurtic_mix)}
+    return x, meta2

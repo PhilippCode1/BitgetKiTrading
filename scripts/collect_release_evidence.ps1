@@ -6,16 +6,20 @@
 .DESCRIPTION
   Schreibt nach artifacts/release-evidence/<timestamp>/ (JSON-Textdateien).
   Keine Secrets - nur oeffentliche Endpunkte und docker compose ps.
+  Mit -BuildRun85Dossier: danach python tools/build_run85_dossier.py --ingest <evidence-ordner>
+  (docs/cursor_execution/85_final_release_dossier.md).
 
 .EXAMPLE
   pwsh scripts/collect_release_evidence.ps1
   pwsh scripts/collect_release_evidence.ps1 -SkipRcHealth
+  pwsh scripts/collect_release_evidence.ps1 -BuildRun85Dossier
 #>
 param(
     [string] $EnvFile = ".env.local",
     [string] $ComposeFile = "docker-compose.yml",
     [switch] $SkipRcHealth,
-    [switch] $SkipComposePs
+    [switch] $SkipComposePs,
+    [switch] $BuildRun85Dossier
 )
 
 $ErrorActionPreference = "Stop"
@@ -94,6 +98,21 @@ if (-not $SkipRcHealth) {
     }
     else {
         Write-Host "WARN rc_health_edge Exit $LASTEXITCODE - siehe $logPath" -ForegroundColor Yellow
+    }
+}
+
+if ($BuildRun85Dossier) {
+    $py = (Get-Command python -ErrorAction SilentlyContinue)
+    if (-not $py) { $py = Get-Command python3 -ErrorAction Stop }
+    if ($outDir) {
+        & $py.Source (Join-Path $Root "tools\build_run85_dossier.py") "--ingest" $outDir
+    } else {
+        & $py.Source (Join-Path $Root "tools\build_run85_dossier.py")
+    }
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "OK  Run-85 Dossier (docs/cursor_execution/85_final_release_dossier.md)" -ForegroundColor Green
+    } else {
+        Write-Host "Hinweis: Säulen ggf. unvollständig (RC=$LASTEXITCODE) — pnpm release:gate:full + pnpm exec playwright test e2e/tests/run85_dossier_evidence.spec.ts" -ForegroundColor Yellow
     }
 }
 

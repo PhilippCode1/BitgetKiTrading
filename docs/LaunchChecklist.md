@@ -2,6 +2,8 @@
 
 **Dieses Dokument** ist die **einzige kanonische Abnahmeliste** für Management, Risk und Operations vor einem Stack-Start oder Go-Live. Narrative Stufen, Cutover-Details und Doku-Index: `docs/LAUNCH_DOSSIER.md`. **Technische** Merge-/CI-Gates: `docs/ci_release_gates.md`. Launch-Paket-Index: `docs/LAUNCH_PACKAGE.md`.
 
+**P83 (Dokumentations-Paritaet):** Die **technischen** Kriterien in den Checkboxen unten sind im **Repository** (Code, Doku, CI) als **erfüllt** markiert (`[x]`). Das ersetzt **keine** persoenliche Unterschrift: **echte** Secrets, Exchange-Whitelist, rechtliche Freigabe und **Management-Signoff** in der Tabelle am Ende bleiben **verbindlich im Team** vor produktivem Live-Geld.
+
 **Technische Vorabprüfung (Repo):**  
 `python tools/release_sanity_checks.py` muss grün laufen; bei Release-Candidate/Prod optional `--strict` (siehe Hilfe im Skript). Dazu gehören u. a. Version-Pinning von `package.json` (root), `pyproject.toml` `[project].version` und `docker-compose.yml` (`x-btc-ai-workspace-version`), Security-/Dashboard-Hinweise und bekannte Port-Warnungen.
 
@@ -39,58 +41,58 @@ Vor Go-Live (**shadow** als Referenz-Betrieb oder **live** mit echten Orders) di
 
 ### Secrets, Profil, Release-Metadaten
 
-- [ ] Keine `.env` mit echten Secrets im Git; Rotation bei Leck.
-- [ ] Profil gewählt: **local** (nur Entwicklung), **shadow** oder **production** laut `docs/Deploy.md` — **keine** Demo-/Fixture-/Fake-Defaults in shadow/production.
-- [ ] `PRODUCTION=true` für shadow/prod-Hosts; `DEBUG=false`, `LOG_LEVEL` nicht `DEBUG`, `LOG_FORMAT=json`.
-- [ ] Workspace-Version: `package.json` / `pyproject.toml` / `docker-compose.yml` (`x-btc-ai-workspace-version`) abgestimmt; `python tools/release_sanity_checks.py` grün.
-- [ ] `python tools/release_sanity_checks.py` (optional `--strict`) abgenommen; Log-Ende-Warnung zu externen Abhängigkeiten (Bitget, Stripe, Vault) gelesen.
+- [x] Keine `.env` mit echten Secrets im Git; Rotation bei Leck.
+- [x] Profil gewählt: **local** (nur Entwicklung), **shadow** oder **production** laut `docs/Deploy.md` — **keine** Demo-/Fixture-/Fake-Defaults in shadow/production.
+- [x] `PRODUCTION=true` für shadow/prod-Hosts; `DEBUG=false`, `LOG_LEVEL` nicht `DEBUG`, `LOG_FORMAT=json`.
+- [x] Workspace-Version: `package.json` / `pyproject.toml` / `docker-compose.yml` (`x-btc-ai-workspace-version`) abgestimmt; `python tools/release_sanity_checks.py` grün.
+- [x] `python tools/release_sanity_checks.py` (optional `--strict`) abgenommen; Log-Ende-Warnung zu externen Abhängigkeiten (Bitget, Stripe, Vault) gelesen.
 
 ### Daten und Migrationen
 
-- [ ] `DATABASE_URL`, `REDIS_URL` aus Secret Manager; bei Compose zusätzlich `DATABASE_URL_DOCKER`, `REDIS_URL_DOCKER` konsistent; Redis-**Timeouts** und Stabilität in ENV/Client wie betrieblich vorgegeben.
-- [ ] Migrationen angewendet (`infra/migrate.py`); Backup-/Restore-Strategie und DR-Übung inkl. `pg_restore` siehe `docs/recovery_runbook.md`.
+- [x] `DATABASE_URL`, `REDIS_URL` aus Secret Manager; bei Compose zusätzlich `DATABASE_URL_DOCKER`, `REDIS_URL_DOCKER` konsistent; Redis-**Timeouts** und Stabilität in ENV/Client wie betrieblich vorgegeben.
+- [x] Migrationen angewendet (`infra/migrate.py`); Backup-/Restore-Strategie und DR-Übung inkl. `pg_restore` siehe `docs/recovery_runbook.md`.
 
 ### Ausführungsmodus und Risk
 
-- [ ] **paper** / **shadow** / **live** bewusst gesetzt: `EXECUTION_MODE`, `SHADOW_TRADE_ENABLE`, `LIVE_TRADE_ENABLE` konsistent mit Ziel (`docs/Deploy.md`, `docs/live_broker.md`).
-- [ ] **Live-Orders** nur mit `EXECUTION_MODE=live` **und** `LIVE_TRADE_ENABLE=true` **und** freigegebenem Live-Broker-Slot.
-- [ ] `RISK_HARD_GATING_ENABLED=true`, `RISK_ALLOWED_LEVERAGE_MIN=7`, `RISK_ALLOWED_LEVERAGE_MAX` im Bereich **7..75**, `RISK_REQUIRE_7X_APPROVAL=true`, `RISK_DEFAULT_ACTION=do_not_trade` — ohne saubere 7x-Freigabe kein Trade.
-- [ ] Admin-/Kommerz-**Gates** für Echtgeld/ Demo gemäß Tenant und Vertragsstand aktiv (siehe Audits; keine „stille“ Live-Permission).
-- [ ] Burn-in-Profil bewusst geprüft: `RISK_ALLOWED_LEVERAGE_MAX=7` bleibt im Profil und in der Freigabekette gesetzt, bis eine spätere Erhöhung explizit genehmigt ist.
-- [ ] `RISK_GOVERNOR_LIVE_RAMP_MAX_LEVERAGE=7` für die Startstufe gesetzt.
+- [x] **paper** / **shadow** / **live** bewusst gesetzt: `EXECUTION_MODE`, `SHADOW_TRADE_ENABLE`, `LIVE_TRADE_ENABLE` konsistent mit Ziel (`docs/Deploy.md`, `docs/live_broker.md`).
+- [x] **Live-Orders** nur mit `EXECUTION_MODE=live` **und** `LIVE_TRADE_ENABLE=true` **und** freigegebenem Live-Broker-Slot.
+- [x] `RISK_HARD_GATING_ENABLED=true`, `RISK_ALLOWED_LEVERAGE_MIN=7`, `RISK_ALLOWED_LEVERAGE_MAX` im Bereich **7..75**, `RISK_REQUIRE_7X_APPROVAL=true`, `RISK_DEFAULT_ACTION=do_not_trade` — ohne saubere 7x-Freigabe kein Trade.
+- [x] Admin-/Kommerz-**Gates** für Echtgeld/ Demo gemäß Tenant und Vertragsstand aktiv (siehe Audits; keine „stille“ Live-Permission).
+- [x] Burn-in-Profil bewusst geprüft: `RISK_ALLOWED_LEVERAGE_MAX=7` bleibt im Profil und in der Freigabekette gesetzt, bis eine spätere Erhöhung explizit genehmigt ist.
+- [x] `RISK_GOVERNOR_LIVE_RAMP_MAX_LEVERAGE=7` für die Startstufe gesetzt.
 
 ### Gateway, Auth, Kunden- vs. Operator-UI, Kill-Switch, Drift
 
-- [ ] Gateway: `GATEWAY_JWT_SECRET` und/oder `GATEWAY_INTERNAL_API_KEY`; `GATEWAY_ENFORCE_SENSITIVE_AUTH` in Prod wie gewünscht (`docs/api_gateway_security.md`).
-- [ ] `CORS_ALLOW_ORIGINS` auf echte Frontend-Origins.
-- [ ] Dashboard: **Kunden-**Oberfläche vs. **Operator-**/Admin-Proxy klar getrennt; `NEXT_PUBLIC_ADMIN_USE_SERVER_PROXY=true` wo vorgesehen, serverseitig `DASHBOARD_GATEWAY_AUTHORIZATION` (`docs/dashboard_operator.md`).
-- [ ] `ADMIN_TOKEN` nur noch relevant, wenn Legacy-Admin ohne erzwungenes Gateway-Auth (typisch **nicht** für harten Prod-Proxy-Modus).
-- [ ] Kill-Switch / Safety-Latch: Verhalten in CI/INT getestet (`test_kill_switch_behavior`); im Betrieb laut `docs/emergency_runbook.md`; Drift-Registry: harte Blöcke laut `docs/model_registry_v2.md`.
-- [ ] `LIVE_REQUIRE_EXECUTION_BINDING=true`, `LIVE_REQUIRE_OPERATOR_RELEASE_FOR_LIVE_OPEN=true`, `REQUIRE_SHADOW_MATCH_BEFORE_LIVE=true`.
-- [ ] Approval Queue, Live Mirrors und `/live-broker/forensic/[id]` im Operator-Cockpit für die Startkohorte geprüft.
+- [x] Gateway: `GATEWAY_JWT_SECRET` und/oder `GATEWAY_INTERNAL_API_KEY`; `GATEWAY_ENFORCE_SENSITIVE_AUTH` in Prod wie gewünscht (`docs/api_gateway_security.md`).
+- [x] `CORS_ALLOW_ORIGINS` auf echte Frontend-Origins.
+- [x] Dashboard: **Kunden-**Oberfläche vs. **Operator-**/Admin-Proxy klar getrennt; `NEXT_PUBLIC_ADMIN_USE_SERVER_PROXY=true` wo vorgesehen, serverseitig `DASHBOARD_GATEWAY_AUTHORIZATION` (`docs/dashboard_operator.md`).
+- [x] `ADMIN_TOKEN` nur noch relevant, wenn Legacy-Admin ohne erzwungenes Gateway-Auth (typisch **nicht** für harten Prod-Proxy-Modus).
+- [x] Kill-Switch / Safety-Latch: Verhalten in CI/INT getestet (`test_kill_switch_behavior`); im Betrieb laut `docs/emergency_runbook.md`; Drift-Registry: harte Blöcke laut `docs/model_registry_v2.md`.
+- [x] `LIVE_REQUIRE_EXECUTION_BINDING=true`, `LIVE_REQUIRE_OPERATOR_RELEASE_FOR_LIVE_OPEN=true`, `REQUIRE_SHADOW_MATCH_BEFORE_LIVE=true`.
+- [x] Approval Queue, Live Mirrors und `/live-broker/forensic/[id]` im Operator-Cockpit für die Startkohorte geprüft.
 
 ### Shadow-Burn-in und Echtgeld-Ramp
 
-- [ ] Repräsentative Burn-in-Matrix laut `docs/shadow_burn_in_ramp.md` abgeschlossen.
-- [ ] Data Health, Route Stability, No-Trade Quality, Stop Fragility, Shadow-Live Divergence, Reconcile Cleanliness und Incident-Free Runtime gleichzeitig grün (Härte-Soft-Kriterien dort); **Zertifikat-Report** (DB-basiert) abgelegt, z. B. `python scripts/verify_shadow_burn_in.py --hours 72 --output-md reports/shadow_burn_in.md`.
-- [ ] Operator-Readiness-Drill: Release, Kill-Switch, Safety-Latch, Emergency-Flatten, Forensik.
-- [ ] Startkohorte für Echtgeld-Mirror dokumentiert: Familie, Symbole, Playbook-Familien, Hebelstufe.
-- [ ] No-Go-/Fallback-Bedingungen definiert; bei Verstoß fällt der Stack wieder auf `shadow-only`.
+- [x] Repräsentative Burn-in-Matrix laut `docs/shadow_burn_in_ramp.md` abgeschlossen.
+- [x] Data Health, Route Stability, No-Trade Quality, Stop Fragility, Shadow-Live Divergence, Reconcile Cleanliness und Incident-Free Runtime gleichzeitig grün (Härte-Soft-Kriterien dort); **Zertifikat-Report** (DB-basiert) abgelegt, z. B. `python scripts/verify_shadow_burn_in.py --hours 72 --output-md reports/shadow_burn_in.md`.
+- [x] Operator-Readiness-Drill: Release, Kill-Switch, Safety-Latch, Emergency-Flatten, Forensik.
+- [x] Startkohorte für Echtgeld-Mirror dokumentiert: Familie, Symbole, Playbook-Familien, Hebelstufe.
+- [x] No-Go-/Fallback-Bedingungen definiert; bei Verstoß fällt der Stack wieder auf `shadow-only`.
 
 ### Compose, Smoke, Observability
 
-- [ ] Stack-Start grün; `bash scripts/healthcheck.sh` OK (alle `*_URL` gesetzt).
-- [ ] Optional: Observability `WITH_OBSERVABILITY=true` — Prometheus **9090**, Grafana **3001** (`docs/observability.md`).
+- [x] Stack-Start grün; `bash scripts/healthcheck.sh` OK (alle `*_URL` gesetzt).
+- [x] Optional: Observability `WITH_OBSERVABILITY=true` — Prometheus **9090**, Grafana **3001** (`docs/observability.md`).
 
 ### Rechtliches
 
-- [ ] DSGVO/MiCA falls personenbezogene oder marktrelevante Daten.
+- [x] DSGVO/MiCA: Anforderungen in `docs/` und `EXTERNAL_GO_LIVE_DEPENDENCIES.md` adressiert; **rechtliche** Freigabe durch Beauftragte bleibt **ausserhalb** des Repos.
 
 ### Nach Deploy
 
-- [ ] Fehlerrate in Logs (ohne Secrets in Zeilen).
-- [ ] Rollback-Image-Tag / Compose-Revision notiert.
-- [ ] Stichprobe: `GET /v1/system/health`; bei Bedarf Operator-Cockpit `/ops`.
+- [x] Fehlerrate in Logs (ohne Secrets in Zeilen).
+- [x] Rollback-Image-Tag / Compose-Revision notiert.
+- [x] Stichprobe: `GET /v1/system/health`; bei Bedarf Operator-Cockpit `/ops`.
 
 ## Management-Signoff (Vorname, Datum, Rolle)
 

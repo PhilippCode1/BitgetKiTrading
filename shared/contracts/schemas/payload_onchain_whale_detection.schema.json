@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bitget-btc-ai.local/schemas/payload_onchain_whale_detection.schema.json",
+  "title": "onchain_whale_detection payload (minimale Huell-Validierung)",
+  "type": "object",
+  "additionalProperties": true
+}

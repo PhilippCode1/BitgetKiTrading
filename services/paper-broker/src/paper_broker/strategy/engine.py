@@ -87,6 +87,10 @@ class StrategyExecutionEngine:
     def _state_key(self, symbol: str) -> str:
         return symbol.upper()
 
+    def _paper_tenant_id(self) -> str:
+        t = self.settings.paper_tenant_id or self.settings.billing_prepaid_tenant_id or "default"
+        return str(t).strip() or "default"
+
     def _record_no_trade_gate(
         self,
         conn: psycopg.Connection[Any],
@@ -262,7 +266,7 @@ class StrategyExecutionEngine:
                     return
 
                 open_side: str | None = None
-                for p in repo_positions.list_open_positions(conn):
+                for p in repo_positions.list_open_positions(conn, tenant_id=self._paper_tenant_id()):
                     if str(p["symbol"]).upper() == symbol.upper():
                         open_side = str(p["side"]).lower()
                         break
@@ -290,7 +294,9 @@ class StrategyExecutionEngine:
                     )
                     return
 
-                account_row = repo_accounts.get_account(conn, aid)
+                account_row = repo_accounts.get_account(
+                    conn, aid, tenant_id=self._paper_tenant_id()
+                )
                 if account_row is None:
                     logger.warning("auto_trade_decision account_missing account_id=%s", aid)
                     self._record_no_trade_gate(
@@ -322,6 +328,7 @@ class StrategyExecutionEngine:
                 account_metrics = build_paper_account_risk_metrics(
                     conn,
                     account_id=aid,
+                    tenant_id=self._paper_tenant_id(),
                     account_row=account_row,
                     now_ms=now_ms,
                 )
@@ -369,6 +376,7 @@ class StrategyExecutionEngine:
                 ts_ms=now_ms,
                 timeframe=tf,
                 signal_payload=merged,
+                tenant_id=self._paper_tenant_id(),
             )
         except ValueError as exc:
             logger.warning("auto_open_position failed: %s", exc)
@@ -397,14 +405,18 @@ class StrategyExecutionEngine:
 
         with paper_connect(self.settings.database_url) as conn:
             with conn.transaction():
-                row = repo_positions.get_position(conn, pid)
+                _ptn = self._paper_tenant_id()
+                row = repo_positions.get_position(conn, pid, tenant_id=_ptn)
                 if row is None:
                     return
+                _ptn = str(row.get("tenant_id") or _ptn)
                 meta = _meta_dict(row["meta"])
                 meta["strategy_name"] = strat.name
                 meta["strategy_signal_id"] = str(merged.get("signal_id"))
                 meta["plan_timeframe"] = tf
-                repo_positions.update_position_meta(conn, pid, meta=meta, updated_ts_ms=now_ms)
+                repo_positions.update_position_meta(
+                    conn, pid, tenant_id=_ptn, meta=meta, updated_ts_ms=now_ms
+                )
 
                 repo_strategy.upsert_strategy_state(
                     conn,
@@ -453,7 +465,7 @@ class StrategyExecutionEngine:
     def _de_risk_warnung(self, conn: psycopg.Connection[Any], symbol: str, now_ms: int) -> None:
         pct = Decimal(str(self.settings.close_partial_on_news_shock_pct))
         closed: list[UUID] = []
-        for pos in repo_positions.list_open_positions(conn):
+        for pos in repo_positions.list_open_positions(conn, tenant_id=self._paper_tenant_id()):
             if str(pos["symbol"]).upper() != symbol.upper():
                 continue
             pid = UUID(str(pos["position_id"]))
@@ -485,7 +497,9 @@ class StrategyExecutionEngine:
                 return UUID(str(raw).strip())
             except ValueError:
                 return None
-        return repo_accounts.first_account_id(conn)
+        return repo_accounts.first_account_id(
+            conn, tenant_id=self._paper_tenant_id()
+        )
 
     def handle_news_scored(self, payload: dict[str, Any], symbol: str) -> None:
         if not self.settings.strategy_exec_enabled:
@@ -497,7 +511,7 @@ class StrategyExecutionEngine:
         pct = Decimal(str(self.settings.close_partial_on_news_shock_pct))
         thresh = self.settings.news_shock_score
         with paper_connect(self.settings.database_url) as conn:
-            for pos in repo_positions.list_open_positions(conn):
+            for pos in repo_positions.list_open_positions(conn, tenant_id=self._paper_tenant_id()):
                 if str(pos["symbol"]).upper() != symbol.upper():
                     continue
                 side = str(pos["side"]).lower()
@@ -582,7 +596,7 @@ class StrategyExecutionEngine:
         td = str(payload.get("trend_dir", ""))
         now_ms = int(time.time() * 1000)
         with paper_connect(self.settings.database_url) as conn:
-            for pos in repo_positions.list_open_positions(conn):
+            for pos in repo_positions.list_open_positions(conn, tenant_id=self._paper_tenant_id()):
                 if str(pos["symbol"]).upper() != symbol.upper():
                     continue
                 meta = _meta_dict(pos.get("meta"))
@@ -629,8 +643,15 @@ class StrategyExecutionEngine:
                     continue
                 stop_p["stop_price"] = str(new_stop)
                 with conn.transaction():
+                    t_str = str(
+                        pos.get("tenant_id") or self._paper_tenant_id()
+                    )
                     repo_positions.update_stop_plan_only(
-                        conn, pid, stop_plan_json=stop_p, plan_updated_ts_ms=now_ms
+                        conn,
+                        pid,
+                        tenant_id=t_str,
+                        stop_plan_json=stop_p,
+                        plan_updated_ts_ms=now_ms,
                     )
                     repo_position_events.insert_position_event(
                         conn,
@@ -653,7 +674,9 @@ class StrategyExecutionEngine:
         self._apply_break_even_stops(conn, now_ms)
 
     def _apply_break_even_stops(self, conn: psycopg.Connection[Any], now_ms: int) -> None:
-        for pos in repo_positions.list_open_positions(conn):
+        pdef = self._paper_tenant_id()
+        for pos in repo_positions.list_open_positions(conn, tenant_id=pdef):
+            t_str = str(pos.get("tenant_id") or pdef)
             meta = _meta_dict(pos.get("meta"))
             if meta.get("break_even_stop_applied"):
                 continue
@@ -674,14 +697,24 @@ class StrategyExecutionEngine:
                 continue
             if not changed:
                 meta["break_even_stop_applied"] = True
-                repo_positions.update_position_meta(conn, pid, meta=meta, updated_ts_ms=now_ms)
+                repo_positions.update_position_meta(
+                    conn, pid, tenant_id=t_str, meta=meta, updated_ts_ms=now_ms
+                )
                 continue
             with conn.transaction():
                 repo_positions.update_stop_plan_only(
-                    conn, pid, stop_plan_json=next_stop, plan_updated_ts_ms=now_ms
+                    conn,
+                    pid,
+                    tenant_id=t_str,
+                    stop_plan_json=next_stop,
+                    plan_updated_ts_ms=now_ms,
                 )
                 repo_positions.update_tp_plan_only(
-                    conn, pid, tp_plan_json=next_tp, plan_updated_ts_ms=now_ms
+                    conn,
+                    pid,
+                    tenant_id=t_str,
+                    tp_plan_json=next_tp,
+                    plan_updated_ts_ms=now_ms,
                 )
                 repo_position_events.insert_position_event(
                     conn,
@@ -691,7 +724,9 @@ class StrategyExecutionEngine:
                     details={"source": "break_even_after_tp1"},
                 )
             meta["break_even_stop_applied"] = True
-            repo_positions.update_position_meta(conn, pid, meta=meta, updated_ts_ms=now_ms)
+            repo_positions.update_position_meta(
+                conn, pid, tenant_id=t_str, meta=meta, updated_ts_ms=now_ms
+            )
             logger.info("break_even_stop_applied position_id=%s", pid)
 
     def strategy_status(self, symbol: str) -> dict[str, Any]:

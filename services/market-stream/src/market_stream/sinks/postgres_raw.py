@@ -44,6 +44,10 @@ class PostgresRawSink:
     def is_connected(self) -> bool:
         return self._pool is not None
 
+    @property
+    def raw_persist_enabled(self) -> bool:
+        return self._enabled
+
     async def connect(self) -> bool:
         if not self._enabled:
             return False

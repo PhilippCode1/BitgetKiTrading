@@ -18,6 +18,7 @@ import type {
   SelfHealingNarrativeFacts,
   SelfHealingSeverity,
   SelfHealingSnapshot,
+  SelfHealingStateItem,
 } from "./schema";
 
 export type SelfHealingTranslate = (
@@ -33,6 +34,8 @@ export type SelfHealingRawInputs = Readonly<{
   probe: GatewayBootstrapProbeResult;
   open_alerts: readonly MonitorAlertItem[];
   outbox_items: readonly AlertOutboxItem[];
+  self_healing_items: readonly SelfHealingStateItem[] | null;
+  self_healing_error: string | null;
 }>;
 
 function serviceByName(
@@ -722,5 +725,7 @@ export function buildSelfHealingSnapshot(
     healing_hints,
     not_auto_fixable,
     narrative_facts,
+    self_healing_items: input.self_healing_items,
+    self_healing_error: input.self_healing_error,
   };
 }

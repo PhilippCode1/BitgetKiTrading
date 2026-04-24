@@ -213,6 +213,7 @@ export default async function HealthPage({
       <AssistLayerPanel
         titleKey="pages.health.assistLayerTitle"
         leadKey="pages.health.assistLayerLead"
+        enableOpsRiskForensicLoader
         segments={[
           {
             segment: "admin-operations",
@@ -223,6 +224,11 @@ export default async function HealthPage({
             segment: "strategy-signal",
             labelKey: "pages.health.assistTabStrategy",
             contextHintKey: "pages.health.assistContextHintStrategy",
+          },
+          {
+            segment: "ops-risk",
+            labelKey: "pages.health.assistTabOpsRisk",
+            contextHintKey: "pages.health.assistContextHintOpsRisk",
           },
         ]}
       />

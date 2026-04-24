@@ -9,3 +9,4 @@ export * from "./drawing";
 export * from "./gatewayReadEnvelope";
 export * from "./eventStreams";
 export * from "./eventEnvelope";
+export * from "./payloadTypes";

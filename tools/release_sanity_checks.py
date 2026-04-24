@@ -11,6 +11,11 @@ Am Log-Ende erscheint pro Lauf eine WARNING zu externen Go-Live-Abhaengigkeiten
 Vor finaler Checklisten-Signoff: `docs/LaunchChecklist.md` (SSOT) und dieses
 Skript sollen beide erfuellt/green sein.
 
+P84 (Iron Curtain): Derselbe Secret-/Dateiscan wird im sequenziellen
+`scripts/release_gate.py --iron-curtain` nach Static erneut, zusammen mit
+`check_production_env_template_security` und
+`db_production_hardening --migrations-fingerprint-only`.
+
 Aufruf vom Repo-Root:
   python tools/release_sanity_checks.py
   python tools/release_sanity_checks.py --strict   # zusaetzlich WARN -> Exit 1

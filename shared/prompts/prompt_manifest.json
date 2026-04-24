@@ -63,6 +63,14 @@
       "instruction_file": "tasks/support_billing_assist.instruction_de.txt",
       "guardrail_tier": "full",
       "status": "active"
+    },
+    "ops_risk_assist": {
+      "prompt_version": "2026.04.23-1",
+      "schema_filename": "assistant_turn.schema.json",
+      "instruction_file": "tasks/ops_risk_assist.instruction_de.txt",
+      "guardrail_tier": "full",
+      "status": "active",
+      "note_de": "Policy-Treffer vs. Messwerte; kein reines Market-Pitching."
     }
   }
 }

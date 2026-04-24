@@ -11,6 +11,7 @@ import psycopg
 from psycopg.types.json import Json
 
 from api_gateway.db_customer_domain_events import append_customer_domain_event
+from api_gateway.db_profit_fee import maybe_apply_hwm_cashflow_for_wallet_reason
 
 _DISPLAY_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")
 
@@ -259,6 +260,12 @@ def adjust_wallet_balance(
             actor[:200],
             Json({"reason_code": reason_code[:64], "new_balance_list_usd": new_bal}),
         ),
+    )
+    maybe_apply_hwm_cashflow_for_wallet_reason(
+        conn,
+        tenant_id=tenant_id,
+        delta_list_usd=delta_list_usd,
+        reason_code=reason_code,
     )
     return new_bal
 

@@ -39,6 +39,7 @@ export function SignalDetailMarketChartBlock({
       llmChartAnnotationsRaw={llm?.annotationsRaw ?? null}
       llmChartLayerEnabled={llm?.layerEnabled ?? true}
       onLlmChartLayerEnabledChange={llm?.setLayerEnabled}
+      llmChartRationaleDe={llm?.rationaleDe ?? null}
     />
   );
 }

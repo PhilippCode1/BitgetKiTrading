@@ -48,9 +48,27 @@ def test_operator_readonly_fills_gaps() -> None:
     )
     assert "BTCUSDT" in s
     assert r.PLACEHOLDER_NO_NEWS in s
+    assert r.PLACEHOLDER_NO_NEWS == "[KEINE AKTUELLEN NEWS VERFÜGBAR]"
     assert "1.0" in s
     assert r.PLACEHOLDER_NO_CHART in s
     assert r.PLACEHOLDER_NO_SIGNALS in s
+
+
+def test_operator_readonly_exotic_symbol_no_news_succeeds() -> None:
+    """Pro-Symbol mit DB-Lage aber ohne News: Platzhalter, kein Abbruch."""
+    from llm_orchestrator.knowledge import retrieval as r
+
+    s = r.format_operator_readonly_pro_symbol(
+        {
+            "symbol": "EXOTICCOINUSDT",
+            "news": [],
+            "orderbook": None,
+        },
+    )
+    assert "EXOTICCOINUSDT" in s
+    assert r.PLACEHOLDER_NO_NEWS in s
+    assert "news:" in s
+    assert r.PLACEHOLDER_NO_ORDERBOOK in s
 
 
 def test_operator_readonly_not_dict() -> None:

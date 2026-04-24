@@ -76,6 +76,12 @@ class PostTradeReviewRequest(BaseModel):
 class OperatorExplainRequest(BaseModel):
     question_de: str = Field(..., min_length=3, max_length=8_000)
     readonly_context_json: dict[str, Any] = Field(default_factory=dict)
+    execution_id: UUID | None = Field(
+        default=None,
+        description=(
+            "Optional: live.execution_decisions.execution_id fuer ai_evaluation_logs / Produktdiagnose"
+        ),
+    )
     provider_preference: ProviderPref = "auto"
     model: str | None = None
     temperature: float = Field(default=0.2, ge=0.0, le=2.0)
@@ -92,6 +98,14 @@ class SafetyIncidentDiagnosisRequest(BaseModel):
 class StrategySignalExplainRequest(BaseModel):
     signal_context_json: dict[str, Any] = Field(default_factory=dict)
     focus_question_de: str | None = Field(default=None, max_length=8_000)
+    execution_id: UUID | None = Field(
+        default=None,
+        description="Optional: Join zu ai_evaluation_logs / post_trade Attribution.",
+    )
+    source_signal_id: UUID | None = Field(
+        default=None,
+        description="Optional: signal_id fuer Logs wenn execution_id unbekannt.",
+    )
     provider_preference: ProviderPref = "auto"
     model: str | None = None
     temperature: float = Field(default=0.2, ge=0.0, le=2.0)
@@ -139,6 +153,7 @@ class AssistTurnRequest(BaseModel):
         "strategy_signal",
         "customer_onboarding",
         "support_billing",
+        "ops_risk",
     ]
     conversation_id: str = Field(..., min_length=36, max_length=36)
     tenant_partition_id: str = Field(..., min_length=1, max_length=256)
@@ -321,6 +336,7 @@ def build_router(
                 provider_preference=body.provider_preference,
                 model=body.model,
                 temperature=body.temperature,
+                execution_id=body.execution_id,
             )
         except _LLM_EXC as exc:
             raise _llm_http_error(exc) from exc
@@ -365,6 +381,8 @@ def build_router(
             return service.run_strategy_signal_explain(
                 signal_context_json=body.signal_context_json,
                 focus_question_de=body.focus_question_de,
+                execution_id=body.execution_id,
+                source_signal_id=body.source_signal_id,
                 provider_preference=body.provider_preference,
                 model=body.model,
                 temperature=body.temperature,

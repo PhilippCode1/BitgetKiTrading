@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bitget-btc-ai.local/schemas/payload_tsfm_signal_candidate.schema.json",
+  "title": "tsfm_signal_candidate payload (minimale Huell-Validierung)",
+  "type": "object",
+  "additionalProperties": true
+}

@@ -17,6 +17,7 @@ _FULL_TASKS = frozenset(
         "strategy_signal_assist",
         "customer_onboarding_assist",
         "support_billing_assist",
+        "ops_risk_assist",
     }
 )
 

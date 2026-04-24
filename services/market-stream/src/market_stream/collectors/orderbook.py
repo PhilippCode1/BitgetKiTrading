@@ -149,7 +149,11 @@ class OrderbookCollector:
                     channel=channel,
                 )
             except ValueError as exc:
-                self._logger.warning("failed to parse orderbook payload error=%s item=%s", exc, item)
+                self._logger.warning(
+                    "failed to parse orderbook payload error=%s item=%s",
+                    exc,
+                    item,
+                )
 
     async def _handle_orderbook_item(
         self,
@@ -165,8 +169,18 @@ class OrderbookCollector:
         ts_ms = _extract_ts_ms(message, item)
         action = str(message.get("action") or "update").lower()
 
+        if self._book.desynced and action != "snapshot" and channel == "books":
+            self._logger.info(
+                "orderbook: discarding incremental while desynced symbol=%s action=%s",
+                self._bitget_settings.symbol,
+                action,
+            )
+            return
+
         if channel == "books5":
-            if not self._awaiting_books5_recovery and self._book.seq is not None and not self._book.desynced:
+            have_seq = self._book.seq is not None
+            skip5 = not self._awaiting_books5_recovery and have_seq
+            if skip5 and not self._book.desynced:
                 return
             try:
                 view = self._book.apply_snapshot(
@@ -203,7 +217,7 @@ class OrderbookCollector:
             self._last_seq = view.seq
             return
 
-        use_snapshot = action == "snapshot" or self._book.seq is None or self._book.desynced
+        use_snapshot = action == "snapshot" or self._book.seq is None
         try:
             if use_snapshot:
                 view = self._book.apply_snapshot(
@@ -281,6 +295,22 @@ class OrderbookCollector:
         inserted = await self._orderbook_repo.insert_snapshot(snapshot)
         if inserted:
             self._persisted_snapshots += 1
+
+        # Redis: Top-5-Snapshot für live-broker pre-flight liquidity guard
+        if snapshot.bids and snapshot.asks and self._slippage_sink is not None:
+            try:
+                key = f"ms:orderbook_top5:{snapshot.symbol}"
+                await self._slippage_sink.set_json(
+                    key,
+                    {
+                        "ts_ms": snapshot.ts_ms,
+                        "bids": [list(b) for b in snapshot.bids[:5]],
+                        "asks": [list(a) for a in snapshot.asks[:5]],
+                    },
+                    ex_sec=90,
+                )
+            except (TypeError, ValueError, OSError) as exc:
+                self._logger.debug("orderbook top5 redis snapshot failed: %s", exc)
 
         try:
             slippage_payload = compute_slippage_metrics(
@@ -365,6 +395,60 @@ class OrderbookCollector:
         self._logger.warning("orderbook resync triggered reason=%s", reason)
         if self._resync_on_mismatch and self._resync_action is not None:
             await self._resync_action(reason)
+
+    async def rebuild_from_rest_payload(self, data: dict[str, Any]) -> bool:
+        """
+        Wende Bitget-REST-Depth (depth/merge-depth) ``data`` auf das Buch an.
+        Kein Draht-checksum, um REST-Abweichungen vermeidbar false zu halten.
+        """
+        try:
+            bids = _extract_levels(data.get("bids"))
+            asks = _extract_levels(data.get("asks"))
+        except ValueError as exc:
+            self._logger.warning("orderbook REST resync: parse failed: %s", exc)
+            return False
+        if not bids and not asks:
+            self._logger.warning("orderbook REST resync: empty bids/asks")
+            return False
+        raw_ts = data.get("ts")
+        try:
+            if raw_ts is not None and str(raw_ts).strip():
+                ts_ms = int(str(raw_ts))
+            else:
+                ts_ms = int(time.time() * 1000)
+        except (TypeError, ValueError):
+            ts_ms = int(time.time() * 1000)
+        seq: int | None
+        if data.get("seq") is not None:
+            try:
+                seq = int(str(data.get("seq")))
+            except (TypeError, ValueError):
+                seq = None
+        else:
+            seq = None
+        self._book.apply_snapshot(
+            bids=bids,
+            asks=asks,
+            seq=seq,
+            checksum=None,
+            ts_ms=ts_ms,
+        )
+        self._awaiting_books5_recovery = True
+        self._last_orderbook_ts_ms = ts_ms
+        self._last_seq = self._book.seq
+        view = self._book.view()
+        await self._persist_and_publish(
+            OrderBookPersistSnapshot(
+                symbol=self._bitget_settings.symbol,
+                ts_ms=ts_ms,
+                seq=view.seq,
+                checksum=view.checksum,
+                bids=view.bids,
+                asks=view.asks,
+            ),
+            source_channel="rest-depth-resync",
+        )
+        return True
 
 
 def _extract_levels(raw_levels: object) -> list[LevelPair]:

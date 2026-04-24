@@ -18,3 +18,5 @@ for p in (PB_SRC, SHARED_SRC):
 def _paper_broker_min_env(monkeypatch: pytest.MonkeyPatch) -> None:
     """PaperBrokerSettings verlangt ein Default-Symbol auch ohne produktive Watchlist."""
     monkeypatch.setenv("PAPER_DEFAULT_SYMBOL", "BTCUSDT")
+    # Keine Host-Env-Leakage: LIVE_TRADE + EXECUTION_MODE=paper ist in Settings verboten.
+    monkeypatch.setenv("LIVE_TRADE_ENABLE", "false")

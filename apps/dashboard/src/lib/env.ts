@@ -1,3 +1,8 @@
+/**
+ * Oeffentliche Build-/Runtime-Flags: nur Schluessel aus
+ * `apps/dashboard/public-env-allowlist.cjs` (siehe next.config.js).
+ * Server-BFF → Gateway: `serverEnv.apiGatewayUrl` (API_GATEWAY_URL), niemals Secrets.
+ */
 function readPublicBool(value: string | undefined, fallback: boolean): boolean {
   return (value ?? String(fallback)).trim().toLowerCase() === "true";
 }

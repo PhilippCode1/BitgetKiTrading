@@ -32,11 +32,29 @@ from shared_py.bitget.execution_guards import (
 )
 from shared_py.bitget.instruments import BitgetEndpointProfile, MarginAccountMode, endpoint_profile_for
 from shared_py.eventbus import RedisStreamBus
+from shared_py.observability.apex_trace import (
+    finalize_apex_deltas,
+    log_apex_chain_ms,
+    new_apex_trace,
+    set_hop,
+    now_ns,
+)
 from shared_py.observability.execution_forensic import redact_nested_mapping
 
+from shared_py.shadow_live_divergence import get_shadow_match_latch_read_status
+
 from live_broker.config import LiveBrokerSettings
+from live_broker.exceptions import ShadowDivergenceError
+from live_broker.execution.liquidity_guard import (
+    InsufficientLiquidityError,
+    verify_execution_liquidity,
+)
 from live_broker.control_plane.capabilities import assert_write_capability
 from live_broker.events import publish_system_alert
+from live_broker.global_halt_latch import (
+    GlobalHaltLatch,
+    try_publish_global_halt_state,
+)
 from live_broker.orders.passive_order_manager import (
     chase_price_within_slippage,
     coalesce_orderflow_imbalance,
@@ -105,6 +123,7 @@ class LiveBrokerOrderService:
         bus: RedisStreamBus | None = None,
         catalog: BitgetInstrumentCatalog | None = None,
         metadata_service: BitgetInstrumentMetadataService | None = None,
+        global_halt: GlobalHaltLatch | None = None,
     ) -> None:
         self._settings = settings
         self._repo = repo
@@ -112,6 +131,7 @@ class LiveBrokerOrderService:
         self._bus = bus
         self._catalog = catalog
         self._metadata_service = metadata_service
+        self._global_halt = global_halt
         self._exit_service: LiveExitService | None = None
         self._exchange_client: BitgetExchangeClient | None = None
 
@@ -623,6 +643,7 @@ class LiveBrokerOrderService:
             ),
             client_oid=identity.get("client_oid"),
             exchange_order_id=identity.get("exchange_order_id"),
+            exchange_mutation=False,
         )
         data = response.payload.get("data") if isinstance(response.payload, dict) else {}
         if not isinstance(data, dict):
@@ -1303,6 +1324,11 @@ class LiveBrokerOrderService:
         except Exception as exc:
             safety_latch_active = False
             logger.warning("safety latch snapshot unavailable: %s", exc)
+        gh: bool | None
+        if self._global_halt is not None:
+            gh = self._global_halt.is_halted
+        else:
+            gh = None
         return {
             "execution_mode": self._settings.execution_mode,
             "paper_path_active": self._settings.paper_path_active,
@@ -1310,6 +1336,7 @@ class LiveBrokerOrderService:
             "shadow_path_active": self._settings.shadow_path_active,
             "live_trade_enable": self._settings.live_trade_enable,
             "live_order_submission_enabled": self._settings.live_order_submission_enabled,
+            "global_halt_latch": gh,
             "private_rest": self._private.state_snapshot(),
             "order_status_counts": order_status_counts,
             "kill_switch_enabled": self._settings.live_kill_switch_enabled,
@@ -2343,6 +2370,28 @@ class LiveBrokerOrderService:
                     ),
                     retryable=False,
                 )
+        if self._settings.require_shadow_match_before_live and (
+            self._settings.redis_url or ""
+        ).strip():
+            rurl = str(self._settings.redis_url)
+            st = get_shadow_match_latch_read_status(rurl, eid)
+            if st == "redis_unavailable":
+                if self._global_halt is not None:
+                    self._global_halt.force_halt_in_process(
+                        reason="shadow_match_redis_unavailable"
+                    )
+                try_publish_global_halt_state(rurl, True)
+                raise ShadowDivergenceError(
+                    f"Shadow-Redis nicht erreichbar (Fail-Closed / global_halt): "
+                    f"execution_id={eid}",
+                    reason="shadow_match_redis_unavailable",
+                )
+            if st == "absent":
+                raise ShadowDivergenceError(
+                    f"Echtgeld-Submit ohne Shadow-Redis-Quittung: execution_id={eid} "
+                    "(Erwartung: shadow:match:{{id}}; Paper-Shadow ausgefallen oder TTL abgelaufen).",
+                    reason="shadow_match_latch_absent",
+                )
 
     def _assert_catalog_order_capabilities(
         self,
@@ -2514,7 +2563,7 @@ class LiveBrokerOrderService:
                     )
                     if family == "margin"
                     else None,
-                    refresh_if_missing=False,
+                    refresh_if_missing=True,
                 )
             except UnknownInstrumentError as exc:
                 raise BitgetRestError(
@@ -2538,7 +2587,7 @@ class LiveBrokerOrderService:
                         if family == "margin"
                         else None
                     ),
-                    refresh_if_missing=False,
+                    refresh_if_missing=True,
                 )
             except UnknownInstrumentError as exc:
                 raise BitgetRestError(
@@ -2596,6 +2645,34 @@ class LiveBrokerOrderService:
             margin_mode_for_profile=margin_mode_for_profile,
             internal_order_id=internal_order_id,
         )
+        if (
+            self._settings.enable_pre_flight_liquidity_guard
+            and str(request.order_type or "").lower() == "market"
+        ):
+            vsize = self._to_decimal(request.size)
+            vside = str(request.side or "").lower()
+            if (vsize or Decimal("0")) > 0 and vside in ("buy", "sell"):
+                try:
+                    cap = Decimal(str(self._settings.live_liquidity_guard_max_slippage_bps or "50"))
+                except (InvalidOperation, TypeError, ValueError):
+                    cap = Decimal("50")
+                try:
+                    verify_execution_liquidity(
+                        str(request.symbol),
+                        vsize or Decimal("0"),
+                        vside,
+                        str(self._settings.redis_url or ""),
+                        max_slippage_bps=cap,
+                        strict=bool(self._settings.live_liquidity_guard_strict_no_cache),
+                    )
+                except InsufficientLiquidityError as exc:
+                    msg = str(exc)[:2000]
+                    logger.warning("Blocked by Liquidity Guard: %s", msg)
+                    raise BitgetRestError(
+                        classification="insufficient_liquidity",
+                        message=msg,
+                        retryable=True,
+                    ) from exc
         self._assert_kill_switch_allows_submit(
             operation=action,
             product_type=product_type,
@@ -2683,6 +2760,7 @@ class LiveBrokerOrderService:
                 "request_path": place_path,
             },
         )
+        t_bit0 = now_ns()
         try:
             response = self._call_private(
                 internal_order_id=str(internal_order_id),
@@ -2795,6 +2873,12 @@ class LiveBrokerOrderService:
             )
             raise
 
+        t_bit1 = now_ns()
+        at0 = trace_merged.get("apex_trace")
+        if not isinstance(at0, dict) or not at0:
+            at0 = new_apex_trace()
+        trace_merged["apex_trace"] = finalize_apex_deltas(set_hop(at0, "bitget", t_bit0, t_bit1))
+        log_apex_chain_ms(trace_merged["apex_trace"], stage="bitget_place_order")
         detail = None
         exchange_order_id = self._extract_exchange_order_id(response.payload, None)
         if exchange_order_id is None:
@@ -2865,6 +2949,7 @@ class LiveBrokerOrderService:
             "item": stored,
             "exchange": self._response_to_dict(response),
             "detail": self._response_to_dict(detail) if detail is not None else None,
+            "apex_trace": trace_merged.get("apex_trace"),
         }
 
     def _resolve_identity(
@@ -2932,7 +3017,10 @@ class LiveBrokerOrderService:
         call,
         client_oid: str | None,
         exchange_order_id: str | None,
+        exchange_mutation: bool = True,
     ) -> BitgetRestResponse:
+        if exchange_mutation and self._global_halt is not None:
+            self._global_halt.assert_not_halted()
         try:
             response = call()
         except BitgetRestError as exc:

@@ -12,6 +12,7 @@ describe("sanitizeLlmChartAnnotations", () => {
     expect(sanitizeLlmChartAnnotations(null, stats)).toEqual({
       horizontalLines: [],
       priceBands: [],
+      filledZones: [],
       markers: [],
       lineSegments: [],
       verticalRules: [],
@@ -122,6 +123,32 @@ describe("sanitizeLlmChartAnnotations", () => {
     expect(d.model.notes).toEqual(["nur Text"]);
     expect(d.meta.geometryCandidatesTotal).toBe(1);
     expect(d.meta.geometryKeptTotal).toBe(0);
+  });
+
+  it("maps price_bands to filledZones; Short + Widerstand -> resistance and exact prices", () => {
+    const spanT = stats.timeMax - stats.timeMin;
+    const tLo = stats.timeMin - spanT * 0.02;
+    const tHi = stats.timeMax + spanT * 0.02;
+    const r = sanitizeLlmChartAnnotations(
+      {
+        schema_version: "1.0",
+        price_bands: [
+          { price_high: 195, price_low: 190, label: "Widerstandszone" },
+        ],
+      },
+      stats,
+      {
+        rationaleHint: "Short-Signal: Widerstand bei 190-195, Verkauf nahe oben.",
+      },
+    );
+    expect(r.filledZones).toHaveLength(1);
+    const z = r.filledZones[0]!;
+    expect(z.role).toBe("resistance");
+    expect(z.priceHigh).toBe(195);
+    expect(z.priceLow).toBe(190);
+    expect(z.time0).toBe(tLo);
+    expect(z.time1).toBe(tHi);
+    expect(r.priceBands).toHaveLength(0);
   });
 });
 

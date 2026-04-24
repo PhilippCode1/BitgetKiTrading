@@ -452,6 +452,22 @@ class BaseServiceSettings(BaseSettings):
             "MAX_CONCURRENT_POSITIONS",
         ),
     )
+    risk_max_portfolio_exposure_pct: float = Field(
+        default=0.25,
+        alias="RISK_MAX_PORTFOLIO_EXPOSURE_PCT",
+        description=(
+            "Grenze fuer Summe (Notional = Einstieg * Menge * Hebel) aus live.positions "
+            "plus geplante Order, relativ zur Equity; blockiert weitere Eroeffnungen (live-broker)."
+        ),
+    )
+    risk_portfolio_diversification_buffer_per_instrument: float = Field(
+        default=0.05,
+        alias="RISK_PORTFOLIO_DIVERSIFICATION_BUFFER_PER_INSTRUMENT",
+        description=(
+            "Pro zusaetzlichem aktivem Instrument: Sicherheitsabschlag auf die effektive "
+            "Exposure-Grenze (Korrelation / unkorrelierte Assets; survival_kernel + risk_adapter)."
+        ),
+    )
     risk_force_reduce_only_on_alert: bool = Field(
         default=True,
         alias="RISK_FORCE_REDUCE_ONLY_ON_ALERT",
@@ -944,11 +960,19 @@ class BaseServiceSettings(BaseSettings):
         "risk_max_account_drawdown_pct",
         "risk_max_daily_drawdown_pct",
         "risk_max_weekly_drawdown_pct",
+        "risk_max_portfolio_exposure_pct",
     )
     @classmethod
     def _unit_interval_risk_thresholds(cls, value: float) -> float:
         if value <= 0 or value > 1:
             raise ValueError("Risk-Schwellen muessen > 0 und <= 1 sein")
+        return value
+
+    @field_validator("risk_portfolio_diversification_buffer_per_instrument")
+    @classmethod
+    def _portfolio_diversification_buffer_unit(cls, value: float) -> float:
+        if value <= 0 or value > 0.5:
+            raise ValueError("RISK_PORTFOLIO_DIVERSIFICATION_BUFFER_PER_INSTRUMENT muss in (0, 0.5] liegen")
         return value
 
     @field_validator("risk_min_signal_strength", "risk_min_risk_score")

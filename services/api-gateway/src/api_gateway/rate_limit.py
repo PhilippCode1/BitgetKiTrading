@@ -51,6 +51,7 @@ SENSITIVE_PREFIXES: tuple[str, ...] = (
     "/v1/registry",
     "/v1/alerts",
     "/v1/monitor",
+    "/v1/ops",
     "/v1/paper",
     "/v1/signals",
     "/v1/news",

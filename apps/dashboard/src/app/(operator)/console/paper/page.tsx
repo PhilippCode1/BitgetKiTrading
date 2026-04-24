@@ -3,7 +3,7 @@ import { PanelDataIssue } from "@/components/console/ConsoleFetchNotice";
 import { ConsolePartialLoadNotice } from "@/components/console/ConsolePartialLoadNotice";
 import { ProductLineChart } from "@/components/chart/ProductLineChart";
 import { Header } from "@/components/layout/Header";
-import { OpenPositionsTable } from "@/components/tables/OpenPositionsTable";
+import { PaperOpenPositionsClient } from "@/components/paper/PaperOpenPositionsClient";
 import { TradesTable } from "@/components/tables/TradesTable";
 import {
   fetchPaperJournalRecent,
@@ -188,7 +188,7 @@ export default async function PaperPage({
         <div className="panel">
           <h2>{t("pages.paper.openPositionsTitle")}</h2>
           <PaperReadNotice payload={positions} t={t} />
-          <OpenPositionsTable positions={positions.positions} />
+          <PaperOpenPositionsClient symbol={sym} initial={positions} />
         </div>
         <div className="panel">
           <h2>{t("pages.paper.accountCostsTitle")}</h2>

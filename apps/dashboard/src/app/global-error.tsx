@@ -2,13 +2,19 @@
 
 import { useEffect } from "react";
 
-import { looksLikeRawServerPayloadString } from "@/lib/server-payload-text";
+import { DEFAULT_LOCALE } from "@/lib/i18n/config";
+import { getMessagesForLocale } from "@/lib/i18n/load-messages";
+import { buildTranslator } from "@/lib/i18n/resolve-message";
 
 import "./globals.css";
 
-const GLOBAL_USER_GENERIC =
-  "Die Anwendung musste wegen einer technischen Störung anhalten. Bitte „Erneut versuchen“ — Details stehen nur in der vollen Shell, nicht in dieser Mindestansicht.";
+const { messages, fallback } = getMessagesForLocale(DEFAULT_LOCALE);
+const t = buildTranslator(DEFAULT_LOCALE, messages, fallback);
 
+/**
+ * Mindest-UI ohne App-Provider: ausschliesslich statische i18n-Texte — kein `error.message`,
+ * kein JSON, kein Stacktrace (Fehler nur in der Konsole).
+ */
 export default function GlobalError({
   error,
   reset,
@@ -20,14 +26,8 @@ export default function GlobalError({
     console.error(error);
   }, [error]);
 
-  const raw = error.message?.trim() ?? "";
-  const isRawApiBlob = raw && looksLikeRawServerPayloadString(raw, 20);
-  const userLine = isRawApiBlob
-    ? GLOBAL_USER_GENERIC
-    : raw || "Die Anwendung konnte nicht gestartet werden.";
-
   return (
-    <html lang="de">
+    <html lang={DEFAULT_LOCALE}>
       <body
         style={{
           margin: 0,
@@ -38,10 +38,10 @@ export default function GlobalError({
         }}
       >
         <h1 style={{ fontSize: "1.25rem", margin: "0 0 12px" }}>
-          Schwerer Fehler
+          {t("ui.globalError.title")}
         </h1>
         <p style={{ opacity: 0.85, margin: "0 0 16px", maxWidth: 480 }}>
-          {userLine}
+          {t("ui.globalError.body")}
         </p>
         <button
           type="button"
@@ -56,7 +56,7 @@ export default function GlobalError({
             cursor: "pointer",
           }}
         >
-          Erneut versuchen
+          {t("ui.globalError.reload")}
         </button>
       </body>
     </html>

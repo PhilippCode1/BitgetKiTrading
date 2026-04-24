@@ -1,9 +1,14 @@
 """
 Prometheus-Metriken: kritische Gateway-Pfade (Muster docs/observability.md).
 
-Gemeinsame HTTP-SLOs (P95, Slow-Request-WARNING, 4xx/5xx pro Route-Gruppe) liefern
-``shared_py.observability.metrics.instrument_fastapi``:
-`http_request_duration_seconds`, `http_request_errors_total` an ``/metrics``.
+Gemeinsame HTTP-SLOs in ``shared_py.observability.metrics.instrument_fastapi`` (an ``/metrics``):
+
+- ``http_request_duration_seconds`` – Histogram, Buckets
+  (0,05, 0,1, 0,25, 0,5, 0,75, 1,0, 2,5, 5,0) s, Label ``http_route`` (z. B. /v1/llm, /v1/live-broker, /v1/system, …);
+- ``http_slo_responses_total`` – Zaehler 1xx/2xx/3xx/4xx/5xx pro ``http_route``;
+- ``http_request_errors_total`` / ``http_errors_total``;
+- langsame Requests: ``CRITICAL``-Log (CRITICAL_WARNING) mit request_id, wenn Dauer
+  > ``GATEWAY_SLOW_REQUEST_TRACE_SEC`` (default 1,0s).
 """
 
 from __future__ import annotations

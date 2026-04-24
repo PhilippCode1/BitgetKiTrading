@@ -33,7 +33,7 @@ from __future__ import annotations
 import logging
 import time
 from types import ModuleType
-from typing import Final, Optional
+from typing import Any, Final, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +74,18 @@ def assert_float64_c_contiguous(name: str, arr: object) -> None:
 def get_apex_core() -> Optional[ModuleType]:
     """Gibt das importierte ``apex_core``-Modul zurück oder ``None``, falls nicht gebaut."""
     return _apex_core
+
+
+def get_vpin_engine_class() -> Any:
+    """
+    Rust-VPIN (``VpinAccumulator`` in ``shared_rs/indicators``) ist als
+    ``apex_core.VpinEngine`` gebunden; ``toxicity_score`` in [0,1].
+    Oder ``None`` ohne native Extension.
+    """
+    m = _apex_core
+    if m is None:
+        return None
+    return getattr(m, "VpinEngine", None)
 
 
 def check_core_latency() -> int:

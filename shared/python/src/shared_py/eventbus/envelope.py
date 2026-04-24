@@ -7,8 +7,16 @@ from pathlib import Path
 from typing import Any, Literal, get_args
 
 from pydantic import BaseModel, Field, field_validator, model_validator
+
 from shared_py.bitget.instruments import BitgetInstrumentIdentity
-from shared_py.replay_determinism import stable_stream_event_id, trace_implies_replay_determinism
+from shared_py.eventbus.payload_schemas import (
+    PAYLOAD_SCHEMA_MAP,
+    ensure_payload_matches_schema,
+)
+from shared_py.replay_determinism import (
+    stable_stream_event_id,
+    trace_implies_replay_determinism,
+)
 
 EventType = Literal[
     "market_tick",
@@ -38,6 +46,7 @@ EventType = Literal[
     "social_sentiment_update",
     "intermarket_correlation_update",
     "regime_divergence_detected",
+    "drift_event",
 ]
 
 
@@ -68,6 +77,8 @@ if set(EVENT_TYPE_TO_STREAM.keys()) != set(get_args(EventType)):
     raise ValueError(
         "event_streams.json event_types stimmen nicht mit EventType-Literal ueberein (beides anpassen)."
     )
+if set(PAYLOAD_SCHEMA_MAP.keys()) != set(get_args(EventType)):
+    raise ValueError("payload_schema_map.json Keys != EventType-Literal (Katalog+Schema angleichen).")
 
 STREAM_MARKET_TICK = EVENT_TYPE_TO_STREAM["market_tick"]
 STREAM_MARKET_FEED_HEALTH = EVENT_TYPE_TO_STREAM["market_feed_health"]
@@ -96,6 +107,7 @@ STREAM_ORDERFLOW_TOXICITY = EVENT_TYPE_TO_STREAM["orderflow_toxicity"]
 STREAM_SOCIAL_SENTIMENT_UPDATE = EVENT_TYPE_TO_STREAM["social_sentiment_update"]
 STREAM_INTERMARKET_CORRELATION_UPDATE = EVENT_TYPE_TO_STREAM["intermarket_correlation_update"]
 STREAM_REGIME_DIVERGENCE_DETECTED = EVENT_TYPE_TO_STREAM["regime_divergence_detected"]
+STREAM_DRIFT_EVENT = EVENT_TYPE_TO_STREAM["drift_event"]
 
 
 class EventEnvelope(BaseModel):
@@ -110,6 +122,8 @@ class EventEnvelope(BaseModel):
     dedupe_key: str | None = None
     payload: dict[str, Any]
     trace: dict[str, Any] = Field(default_factory=dict)
+    # Apex: Signal-to-Fill Micro-Tracking (Hops, Nanosekunden) — Katalog: event_envelope.schema.json
+    apex_trace: dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("symbol", mode="before")
     @classmethod
@@ -120,19 +134,17 @@ class EventEnvelope(BaseModel):
         return normalized or None
 
     @model_validator(mode="after")
-    def _finalize_symbol(self) -> "EventEnvelope":
+    def _finalize_symbol(self) -> EventEnvelope:
         if self.instrument is not None and not self.symbol:
             object.__setattr__(self, "symbol", self.instrument.symbol)
         if not self.symbol:
             payload_symbol = self.payload.get("symbol") if isinstance(self.payload, dict) else None
             if isinstance(payload_symbol, str) and payload_symbol.strip():
                 object.__setattr__(self, "symbol", payload_symbol.strip().upper())
-        if not self.symbol:
-            object.__setattr__(self, "symbol", "UNKNOWN")
         return self
 
     @model_validator(mode="after")
-    def _apply_replay_stable_wire_fields(self) -> "EventEnvelope":
+    def _apply_replay_stable_wire_fields(self) -> EventEnvelope:
         """Replay-Pfad: stabile event_id und ingest_ts_ms (Wire-/Stream-Reproduzierbarkeit)."""
         if not trace_implies_replay_determinism(self.trace):
             return self
@@ -146,13 +158,25 @@ class EventEnvelope(BaseModel):
             object.__setattr__(self, "ingest_ts_ms", int(self.exchange_ts_ms))
         return self
 
+    @model_validator(mode="after")
+    def _jsonschema_payload_fail_fast(self) -> EventEnvelope:
+        ensure_payload_matches_schema(self.event_type, self.payload)
+        return self
+
+    def validate_payload(self) -> None:
+        """Prüft die Payload-Instanz gegen jsonschema; wirft SchemaValidationError (Modul
+        shared_py.eventbus) bei Regelverletzung.
+        """
+        ensure_payload_matches_schema(self.event_type, self.payload)
+
     def default_stream(self) -> str:
         return event_stream_for_type(self.event_type)
 
     def instrument_key(self) -> str:
         if self.instrument is not None:
             return self.instrument.instrument_key
-        return f"bitget:unknown:unknown:{self.symbol}"
+        s = (self.symbol or "").strip() or "none"
+        return f"bitget:unknown:unknown:{s}"
 
     def canonical_instrument_id(self) -> str | None:
         if self.instrument is None:

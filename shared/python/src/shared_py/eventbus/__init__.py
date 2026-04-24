@@ -3,6 +3,7 @@ from .canonical import (
     canonicalize_json_value,
     envelope_fingerprint_preimage,
     envelope_fingerprint_sha256,
+    event_envelope_to_canonical_json_text,
     normalize_json_number,
     stable_json_dumps,
 )
@@ -15,6 +16,7 @@ from .envelope import (
     STREAM_DRAWING_UPDATED,
     STREAM_FUNDING_BOOKED,
     STREAM_FUNDING_UPDATE,
+    STREAM_INTERMARKET_CORRELATION_UPDATE,
     STREAM_LEARNING_FEEDBACK,
     STREAM_LLM_FAILED,
     STREAM_MARKET_FEED_HEALTH,
@@ -24,23 +26,25 @@ from .envelope import (
     STREAM_OPERATOR_INTEL,
     STREAM_ORDERBOOK_INCONSISTENCY,
     STREAM_ORDERFLOW_TOXICITY,
-    STREAM_RISK_ALERT,
-    STREAM_TSFM_SIGNAL_CANDIDATE,
-    STREAM_SOCIAL_SENTIMENT_UPDATE,
-    STREAM_INTERMARKET_CORRELATION_UPDATE,
+    STREAM_DRIFT_EVENT,
     STREAM_REGIME_DIVERGENCE_DETECTED,
+    STREAM_RISK_ALERT,
     STREAM_SIGNAL_CREATED,
+    STREAM_SOCIAL_SENTIMENT_UPDATE,
     STREAM_STRATEGY_REGISTRY_UPDATED,
     STREAM_STRUCTURE_UPDATED,
     STREAM_SYSTEM_ALERT,
     STREAM_TRADE_CLOSED,
     STREAM_TRADE_OPENED,
     STREAM_TRADE_UPDATED,
+    STREAM_TSFM_SIGNAL_CANDIDATE,
     EventEnvelope,
     EventType,
     event_stream_for_type,
 )
+from .payload_schemas import SchemaValidationError, ensure_payload_matches_schema
 from .redis_streams import ConsumedEvent, RedisStreamBus
+from .stream_recency import sample_event_streams_union_recent
 from .shared_memory import SharedMemoryBus, make_stream_bus_from_url
 
 __all__ = [
@@ -51,11 +55,14 @@ __all__ = [
     "EventEnvelope",
     "EventType",
     "canonicalize_json_value",
+    "event_envelope_to_canonical_json_text",
     "envelope_fingerprint_preimage",
     "envelope_fingerprint_sha256",
     "normalize_json_number",
     "stable_json_dumps",
     "LIVE_SSE_STREAMS",
+    "SchemaValidationError",
+    "ensure_payload_matches_schema",
     "RedisStreamBus",
     "SharedMemoryBus",
     "make_stream_bus_from_url",
@@ -79,6 +86,7 @@ __all__ = [
     "STREAM_TSFM_SIGNAL_CANDIDATE",
     "STREAM_SOCIAL_SENTIMENT_UPDATE",
     "STREAM_INTERMARKET_CORRELATION_UPDATE",
+    "STREAM_DRIFT_EVENT",
     "STREAM_REGIME_DIVERGENCE_DETECTED",
     "STREAM_SYSTEM_ALERT",
     "STREAM_STRUCTURE_UPDATED",
@@ -86,4 +94,5 @@ __all__ = [
     "STREAM_TRADE_UPDATED",
     "STREAM_TRADE_CLOSED",
     "event_stream_for_type",
+    "sample_event_streams_union_recent",
 ]

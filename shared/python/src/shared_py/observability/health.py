@@ -2,12 +2,13 @@ from __future__ import annotations
 
 """HTTP-/Readiness-Helper fuer Postgres, Redis, Peer-URLs (merge).
 
-Worker-Prometheus-Heartbeats (`worker_heartbeat_timestamp`) leben in
-:mod:`shared_py.observability.metrics` (``touch_worker_heartbeat``). Dort setzen
-Worker-Schleifen und (optional) Hintergrund-Tasks in festem Intervall das Gauge —
-nicht in diesem Modul. Blockierend sind hier nur synchrones ``time.sleep`` in
-``check_redis_url``-Retries, nicht HTTP-Peer-Pruefungen (ThreadPool).
+Worker-Prometheus-Heartbeats: Schreibvorgaenge sollen **nicht** in derselben
+Co-Routine laufen wie schwere Verarbeitung. Nutzung: :func:`create_isolated_heartbeat_task`
+(``asyncio.create_task`` + :func:`shared_py.observability.metrics.arun_periodic_heartbeat`)
+oder fuer reine Thread-Worker :func:`shared_py.observability.metrics.start_thread_periodic_heartbeat`.
+Blockierend sind hier nur synchrones ``time.sleep`` in ``check_redis_url``-Retries.
 """
+import asyncio
 import json
 import time
 import urllib.error
@@ -128,10 +129,14 @@ def check_postgres(dsn: str, *, timeout_sec: float = 3.0) -> tuple[bool, str]:
 def check_redis_url(
     url: str,
     *,
-    timeout_sec: float = 2.0,
+    timeout_sec: float = 5.0,
     retries: int = 0,
 ) -> tuple[bool, str]:
     """Redis PING mit optionalem Retry (transiente Socket-/Timeouts).
+
+    Verwendet :class:`redis.ConnectionPool` (``create_sync_connection_pool``) mit
+    ``socket_connect_timeout``/``socket_timeout`` (Default 5.0) und
+    ``socket_keepalive=True``.
 
     `retries` = zusaetzliche Versuche nach dem ersten (insgesamt 1 + retries).
     Exponentieller Backoff + kurzer Jitter (Docker/Netz/Last). Je Versuch
@@ -140,6 +145,7 @@ def check_redis_url(
     u = str(url or "").strip()
     if not u:
         return False, "empty_redis_url"
+    st = max(0.1, float(timeout_sec))
     attempts = max(1, int(retries) + 1)
     last_err = "ping_failed"
     for attempt in range(attempts):
@@ -147,8 +153,9 @@ def check_redis_url(
             u,
             decode_responses=True,
             max_connections=2,
-            socket_connect_timeout=timeout_sec,
-            socket_timeout=timeout_sec,
+            socket_connect_timeout=st,
+            socket_timeout=st,
+            socket_keepalive=True,
             health_check_interval=0,
         )
         client: redis.Redis = sync_redis_from_pool(
@@ -175,7 +182,78 @@ def check_redis_url(
     return False, last_err
 
 
+def check_redis_url_readiness(
+    url: str,
+    *,
+    max_attempts: int = 3,
+    budget_sec: float = 0.5,
+    per_attempt_socket_sec: float = 0.15,
+) -> tuple[bool, str]:
+    """
+    Gateway GET /ready: schneller PING mit mehreren kurzen Versuchen innerhalb eines
+    Zeitraums (z. B. 3x in 500ms), statt sofort harter Fehlschlag bei einem Socket-Hiccup.
+    """
+    u = str(url or "").strip()
+    if not u:
+        return False, "empty_redis_url"
+    n = max(1, int(max_attempts))
+    budget = max(0.05, float(budget_sec))
+    sock = max(0.05, float(per_attempt_socket_sec))
+    t0 = time.perf_counter()
+    last_err = "ping_failed"
+    for attempt in range(n):
+        if attempt > 0 and (time.perf_counter() - t0) >= budget:
+            return False, last_err
+        pool = create_sync_connection_pool(
+            u,
+            decode_responses=True,
+            max_connections=2,
+            socket_connect_timeout=sock,
+            socket_timeout=sock,
+            socket_keepalive=True,
+            health_check_interval=0,
+        )
+        client = sync_redis_from_pool(pool, health_check_interval=0)
+        try:
+            if client.ping():
+                return True, "ok"
+            last_err = "ping_failed"
+        except Exception as exc:
+            last_err = str(exc)[:200]
+        finally:
+            try:
+                client.close()
+            except Exception:
+                pass
+            try:
+                pool.disconnect()
+            except Exception:
+                pass
+        if (time.perf_counter() - t0) >= budget:
+            return False, last_err
+        if attempt + 1 < n:
+            time.sleep(0.005)
+    return False, last_err
+
+
 def merge_ready_details(parts: dict[str, tuple[bool, str]]) -> tuple[bool, dict[str, Any]]:
     ok = all(p[0] for p in parts.values())
     details = {k: {"ok": v[0], "detail": v[1]} for k, v in parts.items()}
     return ok, details
+
+
+def create_isolated_heartbeat_task(
+    service_name: str,
+    interval_s: float,
+    stop_event: asyncio.Event,
+) -> asyncio.Task[None]:
+    """
+    Eigener ``asyncio.Task`` nur fuer Heartbeats, entkoppelt von der
+    Haupverarbeitungsschleife (kein gemeinsames ``await`` in derselben Task).
+    """
+    from shared_py.observability.metrics import arun_periodic_heartbeat
+
+    return asyncio.create_task(
+        arun_periodic_heartbeat(service_name, interval_s, stop_event),
+        name=f"isolated_heartbeat:{service_name}",
+    )

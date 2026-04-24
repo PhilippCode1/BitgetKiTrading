@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://bitget-btc-ai.local/schemas/payload-candle-close-v1.json",
+  "$id": "https://bitget-btc-ai.local/schemas/payload_candle_close.schema.json",
   "title": "candle_close payload (Kernfelder)",
   "type": "object",
   "additionalProperties": true,

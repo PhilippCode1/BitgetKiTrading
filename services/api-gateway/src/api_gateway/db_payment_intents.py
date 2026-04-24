@@ -82,6 +82,31 @@ def fetch_intent_by_id_any_tenant(
     return _row_intent(dict(row)) if row else None
 
 
+def list_stripe_intents_awaiting_reconciliation(
+    conn: psycopg.Connection[Any], *, tenant_id: str, limit: int = 8
+) -> list[dict[str, Any]]:
+    """
+    Offene oder haengende Stripe-Checkouts, die mit Stripe abgeglichen werden sollen
+    (fehlender Webhook).
+    """
+    lim = max(1, min(int(limit), 32))
+    rows = conn.execute(
+        """
+        SELECT * FROM app.payment_deposit_intent
+        WHERE tenant_id = %s
+          AND provider = 'stripe'
+          AND status IN (
+              'awaiting_payment', 'checkout_ready', 'created', 'processing'
+          )
+          AND provider_checkout_session_id IS NOT NULL
+        ORDER BY updated_ts ASC
+        LIMIT %s
+        """,
+        (tenant_id, lim),
+    ).fetchall()
+    return [_row_intent(dict(r)) for r in rows]
+
+
 def fetch_intent_by_checkout_session(
     conn: psycopg.Connection[Any], *, checkout_session_id: str
 ) -> dict[str, Any] | None:

@@ -55,6 +55,20 @@ class MonitorEngineSettings(BaseServiceSettings):
             "ehe der Check als 'degraded' (statt transiente Warnung) zaehlt."
         ),
     )
+    monitor_heartbeat_stale_warn_sec: float = Field(
+        default=10.0,
+        ge=1.0,
+        le=300.0,
+        alias="MONITOR_HEARTBEAT_STALE_WARN_SEC",
+        description="Pre-Alert: ab diesem Alter (s) des Prometheus worker_heartbeat WARNING-Log, vor Degradation.",
+    )
+    monitor_heartbeat_stale_degrade_sec: float = Field(
+        default=15.0,
+        ge=2.0,
+        le=600.0,
+        alias="MONITOR_HEARTBEAT_STALE_DEGRADE_SEC",
+        description="Grace-Periode: /metrics-Check erst ab diesem Alter (s) als 'degraded'.",
+    )
     monitor_scheduler_stale_multiplier: float = Field(
         default=1.35,
         ge=1.0,
@@ -85,9 +99,45 @@ class MonitorEngineSettings(BaseServiceSettings):
             "paper-broker=http://localhost:8085,"
             "learning-engine=http://localhost:8090,"
             "alert-engine=http://localhost:8100,"
-            "live-broker=http://localhost:8120"
+            "monitor-engine=http://localhost:8110,"
+            "live-broker=http://localhost:8120,"
+            "onchain-sniffer=http://localhost:8160,"
+            "audit-ledger=http://localhost:8180,"
+            "adversarial-engine=http://localhost:8220"
         ),
         alias="MONITOR_SERVICE_URLS",
+    )
+    monitor_incident_rca_enabled: bool = Field(
+        default=True,
+        alias="MONITOR_INCIDENT_RCA_ENABLED",
+        description="P79: global_halt -> Post-Mortem + LLM + optional Telegram",
+    )
+    monitor_incident_rca_debounce_sec: int = Field(
+        default=120,
+        ge=0,
+        le=86_400,
+        alias="MONITOR_INCIDENT_RCA_DEBOUNCE_SEC",
+        description="Mindestabstand zwischen zwei auto Post-Mortems (gleicher Latch-Flanke 0->1).",
+    )
+    monitor_incident_rca_global_budget_sec: float = Field(
+        default=9.0,
+        ge=2.0,
+        le=60.0,
+        alias="MONITOR_INCIDENT_RCA_GLOBAL_BUDGET_SEC",
+        description="Gesamtbudget fuer Event-Sampling+Health+LLM im Async-Lauf (DoD ~10s).",
+    )
+    monitor_llm_orchestrator_url: str = Field(
+        default="http://localhost:8070",
+        alias="MONITOR_LLM_ORCHESTRATOR_URL",
+    )
+    monitor_alert_engine_url: str = Field(
+        default="http://localhost:8100",
+        alias="MONITOR_ALERT_ENGINE_URL",
+    )
+    monitor_telegram_post_mortem_enabled: bool = Field(
+        default=True,
+        alias="MONITOR_TELEGRAM_POST_MORTEM_ENABLED",
+        description="POST /admin/test-alert benoetigt ADMIN_TOKEN + X-Internal-Service-Key",
     )
     monitor_streams_raw: str = Field(
         default=(
@@ -205,11 +255,58 @@ class MonitorEngineSettings(BaseServiceSettings):
             raise ValueError(
                 "MONITOR_SYMBOL fehlt und konnte nicht aus Watchlist/Universe/Allowlist abgeleitet werden"
             )
+        w = float(self.monitor_heartbeat_stale_warn_sec)
+        d = float(self.monitor_heartbeat_stale_degrade_sec)
+        if w >= d:
+            raise ValueError(
+                "MONITOR_HEARTBEAT_STALE_WARN_SEC must be < MONITOR_HEARTBEAT_STALE_DEGRADE_SEC"
+            )
+        crit = float(self.monitor_self_healing_heartbeat_crit_sec)
+        if crit <= d:
+            raise ValueError(
+                "MONITOR_SELF_HEALING_HEARTBEAT_CRIT_SEC muss > MONITOR_HEARTBEAT_STALE_DEGRADE_SEC"
+            )
         return self
 
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
     eventbus_dedupe_ttl_sec: int = Field(default=0, alias="EVENTBUS_DEDUPE_TTL_SEC")
 
+    monitor_self_healing_coordinator_enabled: bool = Field(
+        default=True,
+        alias="MONITOR_SELF_HEALING_COORDINATOR_ENABLED",
+        description="Automatische Recovery-Requests (stateless Worker) im Scheduler-Tick.",
+    )
+    monitor_self_healing_stateless_services: str = Field(
+        default="feature-engine,drawing-engine,signal-engine",
+        alias="MONITOR_SELF_HEALING_STATELESS",
+        description="CSV; bei CRITICAL-Checks RECOVERY_REQUEST + optional Restart-Stub.",
+    )
+    monitor_self_healing_heartbeat_crit_sec: float = Field(
+        default=300.0,
+        ge=30.0,
+        le=7200.0,
+        alias="MONITOR_SELF_HEALING_HEARTBEAT_CRIT_SEC",
+        description=(
+            "Ab dieser Heartbeat-Alter in Sekunden gilt Auto-Healing als kritisch "
+            "(5 Min. wie Audit-Vorgabe). Groesser als DEGRADE-Grace, sonst sinnlos."
+        ),
+    )
+    monitor_self_healing_max_restarts_per_hour: int = Field(
+        default=3,
+        ge=1,
+        le=10,
+        alias="MONITOR_SELF_HEALING_MAX_RESTARTS_PER_HOUR",
+    )
+    monitor_self_healing_restarter_mode: str = Field(
+        default="mock",
+        alias="MONITOR_SELF_HEALING_RESTARTER_MODE",
+        description="mock | docker | compose_exec (siehe ServiceRestarter).",
+    )
+    monitor_self_healing_docker_name_map: str = Field(
+        default="",
+        alias="MONITOR_SELF_HEALING_DOCKER_NAME_MAP",
+        description="Optional: CSV feature-engine=fe_svc,... fuer Docker/compose.",
+    )
     monitor_self_healing_canary_enabled: bool = Field(
         default=False,
         alias="MONITOR_SELF_HEALING_CANARY_ENABLED",

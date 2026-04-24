@@ -36,6 +36,8 @@ class TakeTradeDatasetBuildConfig:
     drop_on_stale_features: bool = True
     drop_on_future_feature_ts: bool = True
     drop_on_required_nan: bool = True
+    # War-Room / Apex: consensus_penalty + uncertainty_weight (Prompt 49)
+    include_war_room_consensus: bool = True
 
 
 def take_trade_dataset_config_fingerprint(cfg: TakeTradeDatasetBuildConfig) -> str:
@@ -49,6 +51,7 @@ def take_trade_dataset_config_fingerprint(cfg: TakeTradeDatasetBuildConfig) -> s
             "drop_on_stale_features": cfg.drop_on_stale_features,
             "drop_on_future_feature_ts": cfg.drop_on_future_feature_ts,
             "drop_on_required_nan": cfg.drop_on_required_nan,
+            "include_war_room_consensus": cfg.include_war_room_consensus,
         }
     )
 
@@ -142,6 +145,15 @@ def _example_from_evaluation_row(row: Mapping[str, Any]) -> dict[str, Any] | Non
     closed_raw = row.get("closed_ts_ms")
     closed_ts_ms = int(closed_raw) if closed_raw is not None else None
     meta = training_row_metadata(row)
+    try:
+        cp = float(row.get("consensus_penalty") or 0.0)
+    except (TypeError, ValueError):
+        cp = 0.0
+    try:
+        uwt = float(row.get("uncertainty_weight") or 1.0)
+    except (TypeError, ValueError):
+        uwt = 1.0
+
     return {
         "paper_trade_id": str(row.get("paper_trade_id") or ""),
         "decision_ts_ms": int(row.get("decision_ts_ms") or 0),
@@ -152,6 +164,8 @@ def _example_from_evaluation_row(row: Mapping[str, Any]) -> dict[str, Any] | Non
         "error_labels": meta["error_labels"],
         "features": features,
         "target": 1 if bool(target) else 0,
+        "consensus_penalty": cp,
+        "uncertainty_weight": uwt,
     }
 
 
@@ -216,6 +230,10 @@ def build_take_trade_training_dataset(
             if bad:
                 report.record_drop("required_feature_nan")
                 continue
+
+        if not config.include_war_room_consensus:
+            example["consensus_penalty"] = 0.0
+            example["uncertainty_weight"] = 1.0
 
         kept.append(example)
         report.kept_count += 1

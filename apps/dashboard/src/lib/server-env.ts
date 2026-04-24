@@ -1,3 +1,7 @@
+/**
+ * Laufzeit-Only: `API_GATEWAY_URL`, `DASHBOARD_GATEWAY_AUTHORIZATION`, `GATEWAY_JWT_SECRET` u. a. —
+ * gehoeren nicht in die oeffentliche Next-Allowlist (siehe `public-env-allowlist.cjs` + `lib/env.ts`).
+ */
 const SERVER_LOG_LEVELS = ["error", "warn", "info", "debug"] as const;
 
 export type ServerLogLevel = (typeof SERVER_LOG_LEVELS)[number];
@@ -17,13 +21,17 @@ function isLoopbackApiBase(url: string): boolean {
 }
 
 /**
- * Server-zu-Gateway: `API_GATEWAY_URL` hat Vorrang. Fallback auf NEXT_PUBLIC_* oder Loopback
- * nur in development/test — in Production (`next start`) leer, wenn unset oder Loopback; kein 127.0.0.1:8000.
+ * Server-zu-Gateway: `API_GATEWAY_URL` hat Vorrang.
+ * Bei `NODE_ENV==='production'`: kein stilles Umschalten auf NEXT_PUBLIC_* und
+ * kein fester 127.0.0.1:8000-Fallback — ohne gesetzte, nicht-Loopback-API_GATEWAY_URL
+ * ist das Ergebnis bewusst leer (Build-Drift vermeiden).
+ * Nur in development/test: optional NEXT_PUBLIC_API_BASE_URL oder lokaler 127.0.0.1:8000.
  */
 function readApiGatewayUrl(): string {
+  const isProd = process.env.NODE_ENV === "production";
   const primary = (process.env.API_GATEWAY_URL ?? "").trim().replace(/\/$/, "");
   if (primary) {
-    if (process.env.NODE_ENV === "production" && isLoopbackApiBase(primary)) {
+    if (isProd && isLoopbackApiBase(primary)) {
       if (process.env.ALLOW_API_GATEWAY_LOOPBACK_IN_PRODUCTION === "true") {
         return primary;
       }
@@ -31,10 +39,10 @@ function readApiGatewayUrl(): string {
     }
     return primary;
   }
-  const n = process.env.NODE_ENV;
-  if (n === "production") {
+  if (isProd) {
     return "";
   }
+  const n = process.env.NODE_ENV;
   if (n !== "development" && n !== "test") {
     return "";
   }

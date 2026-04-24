@@ -13,7 +13,7 @@ from psycopg.rows import dict_row
 
 from api_gateway.audit import record_gateway_audit_line
 from api_gateway.auth import GatewayAuthContext, require_billing_read, require_sensitive_auth
-from api_gateway.billing.daily_run import run_daily_billing
+from api_gateway.billing.daily_run import run_daily_billing, run_daily_billing_cycle
 from api_gateway.commerce.pricing import llm_tokens_line_total_usd
 from api_gateway.config import get_gateway_settings
 from api_gateway.db import get_database_url
@@ -300,6 +300,57 @@ def internal_billing_run_daily(
             portal_roles=frozenset(),
         ),
         "commerce_internal_billing_run_daily",
+        extra={"accrual_date": out.get("accrual_date")},
+    )
+    return out
+
+
+@router.post("/internal/billing/run-daily-subscription")
+def internal_billing_run_daily_subscription(
+    request: Request,
+    body: InternalBillingRunBody,
+    x_commercial_meter_secret: Annotated[str | None, Header(alias=_HEADER_METER)] = None,
+) -> dict[str, Any]:
+    settings = get_gateway_settings()
+    if not settings.commercial_enabled:
+        raise HTTPException(status_code=404, detail="commercial module disabled")
+    expected = settings.commercial_meter_secret.strip()
+    if not expected or (x_commercial_meter_secret or "").strip() != expected:
+        raise HTTPException(status_code=401, detail="commercial meter secret required")
+    accrual: date | None = None
+    if body.accrual_date and body.accrual_date.strip():
+        try:
+            accrual = date.fromisoformat(body.accrual_date.strip())
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail="invalid accrual_date") from e
+    dsn = get_database_url()
+    with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=15) as conn:
+        out = run_daily_billing_cycle(
+            conn,
+            settings=settings,
+            accrual_date=accrual,
+            tenant_id_filter=body.tenant_id.strip() if body.tenant_id else None,
+        )
+    if (
+        body.tenant_id
+        and body.tenant_id.strip()
+        and out.get("status") == "ok"
+        and not out.get("results")
+    ):
+        raise HTTPException(
+            status_code=404,
+            detail="tenant not found or ineligible for subscription billing",
+        )
+    record_gateway_audit_line(
+        request,
+        GatewayAuthContext(
+            actor="commercial_meter",
+            auth_method="meter_secret",
+            roles=frozenset({"billing:admin"}),
+            tenant_id=None,
+            portal_roles=frozenset(),
+        ),
+        "commerce_internal_billing_run_daily_subscription",
         extra={"accrual_date": out.get("accrual_date")},
     )
     return out

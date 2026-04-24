@@ -99,6 +99,20 @@ export type SelfHealingNarrativeFacts = Readonly<{
   worstComponentIds: readonly string[];
 }>;
 
+/** ops.self_healing_state (Gateway GET /v1/ops/self-healing/status). */
+export type SelfHealingStateItem = Readonly<{
+  service_name: string;
+  health_phase: string;
+  updated_ts: number | null;
+  restart_events_ts: readonly number[];
+  timeline: readonly {
+    readonly ts_ms: number;
+    readonly event: string;
+    readonly message?: string;
+    readonly details?: Record<string, unknown>;
+  }[];
+}>;
+
 export type SelfHealingSnapshot = Readonly<{
   schema_version: 1;
   collected_at_ms: number;
@@ -111,4 +125,6 @@ export type SelfHealingSnapshot = Readonly<{
   healing_hints: readonly SelfHealingHealingHint[];
   not_auto_fixable: readonly SelfHealingIncident[];
   narrative_facts: SelfHealingNarrativeFacts;
+  self_healing_items: readonly SelfHealingStateItem[] | null;
+  self_healing_error: string | null;
 }>;

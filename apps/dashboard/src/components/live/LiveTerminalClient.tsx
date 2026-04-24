@@ -1,5 +1,6 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -10,12 +11,16 @@ import { HelpHint } from "@/components/help/HelpHint";
 import { useI18n } from "@/components/i18n/I18nProvider";
 import { LiveDataSituationBar } from "@/components/live-data/LiveDataSituationBar";
 import { DemoDataNoticeBanner } from "@/components/live/DemoDataNoticeBanner";
-import { ChartPanel } from "@/components/live/ChartPanel";
+import {
+  ChartPanel,
+  type ChartPanelHandle,
+} from "@/components/live/ChartPanel";
 import { LiveDataLineagePanel } from "@/components/live/LiveDataLineagePanel";
 import { MicrostructurePanel } from "@/components/live/MicrostructurePanel";
 import { NewsPanel } from "@/components/live/NewsPanel";
 import { PaperPanel } from "@/components/live/PaperPanel";
 import { SignalPanel } from "@/components/live/SignalPanel";
+import { TerminalSafetyHaltOverlay } from "@/components/live/TerminalSafetyHaltOverlay";
 import { StatusPillLink } from "@/components/ui/StatusPillLink";
 import { fetchLiveState } from "@/lib/api";
 import type { ExecutionPathViewModel } from "@/lib/execution-path-view-model";
@@ -23,10 +28,20 @@ import { buildLiveDataSurfaceModelFromLiveState } from "@/lib/live-data-surface-
 import { consolePath } from "@/lib/console-paths";
 import type { LiveStreamConnectionState } from "@/lib/live-event-source";
 import { startManagedLiveEventSource } from "@/lib/live-event-source";
+import {
+  fetchAndApplyTradeLifecycleCaches,
+  isPaperSseForTradeLifecycle,
+} from "@/lib/live-broker-console";
 import { publicEnv } from "@/lib/env";
 import type { LiveTerminalServerMeta } from "@/lib/live-terminal-server-meta";
 import { resolveLiveTerminalSurfaceDiagnostic } from "@/lib/surface-diagnostic-catalog";
 import { buildProductMessageFromFetchError } from "@/lib/product-messages";
+import {
+  liveCandleFromPayload,
+  parsePayloadCandleClose,
+  TICKER_LABEL_THROTTLE_MS,
+} from "@/lib/chart/payload-candle-close";
+import { mergeCandle } from "@/lib/live-candle-merge";
 import type {
   LiveCandle,
   LiveMarketFreshness,
@@ -132,17 +147,6 @@ function freshnessBannerRole(
   return status === "stale" || status === "dead" ? "alert" : "status";
 }
 
-function mergeCandle(list: LiveCandle[], bar: LiveCandle): LiveCandle[] {
-  const next = [...list];
-  const i = next.findIndex((c) => c.time_s === bar.time_s);
-  if (i >= 0) next[i] = bar;
-  else next.push(bar);
-  next.sort((a, b) => a.time_s - b.time_s);
-  const max = 2000;
-  if (next.length > max) return next.slice(-max);
-  return next;
-}
-
 /** inactive = Gateway hat SSE abgeschaltet — kein EventSource. */
 type TerminalSseUi = "inactive" | LiveStreamConnectionState;
 
@@ -154,6 +158,7 @@ export function LiveTerminalClient({
   executionVm = null,
 }: Props) {
   const { t } = useI18n();
+  const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const diagnostic = searchParams.get("diagnostic") === "1";
   const [state, setState] = useState<LiveStateResponse>(initial);
@@ -168,6 +173,11 @@ export function LiveTerminalClient({
   const [backfilling, setBackfilling] = useState(false);
   const [streamStale, setStreamStale] = useState(false);
   const lastPingAtRef = useRef<number>(Date.now());
+  const chartPanelRef = useRef<ChartPanelHandle | null>(null);
+  const mergedCandlesRef = useRef<LiveCandle[]>(initial.candles);
+  const candleStateFlushRef = useRef<ReturnType<
+    typeof globalThis.setTimeout
+  > | null>(null);
   const [fetchErr, setFetchErr] = useState<string | null>(initialLoadError);
   const pollEverySec = Math.max(
     1,
@@ -193,6 +203,10 @@ export function LiveTerminalClient({
       );
     }
   }, [symbol, tf, t]);
+
+  useEffect(() => {
+    mergedCandlesRef.current = state.candles;
+  }, [state.candles]);
 
   useEffect(() => {
     if (frozen || sseConnection !== "open") {
@@ -242,6 +256,7 @@ export function LiveTerminalClient({
           if (s === "open") setSseConnection("open");
           else if (s === "reconnecting") setSseConnection("reconnecting");
           else if (s === "given_up") setSseConnection("given_up");
+          else if (s === "disconnected") setSseConnection("disconnected");
           else setSseConnection("connecting");
         },
         onGiveUp: () => {
@@ -255,15 +270,48 @@ export function LiveTerminalClient({
         },
         handlers: {
           onCandle: (raw) => {
-            const bar = raw as LiveCandle;
-            if (
-              bar &&
-              typeof bar.time_s === "number" &&
-              typeof bar.close === "number"
-            ) {
-              setState((s) => ({ ...s, candles: mergeCandle(s.candles, bar) }));
-              scheduleCoalescedReload();
+            const payload = parsePayloadCandleClose(raw);
+            if (payload) {
+              chartPanelRef.current?.applyCandleClose(payload);
+              const bar = liveCandleFromPayload(payload);
+              mergedCandlesRef.current = mergeCandle(
+                mergedCandlesRef.current,
+                bar,
+              );
+            } else {
+              const bar = raw as LiveCandle;
+              if (
+                !bar ||
+                typeof bar.time_s !== "number" ||
+                typeof bar.close !== "number"
+              ) {
+                return;
+              }
+              chartPanelRef.current?.applyCandleClose({
+                start_ts_ms: Math.trunc(bar.time_s * 1000),
+                open: bar.open,
+                high: bar.high,
+                low: bar.low,
+                close: bar.close,
+                ...(typeof bar.volume_usdt === "number"
+                  ? { usdt_vol: bar.volume_usdt }
+                  : {}),
+              });
+              mergedCandlesRef.current = mergeCandle(
+                mergedCandlesRef.current,
+                bar,
+              );
             }
+            if (candleStateFlushRef.current == null) {
+              candleStateFlushRef.current = globalThis.setTimeout(() => {
+                candleStateFlushRef.current = null;
+                setState((s) => ({
+                  ...s,
+                  candles: mergedCandlesRef.current,
+                }));
+              }, TICKER_LABEL_THROTTLE_MS);
+            }
+            scheduleCoalescedReload();
           },
           onSignal: (raw) => {
             setState((s) => {
@@ -278,8 +326,30 @@ export function LiveTerminalClient({
           onNews: () => {
             scheduleCoalescedReload();
           },
-          onPaper: () => {
-            scheduleCoalescedReload();
+          onPaper: (raw) => {
+            if (frozen) {
+              return;
+            }
+            if (!isPaperSseForTradeLifecycle(raw)) {
+              return;
+            }
+            void (async () => {
+              try {
+                const next = await fetchAndApplyTradeLifecycleCaches(
+                  queryClient,
+                  { symbol, timeframe: tf, limit: 500 },
+                );
+                mergedCandlesRef.current = next.candles;
+                setState(next);
+                setFetchErr(null);
+              } catch (e) {
+                setFetchErr(
+                  e instanceof Error
+                    ? e.message
+                    : t("live.terminal.reloadFailed"),
+                );
+              }
+            })();
           },
           onPing: () => {
             lastPingAtRef.current = Date.now();
@@ -293,9 +363,21 @@ export function LiveTerminalClient({
     }
     return () => {
       if (debounced.current != null) globalThis.clearTimeout(debounced.current);
+      if (candleStateFlushRef.current != null) {
+        globalThis.clearTimeout(candleStateFlushRef.current);
+        candleStateFlushRef.current = null;
+      }
       ctrl?.close();
     };
-  }, [symbol, tf, frozen, reload, liveTerminalMeta?.sseEnabled]);
+  }, [
+    symbol,
+    tf,
+    frozen,
+    reload,
+    liveTerminalMeta?.sseEnabled,
+    queryClient,
+    t,
+  ]);
 
   useEffect(() => {
     if (frozen || sseConnection === "open") return;
@@ -333,6 +415,7 @@ export function LiveTerminalClient({
     if (backfilling) return "backfilling" as const;
     if (sseConnection === "given_up") return "sse_gave_up" as const;
     if (sseConnection === "reconnecting") return "reconnecting" as const;
+    if (sseConnection === "disconnected") return "reconnecting" as const;
     if (sseConnection === "connecting") return "connecting" as const;
     if (sseConnection === "open" && streamStale) return "stale" as const;
     if (sseConnection === "open") return "live" as const;
@@ -495,7 +578,7 @@ export function LiveTerminalClient({
   );
 
   return (
-    <div>
+    <div className="live-terminal-root">
       <DemoDataNoticeBanner notice={state.demo_data_notice} />
       <LiveDataSituationBar model={terminalSituationModel} />
       {fetchErr && fetchProductMessage ? (
@@ -722,6 +805,7 @@ export function LiveTerminalClient({
             {t("live.terminal.chartCaption")}
           </p>
           <ChartPanel
+            ref={chartPanelRef}
             candles={state.candles}
             drawings={drawings}
             news={news as LiveNewsItem[]}
@@ -741,6 +825,7 @@ export function LiveTerminalClient({
           <NewsPanel items={news as LiveNewsItem[]} compact />
         </div>
       </div>
+      <TerminalSafetyHaltOverlay />
     </div>
   );
 }

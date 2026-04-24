@@ -4,6 +4,7 @@
  */
 
 import { isApiFetchError, type ApiFetchKind } from "@/lib/api-fetch-errors";
+import { mapGatewayCodeToFetchErrorKind } from "@/lib/gateway-error-codes";
 
 export type FetchErrorKind =
   | "unreachable"
@@ -17,7 +18,28 @@ export type FetchErrorKind =
   | "parse"
   | "bff_unreachable"
   | "configuration"
+  | "rate_limited"
   | "unknown";
+
+const FETCH_ERROR_KINDS: ReadonlySet<string> = new Set<FetchErrorKind>([
+  "unreachable",
+  "timeout",
+  "unauthorized",
+  "forbidden",
+  "not_found",
+  "bad_gateway",
+  "server_error",
+  "validation",
+  "parse",
+  "bff_unreachable",
+  "configuration",
+  "rate_limited",
+  "unknown",
+]);
+
+export function isValidFetchErrorKind(s: string): s is FetchErrorKind {
+  return FETCH_ERROR_KINDS.has(s);
+}
 
 /** Mappt typisierte ApiFetchError.kind auf UI-FetchErrorKind (Legacy-Strings bleiben parallel). */
 export function mapApiFetchKindToUi(kind: ApiFetchKind): FetchErrorKind {
@@ -46,6 +68,8 @@ export function mapApiFetchKindToUi(kind: ApiFetchKind): FetchErrorKind {
       return "unknown";
     case "schema":
       return "bad_gateway";
+    case "rate_limit":
+      return "rate_limited";
     default:
       return "unknown";
   }
@@ -53,6 +77,12 @@ export function mapApiFetchKindToUi(kind: ApiFetchKind): FetchErrorKind {
 
 export function classifyFetchError(err: unknown): FetchErrorKind {
   if (isApiFetchError(err)) {
+    const fromCode = mapGatewayCodeToFetchErrorKind(
+      err.code,
+      err.status,
+      err.layer,
+    );
+    if (fromCode) return fromCode;
     return mapApiFetchKindToUi(err.kind);
   }
   const raw = err instanceof Error ? err.message : String(err);

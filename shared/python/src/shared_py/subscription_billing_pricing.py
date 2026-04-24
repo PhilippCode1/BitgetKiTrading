@@ -50,3 +50,29 @@ def subscription_billing_pricing_descriptor() -> dict[str, str | int]:
         "default_vat_rate_bps": 1900,
         "reference_daily_net_cents_eur": 1000,
     }
+
+
+def daily_prorata_net_cents_eur(
+    net_amount_cents: int, *, reference_period_days: int
+) -> int:
+    """
+    Tagesanteil: net_amount_cents // reference_period_days (Ganzzahl, Abrunden).
+    (30-Tage-Monat: /30, Woche: /7, Jahr: /365 laut Katalogzeile.)
+    """
+    if reference_period_days < 1:
+        raise ValueError("reference_period_days muss >= 1 sein")
+    if net_amount_cents < 0:
+        raise ValueError("net_amount_cents muss >= 0 sein")
+    return int(net_amount_cents) // int(reference_period_days)
+
+
+def eur_cents_to_list_usd(
+    eur_cents: int, *, eur_to_usd_rate: Decimal, quantize: str = "0.00000001"
+) -> Decimal:
+    """List-USD vom internen Prepaid; FX-Rate 1 EUR -> USD (Vereinfachung)."""
+    if eur_cents < 0:
+        raise ValueError("eur_cents muss >= 0 sein")
+    eur = Decimal(int(eur_cents)) / Decimal(100)
+    if eur_to_usd_rate < 0:
+        raise ValueError("eur_to_usd_rate muss >= 0 sein")
+    return (eur * eur_to_usd_rate).quantize(Decimal(quantize))

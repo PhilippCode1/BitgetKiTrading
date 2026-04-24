@@ -1,5 +1,8 @@
 """
 DSN-Hilfen: oeffentliche Metadaten ohne Passwoerter; Logging fuer Betrieb.
+
+Pool-Groessen: shared_py.datastore.pool_config (Prompt 35) — SQLALCHEMY_*
+(Async-Engine) und live-broker psycopg-pool derselbe Max-Slot-Ansatz.
 """
 
 from __future__ import annotations
@@ -34,6 +37,22 @@ def public_meta_redis(url: str) -> dict[str, Any]:
     return {"host": host, "port": port}
 
 
+def _pool_params_for_log() -> str:
+    try:
+        from shared_py.datastore.pool_config import (  # noqa: PLC0415
+            SQLALCHEMY_MAX_OVERFLOW,
+            SQLALCHEMY_POOL_RECYCLE_SEC,
+            SQLALCHEMY_POOL_SIZE,
+        )
+    except ImportError:
+        return "pool=async(default)"
+    return (
+        f"sqlalchemy_pool size={SQLALCHEMY_POOL_SIZE} "
+        f"max_overflow={SQLALCHEMY_MAX_OVERFLOW} "
+        f"pool_recycle_s={SQLALCHEMY_POOL_RECYCLE_SEC}"
+    )
+
+
 def log_effective_datastores(logger: logging.Logger, settings: Any) -> None:
     """
     Einmaliger Hinweis nach Settings-Load: Ziel-Datastore ohne Secrets.
@@ -46,12 +65,14 @@ def log_effective_datastores(logger: logging.Logger, settings: Any) -> None:
     if du:
         m = public_meta_postgres(du)
         logger.info(
-            "datastore_postgres_effective host=%s port=%s db=%s db_user=%s source=%s",
+            "datastore_postgres_effective host=%s port=%s db=%s db_user=%s "
+            "source=%s %s",
             m["host"],
             m["port"],
             m["dbname"],
             m["user"],
             src,
+            _pool_params_for_log(),
         )
     else:
         logger.warning("datastore_postgres_effective missing DATABASE_URL source=%s", src)

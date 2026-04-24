@@ -7,12 +7,15 @@ import time
 from collections import deque
 from typing import Annotated, Any, AsyncIterator
 
+import psycopg
 from fastapi import APIRouter, Depends, HTTPException, Query
+from psycopg.rows import dict_row
 
 from api_gateway.auth import GatewayAuthContext, require_live_stream_access, require_sensitive_auth
 from api_gateway.config import get_gateway_settings
 from api_gateway.db import DatabaseHealthError, get_database_url
 from api_gateway.db_live_queries import (
+    assert_symbol_in_instrument_catalog,
     build_live_state,
     normalize_tf_for_db,
     validate_live_symbol,
@@ -134,6 +137,20 @@ def _map_envelope_to_sse(
     if et in ("trade_opened", "trade_updated", "trade_closed"):
         return "paper", json.dumps({"event_type": et, "payload": pl}, default=str)
 
+    if et == "market_feed_health":
+        out = {
+            "event_type": et,
+            "symbol": str(env.get("symbol", "") or pl.get("symbol") or ""),
+            "exchange_ts_ms": pl.get("exchange_ts_ms"),
+            "processed_ts_ms": pl.get("processed_ts_ms"),
+            "pipeline_lag_ms": pl.get("pipeline_lag_ms"),
+            "age_ticker_ms": pl.get("age_ticker_ms"),
+            "vpin_toxicity_0_1": pl.get("vpin_toxicity_0_1"),
+            "ok": pl.get("ok"),
+            "payload": pl,
+        }
+        return "feed_health", json.dumps(out, default=str, separators=(",", ":"))
+
     return None
 
 
@@ -141,6 +158,18 @@ def _map_envelope_to_sse(
 def live_state(
     _auth: Annotated[GatewayAuthContext, Depends(require_sensitive_auth)],
     symbol: str | None = Query(default=None),
+    market_family: str | None = Query(
+        default=None,
+        description="spot | margin | futures — Default aus DASHBOARD_DEFAULT_MARKET_FAMILY",
+    ),
+    product_type: str | None = Query(
+        default=None,
+        description="Futures: USDT-FUTURES etc.; Default aus BITGET_FUTURES_DEFAULT_PRODUCT_TYPE",
+    ),
+    margin_account_mode: str | None = Query(
+        default=None,
+        description="margin: isolated | crossed (Default isolated)",
+    ),
     timeframe: str = Query("1m"),
     limit: Annotated[int | None, Query()] = None,
 ) -> dict[str, Any]:
@@ -162,9 +191,32 @@ def live_state(
         resolved_symbol = validate_live_symbol(resolved_symbol)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    res_mf = str(
+        market_family
+        or g.dashboard_default_market_family
+        or g.next_public_default_market_family
+        or "futures"
+    ).strip().lower()
+    res_pt: str | None = None
+    if res_mf == "futures":
+        res_pt = (product_type or g.default_futures_product_type() or "").strip().upper() or None
+    res_margin_mode: str | None = None
+    if res_mf == "margin":
+        res_margin_mode = (margin_account_mode or "isolated").strip().lower()
     stale_ms = int(g.data_stale_warn_ms)
     try:
         dsn = get_database_url()
+        with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
+            try:
+                assert_symbol_in_instrument_catalog(
+                    conn,
+                    symbol=resolved_symbol,
+                    market_family=res_mf,
+                    product_type=res_pt,
+                    margin_account_mode=res_margin_mode,
+                )
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
         payload = build_live_state(
             dsn,
             symbol=resolved_symbol,
@@ -174,6 +226,8 @@ def live_state(
             news_fixture_mode=bool(g.news_fixture_mode),
             bitget_demo_enabled=bool(g.bitget_demo_enabled),
         )
+    except HTTPException:
+        raise
     except DatabaseHealthError as exc:
         logger.warning("live_state database_url: %s", exc)
         payload = build_live_state(

@@ -10,26 +10,32 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, TypeVar
 
+from llm_orchestrator.knowledge.onchain_macro import build_readonly_onchain_text
+
 logger = logging.getLogger("llm_orchestrator.knowledge")
 
-# Kurze Deckel fuer Block-Serialisierung (kein Endlos-Haengen bei pathologischem JSON)
-_CONTEXT_SECTION_TIMEOUT_SEC = 1.5
+# Hartes Timeout pro Block (Serialisierung/Fetch, Pro-Symbol-robust, max. 2s)
+_CONTEXT_SECTION_TIMEOUT_SEC = 2.0
 _CONTEXT_FETCH_LOG_PREFIX = "operator_readonly_context"
 
 T = TypeVar("T")
 
 # Explizite Platzhalter fuer fehlende/leere Marktdaten (BFF liefert Teil-JSON)
-PLACEHOLDER_NO_NEWS = "[KEINE NEWS VERFÜGBAR]"
-PLACEHOLDER_NO_ORDERBOOK = "[KEIN ORDERBUCH-SNAPSHOT VERFÜGBAR]"
-PLACEHOLDER_NO_SIGNALS = "[KEINE SIGNAL-DATEN VERFÜGBAR]"
-PLACEHOLDER_NO_CHART = "[KEIN CHART-/KERZENSNAPSHOT VERFÜGBAR]"
+# News: fester Null-Data-String (Audit: Luecke sichtbar, kein Ersatzinventar)
+PLACEHOLDER_NO_NEWS = "[KEINE AKTUELLEN NEWS VERFÜGBAR]"
+PLACEHOLDER_NO_ORDERBOOK = "[KEIN AKTUELLES ORDERBUCH VERFÜGBAR]"
+PLACEHOLDER_NO_SIGNALS = "[KEINE AKTUELLEN SIGNAL-DATEN VERFÜGBAR]"
+PLACEHOLDER_NO_CHART = "[KEIN AKTUELLER CHART-/KERZENSNAPSHOT VERFÜGBAR]"
+PLACEHOLDER_NO_ONCHAIN_MACRO = (
+    "[KEINE ON-CHAIN-MAKRO-EVENTS VERFÜGBAR — Sniffer-Stream leer oder Redis nicht erreichbar]"
+)
 PLACEHOLDER_SECTION_ERROR = "[ABSCHNITT VORLAEUFIG NICHT LESBAR]"
 
 
 def _run_with_timeout(
     fn: Callable[[], T], *, timeout_sec: float, on_timeout: T, label: str
 ) -> T:
-    """Isolierter Block mit kurzem Timeout (Thread + future), damit pathologische Work nicht blockiert."""
+    """Kurzes Timeout (Thread+Future), blockiert nicht bei pathologischen Werten."""
     t0 = time.perf_counter()
     with ThreadPoolExecutor(max_workers=1) as pool:
         fut = pool.submit(fn)
@@ -68,21 +74,28 @@ def _first_present(ctx: dict[str, Any], *keys: str) -> Any:
 
 
 def _serialize_block(label: str, data: Any, empty_placeholder: str) -> str:
-    if _is_empty_value(data):
-        return f"{label}:\n{empty_placeholder}"
+    """Pro Block isoliert: pathologische Werte -> Platzhalter, kein globaler Abbruch."""
     try:
-        if isinstance(data, (dict, list)):
-            text = json.dumps(data, ensure_ascii=False, default=str, indent=2)
-        else:
-            text = str(data)
-    except (TypeError, ValueError) as exc:
+        if _is_empty_value(data):
+            return f"{label}:\n{empty_placeholder}"
+        try:
+            if isinstance(data, (dict, list)):
+                text = json.dumps(data, ensure_ascii=False, default=str, indent=2)
+            else:
+                text = str(data)
+        except (TypeError, ValueError) as exc:
+            logger.warning(
+                "%s: serialisierung %s: %s", _CONTEXT_FETCH_LOG_PREFIX, label, exc
+            )
+            return f"{label}:\n{empty_placeholder}"
+        if not (text or "").strip():
+            return f"{label}:\n{empty_placeholder}"
+        return f"{label}:\n{text.strip()}"
+    except Exception as exc:
         logger.warning(
-            "%s: serialisierung %s: %s", _CONTEXT_FETCH_LOG_PREFIX, label, exc
+            "%s: abschnitt %s unerwartet: %s", _CONTEXT_FETCH_LOG_PREFIX, label, exc
         )
-        return f"{label}:\n{PLACEHOLDER_SECTION_ERROR}"
-    if not (text or "").strip():
         return f"{label}:\n{empty_placeholder}"
-    return f"{label}:\n{text.strip()}"
 
 
 def _section(
@@ -91,13 +104,65 @@ def _section(
     empty_ph: str,
     *,
     timeout_sec: float = _CONTEXT_SECTION_TIMEOUT_SEC,
+    on_timeout: str | None = None,
 ) -> str:
     def _build() -> str:
         return _serialize_block(label, data, empty_ph)
 
+    oto = on_timeout or f"{label}:\n{PLACEHOLDER_SECTION_ERROR}"
     return _run_with_timeout(
-        _build, timeout_sec=timeout_sec, on_timeout=f"{label}:\n{PLACEHOLDER_SECTION_ERROR}", label=label
+        _build,
+        timeout_sec=timeout_sec,
+        on_timeout=oto,
+        label=label,
     )
+
+
+def _isolated_data_section(
+    label: str,
+    data: Any,
+    empty_ph: str,
+    *,
+    timeout_sec: float = _CONTEXT_SECTION_TIMEOUT_SEC,
+) -> str:
+    """
+    Pro Abschnitt (News, Orderbook, …): try-except + 2s-Thread-Timeout,
+    bei Fehlschlag exakt Null-Data-String (kein globaler Abbruch).
+    """
+    try:
+        return _section(
+            label,
+            data,
+            empty_ph,
+            timeout_sec=timeout_sec,
+            on_timeout=f"{label}:\n{empty_ph}",
+        )
+    except Exception as exc:
+        logger.warning(
+            "%s: isoliert data abschnitt=%s: %s", _CONTEXT_FETCH_LOG_PREFIX, label, exc
+        )
+        return f"{label}:\n{empty_ph}"
+
+
+def _isolated_thread_block(
+    label: str,
+    fn: Callable[[], str],
+    *,
+    timeout_sec: float = _CONTEXT_SECTION_TIMEOUT_SEC,
+    on_timeout: str,
+) -> str:
+    try:
+        return _run_with_timeout(
+            fn, timeout_sec=timeout_sec, on_timeout=on_timeout, label=label
+        )
+    except Exception as exc:
+        logger.warning(
+            "%s: isoliert thread label=%s: %s",
+            _CONTEXT_FETCH_LOG_PREFIX,
+            label,
+            exc,
+        )
+        return on_timeout
 
 
 def format_operator_readonly_pro_symbol(
@@ -107,7 +172,7 @@ def format_operator_readonly_pro_symbol(
 ) -> str:
     """
     Baut den READONLY-Block fuer Operator-Explain: News, Orderbook, Signale, Chart
-    in isolierten logischen (und bei Serialisierung timeout-geschuetzten) Schritten.
+    in isolierten logischen Schritten; Serialisierung pro Block max. 2s (Timeout).
     Fehlende oder leere Quellen: explizite Platzhalter, kein Abbruch des LLM-Requests.
     """
     if not isinstance(readonly_context, dict):
@@ -116,7 +181,8 @@ def format_operator_readonly_pro_symbol(
             f"news:\n{PLACEHOLDER_NO_NEWS}\n\n"
             f"orderbook:\n{PLACEHOLDER_NO_ORDERBOOK}\n\n"
             f"signals:\n{PLACEHOLDER_NO_SIGNALS}\n\n"
-            f"chart:\n{PLACEHOLDER_NO_CHART}"
+            f"chart:\n{PLACEHOLDER_NO_CHART}\n\n"
+            f"onchain_macro:\n{PLACEHOLDER_NO_ONCHAIN_MACRO}"
         )[:max_total_chars]
 
     ctx = readonly_context
@@ -130,39 +196,60 @@ def format_operator_readonly_pro_symbol(
             if v is not None and str(v).strip():
                 lines.append(f"{key}={v!s}")
         if not lines:
-            return "symbol:\n(nicht explizit gesetzt — Kontext trotzdem nutzen, fehlende Marktdaten benennen)"
+            return (
+                "symbol:\n("
+                "nicht explizit gesetzt; trotzdem nutzen, fehlende Marktdaten benennen)"
+            )
         return "symbol:\n" + "\n".join(lines)
 
+    _symbol_timeout = (
+        "symbol:\n(nicht explizit — fehlende Marktdaten im READONLY beachten)"
+    )
     parts.append(
-        _run_with_timeout(
+        _isolated_thread_block(
+            "symbol",
             _meta,
-            timeout_sec=0.5,
-            on_timeout="symbol:\n(nicht explizit gesetzt)",
-            label="symbol",
+            timeout_sec=_CONTEXT_SECTION_TIMEOUT_SEC,
+            on_timeout=_symbol_timeout,
         )
     )
 
     news_d = _first_present(ctx, "news", "news_context", "headlines", "news_items")
     parts.append(
-        _section("news", news_d, PLACEHOLDER_NO_NEWS),
+        _isolated_data_section("news", news_d, PLACEHOLDER_NO_NEWS),
     )
     ob_d = _first_present(
         ctx, "orderbook", "order_book", "book", "liquidity", "orderbook_snapshot"
     )
     parts.append(
-        _section("orderbook", ob_d, PLACEHOLDER_NO_ORDERBOOK),
+        _isolated_data_section("orderbook", ob_d, PLACEHOLDER_NO_ORDERBOOK),
     )
     sig_d = _first_present(
         ctx, "signals", "signal", "signal_row", "signal_snapshot", "signal_context"
     )
     parts.append(
-        _section("signals", sig_d, PLACEHOLDER_NO_SIGNALS),
+        _isolated_data_section("signals", sig_d, PLACEHOLDER_NO_SIGNALS),
     )
     ch_d = _first_present(
         ctx, "chart", "candles", "ohlc", "klines", "bars", "price_series"
     )
     parts.append(
-        _section("chart", ch_d, PLACEHOLDER_NO_CHART),
+        _isolated_data_section("chart", ch_d, PLACEHOLDER_NO_CHART),
+    )
+
+    def _onchain_macro_block() -> str:
+        txt = build_readonly_onchain_text(ctx)
+        if not (txt or "").strip():
+            return f"onchain_macro:\n{PLACEHOLDER_NO_ONCHAIN_MACRO}"
+        return f"onchain_macro:\n{txt.strip()}"
+
+    parts.append(
+        _isolated_thread_block(
+            "onchain_macro",
+            _onchain_macro_block,
+            timeout_sec=_CONTEXT_SECTION_TIMEOUT_SEC,
+            on_timeout=f"onchain_macro:\n{PLACEHOLDER_NO_ONCHAIN_MACRO}",
+        )
     )
 
     # Weitere Schluessel (ohne Doppel) als zusaetzlicher Kontext, best-effort
@@ -191,6 +278,9 @@ def format_operator_readonly_pro_symbol(
         "klines",
         "bars",
         "price_series",
+        "onchain",
+        "onchain_macro",
+        "onchain_context",
     }
     extra: dict[str, Any] = {k: v for k, v in ctx.items() if k not in used}
     if extra:
@@ -198,11 +288,14 @@ def format_operator_readonly_pro_symbol(
         def _extra() -> str:
             return _serialize_block("zusaetzlicher_kontext", extra, "")
 
-        ex = _run_with_timeout(
+        _zusatz_tmt = (
+            "zusaetzlicher_kontext:\n[ZUSATZ Nicht serialisierbar in Zeitbudget]"
+        )
+        ex = _isolated_thread_block(
+            "zusaetzlicher_kontext",
             _extra,
             timeout_sec=_CONTEXT_SECTION_TIMEOUT_SEC,
-            on_timeout="zusaetzlicher_kontext:\n[ZUSATZ Nicht serialisierbar in Zeitbudget]",
-            label="extra",
+            on_timeout=_zusatz_tmt,
         )
         parts.append(ex)
 
@@ -232,6 +325,7 @@ TASK_TAG_ALLOWLIST: dict[str, frozenset[str]] = {
         {"playbook", "benchmark", "runbook", "operator_explain"}
     ),
     "support_billing_assist": frozenset({"runbook", "playbook", "operator_explain"}),
+    "ops_risk_assist": frozenset({"runbook", "playbook", "operator_explain"}),
 }
 
 

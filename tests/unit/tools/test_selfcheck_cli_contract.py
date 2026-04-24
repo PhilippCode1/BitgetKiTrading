@@ -29,9 +29,28 @@ def test_modul_mate_selfcheck_without_db_ok(no_database_url: object) -> None:
     )
     assert r.returncode == 0, (r.stdout, r.stderr)
     out = r.stdout + r.stderr
-    assert "OK: Migration 604 + migrate.py vorhanden" in out
-    assert "shared_py importierbar" in out
+    assert "modul_mate_db_gates importierbar" in out
     assert "SKIP: DATABASE_URL nicht gesetzt" in out
+
+
+def test_modul_mate_selfcheck_production_env_without_dsn_fails(
+    monkeypatch: pytest.MonkeyPatch, no_database_url: object
+) -> None:
+    """Prod-like Profil ohne DSN: Exit 1, keine verschleierte 0 trotz SKIP."""
+    script = _ROOT / "tools" / "modul_mate_selfcheck.py"
+    monkeypatch.setenv("PRODUCTION", "1")
+    r = subprocess.run(
+        [sys.executable, str(script)],
+        cwd=_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert r.returncode == 1, (r.stdout, r.stderr)
+    comb = r.stdout + r.stderr
+    assert "DATABASE_URL" in comb
+    assert "FAIL:" in comb
+    assert "SKIP: DATABASE_URL nicht" not in comb
 
 
 @pytest.mark.parametrize(

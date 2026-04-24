@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://bitget-btc-ai.local/schemas/payload-signal-created-v1.json",
+  "$id": "https://bitget-btc-ai.local/schemas/payload_signal_created.schema.json",
   "title": "signal_created payload (Kernfelder)",
   "type": "object",
   "additionalProperties": true,

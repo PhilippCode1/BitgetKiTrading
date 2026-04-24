@@ -99,6 +99,36 @@ class BitgetRestGapFillWorker:
     def last_gapfill_error(self) -> str | None:
         return self._last_gapfill_error
 
+    async def fetch_resync_orderbook_json(self) -> dict[str, Any]:
+        """GET Orderbuch-Recovery; depth, sonst merge-depth."""
+        prof = self._bitget_settings.endpoint_profile
+        candidates: list[str] = []
+        p_resync = prof.public_orderbook_resync_path
+        if isinstance(p_resync, str) and p_resync.strip():
+            candidates.append(p_resync.strip())
+        p_depth = prof.public_depth_path
+        if isinstance(p_depth, str) and p_depth.strip() and p_depth not in candidates:
+            candidates.append(p_depth.strip())
+        if not candidates:
+            candidates.append("/api/v2/mix/market/merge-depth")
+        last_exc: Exception | None = None
+        for path in candidates:
+            try:
+                return await self._request_json(
+                    path=path,
+                    params=self._market_params(limit="100"),
+                )
+            except (ValueError, OSError, httpx.HTTPError) as exc:
+                last_exc = exc
+                self._logger.info(
+                    "orderbook resync: path %s failed, try next: %s",
+                    path,
+                    exc,
+                )
+        if last_exc is not None:
+            raise last_exc
+        raise RuntimeError("orderbook resync: keine Kandidaten")
+
     async def gapfill_merge_depth(self, *, limit: str = "100") -> list[NormalizedEvent]:
         """REST-Orderbuch-Snapshot fuer Replay/Microstructure (Bitget merge-depth)."""
         endpoint = self._bitget_settings.endpoint_profile.public_depth_path

@@ -7,8 +7,9 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from api_gateway.audit import record_gateway_audit_line
-from api_gateway.auth import GatewayAuthContext, require_sensitive_auth
+from api_gateway.auth import GatewayAuthContext
 from api_gateway.config import get_gateway_settings
+from api_gateway.deps import require_commercial_entitlement
 from api_gateway.llm_orchestrator_forward import (
     LLMOrchestratorForwardHttpError,
     post_llm_orchestrator_json,
@@ -43,7 +44,7 @@ class SafetyIncidentDiagnosisGatewayBody(BaseModel):
 def llm_operator_explain(
     request: Request,
     body: OperatorExplainGatewayBody,
-    auth: Annotated[GatewayAuthContext, Depends(require_sensitive_auth)],
+    auth: Annotated[GatewayAuthContext, Depends(require_commercial_entitlement("AI_DEEP_ANALYSIS"))],
 ) -> dict[str, Any]:
     """
     Operator-Hilfe: Frage (DE) + optionaler Readonly-Kontext → strukturierte Erklaerung.
@@ -106,7 +107,7 @@ def llm_operator_explain(
 def llm_operator_safety_incident_diagnosis(
     request: Request,
     body: SafetyIncidentDiagnosisGatewayBody,
-    auth: Annotated[GatewayAuthContext, Depends(require_sensitive_auth)],
+    auth: Annotated[GatewayAuthContext, Depends(require_commercial_entitlement("AI_DEEP_ANALYSIS"))],
 ) -> dict[str, Any]:
     """
     Sicherheits-Diagnose: Readonly Health/Alerts-Kontext + Frage → strukturierte Ursachen/Plaene.
@@ -169,7 +170,7 @@ def llm_operator_safety_incident_diagnosis(
 def llm_operator_strategy_signal_explain(
     request: Request,
     body: StrategySignalExplainGatewayBody,
-    auth: Annotated[GatewayAuthContext, Depends(require_sensitive_auth)],
+    auth: Annotated[GatewayAuthContext, Depends(require_commercial_entitlement("AI_DEEP_ANALYSIS"))],
 ) -> dict[str, Any]:
     """
     Strategie-/Signal-Erklaerung: Readonly-Snapshot (JSON) + optionale Fokusfrage → strukturierte Antwort.
@@ -247,7 +248,7 @@ def llm_operator_strategy_signal_explain(
 def llm_operator_ai_strategy_proposal_draft(
     request: Request,
     body: AiStrategyProposalDraftGatewayBody,
-    auth: Annotated[GatewayAuthContext, Depends(require_sensitive_auth)],
+    auth: Annotated[GatewayAuthContext, Depends(require_commercial_entitlement("AI_DEEP_ANALYSIS"))],
 ) -> dict[str, Any]:
     """
     KI-Strategie-/Szenario-Entwurf (strukturiert, execution_authority none).

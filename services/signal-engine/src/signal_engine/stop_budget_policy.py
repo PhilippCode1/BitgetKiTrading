@@ -10,6 +10,7 @@ import math
 from typing import Any
 
 from signal_engine.config import SignalEngineSettings
+from signal_engine.product_family_risk import effective_min_leverage, market_family_from_signal_row
 from signal_engine.scoring.risk_score import _first_geometry
 
 STOP_BUDGET_POLICY_VERSION = "stop-budget-v2"
@@ -353,7 +354,15 @@ def assess_stop_budget_policy(
     sts = _stop_to_spread_ratio(stop_pct, spread_bps)
 
     allowed = int(signal_row.get("allowed_leverage") or 0)
-    min_lev = max(1, int(settings.risk_allowed_leverage_min))
+    min_lev = max(
+        1,
+        int(
+            effective_min_leverage(
+                market_family_from_signal_row(signal_row),
+                settings.risk_allowed_leverage_min,
+            )
+        ),
+    )
 
     resolution_ladder: list[dict[str, Any]] = [
         {"order": 1, "phase": "canonical_budget_curve", "descriptor": canonical_curve},

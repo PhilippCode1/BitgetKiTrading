@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import gc
 import logging
 import time
@@ -16,6 +17,12 @@ from shared_py.bitget import (
     BitgetInstrumentMetadataService,
     BitgetSettings,
 )
+from redis.asyncio import Redis as AsyncRedis
+from shared_py.eventbus import (
+    STREAM_CANDLE_CLOSE,
+    STREAM_MARKET_FEED_HEALTH,
+    STREAM_ORDERFLOW_TOXICITY,
+)
 from shared_py.observability import (
     check_postgres,
     check_redis_url,
@@ -24,6 +31,7 @@ from shared_py.observability import (
     touch_worker_heartbeat,
     wait_for_datastores,
 )
+from shared_py.observability.metrics import set_pipeline_backpressure_queue_size
 
 from market_stream.bitget_ws.client import BitgetPublicWsClient, ClientRuntimeStats
 from market_stream.bitget_ws.rate_limiter import RateLimiter
@@ -97,6 +105,16 @@ class MarketStreamSettings(BitgetSettings):
             "Lokal/Staging: /ready akzeptiert instrument_metadata-Status 'degraded' "
             "(nur 'unavailable' blockiert). In Production false lassen."
         ),
+    )
+    # Mix/Futures-Katalog: Startup-Refresh in start() + periodischer Abgleich (Bitget v2/mix).
+    # max_stale muss >= refresh_interval (Validierung in config.settings).
+    instrument_catalog_refresh_interval_sec: int = Field(
+        default=86400,
+        alias="INSTRUMENT_CATALOG_REFRESH_INTERVAL_SEC",
+    )
+    instrument_catalog_max_stale_sec: int = Field(
+        default=90000,
+        alias="INSTRUMENT_CATALOG_MAX_STALE_SEC",
     )
     market_stream_feed_health_interval_sec: int = Field(
         default=10,
@@ -484,6 +502,7 @@ class MarketStreamRuntime:
         self._feed_health_task: asyncio.Task[None] | None = None
         self._vpin_publish_task: asyncio.Task[None] | None = None
         self._catalog_refresh_task: asyncio.Task[None] | None = None
+        self._pipeline_telemetry_task: asyncio.Task[None] | None = None
 
     async def start(self) -> None:
         self._stats.connection_state = "starting"
@@ -553,6 +572,10 @@ class MarketStreamRuntime:
             self._catalog_refresh_loop(),
             name="market-stream-catalog-refresh",
         )
+        self._pipeline_telemetry_task = asyncio.create_task(
+            self._pipeline_gauge_loop(),
+            name="market-stream-pipeline-gauges",
+        )
         self._logger.info(
             "market-stream runtime started on port %s for symbol %s family=%s",
             self._settings.market_stream_port,
@@ -561,6 +584,10 @@ class MarketStreamRuntime:
         )
 
     async def stop(self) -> None:
+        if self._pipeline_telemetry_task is not None:
+            self._pipeline_telemetry_task.cancel()
+            await asyncio.gather(self._pipeline_telemetry_task, return_exceptions=True)
+            self._pipeline_telemetry_task = None
         if self._catalog_refresh_task is not None:
             self._catalog_refresh_task.cancel()
             await asyncio.gather(self._catalog_refresh_task, return_exceptions=True)
@@ -715,7 +742,35 @@ class MarketStreamRuntime:
         return self._bitget_settings.instrument_identity()
 
     async def _resync_orderbook(self, reason: str) -> None:
-        self._logger.warning("runtime orderbook resync started reason=%s", reason)
+        sym = self._bitget_settings.symbol
+        self._logger.critical(
+            "orderbook: Desynchronized - Rebuilding symbol=%s reason=%s",
+            sym,
+            reason,
+        )
+        await self._redis_sink.set_key_with_ttl(
+            f"market:locked:{sym}",
+            "1",
+            ex_sec=120,
+        )
+        try:
+            rest_payload = await self._gapfill_worker.fetch_resync_orderbook_json()
+        except Exception as exc:
+            self._logger.error(
+                "orderbook: REST resync download failed symbol=%s err=%s",
+                sym,
+                exc,
+            )
+        else:
+            data = rest_payload.get("data")
+            if isinstance(data, dict):
+                ok = await self._orderbook_collector.rebuild_from_rest_payload(data)
+                if ok:
+                    self._logger.info(
+                        "orderbook: REST resync applied symbol=%s",
+                        sym,
+                    )
+        self._logger.warning("runtime orderbook ws resubscribe after reason=%s", reason)
         for channel in ("books", "books5"):
             await self._client.unsubscribe(
                 self._bitget_settings.public_ws_inst_type,
@@ -800,6 +855,41 @@ class MarketStreamRuntime:
             "ws_reconnect_count": self._stats.reconnect_count,
         }
 
+    async def _pipeline_gauge_loop(self) -> None:
+        """
+        Periodische XLEN auf Roh- und Eventbus-Streams: pipeline_backpressure_queue_size
+        bleibt auch bei geringer Publish-Rate aktuell.
+        """
+        r = AsyncRedis.from_url(
+            self._settings.redis_url,
+            decode_responses=True,
+        )
+        streams = list(
+            dict.fromkeys(
+                [
+                    self._redis_sink.stream_key,
+                    self._slippage_sink.stream_key,
+                    str(STREAM_CANDLE_CLOSE),
+                    str(STREAM_MARKET_FEED_HEALTH),
+                    str(STREAM_ORDERFLOW_TOXICITY),
+                ],
+            )
+        )
+        try:
+            while True:
+                await asyncio.sleep(1.0)
+                for sk in streams:
+                    with contextlib.suppress(Exception):
+                        n = int(await r.xlen(sk))
+                        set_pipeline_backpressure_queue_size(stream=sk, size=n)
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:  # pragma: no cover - Defensive
+            self._logger.warning("pipeline_gauge_loop ended: %s", exc)
+        finally:
+            with contextlib.suppress(Exception):
+                await r.close()
+
     async def _feed_health_loop(self) -> None:
         interval = float(self._settings.market_stream_feed_health_interval_sec)
         gc_every = int(self._settings.worker_gc_interval_async_loops or 0)
@@ -814,6 +904,13 @@ class MarketStreamRuntime:
                 ob = self._orderbook_collector.stats_payload()
                 desynced = bool(ob.get("orderbook_desynced"))
                 ws_ok = self._stats.connection_state == "connected"
+                now_ms = int(time.time() * 1000)
+                ex_ref_ms = self._ticker_collector.last_quote_ts_ms()
+                pl_lag: int | None
+                if ex_ref_ms and ex_ref_ms > 0:
+                    pl_lag = max(0, now_ms - int(ex_ref_ms))
+                else:
+                    pl_lag = None
                 payload: dict[str, Any] = {
                     "ok": ok and not desynced and ws_ok,
                     "ws_connected": ws_ok,
@@ -832,6 +929,10 @@ class MarketStreamRuntime:
                     "gapfill_last_ok_ts_ms": self._gapfill_worker.last_gapfill_ok_ts_ms,
                     "gapfill_last_error": self._gapfill_worker.last_gapfill_error,
                     "ingest": self._ingest_feed_snapshot(),
+                    "exchange_ts_ms": ex_ref_ms,
+                    "processed_ts_ms": now_ms,
+                    "pipeline_lag_ms": pl_lag,
+                    "vpin_toxicity_0_1": self._vpin_telemetry.toxicity_score(),
                 }
                 if reason == "boot_grace":
                     payload["ok"] = ws_ok and not desynced

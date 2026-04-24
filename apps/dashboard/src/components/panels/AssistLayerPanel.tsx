@@ -13,6 +13,9 @@ import {
 const CLIENT_FETCH_TIMEOUT_MS = 128_000;
 const MESSAGE_MAX = 8000;
 
+const EXEC_UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 function newConversationId(): string {
   return typeof crypto !== "undefined" && "randomUUID" in crypto
     ? crypto.randomUUID()
@@ -30,6 +33,8 @@ type AssistLayerPanelProps = Readonly<{
   segments: AssistSegmentDef[];
   titleKey: string;
   leadKey: string;
+  /** Tab „ops-risk“: execution_id → Forensik-Kontext (Golden Record + Policy) */
+  enableOpsRiskForensicLoader?: boolean;
 }>;
 
 type Turn = Readonly<{ user: string; assistant: string }>;
@@ -38,6 +43,7 @@ function AssistLayerPanelInner({
   segments,
   titleKey,
   leadKey,
+  enableOpsRiskForensicLoader = false,
 }: AssistLayerPanelProps) {
   const { t } = useI18n();
   const [activeSegment, setActiveSegment] = useState(
@@ -55,6 +61,8 @@ function AssistLayerPanelInner({
     historyCount?: number;
     fake?: boolean;
   } | null>(null);
+  const [executionIdForRisk, setExecutionIdForRisk] = useState("");
+  const [loadingContext, setLoadingContext] = useState(false);
 
   const abortRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(true);
@@ -85,6 +93,7 @@ function AssistLayerPanelInner({
     setError(null);
     setMessage("");
     setContextText("");
+    setExecutionIdForRisk("");
   }, [activeSegment]);
 
   const newConversation = useCallback(() => {
@@ -94,6 +103,61 @@ function AssistLayerPanelInner({
     setLastMeta(null);
     setError(null);
   }, []);
+
+  const loadOpsRiskForensicContext = useCallback(async () => {
+    if (!enableOpsRiskForensicLoader) return;
+    setError(null);
+    const eid = executionIdForRisk.trim();
+    if (!eid) {
+      setError(t("pages.health.assistOpsRiskLoadErr"));
+      return;
+    }
+    if (!EXEC_UUID_RE.test(eid)) {
+      setError(t("pages.health.assistOpsRiskLoadErr"));
+      return;
+    }
+    setLoadingContext(true);
+    try {
+      const res = await fetch(
+        `/api/dashboard/live-broker/executions/${encodeURIComponent(eid)}/ops-risk-assist-context`,
+        { method: "GET" },
+      );
+      const text = await res.text();
+      if (!mountedRef.current) return;
+      if (!res.ok) {
+        setError(t("pages.health.assistOpsRiskLoadErr"));
+        return;
+      }
+      let data: Record<string, unknown>;
+      try {
+        data = JSON.parse(text) as Record<string, unknown>;
+      } catch {
+        setError(t("pages.health.aiExplainErrBadJson"));
+        return;
+      }
+      const golden = data.trade_lifecycle_golden;
+      const inq = data.risk_rejection_inquiry;
+      const brief = data.decision_brief;
+      if (
+        golden === undefined ||
+        typeof golden !== "object" ||
+        golden === null
+      ) {
+        setError(t("pages.health.assistOpsRiskLoadErr"));
+        return;
+      }
+      const out: Record<string, unknown> = {
+        decision_brief: brief ?? {},
+        trade_lifecycle_golden: golden,
+        risk_rejection_inquiry: inq ?? {},
+      };
+      setContextText(JSON.stringify(out, null, 2));
+    } catch (e) {
+      if (mountedRef.current) setError(resolveNetworkFailure(e, t));
+    } finally {
+      if (mountedRef.current) setLoadingContext(false);
+    }
+  }, [enableOpsRiskForensicLoader, executionIdForRisk, t]);
 
   const submit = useCallback(async () => {
     setError(null);
@@ -247,6 +311,43 @@ function AssistLayerPanelInner({
           placeholder={t("pages.health.assistMessagePlaceholder")}
         />
       </label>
+      {enableOpsRiskForensicLoader && activeSegment === "ops-risk" ? (
+        <div className="block-label" style={{ marginBottom: "0.75rem" }}>
+          <span>{t("pages.health.assistOpsRiskLoadLabel")}</span>
+          <p className="muted small">{t("pages.health.assistOpsRiskLoadHelp")}</p>
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: "0.5rem",
+              alignItems: "center",
+              marginTop: 6,
+            }}
+          >
+            <input
+              type="text"
+              className="console-textarea mono-small"
+              style={{ minWidth: 280, maxWidth: "100%", padding: "0.4rem 0.5rem" }}
+              value={executionIdForRisk}
+              onChange={(e) => setExecutionIdForRisk(e.target.value)}
+              disabled={loading || loadingContext}
+              autoComplete="off"
+              spellCheck={false}
+              placeholder="00000000-0000-4000-8000-000000000000"
+            />
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => void loadOpsRiskForensicContext()}
+              disabled={loading || loadingContext}
+            >
+              {loadingContext
+                ? t("pages.health.aiExplainLoadingShort")
+                : t("pages.health.assistOpsRiskLoadButton")}
+            </button>
+          </div>
+        </div>
+      ) : null}
       <label className="block-label">
         <span>{t("pages.health.assistContextLabel")}</span>
         <span className="muted small block">{t(activeHintKey)}</span>

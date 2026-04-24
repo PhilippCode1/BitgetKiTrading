@@ -1,13 +1,45 @@
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import Any, Callable, Sequence
+from typing import Any
 
 import numpy as np
 from sklearn.base import clone
 from sklearn.metrics import accuracy_score, log_loss, mean_absolute_error, roc_auc_score
 
-from learning_engine.backtest.splits import Range, purged_kfold_embargo_indices, walk_forward_indices
+from learning_engine.backtest.splits import (
+    Range,
+    purged_kfold_embargo_indices,
+    walk_forward_indices,
+)
+from learning_engine.config import LearningEngineSettings
+from learning_engine.training.cv_split_policy import (
+    make_training_purged_kfold_splits,
+    make_training_walk_forward_splits,
+)
+
+
+def _splits_walk_forward(
+    ranges: list[Range],
+    k_folds: int,
+    embargo_pct: float,
+    settings: LearningEngineSettings | None,
+) -> list[tuple[list[int], list[int]]]:
+    if settings is not None:
+        return make_training_walk_forward_splits(ranges, settings)
+    return walk_forward_indices(ranges, k_folds, embargo_pct)
+
+
+def _splits_purged_kfold(
+    ranges: list[Range],
+    k_folds: int,
+    embargo_pct: float,
+    settings: LearningEngineSettings | None,
+) -> list[tuple[list[int], list[int]]]:
+    if settings is not None:
+        return make_training_purged_kfold_splits(ranges, settings)
+    return purged_kfold_embargo_indices(ranges, k_folds, embargo_pct)
 
 
 @dataclass(frozen=True)
@@ -43,8 +75,9 @@ def run_walk_forward_binary_classification(
     k_folds: int,
     embargo_pct: float,
     make_estimator: Callable[[], Any],
+    settings: LearningEngineSettings | None = None,
 ) -> list[FoldMetric]:
-    splits = walk_forward_indices(ranges, k_folds, embargo_pct)
+    splits = _splits_walk_forward(ranges, k_folds, embargo_pct, settings)
     return _eval_binary_folds(X, y, splits, make_estimator)
 
 
@@ -56,8 +89,9 @@ def run_purged_kfold_binary_classification(
     k_folds: int,
     embargo_pct: float,
     make_estimator: Callable[[], Any],
+    settings: LearningEngineSettings | None = None,
 ) -> list[FoldMetric]:
-    splits = purged_kfold_embargo_indices(ranges, k_folds, embargo_pct)
+    splits = _splits_purged_kfold(ranges, k_folds, embargo_pct, settings)
     return _eval_binary_folds(X, y, splits, make_estimator)
 
 
@@ -121,8 +155,9 @@ def run_walk_forward_regression(
     k_folds: int,
     embargo_pct: float,
     make_estimator: Callable[[], Any],
+    settings: LearningEngineSettings | None = None,
 ) -> list[FoldMetric]:
-    splits = walk_forward_indices(ranges, k_folds, embargo_pct)
+    splits = _splits_walk_forward(ranges, k_folds, embargo_pct, settings)
     return _eval_regression_folds(X, y, splits, make_estimator)
 
 
@@ -134,8 +169,9 @@ def run_purged_kfold_regression(
     k_folds: int,
     embargo_pct: float,
     make_estimator: Callable[[], Any],
+    settings: LearningEngineSettings | None = None,
 ) -> list[FoldMetric]:
-    splits = purged_kfold_embargo_indices(ranges, k_folds, embargo_pct)
+    splits = _splits_purged_kfold(ranges, k_folds, embargo_pct, settings)
     return _eval_regression_folds(X, y, splits, make_estimator)
 
 
@@ -185,8 +221,9 @@ def run_walk_forward_multiclass_classification(
     k_folds: int,
     embargo_pct: float,
     make_estimator: Callable[[], Any],
+    settings: LearningEngineSettings | None = None,
 ) -> list[FoldMetric]:
-    splits = walk_forward_indices(ranges, k_folds, embargo_pct)
+    splits = _splits_walk_forward(ranges, k_folds, embargo_pct, settings)
     return _eval_multiclass_folds(X, y, splits, make_estimator)
 
 
@@ -198,8 +235,9 @@ def run_purged_kfold_multiclass_classification(
     k_folds: int,
     embargo_pct: float,
     make_estimator: Callable[[], Any],
+    settings: LearningEngineSettings | None = None,
 ) -> list[FoldMetric]:
-    splits = purged_kfold_embargo_indices(ranges, k_folds, embargo_pct)
+    splits = _splits_purged_kfold(ranges, k_folds, embargo_pct, settings)
     return _eval_multiclass_folds(X, y, splits, make_estimator)
 
 

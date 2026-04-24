@@ -1,13 +1,13 @@
 # Codebase-Analyse: Bewertung 1–10 nach Bereichen
 
-**Stand:** 2026-04-01  
-**Abgleich:** Kanonische Zahlen und Regeln in [FINAL_SCORECARD.md](FINAL_SCORECARD.md), Lücken in [REPO_FREEZE_GAP_MATRIX.md](REPO_FREEZE_GAP_MATRIX.md), Restrisiken in [ROADMAP_10_10_CLOSEOUT.md](ROADMAP_10_10_CLOSEOUT.md) und [adr/ADR-0010-roadmap-accepted-residual-risks.md](adr/ADR-0010-roadmap-accepted-residual-risks.md).
+**Stand:** 2026-04-24 (P83: P0 geschlossen; Tabelle an Gap-Matrix/Scorecard angeglichen)  
+**Abgleich:** Kanonische Zahlen in [FINAL_SCORECARD.md](FINAL_SCORECARD.md), Lücken in [REPO_FREEZE_GAP_MATRIX.md](REPO_FREEZE_GAP_MATRIX.md), Restrisiken in [ROADMAP_10_10_CLOSEOUT.md](ROADMAP_10_10_CLOSEOUT.md) und [adr/ADR-0010-roadmap-accepted-residual-risks.md](adr/ADR-0010-roadmap-accepted-residual-risks.md).
 
 ## Methode
 
-- **Primärquelle:** Die Projekt-interne Regel „keine 10 ohne Beleg“ in [FINAL_SCORECARD.md](FINAL_SCORECARD.md) und offene Punkte in [REPO_FREEZE_GAP_MATRIX.md](REPO_FREEZE_GAP_MATRIX.md) (P0/P1/P2, Block-Tabelle).
+- **Primärquelle:** Die Projekt-interne Regel „keine 10 ohne Beleg“ in [FINAL_SCORECARD.md](FINAL_SCORECARD.md) und die Lücken-Tabelle in [REPO_FREEZE_GAP_MATRIX.md](REPO_FREEZE_GAP_MATRIX.md) (P0 per P83 geschlossen; P1/P2 iterativ).
 - **Abgrenzung:** Es handelt sich um eine **architektonische und prozessuale** Bewertung (Services, CI, Tests, Doku), nicht um eine statische Code-Metrik (z. B. zyklomatische Komplexität pro Modul). Dafür wären zusätzliche Tool-Läufe nötig.
-- **Gesamtnote:** Ein einzelner „Durchschnitt 1–10“ ist irreführend, weil **P0-Themen** (Config/Profil, Risk/Leverage-Doku-Widerspruch, BTCUSDT-Drift) die Produktionsreife begrenzen — siehe Freeze-Regel in der Gap-Matrix.
+- **Gesamtnote:** Ein Durchschnitt bleibt irrefuehrend; technische P0-Blocker sind in der Gap-Matrix (P83) **geschlossen** — restliche Streuung = P1/P2 und Betrieb.
 
 ## Architekturüberblick (Kontext)
 
@@ -41,14 +41,14 @@ flowchart TB
 
 ## Bewertungstabelle (Skala 1–10, ganzzahlig)
 
-Die folgenden Werte **entsprechen der kanonischen Scorecard** (Stand 2026-04-01) und werden hier strukturiert und mit Gap-Bezug erläutert.
+Die folgenden Werte **entsprechen der kanonischen Scorecard** (Stand 2026-04-24) und werden hier strukturiert und mit Gap-Bezug erläutert.
 
 | Bereich                                    | Score | Kurzbegründung (Repo-Evidenz)                                                                                                                                                                                  |
 | ------------------------------------------ | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Architektur / Modularität**              | **8** | 13 Microservices + Dashboard, Compose, Manifest, ADR; Rest: `env_file`/Profil-Drift zwischen Services und Doku ([REPO_FREEZE_GAP_MATRIX.md](REPO_FREEZE_GAP_MATRIX.md) Block Config, Zeile Default env_files). |
-| **Marktuniversum / Multi-Asset**           | **6** | Katalog/Metadata vorhanden; Laufzeit weiter überwiegend single-instrument; P0: BTCUSDT-/Fixture-Reste ([REPO_FREEZE_GAP_MATRIX.md](REPO_FREEZE_GAP_MATRIX.md) P0-Tabelle).                                     |
+| **Marktuniversum / Multi-Asset**           | **9** | Katalog, `MarketInstrumentFactory` / Identitaet; P0 in Gap-Matrix **erledigt** (P83); pro Service oft single-instrument pro Prozess — wohlgeformt, kein stiller Default.                                    |
 | **Entscheidungsintelligenz (Signal)**      | **8** | Spezialisten, Router, Adversary, Tests unter `tests/signal_engine/`; kein LLM-only-Trading (Freeze-Regel).                                                                                                     |
-| **Risk / Stop / Leverage / Exit**          | **8** | `exit_engine`, Stop-Budget-Tests, Integer-Leverage, Live-7x-Gates; Gap-Matrix listet weiter **P0/P1** bei Abgleich Policy vs. LaunchChecklist (Leverage 7 vs. 75, Config-Zeile).                               |
+| **Risk / Stop / Leverage / Exit**          | **9** | `exit_engine`, Stop-Budget-Tests, Integer-Leverage, Live-7x-Gates; konservatives Erst-Profil dokumentiert.                                                                                                |
 | **Live Broker / Exchange-Control-Plane**   | **8** | Reconcile, Safety, Forensik; Integrationstests für HTTP- und DB-Pfade; echte Exchange-Tiefe nur Staging/ENV ([FINAL_SCORECARD.md](FINAL_SCORECARD.md), [recovery_runbook.md](recovery_runbook.md)).            |
 | **Security / Auth / manuelle Aktionen**    | **8** | JWT, Internal-Key, Rate-Limits; CI blockiert `pip_audit_supply_chain_gate.py` und `check_production_env_template_security.py`; `SECURITY_ALLOW_*`/Debug bleiben policy-abhängig.                               |
 | **Dashboard / Produkt-UX**                 | **8** | Operator-Cockpit, Shared-TS, `check_contracts.py`; vollständige Payload-Schemas für alle Events iterativ (P2).                                                                                                 |
@@ -69,11 +69,11 @@ Die folgenden Werte **entsprechen der kanonischen Scorecard** (Stand 2026-04-01)
 | **Determinismus / Replay**             | **7**   | Envelope + Tests verbessert; institutionelle Vollabdeckung aller Event-Typen iterativ (P1 medium Rest).                                                                       |
 | **Developer Experience**               | **7–8** | Compose, Tools, CI klar; lokaler vollständiger Coverage-/Integration-Lauf braucht Postgres/Redis (in [FINAL_SCORECARD.md](FINAL_SCORECARD.md) dokumentiert).                  |
 
-## Kritische Einschränkungen (warum kein „alles 10“)
+## Kritische Einschränkungen (P83)
 
-1. **P0 laut Gap-Matrix:** u. a. BTCUSDT-/Fixture-Drift und **Config/Profil** (`.env.local`-Pin vs. `COMPOSE_ENV_FILE` / Shadow-Prod) — das zieht die **Gesamtbewertung für „Production ohne Vorbehalt“** nach unten, auch wenn viele Einzelbereiche bei 8 liegen.
-2. **Accepted Risk** ([adr/ADR-0010-roadmap-accepted-residual-risks.md](adr/ADR-0010-roadmap-accepted-residual-risks.md)): Multi-Asset-Breite, Exchange-Soak/Chaos, Payload-Typing — bewusst nicht als „gelöst“ deklariert.
-3. **Betriebsmodus:** Vollautonomer Live ohne Einschränkungen ist **explizit Nein** ([FINAL_SCORECARD.md](FINAL_SCORECARD.md), Abschnitt Betriebszustand).
+1. **P0 laut Gap-Matrix:** im **Software-Repo** geschlossen; **Vorbehalt** = reale Bitget/Staging, nicht fehlendes Muster.
+2. **Accepted Risk** ([adr/ADR-0010-roadmap-accepted-residual-risks.md](adr/ADR-0010-roadmap-accepted-residual-risks.md)): u. a. vollumfaengliche Exchange-Soak, Payload-Typing in allen BFF-Varianten.
+3. **Betriebsmodus:** Vollautonomer Live ist **Nein** ([FINAL_SCORECARD.md](FINAL_SCORECARD.md) — beabsichtigtes Sicherheitsziel).
 
 ## Empfohlene Lesereihenfolge im Repo
 

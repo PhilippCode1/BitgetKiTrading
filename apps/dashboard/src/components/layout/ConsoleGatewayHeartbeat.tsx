@@ -6,6 +6,7 @@ import {
   circuitBreakerIsOpen,
   fetchWithBackoffRetry,
 } from "@/lib/gateway-client-resilience";
+import { useLiveSseConnectionStatus } from "@/lib/live-event-source";
 
 type EdgePayload = {
   gatewayHealth?: string;
@@ -16,6 +17,8 @@ type Props = Readonly<{
   labelOk: string;
   labelDegraded: string;
   labelChecking: string;
+  /** Optional: Konsolen-zweite Zeile — Live-SSE-Status (CONNECTING, RECONNECTING, …) */
+  liveSseLabels?: Readonly<Record<string, string>>;
   intervalMs?: number;
 }>;
 
@@ -27,12 +30,15 @@ export function ConsoleGatewayHeartbeat({
   labelOk,
   labelDegraded,
   labelChecking,
+  liveSseLabels,
   intervalMs = 55_000,
 }: Props) {
   const [status, setStatus] = useState<"checking" | "ok" | "degraded">(
     "checking",
   );
   const mounted = useRef(true);
+  const liveSse = useLiveSseConnectionStatus();
+  const liveSseLine = liveSseLabels?.[liveSse] ?? null;
 
   const probe = useCallback(async () => {
     if (circuitBreakerIsOpen()) {
@@ -86,13 +92,29 @@ export function ConsoleGatewayHeartbeat({
 
   return (
     <div
-      className={`console-gateway-heartbeat ${cls}`}
-      role="status"
-      aria-live="polite"
-      title={label}
+      className="console-gateway-heartbeat-stack"
+      role="group"
+      aria-label={label}
     >
-      <span className="console-gateway-heartbeat__dot" aria-hidden />
-      <span className="console-gateway-heartbeat__text">{label}</span>
+      <div
+        className={`console-gateway-heartbeat ${cls}`}
+        role="status"
+        aria-live="polite"
+        title={label}
+      >
+        <span className="console-gateway-heartbeat__dot" aria-hidden />
+        <span className="console-gateway-heartbeat__text">{label}</span>
+      </div>
+      {liveSseLine ? (
+        <div
+          className={`console-gateway-heartbeat console-gateway-heartbeat--sse mono-small ${cls}`}
+          role="status"
+          aria-live="polite"
+          title={liveSseLine}
+        >
+          <span className="console-gateway-heartbeat__text">{liveSseLine}</span>
+        </div>
+      ) : null}
     </div>
   );
 }

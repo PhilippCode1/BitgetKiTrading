@@ -5,6 +5,7 @@ from typing import Any
 from uuid import UUID
 
 import psycopg
+from shared_py.strategy_config_hash import compute_configuration_hash
 
 
 def insert_strategy(
@@ -53,13 +54,15 @@ def insert_version(
     parameters_json: dict[str, Any],
     risk_profile_json: dict[str, Any],
 ) -> dict[str, Any]:
+    h = compute_configuration_hash(definition_json, parameters_json, risk_profile_json)
     row = conn.execute(
         """
         INSERT INTO learn.strategy_versions
-            (strategy_id, version, definition_json, parameters_json, risk_profile_json)
-        VALUES (%s, %s, %s::jsonb, %s::jsonb, %s::jsonb)
+            (strategy_id, version, definition_json, parameters_json,
+             risk_profile_json, configuration_hash)
+        VALUES (%s, %s, %s::jsonb, %s::jsonb, %s::jsonb, %s)
         RETURNING strategy_version_id, strategy_id, version, definition_json,
-                  parameters_json, risk_profile_json, created_ts
+                  parameters_json, risk_profile_json, configuration_hash, created_ts
         """,
         (
             strategy_id,
@@ -67,6 +70,7 @@ def insert_version(
             json.dumps(definition_json),
             json.dumps(parameters_json),
             json.dumps(risk_profile_json),
+            h,
         ),
     ).fetchone()
     assert row is not None
@@ -118,7 +122,7 @@ def list_versions(conn: psycopg.Connection[Any], strategy_id: UUID) -> list[dict
     rows = conn.execute(
         """
         SELECT strategy_version_id, strategy_id, version, definition_json, parameters_json,
-               risk_profile_json, created_ts
+               risk_profile_json, configuration_hash, created_ts
         FROM learn.strategy_versions
         WHERE strategy_id = %s
         ORDER BY created_ts DESC
@@ -146,15 +150,30 @@ def update_status(
     old_status: str | None,
     reason: str | None,
     changed_by: str,
+    live_champion_version_id: UUID | None = None,
 ) -> None:
-    conn.execute(
-        """
-        UPDATE learn.strategy_status
-        SET current_status = %s, updated_ts = now()
-        WHERE strategy_id = %s
-        """,
-        (new_status, strategy_id),
-    )
+    if new_status == "live_champion":
+        if live_champion_version_id is None:
+            raise ValueError("live_champion erfordert live_champion_version_id")
+        conn.execute(
+            """
+            UPDATE learn.strategy_status
+            SET current_status = %s, updated_ts = now(),
+                live_champion_version_id = %s
+            WHERE strategy_id = %s
+            """,
+            (new_status, str(live_champion_version_id), str(strategy_id)),
+        )
+    else:
+        conn.execute(
+            """
+            UPDATE learn.strategy_status
+            SET current_status = %s, updated_ts = now(),
+                live_champion_version_id = NULL
+            WHERE strategy_id = %s
+            """,
+            (new_status, str(strategy_id)),
+        )
     conn.execute(
         """
         INSERT INTO learn.strategy_status_history
@@ -175,7 +194,7 @@ def list_promoted_names(conn: psycopg.Connection[Any]) -> list[str]:
         SELECT s.name
         FROM learn.strategies s
         JOIN learn.strategy_status st ON st.strategy_id = s.strategy_id
-        WHERE st.current_status = 'promoted'
+        WHERE st.current_status IN ('promoted', 'live_champion')
         ORDER BY s.name ASC
         """
     ).fetchall()

@@ -62,6 +62,7 @@ def bootstrap_env_consistency_issues(
         )
 
     _strict_no_loopback = profile in ("staging", "shadow", "production")
+    # Harte Sperre: keine Loopback-Hosts in oeffentlichen/Cluster-Profilen.
     _url_keys_reject_loopback: tuple[str, ...] = (
         "API_GATEWAY_URL",
         "DASHBOARD_URL",
@@ -78,8 +79,48 @@ def bootstrap_env_consistency_issues(
         if _strict_no_loopback and url_host_is_loopback(probe):
             issues.append(
                 f"  {name}: in {profile!r} unzulaessig: Host ist localhost/127.0.0.1/::1. "
-                f"Staging/Production: echte Dienst-Namen (Docker, z. B. http://api-gateway:8000) "
+                f"Staging/Production/Shadow: echte Dienst-Namen (Docker, z. B. http://api-gateway:8000) "
                 f"oder oeffentliche/DNS-URLs, keine Host-Loopbacks. {_truth(name)}"
+            )
+        elif _strict_no_loopback and (
+            "localhost" in raw.lower() or "127.0.0.1" in raw or "::1" in raw
+        ):
+            if not url_host_is_loopback(probe):
+                issues.append(
+                    f"  {name}: in {profile!r} unzulaessig: String enthaelt 127.0.0.1/localhost/::1 "
+                    f"ohne Loopback-Host (z. B. in Query/Pfad-Fragment). {_truth(name)}"
+                )
+    # CORS: je Origin pruefen (harte Production/Staging-Paritaet, kein Loopback-Origin).
+    cors = (env.get("CORS_ALLOW_ORIGINS") or "").strip()
+    if cors and _strict_no_loopback:
+        for i, part in enumerate(cors.split(",")):
+            p = part.strip()
+            if not p:
+                continue
+            q = p.replace("ws://", "http://", 1).replace("wss://", "https://", 1)
+            if not q.startswith("http://") and not q.startswith("https://"):
+                issues.append(
+                    f"  CORS_ALLOW_ORIGINS: Segment {i + 1} {p!r} — kein http(s)://-Prefix, "
+                    f"Loopback-Paritaet nicht belegbar. {_truth('CORS_ALLOW_ORIGINS')}"
+                )
+                continue
+            if url_host_is_loopback(q) or "localhost" in p.lower() or "127.0.0.1" in p:
+                issues.append(
+                    f"  CORS_ALLOW_ORIGINS: in {profile!r} unzulaessig (Segment {i + 1}): {p!r} — "
+                    f"kein localhost/127.0.0.1, setze oeffentliche Origins. {_truth('CORS_ALLOW_ORIGINS')}"
+                )
+    # host-seitige DSN/Redis in prod-like: kein 127.0.0.1/localhost in DATABASE_URL/REDIS_URL
+    for ds_key in ("DATABASE_URL", "REDIS_URL"):
+        v = (env.get(ds_key) or "").strip()
+        if not v:
+            continue
+        if _strict_no_loopback and (
+            "localhost" in v.lower() or "127.0.0.1" in v or "@[::1]" in v
+        ):
+            issues.append(
+                f"  {ds_key}: in {profile!r} Host-Loopback in DSN/URL unzulaessig "
+                f"(Build-Drift/Remote-Deploy). Cloud/DNS-Hostname oder Dienst-DSN, nicht 127.0.0.1. "
+                f"({_truth(ds_key)})"
             )
 
     for name in ("API_GATEWAY_URL", "NEXT_PUBLIC_API_BASE_URL", "NEXT_PUBLIC_WS_BASE_URL"):

@@ -14,6 +14,7 @@ from shared_py.playbook_registry import (
 from shared_py.regime_policy import REGIME_ROUTING_POLICY_VERSION, get_regime_playbook_policy
 from shared_py.specialist_ensemble_contract import ENSEMBLE_ROUTER_VERSION
 
+from signal_engine.product_family_risk import risk_dispatch_lane
 from signal_engine.specialist_proposals import (
     apply_adversary_to_router,
     build_base_model_proposal,
@@ -45,6 +46,9 @@ def build_specialist_stack(
         source_snapshot.get("feature_snapshot") if isinstance(source_snapshot, dict) else {}
     )
     regime_policy = get_regime_playbook_policy(regime_state)
+
+    product_family = str(instrument.market_family).strip().lower() or "futures"
+    risk_lane = risk_dispatch_lane(product_family)
 
     family_blockers: list[str] = []
     if instrument.market_family == "spot" and direction == "short":
@@ -188,6 +192,11 @@ def build_specialist_stack(
             "ensemble_router_version": ENSEMBLE_ROUTER_VERSION,
             "specialist_proposal_version": base_proposal.get("proposal_version"),
             "adversary_version": adversary_check.get("adversary_version"),
+        },
+        "product_family_risk": {
+            "product_family": product_family,
+            "risk_dispatch_lane": risk_lane,
+            "source": "instrument.market_family",
         },
         "ensemble_hierarchy": ensemble_hierarchy,
         "specialist_proposals_all": [dict(pr) for pr in proposals_ordered],

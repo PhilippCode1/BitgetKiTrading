@@ -12,7 +12,10 @@ from uuid import uuid4
 from signal_engine.config import SignalEngineSettings, normalize_timeframe
 from signal_engine.models import ScoringContext
 from signal_engine.scoring.classification import classify_signal
-from signal_engine.scoring.composite_score import weighted_composite
+from signal_engine.scoring.composite_score import (
+    apply_microstructure_confluence,
+    weighted_composite,
+)
 from signal_engine.scoring.history_score import score_history
 from signal_engine.scoring.momentum_score import score_momentum
 from signal_engine.scoring.multi_timeframe_score import score_multi_timeframe
@@ -30,6 +33,7 @@ from signal_engine.scoring.structure_score import score_structure
 from signal_engine.take_trade_model import TakeTradeModelScorer
 from signal_engine.target_bps_models import TargetBpsModelScorer
 from signal_engine.uncertainty import assess_model_uncertainty
+from signal_engine.product_family_risk import effective_min_leverage, market_family_from_signal_row
 from signal_engine.stop_budget_policy import STOP_BUDGET_POLICY_VERSION, assess_stop_budget_policy
 from shared_py.structured_market_context import (
     assess_structured_market_context,
@@ -60,6 +64,7 @@ from shared_py.replay_determinism import (
     stable_signal_row_id,
     trace_implies_replay_determinism,
 )
+from shared_py.inference_governance import merge_governance_into_source_snapshot
 from shared_py.signal_contracts import SIGNAL_EVENT_SCHEMA_VERSION
 from shared_py.unified_exit_plan import build_unified_exit_plan
 from shared_py.uncertainty_gates import merge_meta_trade_lanes
@@ -454,6 +459,12 @@ def run_scoring_pipeline(
         lh.score,
         weights,
     )
+    micro = apply_microstructure_confluence(
+        composite,
+        symbol=ctx.symbol,
+        redis_url=settings.redis_url,
+    )
+    composite = micro.composite_0_100
 
     layer_flags = list(
         dict.fromkeys(ls.flags + lm.flags + lmt.flags + ln.flags + lr.flags + lh.flags)
@@ -489,6 +500,8 @@ def run_scoring_pipeline(
         layer_flags=layer_flags,
         structured_rejection_soft=list(smc.get("deterministic_rejection_soft_json") or []),
         structured_rejection_hard=list(smc.get("deterministic_rejection_hard_json") or []),
+        ask_pressure_0_1=micro.ask_pressure_0_1,
+        bid_pressure_0_1=micro.bid_pressure_0_1,
     )
 
     strength = composite
@@ -530,7 +543,13 @@ def run_scoring_pipeline(
         "history": lh.notes,
     }
     decisive = [
-        f"composite={composite:.2f}",
+        f"composite={composite:.2f}"
+        + (
+            f" (pre_micro={micro.composite_pre_micro_0_100:.2f} vpin_scale={micro.vpin_composite_scale})"
+            if abs(micro.composite_pre_micro_0_100 - composite) > 0.01
+            or micro.vpin_composite_scale < 1.0
+            else ""
+        ),
         f"decision={rej.decision_state}",
         f"class={signal_class}",
         f"direction_rule=structure_plus_mtf_gates",
@@ -546,6 +565,15 @@ def run_scoring_pipeline(
             "regime_reasons_json": regime.regime_reasons_json,
         },
     )
+    reasons_json["microstructure_rationale"] = {
+        "market_vpin_score_0_1": micro.market_vpin_score_0_1,
+        "orderbook_imbalance_ratio": micro.orderbook_imbalance_ratio,
+        "ask_pressure_0_1": micro.ask_pressure_0_1,
+        "bid_pressure_0_1": micro.bid_pressure_0_1,
+        "composite_pre_micro_0_100": micro.composite_pre_micro_0_100,
+        "vpin_composite_scale": micro.vpin_composite_scale,
+        "lines": list(micro.rationale_lines),
+    }
     reasons_json["deterministic_gates"] = {
         "rejection_state": rej.rejection_state,
         "decision_state": rej.decision_state,
@@ -599,6 +627,15 @@ def run_scoring_pipeline(
         },
         {"layer": "weights", "values": list(weights)},
         {
+            "layer": "microstructure",
+            "composite_pre_micro_0_100": micro.composite_pre_micro_0_100,
+            "composite_post_micro_0_100": micro.composite_0_100,
+            "vpin_composite_scale": micro.vpin_composite_scale,
+            "market_vpin_score_0_1": micro.market_vpin_score_0_1,
+            "ask_pressure_0_1": micro.ask_pressure_0_1,
+            "bid_pressure_0_1": micro.bid_pressure_0_1,
+        },
+        {
             "layer": "structured_market_context",
             "version": smc.get("version"),
             "instrument_context_key": smc.get("instrument_context_key"),
@@ -644,7 +681,22 @@ def run_scoring_pipeline(
         },
         "instrument_execution": ctx.instrument_execution_meta or {},
         "structured_market_context": smc,
+        "microstructure_confluence": {
+            "market_vpin_score_0_1": micro.market_vpin_score_0_1,
+            "orderbook_imbalance_ratio": micro.orderbook_imbalance_ratio,
+            "ask_pressure_0_1": micro.ask_pressure_0_1,
+            "bid_pressure_0_1": micro.bid_pressure_0_1,
+            "composite_pre_micro_0_100": micro.composite_pre_micro_0_100,
+            "composite_post_micro_0_100": micro.composite_0_100,
+            "vpin_composite_scale": micro.vpin_composite_scale,
+            "rationale_lines": list(micro.rationale_lines),
+        },
     }
+    merge_governance_into_source_snapshot(
+        redis_url=settings.redis_url,
+        symbol=ctx.symbol,
+        source_snapshot=source_snapshot,
+    )
 
     row = {
         "signal_id": signal_id,
@@ -1778,7 +1830,9 @@ class SignalEngineService:
                 nl = int(new_l) if new_l is not None else None
             except (TypeError, ValueError):
                 nl = None
-            if nl is not None and nl >= self._settings.risk_allowed_leverage_min:
+            if nl is not None and nl >= effective_min_leverage(
+                market_family_from_signal_row(db_row), self._settings.risk_allowed_leverage_min
+            ):
                 db_row["allowed_leverage"] = nl
                 rec = db_row.get("recommended_leverage")
                 try:

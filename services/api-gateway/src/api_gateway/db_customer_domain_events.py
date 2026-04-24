@@ -7,6 +7,7 @@ from typing import Any
 
 import psycopg
 from psycopg.types.json import Json
+from shared_py.postgres_tenant_rls import apply_tenant_rls_guc
 
 _IDEM_RE = re.compile(r"^[\w.\-:@]{1,256}$")
 
@@ -36,6 +37,7 @@ def append_customer_domain_event(
     Returns:
         (inserted, seq): inserted False bei Replay; seq ist die gueltige Sequenznummer.
     """
+    apply_tenant_rls_guc(conn, tenant_id=tenant_id)
     key = _sanitize_idempotency_key(idempotency_key)
     row = conn.execute(
         """
@@ -76,6 +78,7 @@ def append_customer_domain_event(
 def bump_portal_read_cursor(
     conn: psycopg.Connection[Any], *, tenant_id: str, seq: int
 ) -> None:
+    apply_tenant_rls_guc(conn, tenant_id=tenant_id)
     conn.execute(
         """
         INSERT INTO app.customer_read_model_state (tenant_id, portal_seq_applied, updated_ts)
@@ -94,6 +97,7 @@ def bump_portal_read_cursor(
 def fetch_read_model_state(
     conn: psycopg.Connection[Any], *, tenant_id: str
 ) -> dict[str, Any] | None:
+    apply_tenant_rls_guc(conn, tenant_id=tenant_id)
     row = conn.execute(
         """
         SELECT tenant_id, portal_seq_applied, updated_ts
@@ -125,6 +129,7 @@ def fetch_read_model_state(
 def fetch_domain_events_customer_safe(
     conn: psycopg.Connection[Any], *, tenant_id: str, limit: int
 ) -> list[dict[str, Any]]:
+    apply_tenant_rls_guc(conn, tenant_id=tenant_id)
     lim = max(1, min(limit, 200))
     rows = conn.execute(
         """
@@ -149,6 +154,7 @@ def fetch_domain_events_customer_safe(
 def fetch_domain_events_admin(
     conn: psycopg.Connection[Any], *, tenant_id: str, limit: int, after_seq: int = 0
 ) -> list[dict[str, Any]]:
+    apply_tenant_rls_guc(conn, tenant_id=tenant_id)
     lim = max(1, min(limit, 500))
     rows = conn.execute(
         """
@@ -175,6 +181,7 @@ def admin_catch_up_read_cursor(
     conn: psycopg.Connection[Any], *, tenant_id: str
 ) -> dict[str, Any]:
     """Setzt portal_seq_applied auf MAX(seq) — nach manueller Nachbearbeitung / Recovery."""
+    apply_tenant_rls_guc(conn, tenant_id=tenant_id)
     row = conn.execute(
         """
         SELECT COALESCE(MAX(seq), 0)::bigint AS m

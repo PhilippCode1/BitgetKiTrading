@@ -18,19 +18,56 @@ def normalize_tf_for_db(tf: str) -> str:
 
 def validate_live_symbol(symbol: str) -> str:
     """
-    Oeffentliche Marktdaten-Symbole (Bitget USDT-M): alphanumerisch, typisch 6–24 Zeichen.
-    Klare Server-Fehler statt leerer Charts bei Tippfehlern.
+    Bitget v2-Symbole: alphanumerisch, 4..32 Zeichen. Katalog: `assert_symbol_in_instrument_catalog`.
     """
     s = symbol.strip().upper()
     if len(s) < 4 or len(s) > 32:
         raise ValueError(
-            "Symbol muss 4..32 Zeichen haben (z. B. BTCUSDT). Oeffentliche Kerzen brauchen keine Account-Keys."
+            "Symbol: 4..32 alphanumerische Zeichen. Oeffentliche Kerzen: keine Account-Keys."
         )
     if not s.isalnum():
         raise ValueError(
-            "Symbol nur Buchstaben und Ziffern (z. B. BTCUSDT), ohne Trennzeichen."
+            "Symbol: nur Buchstaben/Ziffern, kein Trennzeichen (v2, z. B. ETHUSDT)."
         )
     return s
+
+
+def assert_symbol_in_instrument_catalog(
+    conn: psycopg.Connection[Any],
+    *,
+    symbol: str,
+    market_family: str,
+    product_type: str | None = None,
+    margin_account_mode: str | None = None,
+) -> None:
+    """Katalog muss (symbol, Familie, ggf. Futures-Product, ggf. Margin-Modus) kennen."""
+    sym = symbol.strip().upper()
+    mf = str(market_family or "").strip().lower()
+    if mf not in ("spot", "margin", "futures"):
+        raise ValueError(f"market_family ungueltig: {market_family}")
+    where = "symbol = %s AND market_family = %s"
+    args: list[Any] = [sym, mf]
+    if mf == "futures":
+        if not (product_type and str(product_type).strip()):
+            raise ValueError(
+                "Futures: product_type erforderlich (Katalog-Disambiguierung)."
+            )
+        where += " AND UPPER(TRIM(product_type)) = UPPER(TRIM(%s))"
+        args.append(str(product_type).strip())
+    if mf == "margin":
+        mode = (margin_account_mode or "isolated").strip().lower()
+        if mode not in ("isolated", "crossed"):
+            raise ValueError("margin: margin_account_mode muss isolated oder crossed sein.")
+        where += " AND LOWER(TRIM(margin_account_mode)) = %s"
+        args.append(mode)
+    row = conn.execute(
+        f"SELECT 1 AS ok FROM app.instrument_catalog_entries WHERE {where} LIMIT 1",
+        args,
+    ).fetchone()
+    if row is None:
+        raise ValueError(
+            f"Symbol {sym} nicht im Instrumentenkatalog (family={mf}); Katalog-Refresh pruefen."
+        )
 
 
 LIVE_STATE_CONTRACT_VERSION = 1

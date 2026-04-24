@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""JWT fuer DASHBOARD_GATEWAY_AUTHORIZATION (HS256, wie api-gateway/auth.py)."""
+"""JWT fuer DASHBOARD_GATEWAY_AUTHORIZATION (HS256, wie api-gateway/auth.py).
+
+Enthaelt u. a. 'role': 'admin' (RBAC /v1/admin) und gateway_roles.
+"""
 
 from __future__ import annotations
 
@@ -38,6 +41,7 @@ def mint_token(env: dict[str, str], *, ttl_days: int) -> str:
     now = int(time.time())
     payload = {
         "sub": "dashboard-local",
+        "role": "admin",
         "gateway_roles": ["gateway:read", "admin:read", "admin:write", "operator:mutate"],
         "aud": aud,
         "iss": iss,

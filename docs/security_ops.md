@@ -53,10 +53,10 @@ Beispiel-Konfiguration (anpassen): `infra/reverse-proxy/nginx-edge.conf.example`
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Lockfiles**         | `pnpm-lock.yaml`, gepinnte Python-Deps in `requirements-dev.txt` / Service-`pyproject.toml`.                                                                                                                                      |
 | **CI**                | `pnpm audit --audit-level=high` (blocking) und `python tools/pip_audit_supply_chain_gate.py` (Dev- + Runtime-Requirements, blocking). Zusätzlich `tools/check_production_env_template_security.py` für Prod-/Shadow-ENV-Vorlagen. |
-| **API-Gateway-Image** | Non-Root-User `appuser` (UID 10001), `python:3.11-slim-bookworm`, **kein** Shell-`CMD` für die App (`python -m`).                                                                                                                 |
-| **Dashboard-Image**   | Nutzer `nextjs`, Alpine-Runtime; `pnpm start` ohne Dev-Server.                                                                                                                                                                    |
+| **API-Gateway-Image** | Non-Root-User `modul_mate` (UID 10001), `python:3.11-slim-bookworm`, Multi-Stage-Build (Wheel/venv im Builder, Runtime ohne Compiler), `HEALTHCHECK` → `GET /health`, `CMD` als `python -m`. |
+| **Dashboard-Image**   | Nutzer `modul_mate` (UID 10001), Alpine-Runtime, Multi-Stage-Build, `HEALTHCHECK` → `GET /api/health`.                                                                                     |
 
-Weitere Python-Services können sukzessive auf Non-Root und schlankere Bases vereinheitlicht werden.
+Weitere Python-Services: einheitlich Multi-Stage, `modul_mate`, interne Readiness-`HEALTHCHECK` pro Service.
 
 ## 7. Security-Smokes (manuell / CI)
 

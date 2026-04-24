@@ -30,20 +30,29 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="Learning-Engine Trainingspipeline (reproduzierbar)")
     p.add_argument(
         "job",
+        nargs="?",
+        default=None,
         choices=(
             "take-trade",
             "expected-bps",
             "regime",
+            "drift-shadow-retrain",
+            "tsfm-cv-validate",
             "specialists-audit",
             "rl-smoke",
             "rl-consensus-ppo",
             "all",
         ),
         help=(
-            "Trainingsjob (specialists-audit: nur Readiness-JSON; "
-            "rl-smoke: Gymnasium-Replay-Episode + Registry-Stub; "
-            "rl-consensus-ppo: optional SB3 auf ConsensusWeightsReplayEnv)"
+            "Trainingsjob (tsfm-cv-validate: Policy Purge/Embargo Walk-Forward fuer TSFM-Pfade; "
+            "drift-shadow-retrain: MSE-Drift Retrain; specialists-audit: Readiness-JSON; "
+            "rl-smoke / rl-consensus-ppo: RL-Stub)"
         ),
+    )
+    p.add_argument(
+        "--check-leakage",
+        action="store_true",
+        help="Purge/Embargo Walk-Forward zeitlich pruefen (DoD Prompt 47, kein DB-Training)",
     )
     p.add_argument("--symbol", default=None, help="z.B. <example_symbol>")
     p.add_argument("--no-promote", action="store_true", help="Kein promoted_bool in Registry")
@@ -53,6 +62,12 @@ def main(argv: list[str] | None = None) -> int:
         help="Optional: JSON-Datei mit Pipeline-Ergebnis-Stub (run_id, artifact_path, …)",
     )
     args = p.parse_args(argv)
+    if args.check_leakage:
+        from learning_engine.training.check_leakage import main as check_leakage_main
+
+        return check_leakage_main()
+    if not args.job:
+        p.error("job erforderlich (siehe --help; oder --check-leakage)")
     promote = not args.no_promote
     settings = LearningEngineSettings()
     with db_connect(settings.database_url) as conn:

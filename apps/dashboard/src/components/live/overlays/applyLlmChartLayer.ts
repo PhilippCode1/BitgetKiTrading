@@ -1,5 +1,6 @@
 import type { IChartApi, ISeriesApi, Time } from "lightweight-charts";
 
+import type { LlmZoneRole } from "@/lib/chart/llm-chart-annotations";
 import { PRODUCT_CHART_COLORS } from "@/lib/chart/product-chart-theme";
 import type { SanitizedLlmChartAnnotations } from "@/lib/chart/llm-chart-annotations";
 
@@ -18,7 +19,10 @@ function safeRemovePriceLine(
   }
 }
 
-function safeRemoveSeries(chart: IChartApi, s: ISeriesApi<"Line">): void {
+function safeRemoveSeries(
+  chart: IChartApi,
+  s: ISeriesApi<"Line"> | ISeriesApi<"Baseline">,
+): void {
   try {
     chart.removeSeries(s);
   } catch {
@@ -26,11 +30,53 @@ function safeRemoveSeries(chart: IChartApi, s: ISeriesApi<"Line">): void {
   }
 }
 
+function baselineOptionsForLlmRole(role: LlmZoneRole): {
+  topLineColor: string;
+  topFillColor1: string;
+  topFillColor2: string;
+  bottomLineColor: string;
+  bottomFillColor1: string;
+  bottomFillColor2: string;
+} {
+  switch (role) {
+    case "resistance":
+      return {
+        topLineColor: PRODUCT_CHART_COLORS.llmZoneResistanceTopLine,
+        topFillColor1: PRODUCT_CHART_COLORS.llmZoneResistanceTopFill1,
+        topFillColor2: PRODUCT_CHART_COLORS.llmZoneResistanceTopFill2,
+        bottomLineColor: "rgba(0,0,0,0)",
+        bottomFillColor1: "rgba(0,0,0,0)",
+        bottomFillColor2: "rgba(0,0,0,0)",
+      };
+    case "support":
+      return {
+        topLineColor: PRODUCT_CHART_COLORS.llmZoneSupportTopLine,
+        topFillColor1: PRODUCT_CHART_COLORS.llmZoneSupportTopFill1,
+        topFillColor2: PRODUCT_CHART_COLORS.llmZoneSupportTopFill2,
+        bottomLineColor: "rgba(0,0,0,0)",
+        bottomFillColor1: "rgba(0,0,0,0)",
+        bottomFillColor2: "rgba(0,0,0,0)",
+      };
+    default:
+      return {
+        topLineColor: PRODUCT_CHART_COLORS.llmZoneNeutralTopLine,
+        topFillColor1: PRODUCT_CHART_COLORS.llmZoneNeutralTopFill1,
+        topFillColor2: PRODUCT_CHART_COLORS.llmZoneNeutralTopFill2,
+        bottomLineColor: "rgba(0,0,0,0)",
+        bottomFillColor1: "rgba(0,0,0,0)",
+        bottomFillColor2: "rgba(0,0,0,0)",
+      };
+  }
+}
+
+export type LlmChartBaselineHandle = ISeriesApi<"Baseline">;
+
 export function clearLlmChartLayer(
   chart: IChartApi | null,
   candleSeries: ISeriesApi<"Candlestick"> | null,
   priceLineHandles: LlmChartPriceLineHandle[],
   lineSeries: ISeriesApi<"Line">[],
+  baselineSeries: LlmChartBaselineHandle[] = [],
 ): void {
   if (candleSeries) {
     for (const h of priceLineHandles) {
@@ -42,8 +88,12 @@ export function clearLlmChartLayer(
     for (const s of lineSeries) {
       safeRemoveSeries(chart, s);
     }
+    for (const b of baselineSeries) {
+      safeRemoveSeries(chart, b);
+    }
   }
   lineSeries.length = 0;
+  baselineSeries.length = 0;
   try {
     candleSeries?.setMarkers([]);
   } catch {
@@ -60,8 +110,15 @@ export function applyLlmChartLayer(
   model: SanitizedLlmChartAnnotations,
   priceLineHandles: LlmChartPriceLineHandle[],
   lineSeries: ISeriesApi<"Line">[],
+  baselineSeries: LlmChartBaselineHandle[],
 ): void {
-  clearLlmChartLayer(chart, candleSeries, priceLineHandles, lineSeries);
+  clearLlmChartLayer(
+    chart,
+    candleSeries,
+    priceLineHandles,
+    lineSeries,
+    baselineSeries,
+  );
 
   for (const line of model.horizontalLines) {
     try {
@@ -79,25 +136,30 @@ export function applyLlmChartLayer(
     }
   }
 
-  for (const band of model.priceBands) {
-    const base = (band.label ?? "KI Zone").slice(0, 20);
-    for (const [price, suffix] of [
-      [band.priceHigh, " max"],
-      [band.priceLow, " min"],
-    ] as const) {
-      try {
-        const h = candleSeries.createPriceLine({
-          price,
-          title: `${base}${suffix}`.slice(0, 26),
-          color: PRODUCT_CHART_COLORS.llmLineMuted,
-          lineWidth: 1,
-          lineStyle: band.lineStyle,
-          axisLabelVisible: true,
-        });
-        priceLineHandles.push(h);
-      } catch {
-        /* skip */
-      }
+  for (const zone of model.filledZones) {
+    const pBase = Math.min(zone.priceHigh, zone.priceLow);
+    const pTop = Math.max(zone.priceHigh, zone.priceLow);
+    if (pTop <= pBase) {
+      continue;
+    }
+    const col = baselineOptionsForLlmRole(zone.role);
+    try {
+      const s = chart.addBaselineSeries({
+        baseValue: { type: "price", price: pBase },
+        ...col,
+        lineWidth: 1,
+        lineVisible: true,
+        lastValueVisible: false,
+        priceLineVisible: false,
+        crosshairMarkerVisible: false,
+      });
+      s.setData([
+        { time: zone.time0, value: pTop },
+        { time: zone.time1, value: pTop },
+      ]);
+      baselineSeries.push(s);
+    } catch {
+      /* skip */
     }
   }
 

@@ -123,6 +123,9 @@ def build_tp_plan(
             "high_water": None,
             "low_water": None,
             "trail_stop": None,
+            "activation_price": None,
+            "wick_confirm_consecutive_ticks": 2,
+            "wick_breach_streak": 0,
         },
         "break_even": {
             "enabled": True,

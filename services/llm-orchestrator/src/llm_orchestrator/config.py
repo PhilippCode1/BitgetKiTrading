@@ -83,6 +83,15 @@ class LLMOrchestratorSettings(BaseServiceSettings):
     )
     llm_circuit_open_sec: int = Field(default=60, alias="LLM_CIRCUIT_OPEN_SEC")
 
+    llm_graceful_failure_deadline_sec: float = Field(
+        default=5.0,
+        alias="LLM_GRACEFUL_FAILURE_DEADLINE_SEC",
+        description=(
+            "Max. Wandzeit (s) bis Graceful-Degradation in run_structured "
+            "(Fail-Closed, Antwort per HTTP 200)."
+        ),
+    )
+
     llm_knowledge_max_chunks: int = Field(
         default=4,
         alias="LLM_KNOWLEDGE_MAX_CHUNKS",
@@ -128,6 +137,17 @@ class LLMOrchestratorSettings(BaseServiceSettings):
         alias="TSFM_LEARNING_FEEDBACK_ENABLED",
         description="Nach War-Room POST /learning/tsfm-war-room-audit (async, best-effort).",
     )
+    war_room_fetch_specialist_precision: bool = Field(
+        default=True,
+        alias="WAR_ROOM_FETCH_SPECIALIST_PRECISION",
+        description="GET /learning/war-room/specialist-ai-precision (dynam. Gewichte, Prompt 29).",
+    )
+    war_room_specialist_precision_timeout_sec: float = Field(
+        default=2.0,
+        ge=0.2,
+        le=15.0,
+        alias="WAR_ROOM_SPECIALIST_PRECISION_TIMEOUT_SEC",
+    )
     audit_ledger_base_url: str = Field(
         default="",
         alias="AUDIT_LEDGER_BASE_URL",
@@ -171,6 +191,12 @@ class LLMOrchestratorSettings(BaseServiceSettings):
     eventbus_dedupe_ttl_sec: int = Field(default=0, alias="EVENTBUS_DEDUPE_TTL_SEC")
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
 
+    llm_ai_evaluation_log_enabled: bool = Field(
+        default=True,
+        alias="LLM_AI_EVAL_LOG_ENABLED",
+        description="operator_explain mit execution_id in public.ai_evaluation_logs persistieren (DATABASE_URL).",
+    )
+
     @field_validator("llm_orch_port")
     @classmethod
     def _port(cls, v: int) -> int:
@@ -213,6 +239,13 @@ class LLMOrchestratorSettings(BaseServiceSettings):
     def _circuit_window(cls, v: int) -> int:
         if v < 5 or v > 3_600:
             raise ValueError("LLM_CIRCUIT_WINDOW_SEC muss 5..3600 sein")
+        return v
+
+    @field_validator("llm_graceful_failure_deadline_sec")
+    @classmethod
+    def _graceful_deadline_sec(cls, v: float) -> float:
+        if v < 0.5 or v > 60.0:
+            raise ValueError("LLM_GRACEFUL_FAILURE_DEADLINE_SEC muss 0.5..60 sein")
         return v
 
     @field_validator("llm_max_prompt_chars")

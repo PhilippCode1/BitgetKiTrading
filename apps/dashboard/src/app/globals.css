@@ -190,6 +190,19 @@ body {
   margin-left: auto;
 }
 
+.console-gateway-heartbeat-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  max-width: min(100%, 22rem);
+}
+
+.console-gateway-heartbeat--sse .console-gateway-heartbeat__text {
+  max-width: 100%;
+  font-size: 0.65rem;
+}
+
 .console-gateway-heartbeat {
   display: inline-flex;
   align-items: center;
@@ -1004,6 +1017,13 @@ body {
   margin-top: 8px;
 }
 
+.empty-state__cta--actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
 .empty-state__actions {
   margin-top: 14px;
   padding-top: 12px;
@@ -1694,6 +1714,49 @@ body {
   color: var(--fg-default);
 }
 
+/* Global Halt: Safety Latch blockiert Klicks im Live-Terminal (siehe TerminalSafetyHaltOverlay) */
+.live-terminal-root {
+  position: relative;
+}
+
+.live-terminal--halt {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: all;
+}
+
+.live-terminal--halt__curtain {
+  position: absolute;
+  inset: 0;
+  background: rgba(5, 5, 6, 0.55);
+  backdrop-filter: blur(1px);
+}
+
+.live-terminal--halt__card {
+  position: relative;
+  z-index: 1;
+  max-width: min(28rem, 92vw);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-card);
+}
+
+.live-terminal--halt__title {
+  margin: 0 0 6px;
+  font-size: 1.05rem;
+  color: var(--danger);
+}
+
+.live-terminal--halt__body {
+  margin: 0;
+}
+
 .live-lineage-lead {
   margin: 6px 0 10px;
 }
@@ -2103,8 +2166,46 @@ details.reasons > summary {
   width: 100%;
 }
 
+.product-chart-frame__plot-wrap {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+
+.product-chart-frame__last-tick {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  z-index: 2;
+  font-size: var(--text-small);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  color: var(--fg-muted);
+  pointer-events: none;
+  text-align: right;
+  max-width: 45%;
+}
+
 .product-chart-frame__plot {
   display: block;
+}
+
+/* KI-Chart: Hover-Popover zu Preiszone (s. ProductCandleChart) */
+.llm-chart-zone-popover {
+  position: absolute;
+  z-index: 4;
+  max-width: min(22rem, 88vw);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-small);
+  line-height: 1.45;
+  color: var(--fg-default);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-sm);
+  box-shadow: var(--shadow-card);
+  white-space: pre-wrap;
+  pointer-events: none;
+  transform: translate(8px, 8px);
 }
 
 .product-chart-frame__overlay {
@@ -3323,6 +3424,32 @@ details.reasons > summary {
   border: 1px solid var(--border-subtle);
   background: var(--bg-raised);
   box-shadow: var(--shadow-inset-soft);
+}
+
+.customer-gateway-banner {
+  margin-bottom: 12px;
+  border-radius: var(--r-md);
+  padding: 10px 12px;
+  border: 1px solid rgba(212, 168, 75, 0.35);
+  background: var(--warn-muted);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.customer-gateway-banner__text {
+  margin: 0;
+  flex: 1 1 240px;
+  max-width: 100%;
+}
+
+.customer-gateway-banner__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
 }
 
 .global-incident--cascade {
@@ -4890,4 +5017,78 @@ code {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
+}
+
+/* Prompt 65: Market-Stream Lag + VPIN-Puls (Konsole Marktuniversum) */
+.market-pulse__strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  margin: 0.75rem 0 1rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  background: var(--panel-elevated, rgba(0, 0, 0, 0.12));
+}
+
+.market-pulse__strip-label {
+  font-size: 0.8rem;
+  color: var(--muted, #9aa0a6);
+}
+
+.market-pulse__lag {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.market-pulse__lag--ok {
+  background: rgba(34, 197, 94, 0.2);
+  color: #4ade80;
+}
+
+.market-pulse__lag--warn {
+  background: rgba(234, 179, 8, 0.2);
+  color: #facc15;
+}
+
+.market-pulse__lag--bad {
+  background: rgba(239, 68, 68, 0.22);
+  color: #f87171;
+}
+
+.market-pulse__lag--unk {
+  background: rgba(115, 115, 115, 0.2);
+  color: var(--muted, #9aa0a6);
+}
+
+.market-pulse__spark-wrap {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+}
+
+.market-pulse__spark {
+  stroke: #4ade80;
+}
+
+.market-pulse__spark--caution {
+  stroke: #facc15;
+}
+
+.market-pulse__spark--halt {
+  stroke: #f87171;
+}
+
+.market-pulse__spark--ok {
+  stroke: #4ade80;
+}
+
+.market-pulse__cell-muted {
+  color: var(--muted, #9aa0a6);
+  font-size: 0.85rem;
 }

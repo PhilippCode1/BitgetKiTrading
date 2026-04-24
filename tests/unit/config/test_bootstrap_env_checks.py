@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import pytest
-
 from config.bootstrap_env_checks import bootstrap_env_consistency_issues
 
 
@@ -26,13 +24,24 @@ def test_health_url_loopback_rejected_in_shadow() -> None:
     assert any("HEALTH_URL_MARKET_STREAM" in i for i in issues)
 
 
-@pytest.mark.parametrize("profile", ("local", "shadow"))
-def test_clean_local_like_env_has_no_consistency_issues(profile: str) -> None:
+def test_clean_local_like_env_has_no_consistency_issues() -> None:
     env = {
         "API_GATEWAY_URL": "http://127.0.0.1:8000",
         "NEXT_PUBLIC_API_BASE_URL": "http://127.0.0.1:8000",
         "NEXT_PUBLIC_WS_BASE_URL": "ws://127.0.0.1:8000",
         "INTERNAL_API_KEY": "x" * 32,
     }
-    issues = bootstrap_env_consistency_issues(env, profile=profile)
-    assert issues == []
+    assert bootstrap_env_consistency_issues(env, profile="local") == []
+
+
+def test_shadow_profile_rejects_loopback_for_public_url_keys() -> None:
+    env = {
+        "API_GATEWAY_URL": "http://127.0.0.1:8000",
+        "NEXT_PUBLIC_API_BASE_URL": "http://127.0.0.1:8000",
+        "NEXT_PUBLIC_WS_BASE_URL": "ws://127.0.0.1:8000",
+        "INTERNAL_API_KEY": "x" * 32,
+    }
+    issues = bootstrap_env_consistency_issues(env, profile="shadow")
+    assert any("API_GATEWAY_URL" in i for i in issues)
+    assert any("NEXT_PUBLIC_API_BASE_URL" in i for i in issues)
+    assert any("NEXT_PUBLIC_WS_BASE_URL" in i for i in issues)

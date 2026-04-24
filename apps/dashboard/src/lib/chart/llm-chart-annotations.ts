@@ -1,9 +1,22 @@
-import type { LineData, SeriesMarker, Time } from "lightweight-charts";
+import type { BusinessDay, LineData, SeriesMarker, Time } from "lightweight-charts";
 
 import { PRODUCT_CHART_COLORS } from "@/lib/chart/product-chart-theme";
 import type { ProductCandleBar } from "@/lib/chart/map-candles";
 
 export type LlmLineStyleName = "solid" | "dashed" | "dotted";
+
+/** Semantik fuer Preis-Zonen (Widerstand rot, Support gruen, sonst KI-Violett). */
+export type LlmZoneRole = "resistance" | "support" | "neutral";
+
+export type LlmFilledPriceZone = Readonly<{
+  time0: Time;
+  time1: Time;
+  priceHigh: number;
+  priceLow: number;
+  label?: string;
+  lineStyle: 0 | 1 | 2 | 3;
+  role: LlmZoneRole;
+}>;
 
 export type SanitizedLlmChartAnnotations = Readonly<{
   horizontalLines: ReadonlyArray<{
@@ -11,12 +24,18 @@ export type SanitizedLlmChartAnnotations = Readonly<{
     label?: string;
     lineStyle: 0 | 1 | 2 | 3;
   }>;
+  /** @deprecated Im Apply-Pfad durch {@link filledZones} ersetzt; bleibt leer bei Schema 1.0. */
   priceBands: ReadonlyArray<{
     priceHigh: number;
     priceLow: number;
     label?: string;
     lineStyle: 0 | 1 | 2 | 3;
   }>;
+  /**
+   * Gefuellte Rechtecke (Zeit x Preis) — `price_bands` (volle Chartbreite) + `uncertainty_regions`.
+   * Rendering: Baseline-Series (lightweight-charts).
+   */
+  filledZones: ReadonlyArray<LlmFilledPriceZone>;
   markers: SeriesMarker<Time>[];
   lineSegments: ReadonlyArray<{
     points: LineData<Time>[];
@@ -28,6 +47,7 @@ export type SanitizedLlmChartAnnotations = Readonly<{
     lineStyle: 0 | 1 | 2 | 3;
     label?: string;
   }>;
+  /** Unsicherheits-Boxen — nur noch als Linien-Pfad (Legacy), leer wenn in filledZones gemappt. */
   uncertaintyRegions: ReadonlyArray<{
     points: LineData<Time>[];
     label?: string;
@@ -54,12 +74,122 @@ export type SanitizeLlmChartAnnotationsDetailedResult = Readonly<{
 const EMPTY: SanitizedLlmChartAnnotations = {
   horizontalLines: [],
   priceBands: [],
+  filledZones: [],
   markers: [],
   lineSegments: [],
   verticalRules: [],
   uncertaintyRegions: [],
   notes: [],
 };
+
+/** Optionen fuer Sanitize (z. B. Text der KI-Begruendung zur Rolleninferenz). */
+export type SanitizeLlmChartAnnotationsOptions = Readonly<{
+  /** z. B. strategy_explanation_de — hilft bei Widerstand/Support-Erkennung. */
+  rationaleHint?: string;
+}>;
+
+/**
+ * Heuristik aus Label + optionalem Erklaerungstext (Short -> Widerstand rot, Long -> Support gruen).
+ */
+/**
+ * Crosshair `param.time` in Sekunden (UTC) — vergleichbar mit KI-`Time`-Werten.
+ */
+export function chartTimeToUnixSeconds(
+  t: Time | null | undefined,
+): number | null {
+  if (t === null || t === undefined) {
+    return null;
+  }
+  if (typeof t === "number" && Number.isFinite(t)) {
+    return t;
+  }
+  if (typeof t === "string" && /^\d+$/.test(t)) {
+    return Number(t);
+  }
+  const b = t as BusinessDay;
+  if (
+    b &&
+    typeof b === "object" &&
+    "year" in b &&
+    "month" in b &&
+    "day" in b
+  ) {
+    return Math.floor(
+      Date.UTC(
+        b.year,
+        b.month - 1,
+        b.day,
+        0,
+        0,
+        0,
+        0,
+      ) / 1000,
+    );
+  }
+  return null;
+}
+
+const fmtPrice = (n: number) => n.toLocaleString("de-DE", { maximumFractionDigits: 6 });
+
+/**
+ * Text fuer Popover beim Hover: Zone + passender Begruendungsabschnitt, falls erkennbar.
+ */
+export function buildLlmZonePopoverText(
+  z: LlmFilledPriceZone,
+  rationale: string | null | undefined,
+): string {
+  const pHi = Math.max(z.priceHigh, z.priceLow);
+  const pLo = Math.min(z.priceHigh, z.priceLow);
+  const band = pHi === pLo ? fmtPrice(pHi) : `${fmtPrice(pLo)} – ${fmtPrice(pHi)}`;
+  const head = z.label ? `${z.label} (${band})` : `Preis ${band}`;
+
+  const r = (rationale ?? "").trim();
+  if (!r) {
+    return head;
+  }
+  const sentences = r.split(/(?<=[.!?])\s+/).filter((s) => s.length > 0);
+  const sHi = String(pHi);
+  const sLo = String(pLo);
+  const byPrices = sentences.find(
+    (s) => s.includes(sHi) && s.includes(sLo) && sHi !== sLo,
+  );
+  if (byPrices) {
+    return `${head}\n\n${byPrices.trim()}`;
+  }
+  const words = (z.label ?? "")
+    .split(/\W+/)
+    .filter((w) => w.length > 2);
+  const byLabel = sentences.find((s) => {
+    const sl = s.toLowerCase();
+    return words.some((w) => sl.includes(w.toLowerCase()));
+  });
+  if (byLabel) {
+    return `${head}\n\n${byLabel.trim()}`;
+  }
+  const cap = 520;
+  const tail = r.length > cap ? `${r.slice(0, cap)}…` : r;
+  return `${head}\n\n${tail}`;
+}
+
+export function inferLlmZoneRole(
+  label: string | undefined,
+  rationaleHint?: string,
+): LlmZoneRole {
+  const t = `${(label ?? "").toLowerCase()} ${(rationaleHint ?? "").toLowerCase()}`;
+  if (
+    /widerstand|resistance|supply|short|verkauf|oben|supply zone|resistance zone/.test(
+      t,
+    )
+  ) {
+    return "resistance";
+  }
+  if (
+    /support|demand|nachfrage|long|kauf|unten|support zone|demand zone/.test(t)
+  ) {
+    return "support";
+  }
+  return "neutral";
+}
 
 const EMPTY_META: LlmChartAnnotationSanitizeMeta = {
   wrongSchemaVersion: false,
@@ -165,7 +295,9 @@ export function sanitizeLlmChartAnnotationsDetailed(
     priceMin: number;
     priceMax: number;
   } | null,
+  options: SanitizeLlmChartAnnotationsOptions = {},
 ): SanitizeLlmChartAnnotationsDetailedResult {
+  const rationaleHint = options.rationaleHint?.trim();
   let tsCorrected = 0;
   try {
     if (raw === null || raw === undefined) {
@@ -253,6 +385,7 @@ export function sanitizeLlmChartAnnotationsDetailed(
       label?: string;
       lineStyle: 0 | 1 | 2 | 3;
     }> = [];
+    const filledZones: LlmFilledPriceZone[] = [];
     if (Array.isArray(raw.price_bands)) {
       const slice = raw.price_bands.slice(0, 8);
       candidates += slice.length;
@@ -268,11 +401,18 @@ export function sanitizeLlmChartAnnotationsDetailed(
           typeof row.label === "string"
             ? row.label.trim().slice(0, 80)
             : undefined;
-        priceBands.push({
-          priceHigh: clamp(top, pLo, pHi),
-          priceLow: clamp(bot, pLo, pHi),
+        const cTop = clamp(top, pLo, pHi);
+        const cBot = clamp(bot, pLo, pHi);
+        const lineStyle = mapLineStyle(row.line_style);
+        const role = inferLlmZoneRole(label, rationaleHint);
+        filledZones.push({
+          time0: tLo as Time,
+          time1: tHi as Time,
+          priceHigh: cTop,
+          priceLow: cBot,
           label: label && label.length > 0 ? label : undefined,
-          lineStyle: mapLineStyle(row.line_style),
+          lineStyle,
+          role,
         });
         kept += 1;
       }
@@ -417,15 +557,16 @@ export function sanitizeLlmChartAnnotationsDetailed(
           typeof row.label === "string"
             ? row.label.trim().slice(0, 80)
             : undefined;
-        uncertaintyRegions.push({
-          points: [
-            { time: t0, value: vHi },
-            { time: t1, value: vHi },
-            { time: t1, value: vLo },
-            { time: t0, value: vLo },
-            { time: t0, value: vHi },
-          ],
+        const lineStyle = 0;
+        const role = inferLlmZoneRole(label, rationaleHint);
+        filledZones.push({
+          time0: t0,
+          time1: t1,
+          priceHigh: vHi,
+          priceLow: vLo,
           label: label && label.length > 0 ? label : undefined,
+          lineStyle,
+          role,
         });
         kept += 1;
       }
@@ -435,6 +576,7 @@ export function sanitizeLlmChartAnnotationsDetailed(
       model: {
         horizontalLines,
         priceBands,
+        filledZones,
         markers,
         lineSegments,
         verticalRules,
@@ -467,6 +609,7 @@ export function sanitizeLlmChartAnnotations(
     priceMin: number;
     priceMax: number;
   } | null,
+  options: SanitizeLlmChartAnnotationsOptions = {},
 ): SanitizedLlmChartAnnotations {
-  return sanitizeLlmChartAnnotationsDetailed(raw, stats).model;
+  return sanitizeLlmChartAnnotationsDetailed(raw, stats, options).model;
 }

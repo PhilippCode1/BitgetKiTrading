@@ -14,4 +14,5 @@ export type {
   SelfHealingRepairAction,
   SelfHealingSnapshot,
   SelfHealingSeverity,
+  SelfHealingStateItem,
 } from "./schema";

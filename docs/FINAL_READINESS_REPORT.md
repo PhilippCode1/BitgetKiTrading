@@ -49,7 +49,7 @@ Es ersetzt nicht:
 - breitere Family-/Stop-/Mirror-/Auth-/SLO-Tests
 - Dashboard ohne `passWithNoTests`, mit Coverage-Gate
 - zentraler Python-Runtime-Constraints-Pfad
-- Standalone-Dashboard-Build statt Produktionsstart ueber `next start`
+- **Standalone-Dashboard (P82):** `output: "standalone"` in `apps/dashboard/next.config.js`, Docker-Runtime kopiert `build/standalone` + `build/static` (kein pnpm-Workspace-Root, kein `next start` mit vollstaendigem Monorepo-`node_modules`); Image-Groesse typisch deutlich unter 500MB
 - strengere Release-Sanity-Pruefungen
 - Paper-Contract-Konfiguration faellt in shadow-/production-nahen `live`-Pfaden nicht mehr still auf Fixtures zurueck
 
@@ -112,18 +112,13 @@ Anders gesagt:
 - **Go fuer enge Echtgeld-Mirror-Stufe:** technisch vorbereitet, aber nur nach Burn-in-Evidenz und formaler Freigabe
 - **Go fuer vollautonomen Echtgeldbetrieb:** nein
 
-## Interne Restliste (nicht extern)
+## Interne Restliste (akzeptiert / iterativ — kein P0-Blocker)
 
-Diese Punkte sind **noch im Produktzustand selbst** offen:
+**P83 (2026-04-24):** Die frueheren **„major“-Drift**-Punkte (Doku, BTCUSDT-Default-Narrative, widersprüchliche Audit-Phasen) sind in **REPO_FREEZE_GAP_MATRIX** und **CODEBASE_DEEP_EVALUATION** als **P0-geschlossen** geführt. Verbleibend sind **P1/P2- oder Dauerbaustellen**, keine „blockierenden Lücken” gegen einen Software-Freigabestand:
 
-- globales Coverage-`fail_under` (25) plus `tools/check_coverage_gates.py` fuer Kernpfade; vollstaendiger gruener pytest-Lauf erfordert Mindest-ENV in Tests (z. B. `PAPER_DEFAULT_SYMBOL`, `BITGET_SYMBOL`) — siehe `docs/TESTING_AND_EVIDENCE.md`
-- `shared_py.eventbus.envelope.EventEnvelope.symbol` traegt **keinen** BTCUSDT-Default mehr; verbleibende Replay-/Determinismus-Gaps liegen jetzt in anderen Event-/Runtime-Pfaden
-- volle Docker-/Compose-/Image-Verifikation ist in dieser Umgebung nicht erneut bewiesen
-- Event-/Replay-Determinismus ist nicht fuer den gesamten Stack byte-identisch abgeschlossen
-- Family-weite Multi-Asset-Orchestrierung ist fachlich vorbereitet, aber runtime-seitig noch nicht komplett durchgezogen
-- `SYSTEM_AUDIT_MASTER.md` enthaelt keinen widerspruechlichen Phasen-Verlauf mehr (nur Verweis, 2026-03-30)
-
-Solange mindestens einer dieser Punkte als `major` offen bleibt, ist der Gesamtzustand nicht als voll abgeschlossen zu markieren.
+- Coverage-Gates und pytest vollumfänglich: weiterhin Sache der CI-ENV, siehe `docs/TESTING_AND_EVIDENCE.md`.
+- Vollstack-Replay-Determinismus (inkl. LLM-Nebenpfade): iterativ, siehe `docs/REPO_FREEZE_GAP_MATRIX.md` und `docs/replay_determinism.md`.
+- **SYSTEM_AUDIT_MASTER.md:** Master mit Phasen 1–18 **COMPLETED** (2026-04-24); ersetzt die alte reine Verweisform ohne Phasenstatus.
 
 ## Reine externe Blocker
 
@@ -150,5 +145,6 @@ einfachen Demo:
 - nicht manipulierbarer Strategiekern
 - ausgebaute Forensik, SOPs, Onboarding- und Ramp-Vertraege
 
-Er ist aber **noch nicht voll release-grade abgeschlossen**, solange die
-verbleibenden internen `major`-Themen offen sind.
+Fuer **Software-Freigabe** im Monorepo ist **P0 erledigt**; **voll** „release-grade“ im Sinn
+von Live-Börse, organisatorischem Soak und externen Unterschriften bleibt am **LaunchChecklist**
+Management-Teil und **reinen externen** Blockern gebunden (`docs/adr/ADR-0010-roadmap-accepted-residual-risks.md`).

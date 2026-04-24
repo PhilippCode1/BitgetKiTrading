@@ -1,5 +1,10 @@
 """
 Gemeinsames Warten auf Postgres/Redis vor App-Start (Backoff, klare Logs).
+
+Für bewusste Störungen (z. B. jeder 10. Redis-Call +6s Latenz) in Tests: siehe
+``shared_py.chaos`` / ``shared_py.redis_client.apply_chaos_latency_to_sync_redis``;
+``timesfm`` gRPC: :class:`shared_py.timesfm_client.TimesFmGrpcClient` mit
+``chaos_inject_every_n``/``chaos_inject_delay_sec`` (Interceptor, Prompt 72).
 """
 
 from __future__ import annotations

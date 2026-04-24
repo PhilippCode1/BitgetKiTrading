@@ -65,6 +65,42 @@ def stripe_session_create(
     return sid, url
 
 
+def stripe_checkout_session_idempotency_fingerprint(*, session_id: str) -> str:
+    """
+    Ein fachlicher Fingerprint pro Checkout (nicht pro Stripe-Event-Id), damit
+    Webhook, Retries und GET-Reconciliation nicht doppelt verbuchen.
+    """
+    sid = (session_id or "").strip()
+    if not sid:
+        raise ValueError("checkout session id fehlt")
+    return f"stripe:checkout_paid:{sid[:255]}"
+
+
+def retrieve_checkout_session_for_reconciliation(
+    settings: GatewaySettings, *, session_id: str
+) -> dict[str, Any] | None:
+    """Aktuellen Zahlungsstatus der Session abfragen (fuer Balance-Reconciliation)."""
+    secret = settings.payment_stripe_secret_key.strip()
+    if not secret:
+        return None
+    stripe.api_key = secret
+    try:
+        s = stripe.checkout.Session.retrieve((session_id or "")[:255])
+    except StripeError:
+        return None
+    if hasattr(s, "to_dict_recursive"):
+        d = s.to_dict_recursive()  # type: ignore[no-untyped-call]
+        if isinstance(d, dict):
+            return d
+    try:
+        out = dict(s)  # type: ignore[arg-type]
+        if isinstance(out, dict):
+            return out
+    except Exception:
+        pass
+    return None
+
+
 def stripe_session_retrieve_url(settings: GatewaySettings, session_id: str) -> str | None:
     secret = settings.payment_stripe_secret_key.strip()
     if not secret:

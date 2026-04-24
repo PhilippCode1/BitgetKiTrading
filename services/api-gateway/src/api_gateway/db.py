@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 import logging
-import os
-import re
-from pathlib import Path
 from typing import Any
 
 import psycopg
 from psycopg.rows import dict_row
+
+from shared_py.postgres_migrations import (
+    list_expected_migration_filenames,
+    postgres_migrations_dir,
+)
 
 logger = logging.getLogger("api_gateway.db")
 
@@ -48,49 +50,6 @@ TABLE_COUNT_QUERIES = {
     "tsdb.funding_rate": "select count(*) as row_count from tsdb.funding_rate",
     "tsdb.open_interest": "select count(*) as row_count from tsdb.open_interest",
 }
-
-_MIGRATION_FILE_PREFIX = re.compile(r"^(\d+)_(.+)\.sql$", re.IGNORECASE)
-
-
-def _migration_sort_key(path: Path) -> tuple[int, str]:
-    """Gleiche Sortlogik wie infra/migrate.py (numerisches Praefix, dann Dateiname)."""
-    m = _MIGRATION_FILE_PREFIX.match(path.name)
-    if m:
-        return (int(m.group(1)), path.name)
-    return (10**9, path.name)
-
-
-def postgres_migrations_dir() -> Path | None:
-    """
-    Verzeichnis mit *.sql-Migrationen (fuer Abgleich mit app.schema_migrations).
-
-    - Container-Image: /app/infra/migrations/postgres (Dockerfile COPY)
-    - Optional: BITGET_POSTGRES_MIGRATIONS_DIR
-    - Monorepo: …/infra/migrations/postgres relativ zu diesem Modul
-    """
-    env = (os.environ.get("BITGET_POSTGRES_MIGRATIONS_DIR") or "").strip()
-    if env:
-        p = Path(env)
-        return p if p.is_dir() else None
-    container = Path("/app/infra/migrations/postgres")
-    if container.is_dir():
-        return container
-    try:
-        root = Path(__file__).resolve().parents[4]
-    except IndexError:
-        return None
-    p = root / "infra" / "migrations" / "postgres"
-    return p if p.is_dir() else None
-
-
-def list_expected_migration_filenames() -> list[str]:
-    d = postgres_migrations_dir()
-    if not d:
-        return []
-    paths = [p for p in d.iterdir() if p.is_file() and p.suffix.lower() == ".sql"]
-    paths.sort(key=_migration_sort_key)
-    return [p.name for p in paths]
-
 
 class DatabaseHealthError(RuntimeError):
     pass

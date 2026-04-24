@@ -3,21 +3,23 @@
 # runbook: Pfad im Repo (Anker in docs/monitoring_runbook.md).
 #
 # P0 / P1 Struktur
-#   - P0: Gruppe p0_production_blocker — Seitenauslösung, Latenz- oder Live-Handel.
+#   - P0: Gruppe p0_production_blocker — exakt 3 harte Szenarien (Echtgeld-Minimum):
+#     Gateway-5xx-Rate, live-broker scrape/health (up), Kerzen/ Pipeline >5s Staleness.
 #   - P1/P2: ubrige `groups` — ueblicherweise reaktives On-Call je `severity: warning` vs
 #     `severity: critical` in den `labels` (Grafana/Alertmanager-Routen bündeln nach Label).
-# Laerm reduzieren: Alertmanager-Gruppierung + inhibit_rules — siehe
-# infra/observability/alertmanager-inhibit-rules.example.yml
+# Laerm reduzieren: Alertmanager-Gruppierung + inhibit_rules (P0 unterdrueckt gleichlagerndes P1) —
+# siehe infra/observability/alertmanager-inhibit-rules.example.yml
 
 groups:
   - name: p0_production_blocker
     rules:
+      # 5% der *Requests* 5xx (2m Fenster) — HFT-tauglich: 2m-Ratefilter gegen False Positives; Min-Traffic >0,01 rps
       - alert: GatewayHighErrorRate
         expr: |
           sum(rate(http_requests_total{service="api_gateway"}[2m])) > 0.01
             and
           (
-            sum(rate(http_request_errors_total{error_class="5xx", service="api_gateway"}[2m]))
+            sum(rate(http_requests_total{service="api_gateway", status_class="5xx"}[2m]))
             /
             sum(rate(http_requests_total{service="api_gateway"}[2m]))
           ) > 0.05
@@ -26,45 +28,58 @@ groups:
           severity: critical
           alert_tier: p0
           category: edge
+          inhibit_slo: http_gateway
         annotations:
-          summary: "API-Gateway: 5xx-Quote ueber 5% (2m)"
-          description: "Anteil 5xx zu allen Gateway-HTTP-Anfragen (service=api_gateway) >0.05 — Upstream, DB, Redis, Deploy pruefen."
-          runbook: "docs/monitoring_runbook.md#http-errors"
-          promql_note: "Optional Feinsicht: http_request_errors_total{error_class=5xx} by (http_route)."
+          summary: "P0: API-Gateway: 5xx-Quote &gt;5% (2m)"
+          description: "Anteil 5xx zu allen Gateway-HTTP-Requests (service=api_gateway) >0.05 — Upstream, DB, Redis, Deploy, Rate-Limits, Pod-Restarts pruefen."
+          runbook: "docs/monitoring_runbook.md#p0-slo-und-wiring"
+          promql_note: "5xx-Rate: rate(http_requests_total{status_class=5xx}) / rate(alle). Feinsicht: http_slo_responses_total, http_request_errors_total by (http_route)."
 
-      - alert: LiveBrokerDegraded
-        expr: |
-          (
-            (time() - worker_heartbeat_timestamp{service="live_broker"}) > 180
-          )
-          or live_safety_latch_active > 0
-          or (live_reconcile_age_ms > 0 and live_reconcile_age_ms > 90000)
+      # Prometheus-Target-Health (Scrape) — 3m ohne up=1 (job live-broker aus prometheus.yml)
+      - alert: LiveBrokerDown
+        expr: up{job="live-broker"} == 0
         for: 3m
         labels:
           severity: critical
           alert_tier: p0
           category: trading
+          inhibit_slo: live_broker
         annotations:
-          summary: "Live-Broker: Heartbeat/Tick unsichtbar ODER Safety/Reconcile rot"
-          description: "Prozess-Heartbeat >3m (180s) oder live_safety_latch_active, oder Reconcile-Alter &gt;90s laut monitor-engine-Gauges."
-          runbook: "docs/monitoring_runbook.md#reconcile-lag"
-          promql_note: "worker_heartbeat_timestamp=live_broker, live_safety_latch_active, live_reconcile_age_ms"
+          summary: "P0: live-broker Target down (kein erfolgreicher /metrics-Scrape)"
+          description: "up{job=live-broker}==0 3m — Dienst/Port, Docker/K8s, Prozesscrash, Firewall; vor Live-Fire: Stack pruefen."
+          runbook: "docs/monitoring_runbook.md#p0-slo-und-wiring"
+          promql_note: "Job-Name muss `live-broker` in prometheus.yml (scrape_configs) entsprechen."
 
-      - alert: MarketStreamLag
+      # Differenz jetzt-letzter-Kerze (Sek.): data_freshness = Lag der Pipeline/Marktstrom
+      - alert: MarketPipelineLag
         expr: data_freshness_seconds{datapoint="candles_1m"} > 5
-        for: 2m
+        for: 1m
         labels:
           severity: critical
           alert_tier: p0
           category: data
+          inhibit_slo: candles_1m_pipeline
         annotations:
-          summary: "Marktdaten: Kerzen-Frische &gt;5s (Staleness)"
-          description: "data_freshness_seconds{candles_1m} &gt;5 — 1m-Kerzen inkl. market-stream/Aggregation veraltet; schnell WS/Bitget/Pipeline pruefen."
-          runbook: "docs/monitoring_runbook.md#candle-gaps--stale"
-          promql_note: "Gleiche Zeitreihe wie `DataStaleCandles1m`, aber strenger (5s vs. 180s)."
+          summary: "P0: Markt-Pipeline: 1m-Kerzen &gt;5s hinter UTC (Echtzeit)"
+          description: "data_freshness_seconds{datapoint=candles_1m} &gt;5s — market-stream, Bitget-WS, Aggregation, TSDB-Write; ggf. auch Signal-Downstream (nicht ersetzend fuer signal_pipeline_lag P95-Alert)."
+          runbook: "docs/monitoring_runbook.md#data-stale-candles"
+          promql_note: "1m- for reduziert Flap bei kurzen Hiccups, bleibt fachlich stricter als 180s-Stale-Rule."
 
   - name: bitget_trading_safety
     rules:
+      - alert: LiveBrokerProcessHeartbeatStale
+        expr: (time() - worker_heartbeat_timestamp{service="live_broker"}) > 180
+        for: 3m
+        labels:
+          severity: critical
+          category: trading
+          inhibit_slo: live_broker
+        annotations:
+          summary: "Live-Broker: Prozess-Heartbeat >3m trotz erforderlichen /metrics-Scrapes (up=1 pruefen)"
+          description: "Scrape ist ok, App antwortet nicht mit Heartbeat-Update — Hänger, Deadlock, CPU-Burn, DB-Block. Mit `LiveBrokerDown` (P0) nicht verwechseln."
+          runbook: "docs/monitoring_runbook.md#reconcile-lag"
+          promql_note: "P0 `LiveBrokerDown` deckt abgebrochenen Dienst; dieser Alert: Prozess laeuft, Worker-Tick stopp."
+
       - alert: KillSwitchActive
         expr: live_kill_switch_active_count > 0
         for: 1m
@@ -186,6 +201,21 @@ groups:
           description: "Anteil mit Dissent/Ueberstimmung={{ $value }} — Family/Regime/Playbook-Router pruefen."
           runbook: "docs/monitoring_runbook.md#specialist-disagreement"
 
+  - name: market_stream_orderflow
+    rules:
+      - alert: MarketVpinExtremeToxicity
+        expr: market_vpin_score > 0.8
+        for: 2m
+        labels:
+          severity: critical
+          category: orderflow
+          alert_tier: p1
+        annotations:
+          summary: "P1: VPIN-Toxizitaet extrem (Adverse Selection / toxischer Orderflow)"
+          description: "market_vpin_score={{ $value }} >0.8 mind. 2m — markiert hohe |Buy-Sell|-Imbalance in volumensynchronen Buckets (market-stream, Rust VpinEngine); Gegenmassnahmen/Policy pruefen."
+          runbook: "docs/monitoring_runbook.md"
+          promql_note: "Label `symbol` = instId. Metrik: shared_py.observability.metrics; Quelle: Bitget-Trades + BBO (Lee-Ready Mid)."
+
   - name: bitget_data_streams
     rules:
       - alert: DataStaleCandles1m
@@ -194,11 +224,12 @@ groups:
         labels:
           severity: critical
           category: data
+          inhibit_slo: candles_1m_pipeline
         annotations:
           summary: "1m-Kerzen veraltet"
           description: "data_freshness_seconds={{ $value }}s"
           runbook: "docs/monitoring_runbook.md#data-stale-candles"
-          dedupe_hint: "Root oft Marktdaten/Bitget/Pipeline — vor parallelen Tickets Signal-Stale pruefen."
+          dedupe_hint: "Root oft Marktdaten/Bitget/Pipeline — vor parallelen Tickets Signal-Stale pruefen; bei aktivem P0 `MarketPipelineLag` doppelt (AM inhibit)."
 
       - alert: DataStaleSignals
         expr: data_freshness_seconds{datapoint="signals"} > 300
@@ -317,6 +348,7 @@ groups:
         labels:
           severity: warning
           category: security
+          inhibit_slo: http_gateway
         annotations:
           summary: "Gateway-Auth-Anomalien"
           description: "gateway_auth_failures_1h={{ $value }} — 401/403-/Manual-Action-Fehler pruefen."
@@ -367,6 +399,7 @@ groups:
         labels:
           severity: warning
           category: data
+          inhibit_slo: candles_1m_pipeline
         annotations:
           summary: "Signal-Pipeline-Latenz P95 hoch"
           description: "analysis_ts vs feature computed_ts — Feature-/Signal-Engine pruefen."
@@ -487,3 +520,27 @@ groups:
           description: "Nur Echt-OpenAI-Aufrufe; Histogram llm_request_duration_seconds task_type=operator_explain — Modell, Promptgroesse, Netz, Rate-Limit pruefen."
           runbook: "docs/monitoring_runbook.md#llm-latency-operator-explain"
           promql_note: "Histogram llm_request_duration_seconds{task_type=operator_explain} — Redis-Cache-Hits sind nicht in diesem Histogramm."
+
+  - name: inference_server_gpu
+    rules:
+      # P77: TimesFM/Inference-Instanz; Metriken gpu_* und inference_queue_depth
+      # (Scrape-Job-Label, z. B. job="inference-server" / service="inference_server").
+      - alert: InferenceGpuSaturation
+        expr: |
+          (gpu_utilization_percent{gpu_index="0"} > 90)
+          or
+          (
+            (gpu_vram_total_bytes{gpu_index="0"} - gpu_vram_used_bytes{gpu_index="0"}) < 536870912
+            and
+            (gpu_vram_total_bytes{gpu_index="0"} > 0)
+          )
+        for: 2m
+        labels:
+          severity: critical
+          alert_tier: p1
+          category: inference
+        annotations:
+          summary: "P1: Inference-GPU: Auslastung >90% oder <512MB VRAM-frei (Device 0)"
+          description: "TimesFM-Instanz: GPU-Engpass — Latenzen, Signal-SLO, Shadow-Gating pruefen; nvidia-smi, Batch-Groesse, weitere Replicas/Queue."
+          runbook: "docs/monitoring_runbook.md"
+          promql_note: "gpu_utilization_percent{gpu_index=0} > 90; VRAM: total-used < 512MiB."

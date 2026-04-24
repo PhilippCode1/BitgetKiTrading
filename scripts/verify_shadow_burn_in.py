@@ -1,23 +1,26 @@
 #!/usr/bin/env python3
 """
-Shadow-Burn-in Auswertung: Postgres + Ops-Metriken, Markdown-Zertifikat (stdout, optional Datei).
+Shadow-Burn-in / Readiness-Zertifikat: datenbasiertes GO/NO-GO (Postgres, Markdown).
 
-Prüft im Zeitfenster u.a.:
-- abgelehnte / risk-blockierte Pfade (keine Fat-Finger-Muster in live.execution_decisions)
-- offene P0/P1-äquivalente Alerts (ops.alerts: critical, warn)
-- Stream-/Service-Latenz (lag/latency_ms > Schwelle)
-- Lücken in Heartbeats (ops.service_checks — max. Abstand zwischen Prüfungen)
+Harte KPI-Cluster:
+- Lückenlose Herzfrequenz-Proxys: `ops.service_checks` (check_type=health) max. Lücke je Service
+- Slippage: `paper.fills` vs. Referenz-`tsdb.ticker` (letzter Mark/Last <= Fill-Zeit) in bps
+- Sicherheits-Incidents: `live.audit_trails` (`SECURITY_INCIDENT_ATTEMPT` / security+critical)
+- 5xx-/Upstream-Fehler: u.a. `app.gateway_request_audit` (detail_json http/upstream-Status) +
+  (legacy) kritischer Härte-Check: `ops.service_checks` fail in Kombination mit 5xx-Hinweis
+- Ergänzend: blockierte live-Entscheidungen, Alerts, Stream-Lag, paper AUTO_BLOCKED, …
 
-Umgebung: DATABASE_URL (postgresql://…)
+Output: stdout + `READINESS_EVIDENCE.md` (Repo-Root) oder `--readiness-out` / `--output-md`
 
     python scripts/verify_shadow_burn_in.py --hours 72
-    python scripts/verify_shadow_burn_in.py --hours 168 --output-md /tmp/burn_in.md
+    python scripts/verify_shadow_burn_in.py --hours 168 --readiness-out /tmp/READINESS_EVIDENCE.md
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import re
 import sys
@@ -32,6 +35,9 @@ try:
 except ImportError:  # Aufruf ohne venv-Package
     def redact_nested_mapping(obj: Any, **_: Any) -> Any:  # type: ignore[misc]
         return obj
+
+_REPO = Path(__file__).resolve().parents[1]
+_DEFAULT_READINESS = _REPO / "READINESS_EVIDENCE.md"
 
 
 @contextmanager
@@ -323,10 +329,246 @@ def _check_heartbeat_gaps(
     if not problems:
         return (
             True,
-            f"Health-Check-Lücken ≤ {max_gap_sec}s je Service (Partition health).",
+            f"Health-Check-Luecken <= {max_gap_sec}s je Service (Partition health).",
             rows,
         )
     return (False, f"Heartbeat: max_gap > {max_gap_sec}s bei Dienst(en)", problems)
+
+
+def _check_paper_slippage_bps(
+    conn: Any,
+    from_ms: int,
+    to_ms: int,
+    max_p95_bps: float,
+    max_abs_bps: float,
+) -> tuple[bool, str, dict[str, Any]]:
+    """
+    Fills vs. zuletzt bekannten Ticker (Mark/Last) vor fill.ts_ms. Ohne Ticker-Referenz
+    zählt die Zeile nicht für Slippage-Statistik.
+    """
+    if not all(
+        _safe_table(conn, s, t)
+        for s, t in (("paper", "fills"), ("paper", "positions"), ("tsdb", "ticker"))
+    ):
+        return (
+            True,
+            "paper.fills/positions oder tsdb.ticker fehlt — Slippage-Pruefung uebersprungen",
+            {},
+        )
+    from psycopg import errors as pg_errors
+
+    try:
+        rows = conn.execute(
+            """
+            WITH base AS (
+              SELECT
+                f.fill_id,
+                f.ts_ms,
+                f.price::float8 AS fill_px,
+                p.symbol,
+                t.last_pr::float8,
+                t.mark_price::float8,
+                t.ts_ms AS ref_ts_ms
+              FROM paper.fills f
+              JOIN paper.positions p ON p.position_id = f.position_id
+              LEFT JOIN LATERAL (
+                SELECT last_pr, mark_price, ts_ms
+                FROM tsdb.ticker
+                WHERE symbol = p.symbol
+                  AND ts_ms <= f.ts_ms
+                ORDER BY ts_ms DESC
+                LIMIT 1
+              ) t ON true
+              WHERE f.ts_ms >= %s
+                AND f.ts_ms <= %s
+            ),
+            s AS (
+              SELECT
+                *,
+                COALESCE(
+                  mark_price, last_pr, NULL
+                ) AS ref_px
+              FROM base
+            )
+            SELECT fill_id, ts_ms, fill_px, symbol, ref_px, ref_ts_ms, last_pr, mark_price
+            FROM s
+            """,
+            (from_ms, to_ms),
+        ).fetchall()
+    except pg_errors.UndefinedTable:
+        return (True, "Slippage: benoetigte Tabelle fehlt — uebersprungen", {})
+
+    bps_list: list[float] = []
+    for r in rows or ():
+        ref = r.get("ref_px")
+        fp = r.get("fill_px")
+        if ref is None or fp is None or float(ref) <= 0:
+            continue
+        bps = abs((float(fp) - float(ref)) / float(ref)) * 10_000.0
+        bps_list.append(bps)
+
+    if not bps_list:
+        n = len(rows or [])
+        if n == 0:
+            return (
+                True,
+                "Keine Fills im Fenster — Slippage-KPIs nicht anwendbar (kein Trades-Drift sichtbar).",
+                {
+                    "fills_total": 0,
+                    "fills_with_ticker": 0,
+                },
+            )
+        return (
+            True,
+            f"{n} Fill(s) ohne Ticker-Referenz im gleichen Zeitraum — pruefe tsdb.ticker-Backfill.",
+            {"fills_total": n, "fills_with_ticker": 0, "max_p95_bps": 0, "max_abs_bps": 0},
+        )
+
+    bps_sorted = sorted(bps_list)
+    n = len(bps_sorted)
+    p50 = bps_sorted[n // 2]
+    p95i = min(n - 1, max(0, int(math.ceil(0.95 * n) - 1)))
+    p95 = bps_sorted[p95i] if n else 0.0
+    mx = bps_sorted[-1]
+    ok = p95 <= max_p95_bps and mx <= max_abs_bps
+    ex = {
+        "fills_count_bps": n,
+        "p50_bps": round(p50, 2),
+        "p95_bps": round(p95, 2),
+        "max_bps": round(mx, 2),
+        "limits": {
+            "max_p95_bps": max_p95_bps,
+            "max_abs_bps": max_abs_bps,
+        },
+    }
+    msg = (
+        f"Slippage: n={n}, p50={p50:.1f} bps, p95={p95:.1f} bps, max={mx:.1f} bps "
+        f"(Grenz: p95<={max_p95_bps}, max<={max_abs_bps})"
+    )
+    return (ok, msg, ex)
+
+
+def _check_security_incident_trails(
+    conn: Any, since: datetime, now: datetime
+) -> tuple[bool, str, list[dict[str, Any]]]:
+    if not _safe_table(conn, "live", "audit_trails"):
+        return (True, "live.audit_trails fehlt — Security-Pruefung uebersprungen", [])
+    rows = conn.execute(
+        """
+        SELECT
+          audit_trail_id, created_ts, category, action, severity, scope, scope_key
+        FROM live.audit_trails
+        WHERE created_ts >= %s
+          AND created_ts <= %s
+          AND (
+            action = 'SECURITY_INCIDENT_ATTEMPT'
+            OR (category = 'security' AND severity = 'critical')
+          )
+        ORDER BY created_ts DESC
+        LIMIT 200
+        """,
+        (since, now),
+    ).fetchall()
+    if not rows:
+        return (
+            True,
+            "Kein SECURITY_INCIDENT / security+critical in live.audit_trails im Fenster.",
+            [],
+        )
+    ex = [
+        {
+            "audit_trail_id": str(x.get("audit_trail_id")),
+            "action": x.get("action"),
+            "severity": x.get("severity"),
+            "scope": x.get("scope"),
+            "created_ts": str(x.get("created_ts"))[:32],
+        }
+        for x in rows[:20]
+    ]
+    return (False, f"Security-Incident-Zeilen: {len(rows)} (Stichprobe unten).", ex)
+
+
+def _check_gateway_5xx_patterns(
+    conn: Any, since: datetime, now: datetime
+) -> tuple[bool, str, list[dict[str, Any]]]:
+    """
+    Erkennt 5xx in gateway_request_audit (detail_json) + grobe Textsignatur in
+    service_checks, falls kein typisiertes http_status-JSON vorhanden.
+    """
+    if not _safe_table(conn, "app", "gateway_request_audit"):
+        return (True, "app.gateway_request_audit fehlt — 5xx-Pruefung teilweise.", [])
+    from psycopg import errors as pg_errors
+
+    try:
+        rows = conn.execute(
+            """
+            SELECT id, created_ts, action, path,
+                   detail_json::text AS dtxt
+            FROM app.gateway_request_audit
+            WHERE created_ts >= %s
+              AND created_ts <= %s
+              AND (
+                detail_json->>'http_status' ~ '^5[0-9]{2}$'
+                OR (detail_json #>> '{response,status}') ~ '^5[0-9]{2}$'
+                OR (detail_json #>> '{upstream,http_status}')::text ~ '^5[0-9]{2}$'
+                OR (detail_json #>> '{upstream,status_code}')::text ~ '^5[0-9]{2}$'
+                OR detail_json::text ~* '"[a-z_]*status[a-z_]*"\\s*:\\s*5[0-9][0-9]'
+              )
+            ORDER BY created_ts DESC
+            LIMIT 100
+            """,
+            (since, now),
+        ).fetchall()
+    except pg_errors.UndefinedTable:
+        rows = []
+
+    bad_sc: list[dict[str, Any]] = []
+    if _safe_table(conn, "ops", "service_checks"):
+        try:
+            r2 = conn.execute(
+                """
+                SELECT service_name, check_type, status, ts, details::text AS dtxt
+                FROM ops.service_checks
+                WHERE ts >= %s
+                  AND ts <= %s
+                  AND status = 'fail'
+                  AND (
+                    details::text ~* '5[0-9][0-9].*error'
+                    OR details::text ~* '["'']h?t?t?p?_?status["'']\\s*[:=]\\s*5[0-9][0-9]'
+                  )
+                ORDER BY ts DESC
+                LIMIT 100
+                """,
+                (since, now),
+            ).fetchall()
+        except (pg_errors.UndefinedTable, Exception):
+            r2 = []
+        for b in r2 or ():
+            bad_sc.append(
+                {
+                    "quelle": "ops.service_checks (fail+5xx-Hinweis)",
+                    "service_name": b.get("service_name"),
+                    "ts": b.get("ts"),
+                    "dtxt": (b.get("dtxt") or "")[:400],
+                }
+            )
+
+    out = [
+        {
+            "quelle": "gateway_request_audit",
+            "id": str(x.get("id")),
+            "action": str(x.get("action") or "")[:120],
+            "path": str(x.get("path") or "")[:120],
+            "ts": str(x.get("created_ts"))[:32],
+        }
+        for x in (rows or ())[:20]
+    ]
+    out.extend(bad_sc)
+
+    if not out:
+        return (True, "Keine 5xx-/unaufgefangenen-Gateway-Indizien im Pruef-Fenster.", [])
+
+    return (False, f"5xx/Upstream-Indizien: {len(out)} Treffer (Stichprobe).", out[:20])
 
 
 def _check_critical_audit_trails(
@@ -341,6 +583,7 @@ def _check_critical_audit_trails(
         WHERE created_ts >= %s
           AND created_ts <= %s
           AND severity = 'critical'
+          AND coalesce(action, '') <> 'SECURITY_INCIDENT_ATTEMPT'
         """,
         (since, now),
     ).fetchone()
@@ -361,11 +604,14 @@ def _fmt_md(
 ) -> str:
     when = until.astimezone(UTC).isoformat()
     ssince = since.astimezone(UTC).isoformat()
+    verdict = "**[GO]**" if overall else "**[NO-GO]**"
     lines: list[str] = [
-        "# Shadow-Burn-in Zertifikat (datenbasiert)",
+        "# READINESS_EVIDENCE — Shadow-Burn-in (Audit-Nachweis)",
         "",
-        f"- **Zeitfenster:** {hours}h bis `{when}`  ",
-        f"- **Start (UTC):** `{ssince}`  ",
+        f"## Entscheidung: {verdict} (KPI-Blöcke unten, alle harten Gates muessen `OK` sein).",
+        "",
+        f"- **Zeitfenster:** letzte {hours}h, Ende (UTC) `{when}`  ",
+        f"- **Fensterstart (UTC):** `{ssince}`  ",
         "",
     ]
     for name, ok, expl, extra in results:
@@ -393,10 +639,7 @@ def _fmt_md(
     lines.append("---")
     lines.append("")
     if overall:
-        lines.append(
-            f"## **[PASS]** {hours} Stunden Shadow-Mode ohne "
-            f"kritische Abbrüche (automatisierte Kriterien erfüllt) — {when}  "
-        )
+        lines.append("## " + verdict.replace("**", "") + " (alle Gate-Checks bestanden)  ")
     else:
         lines.append("## " + one_line)
     lines.append("")
@@ -405,13 +648,13 @@ def _fmt_md(
 
 def main() -> int:
     ap = argparse.ArgumentParser(
-        description="Postgres-basiertes Shadow-Burn-in Zertifikat (Markdown).",
+        description="Readiness- / Shadow-Burn-in Zertifikat: READINESS_EVIDENCE.md, [GO]/[NO-GO].",
     )
     ap.add_argument(
         "--hours",
         type=int,
         default=72,
-        help="Rückblick in Stunden (default 72).",
+        help="Rueckblick in Stunden (default 72).",
     )
     ap.add_argument(
         "--database-url",
@@ -428,13 +671,36 @@ def main() -> int:
         "--max-heartbeat-gap-sec",
         type=int,
         default=600,
-        help="Max. erlaubte Lücke zwischen health-checks derselben service_name (s).",
+        help="Max. erlaubte Luecke health-checks je service_name (s, ops.service_checks).",
+    )
+    ap.add_argument(
+        "--max-slippage-p95-bps",
+        type=float,
+        default=50.0,
+        help="GO wenn Slippage-p95 bps <= dieser Wert (Fills vs. Ticker, default 50).",
+    )
+    ap.add_argument(
+        "--max-slippage-peak-bps",
+        type=float,
+        default=200.0,
+        help="GO wenn max. Slippage (bps) <= dieser Wert (default 200).",
+    )
+    ap.add_argument(
+        "--readiness-out",
+        type=Path,
+        default=_DEFAULT_READINESS,
+        help=f"Markdown-Report (default: {_DEFAULT_READINESS.name} im Repo-Root).",
+    )
+    ap.add_argument(
+        "--no-readiness-file",
+        action="store_true",
+        help="Nicht nach Datei schreiben (nur stdout / Exitcode).",
     )
     ap.add_argument(
         "--output-md",
         type=Path,
         default=None,
-        help="Optional: Markdown-Report auch in Datei schreiben.",
+        help="Alias: ueberschreibt --readiness-out wenn gesetzt (Legacy).",
     )
     args = ap.parse_args()
     dsn = args.database_url
@@ -447,90 +713,110 @@ def main() -> int:
         return 1
 
     until = datetime.now(UTC)
-    since = until - timedelta(hours=max(1, int(args.hours)))
+    h = max(1, int(args.hours))
+    since = until - timedelta(hours=h)
+    from_ms = int(since.timestamp() * 1000)
+    to_ms = int(until.timestamp() * 1000)
+    out_path: Path = args.readiness_out
+    if args.output_md is not None:
+        out_path = args.output_md
     results: list[tuple[str, bool, str, Any]] = []
     all_ok = True
     first_fail = ""
 
+    def _b(name: str, res: tuple[bool, str, Any], *, must: bool = True) -> None:
+        nonlocal all_ok, first_fail
+        ok, expl, ex = res
+        results.append((name, ok, expl, ex))
+        if must and (not ok):
+            all_ok = False
+            first_fail = first_fail or (expl[:200] if expl else name)
+
     with _connect(dsn) as conn:
-        ok, expl, ex = _check_suspicious_blocks(conn, since, until)
-        results.append(("1) Fat-Finger / abgelehnte Orders (live.execution_decisions)", ok, expl, ex))
-        if not ok:
-            all_ok = False
-            first_fail = first_fail or f"Verdächtig blockiert: {expl}"
-
-        ok2, expl2, c = _check_paper_auto_blocked(conn, since, until)
+        _b(
+            "1) Lueckenlose Service-Pruefungen (Heartbeats, ops.service_checks health)",
+            _check_heartbeat_gaps(conn, since, until, args.max_heartbeat_gap_sec),
+        )
+        _b(
+            f"2) Slippage: paper.fills vs. tsdb.ticker (p95<={args.max_slippage_p95_bps} "
+            f"max<={args.max_slippage_peak_bps} bps)",
+            _check_paper_slippage_bps(
+                conn,
+                from_ms,
+                to_ms,
+                args.max_slippage_p95_bps,
+                args.max_slippage_peak_bps,
+            ),
+        )
+        _b(
+            "3) Security-Incidents (live.audit_trails: SECURITY_INCIDENT / security+critical)",
+            _check_security_incident_trails(conn, since, until),
+        )
+        _b(
+            "4) 5xx / unaufgefangene Upstream-Fehler (gateway_request_audit, services_checks)",
+            _check_gateway_5xx_patterns(conn, since, until),
+        )
+        _b(
+            "5) Weitere live.audit_trails (critical, o. security-Einzelzeilen)",
+            _check_critical_as_tuple(conn, since, until),
+        )
+        _b(
+            "6) Abgelehnte Orders: Fat-Finger-/Betragsverdacht (live.execution_decisions blocked)",
+            _check_suspicious_blocks(conn, since, until),
+        )
+        ok_pb, ex_pb, n_pb = _check_paper_auto_blocked(conn, since, until)
         results.append(
-            (f"2) Paper strategy AUTO_BLOCKED (n={c}) — Hinweis", True, expl2, c),
+            (f"7) Paper: AUTO_BLOCKED (Hinweis) n={n_pb}", True, ex_pb, n_pb)
         )
-
-        ok, expl, ex = _check_alerts(conn, since, until)
-        results.append(("3) P0/P1-äquivalent: offene ops.alerts (warn/critical)", ok, expl, ex))
-        if not ok:
-            all_ok = False
-            a0 = ex[0] if ex else {}
-            ts = a0.get("created_ts", "")
-            first_fail = first_fail or f"Alert {a0.get('alert_key', '?')} @ {ts}"
-
-        ok, expl, ex = _check_stream_and_service_lag(
-            conn, since, until, args.max_pipeline_lag_ms
+        _b(
+            "8) ops.alerts offen (warn/critical) im Fenster",
+            _check_alerts(conn, since, until),
         )
-        results.append(
-            (
-                "4) Pipeline: Stream-/Service (lag/latency_ms, fail-Status)",
-                ok,
-                expl,
-                ex,
-            )
+        _b(
+            "9) Stream-/Service-Latenz (lag, latency, fail)",
+            _check_stream_and_service_lag(
+                conn, since, until, args.max_pipeline_lag_ms
+            ),
         )
-        if not ok:
-            all_ok = False
-            first_fail = first_fail or f"Pipeline-Lag/ fail: {expl}"
-
-        ok, expl, ex = _check_heartbeat_gaps(
-            conn, since, until, args.max_heartbeat_gap_sec
-        )
-        q = "5) Heartbeat: ops.service_checks (health) max gap"
-        results.append((f"{q} ≤ {args.max_heartbeat_gap_sec}s", ok, expl, ex))
-        if not ok:
-            all_ok = False
-            first_fail = first_fail or f"Heartbeat: {expl}"
-
-        ok, expl, c = _check_critical_audit_trails(conn, since, until)
-        results.append(("6) live.audit_trails critical", ok, expl, c))
-        if not ok:
-            all_ok = False
-            first_fail = first_fail or f"Kritische Audits: {c}"
-
-    one_line_fail = (
-        f"**[FAIL]** {first_fail} — {until.isoformat()}"
-    )
+    one_line_fail = f"**[NO-GO]** {first_fail} — {until.isoformat()}"
     body = _fmt_md(
         since=since,
         until=until,
-        hours=int(args.hours),
+        hours=h,
         results=results,
         overall=all_ok,
         one_line=one_line_fail,
     )
+    if hasattr(sys.stdout, "reconfigure"):
+        try:
+            sys.stdout.reconfigure(encoding="utf-8")
+        except (OSError, ValueError, TypeError):
+            pass
     print(body, end="")
-    if args.output_md:
-        args.output_md.parent.mkdir(parents=True, exist_ok=True)
-        args.output_md.write_text(body, encoding="utf-8")
-        print(f"\n# Geschrieben: {args.output_md}", file=sys.stderr)
-    if not all_ok:
-        one = one_line_fail.replace("**[FAIL]**", "[FAIL]", 1).replace("**", "")
+    if not args.no_readiness_file:
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(body, encoding="utf-8")
         print(
-            f"\n{one}",
+            f"\nWritten: {out_path}",
+            file=sys.stderr,
+        )
+    if not all_ok:
+        print(
+            f"\n[NO-GO] Burn-in/Readiness — siehe {out_path!s}\n{first_fail}\n",
             file=sys.stderr,
         )
         return 1
     print(
-        f"\n[PASS] {args.hours} Stunden Shadow-Mode ohne kritische Abbrüche absolviert "
-        f"(Kriterien laut Skript) — {until.isoformat()}\n",
+        f"\n[GO] {h}h Fenster: alle harten Gates bestanden. Evidenz: {out_path!s}\n",
         file=sys.stderr,
     )
     return 0
+
+
+def _check_critical_as_tuple(
+    conn: Any, since: datetime, now: datetime
+) -> tuple[bool, str, Any]:
+    return _check_critical_audit_trails(conn, since, now)
 
 
 if __name__ == "__main__":

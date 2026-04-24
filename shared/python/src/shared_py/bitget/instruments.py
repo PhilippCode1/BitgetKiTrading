@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from collections.abc import Sequence
 from typing import Any, Literal
 
@@ -71,6 +72,7 @@ class BitgetEndpointProfile(BaseModel):
     public_candles_path: str
     public_trades_path: str
     public_depth_path: str | None = None
+    public_orderbook_resync_path: str | None = None
     public_open_interest_path: str | None = None
     public_funding_path: str | None = None
     private_place_order_path: str | None = None
@@ -288,6 +290,7 @@ class BitgetInstrumentIdentity(BaseModel):
     supports_reduce_only: bool = False
     supports_leverage: bool = False
     uses_spot_public_market_data: bool = False
+    maintenance_margin_rate_0_1: float | None = None
 
     @field_validator(
         "venue",
@@ -518,6 +521,7 @@ class BitgetInstrumentCatalogEntry(BitgetInstrumentIdentity):
             supports_reduce_only=self.supports_reduce_only,
             supports_leverage=self.supports_leverage,
             uses_spot_public_market_data=self.uses_spot_public_market_data,
+            maintenance_margin_rate_0_1=self.maintenance_margin_rate_0_1,
         )
 
 
@@ -667,6 +671,7 @@ def endpoint_profile_for(
             public_candles_path="/api/v2/mix/market/candles",
             public_trades_path="/api/v2/mix/market/fills-history",
             public_depth_path="/api/v2/mix/market/merge-depth",
+            public_orderbook_resync_path="/api/v2/mix/market/depth",
             public_open_interest_path="/api/v2/mix/market/open-interest",
             public_funding_path="/api/v2/mix/market/current-fund-rate",
             private_place_order_path="/api/v2/mix/order/place-order",
@@ -756,3 +761,352 @@ def endpoint_profile_for(
         supports_leverage=True,
         uses_spot_public_market_data=True,
     )
+
+
+def _bitget_metadata_optional_int(value: object) -> int | None:
+    if value in (None, ""):
+        return None
+    try:
+        return int(str(value).strip())
+    except ValueError:
+        return None
+
+
+def _bitget_metadata_optional_mmr_0_1(row: dict[str, Any]) -> float | None:
+    """Gewuenschte Rate 0..1; Werte >1 werden als Prozent (z.B. 0.4 fuer 0.4%) gelesen."""
+    for key in (
+        "maintenanceRate",
+        "maintainMarginRate",
+        "maintenanceMarginRate",
+        "maintainMargin",
+        "mmr",
+    ):
+        v = row.get(key)
+        if v in (None, ""):
+            continue
+        try:
+            f = float(str(v).strip())
+        except ValueError:
+            continue
+        if f > 1.0:
+            f = f / 100.0
+        return f if f >= 0.0 else None
+    return None
+
+
+def _bitget_spot_tick_size_from_row(row: dict[str, Any]) -> str | None:
+    precision = _bitget_metadata_optional_int(row.get("pricePrecision"))
+    if precision is None:
+        return None
+    return format(10 ** (-precision), "f")
+
+
+def _bitget_spot_quantity_step_from_row(row: dict[str, Any]) -> str | None:
+    precision = _bitget_metadata_optional_int(row.get("quantityPrecision"))
+    if precision is None:
+        return None
+    return format(10 ** (-precision), "f")
+
+
+def _catalog_eligibility_flags(
+    *,
+    trading_enabled: bool,
+    subscribe_enabled: bool,
+    execution_adapter_available: bool,
+) -> dict[str, bool]:
+    inventory_visible = True
+    analytics_eligible = bool(subscribe_enabled)
+    paper_shadow_eligible = bool(trading_enabled and execution_adapter_available)
+    live_execution_enabled = bool(trading_enabled and execution_adapter_available)
+    execution_disabled = inventory_visible and analytics_eligible and not live_execution_enabled
+    return {
+        "inventory_visible": inventory_visible,
+        "analytics_eligible": analytics_eligible,
+        "paper_shadow_eligible": paper_shadow_eligible,
+        "live_execution_enabled": live_execution_enabled,
+        "execution_disabled": execution_disabled,
+        "trading_enabled": bool(trading_enabled),
+        "subscribe_enabled": bool(subscribe_enabled),
+    }
+
+
+def _first_margin_coin_list_value(value: object) -> str | None:
+    if isinstance(value, list):
+        for item in value:
+            normalized = str(item).strip().upper()
+            if normalized:
+                return normalized
+    return None
+
+
+class MarketInstrument(BaseModel):
+    """
+    Instanziierte, familienübergreifende API-Sicht auf Katalog-Metadaten.
+    `product_family` entspricht dem internen `market_family` (Spot, Margin, Futures).
+    `lot_size` spiegelt `quantity_step` (Kontingent-/Los-Schritt), ohne stillen Default.
+    """
+
+    schema_version: str = Field(default=MARKET_UNIVERSE_SCHEMA_VERSION)
+    venue: str = "bitget"
+    product_family: MarketFamily
+    symbol: str
+    canonical_instrument_id: str | None = None
+    category_key: str | None = None
+    product_type: str | None = None
+    margin_account_mode: MarginAccountMode = "cash"
+    margin_coin: str | None = None
+    base_coin: str | None = None
+    quote_coin: str | None = None
+    settle_coin: str | None = None
+    price_precision: int | None = None
+    quantity_precision: int | None = None
+    lot_size: str | None = None
+    price_tick_size: str | None = None
+    trading_status: str = "unknown"
+    metadata_verified: bool = False
+    metadata_source: str = "runtime_config"
+    public_ws_inst_type: str
+    private_ws_inst_type: str | None = None
+
+    @field_validator("product_family", mode="before")
+    @classmethod
+    def _pf(cls, v: object) -> object:
+        if v is None:
+            return v
+        s = str(v).strip().lower()
+        return s or v
+
+    @field_validator("symbol", mode="before")
+    @classmethod
+    def _sym(cls, v: object) -> str:
+        return str(v or "").strip().upper()
+
+    @classmethod
+    def from_catalog_entry(cls, entry: BitgetInstrumentCatalogEntry) -> "MarketInstrument":
+        return cls(
+            venue=entry.venue,
+            product_family=entry.market_family,
+            symbol=entry.symbol,
+            canonical_instrument_id=entry.canonical_instrument_id,
+            category_key=entry.category_key,
+            product_type=entry.product_type,
+            margin_account_mode=entry.margin_account_mode,
+            margin_coin=entry.margin_coin,
+            base_coin=entry.base_coin,
+            quote_coin=entry.quote_coin,
+            settle_coin=entry.settle_coin,
+            price_precision=entry.price_precision,
+            quantity_precision=entry.quantity_precision,
+            lot_size=entry.quantity_step,
+            price_tick_size=entry.price_tick_size,
+            trading_status=entry.trading_status,
+            metadata_verified=entry.metadata_verified,
+            metadata_source=entry.metadata_source,
+            public_ws_inst_type=entry.public_ws_inst_type,
+            private_ws_inst_type=entry.private_ws_inst_type,
+        )
+
+
+class MarketInstrumentFactory:
+    """Baut `BitgetInstrumentCatalogEntry` aus Bitget-REST-Zeilen und `MarketInstrument` aus Katalog."""
+
+    @staticmethod
+    def from_catalog_entry(entry: BitgetInstrumentCatalogEntry) -> MarketInstrument:
+        return MarketInstrument.from_catalog_entry(entry)
+
+    @staticmethod
+    def catalog_entry_from_spot_row(
+        row: dict[str, Any], *, refresh_ts_ms: int | None = None
+    ) -> BitgetInstrumentCatalogEntry | None:
+        sym = str(row.get("symbol") or "").strip().upper()
+        if not sym:
+            return None
+        profile = endpoint_profile_for("spot")
+        trading_status = str(row.get("status") or "unknown").strip().lower() or "unknown"
+        eflags = _catalog_eligibility_flags(
+            trading_enabled=trading_status_allows_trading(trading_status),
+            subscribe_enabled=trading_status_allows_subscription(trading_status),
+            execution_adapter_available=profile.private_place_order_path is not None,
+        )
+        rts = refresh_ts_ms if refresh_ts_ms is not None else int(time.time() * 1000)
+        return BitgetInstrumentCatalogEntry(
+            market_family="spot",
+            symbol=sym,
+            symbol_aliases=[sym],
+            base_coin=str(row.get("baseCoin") or "") or None,
+            quote_coin=str(row.get("quoteCoin") or "") or None,
+            public_ws_inst_type=profile.public_ws_inst_type,
+            private_ws_inst_type=profile.public_ws_inst_type,
+            metadata_source=profile.public_symbol_config_path,
+            metadata_verified=True,
+            status=trading_status,
+            inventory_visible=eflags["inventory_visible"],
+            analytics_eligible=eflags["analytics_eligible"],
+            paper_shadow_eligible=eflags["paper_shadow_eligible"],
+            live_execution_enabled=eflags["live_execution_enabled"],
+            execution_disabled=eflags["execution_disabled"],
+            trading_status=trading_status,
+            trading_enabled=eflags["trading_enabled"],
+            subscribe_enabled=eflags["subscribe_enabled"],
+            supports_reduce_only=profile.supports_reduce_only,
+            supports_long_short=profile.supports_long_short,
+            supports_shorting=profile.supports_shorting,
+            supports_leverage=profile.supports_leverage,
+            uses_spot_public_market_data=profile.uses_spot_public_market_data,
+            price_tick_size=_bitget_spot_tick_size_from_row(row),
+            quantity_step=_bitget_spot_quantity_step_from_row(row),
+            quantity_min=str(row.get("minTradeAmount") or "") or None,
+            quantity_max=str(row.get("maxTradeAmount") or "") or None,
+            min_notional_quote=str(row.get("minTradeUSDT") or "") or None,
+            price_precision=_bitget_metadata_optional_int(row.get("pricePrecision")),
+            quantity_precision=_bitget_metadata_optional_int(row.get("quantityPrecision")),
+            quote_precision=_bitget_metadata_optional_int(row.get("quotePrecision")),
+            symbol_type="spot",
+            session_metadata={"schedule": "24x7", "timezone": "UTC"},
+            refresh_ts_ms=rts,
+            raw_metadata=row,
+        )
+
+    @staticmethod
+    def catalog_entry_from_futures_row(
+        row: dict[str, Any], *, refresh_ts_ms: int | None = None
+    ) -> BitgetInstrumentCatalogEntry | None:
+        sym = str(row.get("symbol") or "").strip().upper()
+        if not sym:
+            return None
+        product_type = str(row.get("productType") or "").strip().upper()
+        if not product_type:
+            return None
+        profile = endpoint_profile_for("futures")
+        trading_status = (
+            str(row.get("symbolStatus") or row.get("status") or "unknown").strip().lower()
+            or "unknown"
+        )
+        eflags = _catalog_eligibility_flags(
+            trading_enabled=trading_status_allows_trading(trading_status),
+            subscribe_enabled=trading_status_allows_subscription(trading_status),
+            execution_adapter_available=profile.private_place_order_path is not None,
+        )
+        margin_coin = _first_margin_coin_list_value(row.get("supportMarginCoins")) or str(
+            row.get("marginCoin") or ""
+        )
+        session_metadata = {
+            "schedule": "24x7",
+            "timezone": "UTC",
+            "symbol_type": str(row.get("symbolType") or "") or None,
+            "off_time": _bitget_metadata_optional_int(row.get("offTime")),
+            "limit_open_time": _bitget_metadata_optional_int(row.get("limitOpenTime")),
+            "delivery_time": _bitget_metadata_optional_int(row.get("deliveryTime")),
+            "delivery_start_time": _bitget_metadata_optional_int(row.get("deliveryStartTime")),
+            "launch_time": _bitget_metadata_optional_int(row.get("launchTime")),
+            "maintain_time": _bitget_metadata_optional_int(row.get("maintainTime")),
+        }
+        rts = refresh_ts_ms if refresh_ts_ms is not None else int(time.time() * 1000)
+        return BitgetInstrumentCatalogEntry(
+            market_family="futures",
+            symbol=sym,
+            symbol_aliases=[sym],
+            product_type=product_type,
+            margin_coin=margin_coin or None,
+            base_coin=str(row.get("baseCoin") or "") or None,
+            quote_coin=str(row.get("quoteCoin") or "") or None,
+            settle_coin=str(row.get("settleCoin") or margin_coin or "") or None,
+            margin_account_mode="isolated",
+            public_ws_inst_type=product_type,
+            private_ws_inst_type=product_type,
+            metadata_source=profile.public_symbol_config_path,
+            metadata_verified=True,
+            status=trading_status,
+            inventory_visible=eflags["inventory_visible"],
+            analytics_eligible=eflags["analytics_eligible"],
+            paper_shadow_eligible=eflags["paper_shadow_eligible"],
+            live_execution_enabled=eflags["live_execution_enabled"],
+            execution_disabled=eflags["execution_disabled"],
+            trading_status=trading_status,
+            trading_enabled=eflags["trading_enabled"],
+            subscribe_enabled=eflags["subscribe_enabled"],
+            supports_funding=profile.supports_funding,
+            supports_open_interest=profile.supports_open_interest,
+            supports_reduce_only=profile.supports_reduce_only,
+            supports_long_short=profile.supports_long_short,
+            supports_shorting=profile.supports_shorting,
+            supports_leverage=profile.supports_leverage,
+            price_tick_size=str(row.get("priceEndStep") or "") or None,
+            quantity_step=str(row.get("sizeMultiplier") or "") or None,
+            quantity_min=str(row.get("minTradeNum") or "") or None,
+            quantity_max=str(row.get("maxOrderQty") or "") or None,
+            market_order_quantity_max=str(row.get("maxMarketOrderQty") or "") or None,
+            min_notional_quote=str(row.get("minTradeUSDT") or "") or None,
+            price_precision=_bitget_metadata_optional_int(row.get("pricePlace")),
+            quantity_precision=_bitget_metadata_optional_int(row.get("volumePlace")),
+            leverage_min=_bitget_metadata_optional_int(row.get("minLever")),
+            leverage_max=_bitget_metadata_optional_int(row.get("maxLever")),
+            funding_interval_hours=_bitget_metadata_optional_int(row.get("fundInterval")),
+            symbol_type=str(row.get("symbolType") or "") or None,
+            supported_margin_coins=list(row.get("supportMarginCoins") or []),
+            maintenance_margin_rate_0_1=_bitget_metadata_optional_mmr_0_1(row),
+            session_metadata={k: v for k, v in session_metadata.items() if v is not None},
+            refresh_ts_ms=rts,
+            raw_metadata=row,
+        )
+
+    @staticmethod
+    def catalog_entry_from_margin_spot_row(
+        *,
+        symbol: str,
+        spot_row: dict[str, Any],
+        margin_account_mode: MarginAccountMode,
+        refresh_ts_ms: int | None = None,
+    ) -> BitgetInstrumentCatalogEntry | None:
+        sym = str(symbol).strip().upper()
+        if not sym or not spot_row:
+            return None
+        profile = endpoint_profile_for("margin", margin_account_mode=margin_account_mode)
+        spot_status = str(spot_row.get("status") or "unknown").strip().lower() or "unknown"
+        trading_status = f"{spot_status}_account_visible"
+        eflags = _catalog_eligibility_flags(
+            trading_enabled=trading_status_allows_trading(spot_status),
+            subscribe_enabled=trading_status_allows_subscription(spot_status),
+            execution_adapter_available=profile.private_place_order_path is not None,
+        )
+        rts = refresh_ts_ms if refresh_ts_ms is not None else int(time.time() * 1000)
+        return BitgetInstrumentCatalogEntry(
+            market_family="margin",
+            symbol=sym,
+            symbol_aliases=[sym],
+            margin_account_mode=margin_account_mode,
+            public_ws_inst_type=profile.public_ws_inst_type,
+            private_ws_inst_type=profile.private_ws_inst_type,
+            metadata_source=profile.private_account_assets_path
+            or profile.public_symbol_config_path,
+            metadata_verified=True,
+            status=trading_status,
+            inventory_visible=eflags["inventory_visible"],
+            analytics_eligible=eflags["analytics_eligible"],
+            paper_shadow_eligible=eflags["paper_shadow_eligible"],
+            live_execution_enabled=eflags["live_execution_enabled"],
+            execution_disabled=eflags["execution_disabled"],
+            trading_status=trading_status,
+            trading_enabled=eflags["trading_enabled"],
+            subscribe_enabled=eflags["subscribe_enabled"],
+            supports_reduce_only=profile.supports_reduce_only,
+            supports_long_short=profile.supports_long_short,
+            supports_shorting=profile.supports_shorting,
+            supports_leverage=profile.supports_leverage,
+            uses_spot_public_market_data=profile.uses_spot_public_market_data,
+            base_coin=str(spot_row.get("baseCoin") or "") or None,
+            quote_coin=str(spot_row.get("quoteCoin") or "") or None,
+            price_tick_size=_bitget_spot_tick_size_from_row(spot_row),
+            quantity_step=_bitget_spot_quantity_step_from_row(spot_row),
+            quantity_min=str(spot_row.get("minTradeAmount") or "") or None,
+            quantity_max=str(spot_row.get("maxTradeAmount") or "") or None,
+            min_notional_quote=str(spot_row.get("minTradeUSDT") or "") or None,
+            price_precision=_bitget_metadata_optional_int(spot_row.get("pricePrecision")),
+            quantity_precision=_bitget_metadata_optional_int(spot_row.get("quantityPrecision")),
+            quote_precision=_bitget_metadata_optional_int(spot_row.get("quotePrecision")),
+            symbol_type="margin",
+            maintenance_margin_rate_0_1=_bitget_metadata_optional_mmr_0_1(spot_row),
+            session_metadata={"schedule": "24x7", "timezone": "UTC"},
+            refresh_ts_ms=rts,
+            raw_metadata=spot_row,
+        )

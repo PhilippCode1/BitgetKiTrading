@@ -16,6 +16,11 @@ from paper_broker.storage import repo_drawings, repo_position_events, repo_posit
 logger = logging.getLogger("paper_broker.strategy.drawing")
 
 
+def _paper_tenant_id(settings: PaperBrokerSettings) -> str:
+    t = settings.paper_tenant_id or settings.billing_prepaid_tenant_id or "default"
+    return str(t).strip() or "default"
+
+
 def _meta_dict(m: Any) -> dict[str, Any]:
     if m is None:
         return {}
@@ -109,8 +114,13 @@ def maybe_update_tp_from_drawings(
             continue
 
         pid = UUID(str(pos["position_id"]))
+        t_str = str(pos.get("tenant_id") or pdef)
         repo_positions.update_tp_plan_only(
-            conn, pid, tp_plan_json=tp_p, plan_updated_ts_ms=now_ms
+            conn,
+            pid,
+            tenant_id=t_str,
+            tp_plan_json=tp_p,
+            plan_updated_ts_ms=now_ms,
         )
         repo_position_events.insert_position_event(
             conn,

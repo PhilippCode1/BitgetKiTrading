@@ -12,6 +12,8 @@ from paper_broker.risk.plan_service import parse_plan_json
 from paper_broker.storage import repo_position_events, repo_positions
 from shared_py.exit_engine import evaluate_exit_plan
 
+# Fach-Exit (Trailing/Wick) ist ausschliesslich in shared_py.exit_engine — hier nur I/O
+
 if TYPE_CHECKING:
     from paper_broker.engine.broker import PaperBrokerService
 
@@ -46,7 +48,8 @@ def run_stop_tp_for_position(
     if fill <= 0:
         fill = mark
 
-    pos2 = repo_positions.get_position(conn, pid)
+    t_str = str(pos.get("tenant_id") or broker._paper_tenant_id())  # noqa: SLF001
+    pos2 = repo_positions.get_position(conn, pid, tenant_id=t_str)
     if pos2 is None or str(pos2["state"]) in ("closed", "liquidated"):
         return True
 
@@ -84,6 +87,7 @@ def run_stop_tp_for_position(
                     qty0,
                     "market",
                     now_ms,
+                    allow_during_trading_halt=True,
                 )
                 repo_position_events.insert_position_event(
                     conn,
@@ -124,6 +128,7 @@ def run_stop_tp_for_position(
                 qty_close,
                 "market",
                 now_ms,
+                allow_during_trading_halt=True,
             )
             repo_position_events.insert_position_event(
                 conn,
@@ -143,7 +148,7 @@ def run_stop_tp_for_position(
         did_close_partial = True
         logger.info("paper_exit_partial position_id=%s tp_index=%s", pid, tp_index)
 
-    pos_after = repo_positions.get_position(conn, pid)
+    pos_after = repo_positions.get_position(conn, pid, tenant_id=t_str)
     if pos_after and str(pos_after["state"]) in ("open", "partially_closed"):
         updated_stop = decision.get("updated_stop_plan")
         updated_tp = decision.get("updated_tp_plan")
@@ -152,6 +157,7 @@ def run_stop_tp_for_position(
                 repo_positions.update_stop_plan_only(
                     conn,
                     pid,
+                    tenant_id=t_str,
                     stop_plan_json=updated_stop,
                     plan_updated_ts_ms=now_ms,
                 )
@@ -159,6 +165,7 @@ def run_stop_tp_for_position(
                 repo_positions.update_tp_plan_only(
                     conn,
                     pid,
+                    tenant_id=t_str,
                     tp_plan_json=updated_tp,
                     plan_updated_ts_ms=now_ms,
                 )
@@ -188,7 +195,7 @@ def run_stop_tp_for_position(
                 )
 
     if did_close_partial:
-        pf = repo_positions.get_position(conn, pid)
+        pf = repo_positions.get_position(conn, pid, tenant_id=t_str)
         publish_trade_updated(
             broker.bus,
             position_id=str(pid),
@@ -198,5 +205,5 @@ def run_stop_tp_for_position(
             tp_index=max(tp_hit_indices) if tp_hit_indices else None,
         )
 
-    pos_final = repo_positions.get_position(conn, pid)
+    pos_final = repo_positions.get_position(conn, pid, tenant_id=t_str)
     return pos_final is None or str(pos_final["state"]) in ("closed", "liquidated")

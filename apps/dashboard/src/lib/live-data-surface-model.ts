@@ -30,6 +30,30 @@ export type LiveDataSurfaceKind =
   | "broker_ops"
   | "market_universe_meta";
 
+/**
+ * Market-Stream: Pipeline-Lag + VPIN, typ. aus SSE ``feed_health`` (Client).
+ * Server-gebaute Modelle: leer/Null; Konsole füllt live.
+ */
+export type MarketStreamPulseTelemetry = Readonly<{
+  /** exchange_ts (letzter Quote) → processed_ts (Health-Payload), ms */
+  pipelineLagMs: number | null;
+  vpinToxicity0_1: number | null;
+  /** Letzte Stichproben (Ziel: ~10 min; Intervall = market_stream Feed) */
+  vpinHistory0_1: readonly number[];
+  streamSymbol: string | null;
+  lastFeedAtMs: number | null;
+}>;
+
+export function emptyMarketStreamPulse(): MarketStreamPulseTelemetry {
+  return {
+    pipelineLagMs: null,
+    vpinToxicity0_1: null,
+    vpinHistory0_1: [],
+    streamSymbol: null,
+    lastFeedAtMs: null,
+  };
+}
+
 export type LiveDataSurfaceModel = Readonly<{
   surfaceKind: LiveDataSurfaceKind;
   primaryBadge: LiveDataPrimaryBadge;
@@ -58,7 +82,16 @@ export type LiveDataSurfaceModel = Readonly<{
   extraHintKeys: readonly { key: string; vars?: Record<string, string | number> }[];
   /** Für „betroffene Bereiche“ */
   affectedAreaKeys: readonly string[];
+  /** Market-Stream Puls (Lag/VPIN); Client aus SSE */
+  marketStreamPulse: MarketStreamPulseTelemetry;
 }>;
+
+export function applyMarketStreamPulse(
+  model: LiveDataSurfaceModel,
+  pulse: MarketStreamPulseTelemetry,
+): LiveDataSurfaceModel {
+  return { ...model, marketStreamPulse: pulse };
+}
 
 function inferExecutionLane(
   vm: ExecutionPathViewModel | null | undefined,
@@ -217,6 +250,7 @@ export function buildLiveDataSurfaceModelFromLiveState(input: Readonly<{
     dataSourceSummaryKey: "liveStateGateway",
     extraHintKeys: extra,
     affectedAreaKeys: [...new Set(affected)],
+    marketStreamPulse: emptyMarketStreamPulse(),
   };
 }
 
@@ -292,6 +326,7 @@ export function buildLiveDataSurfaceModelFromHealth(input: Readonly<{
       primary === "NO_LIVE" || primary === "STALE"
         ? ["live.dataSituation.areaChart", "live.dataSituation.areaSignals"]
         : [],
+    marketStreamPulse: emptyMarketStreamPulse(),
   };
 }
 
@@ -351,6 +386,7 @@ export function buildLiveDataSurfaceModelFromSignalsRead(input: Readonly<{
     dataSourceSummaryKey: "signalsApi",
     extraHintKeys: extra,
     affectedAreaKeys: affected,
+    marketStreamPulse: emptyMarketStreamPulse(),
   };
 }
 
@@ -406,6 +442,7 @@ export function buildLiveDataSurfaceModelFromBrokerPage(input: Readonly<{
       input.sectionErrorCount > 0
         ? ["live.dataSituation.areaBrokerPanels"]
         : [],
+    marketStreamPulse: emptyMarketStreamPulse(),
   };
 }
 

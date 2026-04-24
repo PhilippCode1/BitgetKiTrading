@@ -4,18 +4,21 @@ import logging
 from typing import Any
 
 import psycopg
+from config.bootstrap import bootstrap_from_settings
 from fastapi import Depends, FastAPI, HTTPException, Response
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field
-
-from audit_ledger.config import AuditLedgerSettings
-from audit_ledger.ledger_repository import CommitResult, LedgerRepository
-from config.bootstrap import bootstrap_from_settings
-from shared_py.regulatory_audit_report_pdf import build_regulatory_audit_ledger_pdf_bytes, utc_now_iso
+from shared_py.regulatory_audit_report_pdf import (
+    build_regulatory_audit_ledger_pdf_bytes,
+    utc_now_iso,
+)
 from shared_py.service_auth import (
     InternalServiceAuthContext,
     build_internal_service_dependency,
 )
+
+from audit_ledger.config import AuditLedgerSettings
+from audit_ledger.ledger_repository import CommitResult, LedgerRepository
 
 logger = logging.getLogger("audit_ledger.app")
 
@@ -24,13 +27,23 @@ class CommitWarRoomBody(BaseModel):
     market_event_json: dict[str, Any]
     war_room: dict[str, Any] = Field(
         ...,
-        description="Vollstaendiges JSON-Ergebnis von ConsensusOrchestrator.evaluate().",
+        description=(
+            "Vollstaendiges JSON von ConsensusOrchestrator.evaluate() "
+            "(War-Room-Resultat)."
+        ),
     )
 
 
 class RegulatoryExportBody(BaseModel):
     period_from_iso: str | None = Field(default=None, description="ISO-8601 inclusive")
     period_to_iso: str | None = Field(default=None, description="ISO-8601 inclusive")
+
+
+class ApexLatencyUpsertBody(BaseModel):
+    signal_id: str = Field(..., min_length=1, max_length=2000)
+    execution_id: str | None = None
+    trace_id: str | None = None
+    apex_trace: dict[str, Any] = Field(default_factory=dict)
 
 
 def build_app() -> FastAPI:
@@ -58,7 +71,9 @@ def build_app() -> FastAPI:
     @app.post("/internal/v1/commit-war-room")
     def commit_war_room(
         body: CommitWarRoomBody,
-        _auth: InternalServiceAuthContext = Depends(require_internal),
+        _auth: InternalServiceAuthContext = Depends(  # noqa: B008
+            require_internal
+        ),
     ) -> dict[str, Any]:
         try:
             out: CommitResult = repo.commit_war_room(
@@ -69,7 +84,10 @@ def build_app() -> FastAPI:
             logger.exception("commit_war_room failed")
             raise HTTPException(
                 status_code=500,
-                detail={"code": "AUDIT_LEDGER_COMMIT_FAILED", "message": str(exc)[:800]},
+                detail={
+                    "code": "AUDIT_LEDGER_COMMIT_FAILED",
+                    "message": str(exc)[:800],
+                },
             ) from exc
         return {
             "ok": True,
@@ -82,21 +100,89 @@ def build_app() -> FastAPI:
             },
         }
 
+    @app.post("/internal/v1/apex-latency/upsert")
+    def upsert_apex_latency(
+        body: ApexLatencyUpsertBody,
+        _auth: InternalServiceAuthContext = Depends(  # noqa: B008
+            require_internal
+        ),
+    ) -> dict[str, Any]:
+        try:
+            repo.upsert_apex_latency(
+                signal_id=body.signal_id,
+                execution_id=body.execution_id,
+                trace_id=body.trace_id,
+                apex_trace=body.apex_trace,
+            )
+        except Exception as exc:
+            logger.exception("upsert_apex_latency failed")
+            raise HTTPException(
+                status_code=500,
+                detail={"code": "APEX_LATENCY_UPSERT_FAILED", "message": str(exc)[:800]},
+            ) from exc
+        return {
+            "ok": True,
+            "signal_id": body.signal_id,
+            "apex_trace": body.apex_trace,
+        }
+
+    @app.get("/internal/v1/apex-latency/by-signal/{signal_id}")
+    def get_apex_by_signal(
+        signal_id: str,
+        _auth: InternalServiceAuthContext = Depends(  # noqa: B008
+            require_internal
+        ),
+    ) -> dict[str, Any]:
+        try:
+            row = repo.fetch_apex_by_signal_id(signal_id)
+        except Exception as exc:  # pragma: no cover
+            logger.exception("fetch apex latency failed")
+            raise HTTPException(
+                status_code=500,
+                detail={"code": "APEX_LATENCY_QUERY_FAILED", "message": str(exc)[:800]},
+            ) from exc
+        if row is None:
+            raise HTTPException(status_code=404, detail={"code": "NOT_FOUND", "message": "unknown signal_id"})
+        return {
+            "ok": True,
+            "signal_id": str(row.get("signal_id") or signal_id),
+            "execution_id": str(row.get("execution_id") or "") or None,
+            "trace_id": str(row.get("trace_id") or "") or None,
+            "apex_trace": row.get("apex_trace") or {},
+            "created_at": str(row.get("created_at") or "") or None,
+            "updated_at": str(row.get("updated_at") or "") or None,
+        }
+
     @app.get("/internal/v1/verify-chain")
     def verify_chain(
-        _auth: InternalServiceAuthContext = Depends(require_internal),
+        limit: int = 0,
+        _auth: InternalServiceAuthContext = Depends(  # noqa: B008
+            require_internal
+        ),
     ) -> dict[str, Any]:
+        if limit and limit > 0:
+            ok, errors, n, first_bad = repo.verify_chain_last_n(n=limit)
+            return {
+                "chain_valid": ok,
+                "entries_checked": n,
+                "first_bad_id": first_bad,
+                "errors": errors,
+                "window": "last_n",
+            }
         ok, errors, n = repo.verify_full_chain()
         return {
             "chain_valid": ok,
             "entries_checked": n,
             "errors": errors,
+            "window": "full",
         }
 
     @app.post("/internal/v1/regulatory-report.pdf")
     def regulatory_report_pdf(
         body: RegulatoryExportBody,
-        _auth: InternalServiceAuthContext = Depends(require_internal),
+        _auth: InternalServiceAuthContext = Depends(  # noqa: B008
+            require_internal
+        ),
     ) -> Response:
         rows = repo.list_entries_for_export(
             from_iso=body.period_from_iso,
@@ -120,7 +206,9 @@ def build_app() -> FastAPI:
             content=pdf,
             media_type="application/pdf",
             headers={
-                "Content-Disposition": 'attachment; filename="apex_audit_ledger_report.pdf"'
+                "Content-Disposition": (
+                    'attachment; filename="apex_audit_ledger_report.pdf"'
+                ),
             },
         )
 

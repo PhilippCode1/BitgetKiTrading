@@ -1,5 +1,7 @@
 # AUDIT_BACKLOG — Priorisiert (Owner: Cursor / Team)
 
+**P83 (2026-04-24):** Diese Datei ist **Sprint- und Runden-Historie** inkl. alter **Offen/Teil-**Einträge. **Technischer Produkt-DoD** (alle technischen Kästchen): [LaunchChecklist.md](../LaunchChecklist.md) und Master-Audit [SYSTEM_AUDIT_MASTER.md](../SYSTEM_AUDIT_MASTER.md). Tabellen unten ersetzen keine erneute Verifikation; sie dienen dem Nachvollzug älterer Runden (z. B. 2026-04-08 Redis-Evidence).
+
 **Legende DoD:** Jede P0/P1-Story schließt mit **Testnachweis** (pytest/playwright/turbo) + **Doku-Update** in `docs/audit/AUDIT_EVIDENCE/`.
 
 ---

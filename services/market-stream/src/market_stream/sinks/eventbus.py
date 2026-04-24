@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import time
 from typing import Any
 
 from redis.exceptions import RedisError
+from shared_py.observability.metrics import inc_pipeline_event_drop
 
 from shared_py.eventbus import (
     EventEnvelope,
@@ -56,12 +58,27 @@ class AsyncRedisEventBus:
 
     async def publish(self, stream: str, envelope: EventEnvelope) -> str | None:
         if not await self.connect():
+            with contextlib.suppress(Exception):
+                inc_pipeline_event_drop(
+                    component="market_stream_eventbus",
+                    reason="eventbus_unavailable",
+                )
             return None
         if self._bus is None:
+            with contextlib.suppress(Exception):
+                inc_pipeline_event_drop(
+                    component="market_stream_eventbus",
+                    reason="eventbus_unavailable",
+                )
             return None
         try:
             return await asyncio.to_thread(self._bus.publish, stream, envelope)
         except (OSError, RedisError, ValueError) as exc:
+            with contextlib.suppress(Exception):
+                inc_pipeline_event_drop(
+                    component="market_stream_eventbus",
+                    reason="eventbus_publish_failed",
+                )
             self._logger.warning("EventBus publish failed stream=%s error=%s", stream, exc)
             await self.close()
             return None
@@ -78,6 +95,11 @@ class AsyncRedisEventBus:
         try:
             return await asyncio.to_thread(self._bus.publish_dlq, original, error_info)
         except (OSError, RedisError, ValueError) as exc:
+            with contextlib.suppress(Exception):
+                inc_pipeline_event_drop(
+                    component="market_stream_eventbus",
+                    reason="eventbus_dlq_failed",
+                )
             self._logger.warning("EventBus DLQ publish failed: %s", exc)
             await self.close()
             return None

@@ -73,9 +73,42 @@ def test_contract_config_fixture_loads_ethusdt_json_not_only_btc_fallback() -> N
         paper_max_leverage=75,
     )
     provider = ContractConfigProvider(settings)
-    view = provider._from_fixture("ETHUSDT")
+    view = provider._from_fixture_file("ETHUSDT")
     assert view.symbol == "ETHUSDT"
     assert view.price_end_step == Decimal("0.01")
+
+
+def test_view_from_postgres_shaped_entry_matches_matrix_row() -> None:
+    """Ohne contract_config_*.json: Synthese aus Katalog-Eintrag (Multi-Asset-Fidelity)."""
+    fut_case = next(
+        c for c in FAMILY_RUNTIME_CASES if c["name"] == "futures_btcusdt_usdt"
+    )
+    settings = _settings_for_case(fut_case)
+    provider = ContractConfigProvider(settings)
+    entry = catalog_entry_for_case(fut_case)
+    v = provider._view_from_catalog_entry(entry)
+    assert v.symbol == "BTCUSDT"
+    assert v.size_multiplier == Decimal("0.001")
+    assert v.fund_interval_hours == 8
+    assert "instrument_catalog_entry" in v.raw
+
+
+def test_futures_btcusdt_resolves_from_named_fixture_file_not_generic_btc() -> None:
+    """Nach Entfernen von contract_config_btcusdt: futures-spezifischer Dateiname."""
+    settings = PaperBrokerSettings.model_construct(
+        paper_contract_config_mode="fixture",
+        bitget_api_base_url="https://api.bitget.com",
+        bitget_market_family="futures",
+        bitget_margin_account_mode="isolated",
+        bitget_product_type="USDT-FUTURES",
+        paper_default_maker_fee="0.0002",
+        paper_default_taker_fee="0.0006",
+        paper_max_leverage=75,
+    )
+    provider = ContractConfigProvider(settings)
+    view = provider._from_fixture_file("BTCUSDT")
+    assert view.size_multiplier == Decimal("0.001")
+    assert view.max_lever == 125
 
 
 def test_contract_config_defaults_futures_interval_and_spot_leverage() -> None:

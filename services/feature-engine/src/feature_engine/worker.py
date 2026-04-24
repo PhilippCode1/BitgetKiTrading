@@ -31,7 +31,13 @@ from shared_py.bitget.metadata import (
     BitgetInstrumentMetadataService,
     BitgetInstrumentResolvedMetadata,
 )
-from shared_py.eventbus import ConsumedEvent, RedisStreamBus, SharedMemoryBus, make_stream_bus_from_url
+from shared_py.eventbus import (
+    ConsumedEvent,
+    EventEnvelope,
+    RedisStreamBus,
+    SharedMemoryBus,
+    make_stream_bus_from_url,
+)
 from shared_py.input_pipeline_provenance import (
     analyze_sorted_candle_starts,
     build_feature_input_provenance,
@@ -43,7 +49,7 @@ from shared_py.model_contracts import (
     MODEL_TIMEFRAMES,
     normalize_model_timeframe,
 )
-from shared_py.observability import arun_periodic_heartbeat
+from shared_py.observability import create_isolated_heartbeat_task
 
 from feature_engine import numeric_hotpath as _num
 from feature_engine.features import (
@@ -143,10 +149,7 @@ class FeatureWorker:
     async def run(self) -> None:
         self._stats.running = True
         hb_stop = asyncio.Event()
-        hb_task = asyncio.create_task(
-            arun_periodic_heartbeat("feature_engine", 10.0, hb_stop),
-            name="feature_engine_heartbeat",
-        )
+        hb_task = create_isolated_heartbeat_task("feature_engine", 10.0, hb_stop)
         try:
             while not self._stop_event.is_set():
                 try:
@@ -200,7 +203,34 @@ class FeatureWorker:
         )
         self._stats.group_ready = True
 
+    @staticmethod
+    def event_timestamp_age_ms_at_ingress(
+        event: EventEnvelope, t_process_start_ms: int
+    ) -> int | None:
+        """Differenz Verarbeitungsstart minus Markt-Referenzzeit (exchange_ts_ms oder start_ts_ms)."""
+        ref: int | None = event.exchange_ts_ms
+        if ref is None and isinstance(event.payload, dict):
+            s = event.payload.get("start_ts_ms")
+            if s is not None:
+                try:
+                    ref = int(s)
+                except (TypeError, ValueError):
+                    ref = None
+        if ref is None:
+            return None
+        return int(t_process_start_ms) - int(ref)
+
     async def _handle_item(self, item: ConsumedEvent) -> None:
+        t_ingress = int(time.time() * 1000)
+        lag = self.event_timestamp_age_ms_at_ingress(item.envelope, t_ingress)
+        if lag is not None and lag > 2000:
+            self._logger.warning(
+                "BACKPRESSURE_WARNING: event_timestamp_age_ms=%s stream=%s event_id=%s event_type=%s",
+                lag,
+                item.stream,
+                item.envelope.event_id,
+                item.envelope.event_type,
+            )
         self._stats.consumed_events += 1
         self._stats.last_event_id = item.envelope.event_id
         if item.envelope.event_type != "candle_close":

@@ -106,14 +106,16 @@ def insert_strategy_event(
 
 
 def list_recent_positions(
-    conn: psycopg.Connection[Any], *, limit: int = 20
+    conn: psycopg.Connection[Any], *, tenant_id: str, limit: int = 20
 ) -> list[dict[str, Any]]:
+    tid = str(tenant_id).strip() or "default"
     rows = conn.execute(
         """
         SELECT * FROM paper.positions
+        WHERE tenant_id = %s
         ORDER BY opened_ts_ms DESC
         LIMIT %s
         """,
-        (limit,),
+        (tid, limit),
     ).fetchall()
     return [dict(r) for r in rows]

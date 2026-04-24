@@ -1,5 +1,5 @@
 """
-Einheitlicher Trainingspfad fuer CLI und (optional) API — gleiche Trainer, ein Eintrittspunkt.
+Trainingspfad fuer CLI (optional API): ein Eintrittspunkt, gleiche Trainer.
 """
 
 from __future__ import annotations
@@ -9,12 +9,15 @@ from typing import Any
 import psycopg
 
 from learning_engine.config import LearningEngineSettings
+from learning_engine.drift.drift_retrain_subprocess import run_drift_retrain
 from learning_engine.meta_models import (
     train_expected_bps_models,
     train_market_regime_classifier,
     train_take_trade_prob_model,
 )
-from learning_engine.training.specialist_readiness import audit_specialist_training_readiness
+from learning_engine.training.specialist_readiness import (
+    audit_specialist_training_readiness,
+)
 
 
 def run_training_jobs(
@@ -27,11 +30,24 @@ def run_training_jobs(
 ) -> dict[str, Any]:
     """
     job: take-trade | expected-bps | regime | specialists-audit |
-    rl-smoke | rl-consensus-ppo | all
+    drift-shadow-retrain | tsfm-cv-validate | rl-smoke | rl-consensus-ppo | all
 
     Gibt strukturierte Ergebnisse pro Teiljob zurueck (fuer --summary-out).
     """
-    out: dict[str, Any] = {"job": job, "symbol": symbol, "promote": promote, "results": {}}
+    out: dict[str, Any] = {
+        "job": job,
+        "symbol": symbol,
+        "promote": promote,
+        "results": {},
+    }
+    if job == "drift-shadow-retrain":
+        out["results"]["drift_retrain"] = run_drift_retrain(conn, settings)
+        return out
+    if job == "tsfm-cv-validate":
+        from learning_engine.training.tsfm_cv_gate import run_tsfm_purged_cv_compliance
+
+        out["results"]["tsfm_cv"] = run_tsfm_purged_cv_compliance(settings)
+        return out
     if job == "specialists-audit":
         out["results"]["specialists_readiness"] = audit_specialist_training_readiness(
             conn, settings, symbol=symbol

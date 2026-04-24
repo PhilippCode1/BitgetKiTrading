@@ -14,6 +14,8 @@ def test_resolve_standard_env_files_prefers_profile(monkeypatch) -> None:
 
 
 def test_resolve_standard_env_files_prefers_explicit_env_file(monkeypatch) -> None:
+    for key in ("APP_ENV", "STACK_PROFILE", "COMPOSE_ENV_FILE", "ENV_PROFILE_FILE", "PRODUCTION"):
+        monkeypatch.delenv(key, raising=False)
     monkeypatch.setenv("CONFIG_ENV_FILE", ".env.production")
     from config import paths as paths_module
 

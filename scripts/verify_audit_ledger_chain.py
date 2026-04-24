@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
-Replay-Validation der Apex-Audit-Ledger-Kette (HTTP, interner Service-Key).
+Prueft die letzten N Apex-Audit-Ledger-Eintraege: Hash-Kette (prev -> digest),
+Recompute chain_hash, Ed25519 (audit-ledger Service).
 
-Beispiel:
-  python scripts/verify_audit_ledger_chain.py --base-url http://127.0.0.1:8098
+  DATABASE_URL=... python scripts/verify_audit_ledger_chain.py
+  python scripts/verify_audit_ledger_chain.py --limit 1000
 """
 
 from __future__ import annotations
@@ -13,44 +14,61 @@ import os
 import sys
 from pathlib import Path
 
-import httpx
+_REPO = Path(__file__).resolve().parents[1]
+_SRC = _REPO / "services" / "audit-ledger" / "src"
+if str(_REPO) not in sys.path:
+    sys.path.insert(0, str(_REPO))
+if str(_SRC) not in sys.path:
+    sys.path.insert(0, str(_SRC))
 
-_ROOT = Path(__file__).resolve().parents[1]
-_SP = _ROOT / "shared" / "python" / "src"
-if _SP.is_dir():
-    sys.path.insert(0, str(_SP))
-
-from shared_py.service_auth import INTERNAL_SERVICE_HEADER
+from audit_ledger.ledger_repository import LedgerRepository  # noqa: E402
 
 
 def main() -> int:
-    p = argparse.ArgumentParser(description="Audit-Ledger Ketten-Verifikation")
-    p.add_argument(
-        "--base-url",
-        default=os.environ.get("AUDIT_LEDGER_BASE_URL", "http://127.0.0.1:8098"),
+    ap = argparse.ArgumentParser()
+    ap.add_argument(
+        "--limit",
+        type=int,
+        default=1000,
+        help="Fenstergroesse (Standard 1000)",
     )
-    p.add_argument(
-        "--internal-key",
-        default=os.environ.get("INTERNAL_API_KEY", ""),
-    )
-    args = p.parse_args()
-    base = args.base_url.rstrip("/")
-    key = (args.internal_key or "").strip()
-    if not key:
-        print("INTERNAL_API_KEY fehlt (ENV oder --internal-key)", file=sys.stderr)
-        return 2
-    url = f"{base}/internal/v1/verify-chain"
-    headers = {INTERNAL_SERVICE_HEADER: key}
-    r = httpx.get(url, headers=headers, timeout=30.0)
-    print(r.status_code, r.text)
-    if r.status_code != 200:
+    args = ap.parse_args()
+    dsn = (os.environ.get("DATABASE_URL") or "").strip()
+    if not dsn:
+        print("FAIL: DATABASE_URL fehlt", file=sys.stderr, flush=True)
         return 1
-    data = r.json()
-    if not data.get("chain_valid"):
-        print("Kette UNGUELTIG:", data.get("errors"), file=sys.stderr)
+
+    class _Dsn:
+        __slots__ = ("database_url",)
+
+        def __init__(self, u: str) -> None:
+            self.database_url = u
+
+    repo = LedgerRepository(_Dsn(dsn))  # type: ignore[arg-type]
+    try:
+        ok, errors, n, first_bad = repo.verify_chain_last_n(n=args.limit)
+    except Exception as exc:  # noqa: BLE001
+        print("FAIL: verify_chain_last_n: ", str(exc)[:1_200], file=sys.stderr)
         return 1
-    print("Kette OK, Eintraege:", data.get("entries_checked"))
-    return 0
+    if ok and n == 0:
+        print("SUCCESS: keine Eintraege in app.apex_audit_ledger_entries")
+        return 0
+    if ok:
+        print(
+            "SUCCESS: Hash-Kette und Signaturen (letzte "
+            f"{n} Eintraege) vollstaendig gueltig"
+        )
+        return 0
+    print("ALARM: Kette/Signatur-Integritaet verletzt", file=sys.stderr, flush=True)
+    if first_bad is not None:
+        print(
+            f"  erster bemerkter Index (DB id / PK): {first_bad}",
+            file=sys.stderr,
+            flush=True,
+        )
+    for e in errors:
+        print(f"  {e}", file=sys.stderr, flush=True)
+    return 1
 
 
 if __name__ == "__main__":

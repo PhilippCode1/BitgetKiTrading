@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 from datetime import date, timedelta
+from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
 import psycopg
 from psycopg.types.json import Json
+from shared_py.subscription_billing_pricing import validate_invoice_lines_match_totals
 
 from api_gateway.subscription_billing_amounts import plan_row_to_line_amounts
-from shared_py.subscription_billing_pricing import validate_invoice_lines_match_totals
 
 
 def _next_invoice_number(conn: psycopg.Connection[Any]) -> str:
@@ -569,4 +570,167 @@ def record_payment_allocation(
         amount_gross_cents=amount_gross_cents,
         actor=actor,
         meta_json=meta,
+    )
+
+
+def list_tenants_for_subscription_prepaid_billing(
+    conn: psycopg.Connection[Any],
+    *,
+    tenant_id_filter: str | None = None,
+) -> list[dict[str, Any]]:
+    """
+    Aktive Abo-Tenants mit bekanntem Plankatalog, deren kommerzieller Vertrag
+    abgeschlossen und adminseitig freigegeben ist (608).
+    """
+    admin_done = "admin_review_complete"
+    if tenant_id_filter and tenant_id_filter.strip():
+        tid = tenant_id_filter.strip()
+        q = (
+            """
+            SELECT
+                s.tenant_id, s.plan_code, s.status,
+                p.net_amount_cents, p.vat_rate_bps,
+                p.reference_period_days, p.currency, p.billing_interval
+            FROM app.tenant_subscription s
+            INNER JOIN app.billing_subscription_plan p ON p.plan_code = s.plan_code
+            WHERE s.tenant_id = %s
+              AND s.status = 'active'
+              AND p.is_active = true
+              AND EXISTS (
+                  SELECT 1
+                  FROM app.tenant_contract tc
+                  WHERE tc.tenant_id = s.tenant_id
+                    AND tc.status = %s
+              )
+            """
+        )
+        rows = conn.execute(q, (tid, admin_done)).fetchall()
+    else:
+        q = (
+            """
+            SELECT
+                s.tenant_id, s.plan_code, s.status,
+                p.net_amount_cents, p.vat_rate_bps,
+                p.reference_period_days, p.currency, p.billing_interval
+            FROM app.tenant_subscription s
+            INNER JOIN app.billing_subscription_plan p ON p.plan_code = s.plan_code
+            WHERE s.status = 'active'
+              AND p.is_active = true
+              AND EXISTS (
+                  SELECT 1
+                  FROM app.tenant_contract tc
+                  WHERE tc.tenant_id = s.tenant_id
+                    AND tc.status = %s
+              )
+            ORDER BY s.tenant_id
+            """
+        )
+        rows = conn.execute(q, (admin_done,)).fetchall()
+    return [dict(r) for r in rows]
+
+
+def subscription_ledger_deduction_exists(
+    conn: psycopg.Connection[Any], *, tenant_id: str, accrual_date: date
+) -> bool:
+    r = conn.execute(
+        """
+        SELECT 1 FROM app.subscription_billing_ledger
+        WHERE tenant_id = %s AND accrual_date_utc = %s
+        """,
+        (tenant_id, accrual_date),
+    ).fetchone()
+    return r is not None
+
+
+def insert_subscription_billing_ledger_deduction(
+    conn: psycopg.Connection[Any],
+    *,
+    tenant_id: str,
+    accrual_date: date,
+    plan_code: str,
+    net_amount_cents_eur: int,
+    amount_list_usd: Decimal,
+    vat_rate_bps: int,
+    idempotency_key: str,
+    meta_json: dict[str, Any],
+) -> UUID:
+    row = conn.execute(
+        """
+        INSERT INTO app.subscription_billing_ledger (
+            tenant_id, entry_type, accrual_date_utc, plan_code,
+            net_amount_cents_eur, amount_list_usd, vat_rate_bps, idempotency_key,
+            meta_json
+        )
+        VALUES (
+            %s, 'DEDUCTION', %s, %s, %s, %s, %s, %s, %s::jsonb
+        )
+        ON CONFLICT (tenant_id, accrual_date_utc) DO NOTHING
+        RETURNING entry_id
+        """,
+        (
+            tenant_id,
+            accrual_date,
+            plan_code,
+            int(net_amount_cents_eur),
+            str(amount_list_usd),
+            int(vat_rate_bps),
+            idempotency_key[:500],
+            Json(meta_json),
+        ),
+    ).fetchone()
+    if row is not None:
+        return UUID(str(dict(row)["entry_id"]))
+    r2 = conn.execute(
+        """
+        SELECT entry_id FROM app.subscription_billing_ledger
+        WHERE tenant_id = %s AND accrual_date_utc = %s
+        """,
+        (tenant_id, accrual_date),
+    ).fetchone()
+    if r2 is None:
+        raise RuntimeError("subscription_ledger_upsert_failed")
+    return UUID(str(dict(r2)["entry_id"]))
+
+
+def set_subscription_suspended_insufficient_funds(
+    conn: psycopg.Connection[Any], *, tenant_id: str
+) -> None:
+    cur = conn.execute(
+        """
+        UPDATE app.tenant_subscription
+        SET status = 'suspended_insufficient_funds', updated_ts = now()
+        WHERE tenant_id = %s AND status = 'active'
+        RETURNING tenant_id
+        """,
+        (tenant_id,),
+    ).fetchone()
+    if cur is not None:
+        insert_ledger_event(
+            conn,
+            tenant_id=tenant_id,
+            event_type="dunning_updated",
+            actor="billing_engine:subscription_daily",
+            meta_json={"dunning": "suspended_insufficient_funds", "source": "prepaid"},
+        )
+    conn.execute(
+        """
+        UPDATE app.tenant_modul_mate_gates
+        SET subscription_active = false, updated_ts = now()
+        WHERE tenant_id = %s
+        """,
+        (tenant_id,),
+    )
+
+
+def ensure_customer_wallet_row(
+    conn: psycopg.Connection[Any], *, tenant_id: str
+) -> None:
+    """Sicherstellen, dass app.customer_wallet eine Zeile hat (FOR UPDATE/Wallet)."""
+    conn.execute(
+        """
+        INSERT INTO app.customer_wallet (tenant_id, prepaid_balance_list_usd)
+        VALUES (%s, 0)
+        ON CONFLICT (tenant_id) DO NOTHING
+        """,
+        (tenant_id,),
     )

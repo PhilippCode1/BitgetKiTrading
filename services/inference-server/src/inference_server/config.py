@@ -41,6 +41,22 @@ class InferenceServerSettings(BaseServiceSettings):
         le=60.0,
         alias="TIMESFM_BATCH_SEMAPHORE_WAIT_SEC",
     )
+    timesfm_dynamic_batching_enabled: bool = Field(
+        default=True,
+        alias="TIMESFM_DYNAMIC_BATCHING_ENABLED",
+    )
+    timesfm_dynamic_batch_max_wait_ms: float = Field(
+        default=2.0,
+        ge=0.0,
+        le=50.0,
+        alias="TIMESFM_DYNAMIC_BATCH_MAX_WAIT_MS",
+    )
+    timesfm_dynamic_batch_max_size: int = Field(
+        default=8,
+        ge=1,
+        le=32,
+        alias="TIMESFM_DYNAMIC_BATCH_MAX_SIZE",
+    )
 
     monitor_engine_base_url: str = Field(
         default="http://monitor-engine:8110",

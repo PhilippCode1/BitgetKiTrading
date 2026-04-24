@@ -1,5 +1,6 @@
 export {
   ProductCandleChart,
+  type ProductCandleChartHandle,
   type ProductCandleChartReadyContext,
 } from "@/components/chart/ProductCandleChart";
 export {

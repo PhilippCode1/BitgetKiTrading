@@ -8,8 +8,9 @@ from typing import Any
 
 class CircuitBreaker:
     """
-    Schiebefenster: N Degradationen (5xx/Timeout) oeffnet den Circuit.
-    Kein 429; Erfolg setzt Ereignis-Fenster zurueck.
+    Schiebefenster: z. B. 3 fehlgeschlagene Anfragen innerhalb 60s (siehe Settings) —
+    der Status schlaegt sofort auf OPEN. Degradationen: 5xx, Timeout, Verbindungsfehler
+    (record_upstream_degraded), kein 429; Erfolg setzt Fenster zurueck.
     """
 
     def __init__(

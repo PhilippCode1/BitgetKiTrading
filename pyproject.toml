@@ -7,7 +7,11 @@ readme = "README.md"
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "shared/python/tests", "services/onchain-sniffer/tests"]
-pythonpath = ["shared/python/src", "services/onchain-sniffer/src"]
+pythonpath = [
+  "shared/python/src",
+  "services/adversarial-engine/src",
+  "services/onchain-sniffer/src",
+]
 markers = [
     "integration: benoetigt TEST_DATABASE_URL / laufende Services",
     "slow: laengere Laufzeit",
@@ -64,6 +68,8 @@ select = ["E", "F", "I", "UP", "B"]
 "tools/validate_env_profile.py" = ["E402", "I001"]
 # Diagnose-Texte und lange Hint-Zeilen.
 "tools/local_stack_doctor.py" = ["E501"]
+# Dossier-Markdown-Template in Python-String.
+"tools/build_run85_dossier.py" = ["E501"]
 
 [tool.black]
 line-length = 88

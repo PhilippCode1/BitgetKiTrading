@@ -3,4 +3,4 @@
  * Aenderungen: zuerst JSON, dann diese Konstanten und JSON-Schema const.
  */
 export const ENVELOPE_SCHEMA_VERSION = "1.0" as const;
-export const ENVELOPE_FINGERPRINT_CANON_VERSION = "1" as const;
+export const ENVELOPE_FINGERPRINT_CANON_VERSION = "2" as const;

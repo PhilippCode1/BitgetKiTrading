@@ -46,6 +46,7 @@ class LiveReconcileService:
         self._bus = bus
         self._private_rest = private_rest
         self._last_alert_status: str | None = None
+        self._last_position_drift_at: float = 0.0
 
     def run_once(
         self,
@@ -103,7 +104,39 @@ class LiveReconcileService:
             if schema_ok and exchange_state_expected
             else self._empty_drift_summary(exchange_state_expected=exchange_state_expected)
         )
+        pos_drift: dict[str, Any] = {}
+        if (
+            schema_ok
+            and exchange_state_expected
+            and private_ok
+            and self._private_rest is not None
+            and self._settings.private_exchange_access_enabled
+        ):
+            now_m = time.monotonic()
+            interval = max(1.0, float(self._settings.live_broker_position_drift_interval_sec))
+            if now_m - self._last_position_drift_at >= interval:
+                self._last_position_drift_at = now_m
+                try:
+                    from live_broker.reconcile.position_drift import run_position_drift_once
+
+                    pos_drift = run_position_drift_once(
+                        settings=self._settings,
+                        repo=self._repo,
+                        private=self._private_rest,
+                        bus=self._bus,
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    logger.exception("active position drift failed: %s", exc)
+                    pos_drift = {"ok": False, "error": str(exc)[:240]}
+        if pos_drift:
+            drift_summary = {**drift_summary, "active_position_drift": pos_drift}
+            extra = int(pos_drift.get("ghosts_repaired") or 0) + int(
+                pos_drift.get("notional_mismatch_triggers") or 0
+            )
+            drift_summary["total_count"] = int(drift_summary.get("total_count") or 0) + extra
         if status == "ok" and int(drift_summary.get("total_count") or 0) > 0:
+            status = "degraded"
+        if status == "ok" and (pos_drift.get("ghosts_repaired") or 0) > 0:
             status = "degraded"
 
         if (
@@ -153,6 +186,10 @@ class LiveReconcileService:
                             "require_shadow_match_before_live": (
                                 self._settings.require_shadow_match_before_live
                             ),
+                            "shadow_match_latch_timeout_ms": (
+                                self._settings.shadow_match_latch_timeout_ms
+                            ),
+                            "shadow_match_redis_ttl_sec": self._settings.shadow_match_redis_ttl_sec,
                             "shadow_live_max_signal_shadow_divergence_0_1": (
                                 self._settings.shadow_live_max_signal_shadow_divergence_0_1
                             ),
@@ -167,6 +204,7 @@ class LiveReconcileService:
                         },
                         "recovery_state": recovery_state,
                         "drift": drift_summary,
+                        "active_position_drift": pos_drift or None,
                     },
                 }
             )

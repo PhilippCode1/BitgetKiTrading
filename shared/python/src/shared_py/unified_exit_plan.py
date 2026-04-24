@@ -9,6 +9,7 @@ aus erwartetem MFE/MAE und Exit-Familie ab.
 from __future__ import annotations
 
 import math
+from decimal import Decimal
 from typing import Any, Mapping
 
 UNIFIED_EXIT_PLAN_VERSION = "unified-exit-v1"
@@ -22,6 +23,37 @@ def _f(x: Any) -> float | None:
     except (TypeError, ValueError):
         return None
     return v if math.isfinite(v) else None
+
+
+def compute_unified_trailing_line(
+    *,
+    side: str,
+    high_water: Decimal,
+    low_water: Decimal,
+    callback_retrace_bps: Decimal | None = None,
+    trail_offset: Decimal | None = None,
+) -> Decimal:
+    """
+    Eine (Trigger-)Kante der Trailing-Linie — dieselbe Rechnung fuer paper/shadow/live.
+
+    Wenn `callback_retrace_bps` > 0: Ruecklauf in bps vom Extremwert.
+    Sonst, wenn `trail_offset` > 0: fester Abstand.
+    """
+    sn = str(side).lower()
+    bps = callback_retrace_bps
+    toff = trail_offset if trail_offset is not None else Decimal("0")
+    if bps is not None and bps > 0:
+        fr = bps / Decimal("10000")
+        if sn == "long":
+            return high_water * (Decimal("1") - fr)
+        if sn == "short":
+            return low_water * (Decimal("1") + fr)
+    if toff > 0:
+        if sn == "long":
+            return high_water - toff
+        if sn == "short":
+            return low_water + toff
+    return Decimal("0")
 
 
 def _family_trailing_mode(exit_family: str) -> str:

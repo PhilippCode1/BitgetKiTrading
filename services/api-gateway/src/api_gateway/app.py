@@ -2,8 +2,10 @@ from __future__ import annotations
 
 # ruff: noqa: E402, I001 — Bootstrap-Reihenfolge / Import-Blocks
 import logging
+import os
 import sys
 import uuid
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Request
@@ -68,6 +70,7 @@ from api_gateway.routes_commerce_settlement import (
 )
 from api_gateway.routes_correlation_proxy import router as correlation_proxy_router
 from api_gateway.routes_alerts_proxy import router as alerts_proxy_router
+from api_gateway.routes_apex_trace import router as apex_trace_router
 from api_gateway.routes_db import router as db_router
 from api_gateway.routes_events import router as events_router
 from api_gateway.routes_learning_proxy import backtest_router, learning_router
@@ -88,6 +91,7 @@ from api_gateway.routes_ai_strategy_proposal_drafts import (
 )
 from api_gateway.routes_llm_operator import router as llm_operator_router
 from api_gateway.routes_public_meta import router as public_meta_router
+from api_gateway.routes_ops_self_healing import router as ops_self_healing_router
 from api_gateway.routes_system_health import router as system_health_router
 
 bootstrap_from_settings("api-gateway", get_gateway_settings())
@@ -96,9 +100,40 @@ logger = logging.getLogger("api_gateway")
 
 def create_app() -> FastAPI:
     settings = get_gateway_settings()
+
+    @asynccontextmanager
+    async def _gateway_lifespan(app: FastAPI):
+        dsn = (settings.database_url or "").strip() or (
+            str(getattr(settings, "database_url_docker", "") or "").strip()
+        )
+        _s = (os.environ.get("BITGET_SKIP_MIGRATION_LATCH") or "").strip().lower()
+        skip = _s in ("1", "true", "yes", "on")
+        if dsn and not skip:
+            from shared_py.datastore.sqlalchemy_async import create_pooled_async_engine
+            from shared_py.migration_latch import assert_repo_migrations_applied_async
+
+            eng = create_pooled_async_engine(dsn)
+            app.state.db_async_engine = eng
+            try:
+                await assert_repo_migrations_applied_async(eng)
+            except Exception:
+                await eng.dispose()
+                app.state.db_async_engine = None
+                raise
+        else:
+            app.state.db_async_engine = None
+        try:
+            yield
+        finally:
+            eng = getattr(app.state, "db_async_engine", None)
+            if eng is not None:
+                await eng.dispose()
+                app.state.db_async_engine = None
+
     app = FastAPI(
         title="bitget-btc-ai API Gateway",
         version="0.2.0",
+        lifespan=_gateway_lifespan,
         description=(
             "Zentrale HTTP-Schicht fuer Dashboard und Operator. "
             "Leser-Envelope und Beispiel-Payloads: docs/PRODUCTION_READINESS_AND_API_CONTRACTS.md — "
@@ -292,6 +327,7 @@ def create_app() -> FastAPI:
     app.include_router(settlement_admin_router)
     app.include_router(db_router)
     app.include_router(events_router)
+    app.include_router(apex_trace_router)
     app.include_router(correlation_proxy_router)
     # Live-SSE: bei erzwungenem Auth JWT/Internal-Key oder SSE-Cookie; Dashboard-BFF empfohlen.
     app.include_router(live_router)
@@ -340,6 +376,7 @@ def create_app() -> FastAPI:
     )
     app.include_router(llm_operator_router)
     app.include_router(llm_assist_router)
+    app.include_router(ops_self_healing_router)
     app.include_router(system_health_router)
     app.include_router(admin_router)
     app.include_router(admin_paper_router)

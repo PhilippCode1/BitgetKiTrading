@@ -4,8 +4,17 @@ from __future__ import annotations
 
 from decimal import Decimal
 from typing import Any
+from uuid import UUID
 
 import psycopg
+
+
+def payment_deposit_wallet_idempotency_key(*, intent_id: UUID) -> str:
+    """
+    Stabiler Idempotency-Key fuer Gutschriften aus payment_deposit_intent
+    (Webhook-Retry, Reconciliation) — muss pro Intent exakt einmalig sein.
+    """
+    return f"payment_deposit_intent:{intent_id}"
 
 
 def fetch_prepaid_balance_list_usd(

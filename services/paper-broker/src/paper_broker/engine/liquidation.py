@@ -12,6 +12,15 @@ def unrealized_pnl(side: str, qty: Decimal, entry_avg: Decimal, mark: Decimal) -
     raise ValueError(f"unknown side {side}")
 
 
+def realized_pnl_liquidation_fill(
+    side: str, qty: Decimal, entry_avg: Decimal, liq_fill: Decimal
+) -> Decimal:
+    """
+    P&L bei sofortigem Abwicklungspreis (Stress-Book) statt Mark-Trigger.
+    """
+    return unrealized_pnl(side, qty, entry_avg, liq_fill)
+
+
 def should_liquidate_approx(
     *,
     isolated_margin: Decimal,

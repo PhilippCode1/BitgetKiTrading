@@ -14,9 +14,9 @@ from api_gateway.auth import (
     GatewayAuthContext,
     require_admin_read,
     require_billing_read,
-    require_sensitive_auth,
 )
 from api_gateway.config import get_gateway_settings
+from api_gateway.deps import require_commercial_entitlement
 from api_gateway.llm_orchestrator_forward import (
     LLMOrchestratorForwardHttpError,
     post_llm_orchestrator_json,
@@ -128,6 +128,22 @@ def _forward_turn(
         ) from exc
 
 
+@router.post("/ops-risk/turn")
+def llm_assist_ops_risk_turn(
+    request: Request,
+    body: AssistTurnPublicBody,
+    auth: Annotated[GatewayAuthContext, Depends(require_admin_read)],
+) -> dict[str, Any]:
+    return _forward_turn(
+        request=request,
+        auth=auth,
+        assist_role="ops_risk",
+        tenant_partition_id=_partition_admin(auth),
+        body=body,
+        audit_action="llm_assist_ops_risk_turn",
+    )
+
+
 @router.post("/admin-operations/turn")
 def llm_assist_admin_operations_turn(
     request: Request,
@@ -148,7 +164,7 @@ def llm_assist_admin_operations_turn(
 def llm_assist_strategy_signal_turn(
     request: Request,
     body: AssistTurnPublicBody,
-    auth: Annotated[GatewayAuthContext, Depends(require_sensitive_auth)],
+    auth: Annotated[GatewayAuthContext, Depends(require_commercial_entitlement("AI_DEEP_ANALYSIS"))],
 ) -> dict[str, Any]:
     return _forward_turn(
         request=request,

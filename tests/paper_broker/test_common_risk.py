@@ -23,7 +23,7 @@ def test_build_paper_account_risk_metrics_uses_total_equity_and_window_history(
     monkeypatch.setattr(
         repo_positions,
         "list_open_positions",
-        lambda _conn: [
+        lambda _conn, tenant_id="default": [
             {
                 "account_id": str(account_id),
                 "state": "open",
@@ -37,7 +37,9 @@ def test_build_paper_account_risk_metrics_uses_total_equity_and_window_history(
         ],
     )
 
-    def _equity_points(_conn, *, account_id, since_ts_ms=None, limit=5000):
+    def _equity_points(
+        _conn, *, account_id, tenant_id="default", since_ts_ms=None, limit=5000
+    ):
         assert str(account_id) == "00000000-0000-0000-0000-000000000001"
         if since_ts_ms is None:
             return ["10200"]
@@ -52,6 +54,7 @@ def test_build_paper_account_risk_metrics_uses_total_equity_and_window_history(
     metrics = build_paper_account_risk_metrics(
         None,  # type: ignore[arg-type]
         account_id=account_id,
+        tenant_id="default",
         account_row={"equity": "9400", "initial_equity": "10000"},
         now_ms=10_000_000_000,
         projected_margin="100",

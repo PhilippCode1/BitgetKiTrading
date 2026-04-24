@@ -13,6 +13,7 @@ import psycopg.errors
 from shared_py.billing_wallet import fetch_prepaid_balance_list_usd, prepaid_allows_new_trade
 from shared_py.customer_telegram_notify import enqueue_customer_notify
 from shared_py.bitget import BitgetInstrumentCatalog
+from shared_py.bitget.instruments import BitgetInstrumentCatalogEntry
 from shared_py.eventbus import EventEnvelope, RedisStreamBus
 from shared_py.exit_engine import merge_plan_override, validate_exit_plan
 from shared_py.risk_engine import (
@@ -24,6 +25,7 @@ from shared_py.risk_engine import (
 from paper_broker.config import PaperBrokerSettings
 from paper_broker.engine.broker_stop_tp import run_stop_tp_for_position
 from paper_broker.engine.contract_config import ContractConfigProvider
+from paper_broker.engine.order_constraints import validate_paper_base_order_qty
 from paper_broker.engine.fees import calc_transaction_fee_usdt, order_notional_usdt
 from paper_broker.engine.funding import calc_funding_usdt
 from paper_broker.engine.instrument_context import (
@@ -39,8 +41,11 @@ from paper_broker.engine.pricing import (
 from paper_broker.engine.slippage import (
     apply_slippage_bps,
     synthetic_depth_from_best,
+    volatility_effective_slippage_bps,
     walk_asks_fill,
     walk_bids_fill,
+    worst_price_buy_liquidation_top_asks,
+    worst_price_sell_liquidation_top_bids,
 )
 from paper_broker.events.publisher import (
     publish_funding_booked,
@@ -53,6 +58,7 @@ from paper_broker.risk.common_risk import build_paper_account_risk_metrics
 from paper_broker.risk.leverage_allocator import allocate_paper_execution_leverage
 from paper_broker.risk.plan_service import build_auto_plan_bundle, parse_plan_json
 from paper_broker.storage import (
+    repo_account_ledger,
     repo_accounts,
     repo_ledgers,
     repo_orders,
@@ -61,6 +67,12 @@ from paper_broker.storage import (
     repo_strategy,
 )
 from paper_broker.storage.connection import paper_connect
+from shared_py.modul_mate_db_gates import assert_execution_allowed
+from shared_py.shadow_live_divergence import (
+    parse_prebound_execution_id,
+    set_shadow_match_latch,
+)
+from shared_py.product_policy import ExecutionPolicyViolationError
 
 logger = logging.getLogger("paper_broker.engine")
 
@@ -84,6 +96,21 @@ def _dec(x: Any) -> Decimal:
     if x is None:
         return Decimal("0")
     return Decimal(str(x))
+
+
+def _catalog_entry_from_contract_view(
+    cfg: Any,
+) -> BitgetInstrumentCatalogEntry | None:
+    raw = getattr(cfg, "raw", None) or {}
+    if not isinstance(raw, dict):
+        return None
+    ice = raw.get("instrument_catalog_entry")
+    if not isinstance(ice, dict):
+        return None
+    try:
+        return BitgetInstrumentCatalogEntry.model_validate(ice)
+    except Exception:
+        return None
 
 
 @dataclass
@@ -122,6 +149,101 @@ class PaperBrokerService:
 
     def set_sim_funding(self, st: SimFundingState) -> None:
         self.sim_funding = st
+
+    def _paper_tenant_id(self) -> str:
+        t = self.settings.paper_tenant_id or self.settings.billing_prepaid_tenant_id or "default"
+        t = str(t).strip() or "default"
+        return t
+
+    def _trading_halt_active(self, symbol: str) -> bool:
+        if self.settings.paper_trading_halt:
+            return True
+        pl = self._tick_cache.get(symbol.upper())
+        if not isinstance(pl, dict):
+            return False
+        lag = pl.get("pipeline_lag_ms", pl.get("ingest_lag_ms"))
+        try:
+            if lag is not None and int(lag) > int(self.settings.paper_pipeline_lag_halt_ms):
+                return True
+        except (TypeError, ValueError):
+            return False
+        th = pl.get("trading_halt")
+        if isinstance(th, bool) and th:
+            return True
+        sev = pl.get("pipeline_lag_severe")
+        if sev in (True, 1, "1", "true", "True"):
+            return True
+        return False
+
+    def _vol_adjusted_slippage_bps(self, symbol: str) -> Decimal:
+        base = Decimal(self.settings.paper_default_slippage_bps)
+        pl = self._tick_cache.get(symbol.upper())
+        return volatility_effective_slippage_bps(
+            base,
+            tick_payload=pl if isinstance(pl, dict) else None,
+            bps_per_atr_0_1=Decimal(
+                str(self.settings.paper_atrp_slippage_bps_per_0_1)
+            ),
+            bps_per_vpin_0_1=Decimal(
+                str(self.settings.paper_vpin_slippage_bps_per_0_1)
+            ),
+        )
+
+    def _liquidation_stress_fill_price(
+        self,
+        conn: psycopg.Connection[Any],
+        symbol: str,
+        pos_side: str,
+        qty: Decimal,
+        mark: Decimal,
+        price_step: Decimal,
+    ) -> Decimal:
+        """Schlechtester Preis in Top-N Orderbook (Cascades). Fallback: Mark."""
+        n = max(1, int(self.settings.paper_liquidation_stress_book_levels))
+        lvs = max(n, self.settings.paper_orderbook_levels)
+        ob = load_orderbook_levels(conn, symbol, None, lvs)
+        s = (pos_side or "").lower()
+        if ob is not None:
+            bids, asks = ob
+            if s == "long" and bids:
+                w = worst_price_sell_liquidation_top_bids(bids, n)
+                if w is not None and w > 0:
+                    return w
+            if s == "short" and asks:
+                w = worst_price_buy_liquidation_top_asks(asks, n)
+                if w is not None and w > 0:
+                    return w
+        m2, bid, ask = self.get_mark_and_bid_ask(conn, symbol)
+        mark2 = m2 if m2 and m2 > 0 else mark
+        b = bid or mark2
+        a = ask or mark2
+        if b is not None and a is not None and b > 0 and a > 0:
+            qpl = max(qty, qty * Decimal(2))
+            if s == "long":
+                synth = synthetic_depth_from_best(
+                    best_bid=b,
+                    best_ask=a,
+                    levels=n,
+                    qty_per_level=qpl,
+                    price_step=price_step,
+                    side_for_fill="sell",
+                )
+                w = worst_price_sell_liquidation_top_bids(synth, n)
+                if w is not None and w > 0:
+                    return w
+            else:
+                synth = synthetic_depth_from_best(
+                    best_bid=b,
+                    best_ask=a,
+                    levels=n,
+                    qty_per_level=qpl,
+                    price_step=price_step,
+                    side_for_fill="buy",
+                )
+                w = worst_price_buy_liquidation_top_asks(synth, n)
+                if w is not None and w > 0:
+                    return w
+        return mark2 if mark2 and mark2 > 0 else mark
 
     def apply_registry_envelope(self, env: EventEnvelope) -> None:
         if env.event_type != "strategy_registry_updated":
@@ -205,8 +327,12 @@ class PaperBrokerService:
         order_side: str,
         qty: Decimal,
         cfg_price_step: Decimal,
+        *,
+        allow_during_halt: bool = False,
     ) -> tuple[Decimal, str]:
         """order_side: buy oder sell (Execution)."""
+        if not allow_during_halt and self._trading_halt_active(symbol):
+            raise ValueError("paper_trading_halt_active")
         mark, bid, ask = self.get_mark_and_bid_ask(conn, symbol)
         levels = self.settings.paper_orderbook_levels
         ob = load_orderbook_levels(conn, symbol, None, levels)
@@ -242,9 +368,11 @@ class PaperBrokerService:
                 avg, filled, ok = walk_bids_fill(synth, qty)
             if ok and filled > 0:
                 return avg, "taker"
-        bps = Decimal(self.settings.paper_default_slippage_bps)
+        bps = self._vol_adjusted_slippage_bps(symbol)
         ref = mark if mark > 0 else (ask if order_side == "buy" else bid) or Decimal("1")
-        px = apply_slippage_bps(ref, bps, "buy" if order_side == "buy" else "sell")
+        px = apply_slippage_bps(
+            ref, bps, "buy" if order_side == "buy" else "sell"
+        )
         return px, "taker"
 
     def _close_qty_in_conn(
@@ -254,22 +382,28 @@ class PaperBrokerService:
         qty_base: Decimal,
         order_type: str,
         now_ms: int,
+        *,
+        allow_during_trading_halt: bool = False,
     ) -> dict[str, Any]:
         """Schließt qty innerhalb einer bestehenden DB-Transaktion (Partial oder Full)."""
-        pos = repo_positions.get_position(conn, position_id)
+        tid0 = self._paper_tenant_id()
+        pos = repo_positions.get_position(conn, position_id, tenant_id=tid0)
         if pos is None:
             raise ValueError("position not found")
         if pos["state"] in ("closed", "liquidated"):
             raise ValueError("position already closed")
+        tid = str(pos.get("tenant_id") or tid0)
         qty0 = _dec(pos["qty_base"])
         if qty_base <= 0 or qty_base > qty0:
             raise ValueError("invalid close qty")
         symbol = str(pos["symbol"])
+        if not allow_during_trading_halt and self._trading_halt_active(symbol):
+            raise ValueError("paper_trading_halt_active")
         side = str(pos["side"])
         entry = _dec(pos["entry_price_avg"])
         iso = _dec(pos["isolated_margin"])
         account_id = UUID(str(pos["account_id"]))
-        acc = repo_accounts.get_account(conn, account_id)
+        acc = repo_accounts.get_account(conn, account_id, tenant_id=tid)
         if acc is None:
             raise ValueError("account missing")
         equity = _dec(acc["equity"])
@@ -282,8 +416,21 @@ class PaperBrokerService:
         maker_r, taker_r = self.contract_provider.effective_fees(cfg)
         exec_side = "sell" if side == "long" else "buy"
         fill_px, liq = self._fill_price_market(
-            conn, symbol, exec_side, qty_base, cfg.price_end_step
+            conn,
+            symbol,
+            exec_side,
+            qty_base,
+            cfg.price_end_step,
+            allow_during_halt=allow_during_trading_halt,
         )
+        _ice1 = _catalog_entry_from_contract_view(cfg)
+        if _ice1 is not None:
+            validate_paper_base_order_qty(
+                qty=qty_base,
+                mark_or_fill_price=fill_px,
+                order_type=order_type,
+                entry=_ice1,
+            )
         fee_rate = taker_r if order_type == "market" else maker_r
         notional = order_notional_usdt(qty_base, fill_px)
         fee = calc_transaction_fee_usdt(qty_base, fill_px, fee_rate)
@@ -324,12 +471,15 @@ class PaperBrokerService:
             reason="partial_exit" if new_qty > 0 else "exit",
         )
         new_eq = equity + margin_release + realized - fee
-        repo_accounts.update_account_equity(conn, account_id, new_eq)
+        repo_accounts.update_account_equity(
+            conn, account_id, new_eq, tenant_id=tid
+        )
         st = "partially_closed" if new_qty > 0 else "closed"
         meta = meta0
         repo_positions.update_position_qty_state(
             conn,
             position_id,
+            tenant_id=tid,
             qty_base=new_qty,
             entry_price_avg=entry,
             isolated_margin=new_iso,
@@ -341,6 +491,7 @@ class PaperBrokerService:
         post_metrics = build_paper_account_risk_metrics(
             conn,
             account_id=account_id,
+            tenant_id=tid,
             account_row={**acc, "equity": str(new_eq)},
             now_ms=now_ms,
         )
@@ -409,8 +560,11 @@ class PaperBrokerService:
         }
 
     def bootstrap_account(self, initial_equity: Decimal) -> UUID:
+        tid = self._paper_tenant_id()
         with paper_connect(self.settings.database_url, autocommit=True) as conn:
-            aid = repo_accounts.bootstrap_account(conn, initial_equity=initial_equity)
+            aid = repo_accounts.bootstrap_account(
+                conn, initial_equity=initial_equity, tenant_id=tid
+            )
         return aid
 
     def open_position(
@@ -426,16 +580,31 @@ class PaperBrokerService:
         ts_ms: int | None = None,
         timeframe: str | None = None,
         signal_payload: dict[str, Any] | None = None,
+        tenant_id: str | None = None,
     ) -> dict[str, Any]:
         now_ms = ts_ms if ts_ms is not None else int(time.time() * 1000)
+        td = str(tenant_id).strip() if tenant_id is not None else self._paper_tenant_id()
+        if not td:
+            td = "default"
         symbol = symbol.upper()
+        if self._trading_halt_active(symbol):
+            raise ValueError("paper_trading_halt_active")
         s = side.lower()
         if s not in ("long", "short"):
             raise ValueError("side muss long oder short sein")
         exec_side = "buy" if s == "long" else "sell"
-        with psycopg.connect(self.settings.database_url) as conn:
+        with paper_connect(self.settings.database_url) as conn:
             with conn.transaction():
-                acc = repo_accounts.get_account(conn, account_id)
+                if self.settings.paper_modul_mate_gate_enforced:
+                    try:
+                        assert_execution_allowed(conn, tenant_id=td, mode="DEMO")
+                    except ExecutionPolicyViolationError:
+                        raise
+                    except psycopg.errors.UndefinedTable:
+                        logger.warning(
+                            "app.tenant_modul_mate_gates fehlt; Demo-Gate übersprungen (Dev-DB?)"
+                        )
+                acc = repo_accounts.get_account(conn, account_id, tenant_id=td)
                 if acc is None:
                     raise ValueError("account not found")
                 if self.settings.billing_prepaid_gate_enabled:
@@ -491,6 +660,14 @@ class PaperBrokerService:
                 )
                 if fill_px <= 0:
                     raise ValueError("kein gueltiger Preis")
+                _ice0 = _catalog_entry_from_contract_view(cfg)
+                if _ice0 is not None:
+                    validate_paper_base_order_qty(
+                        qty=qty_base,
+                        mark_or_fill_price=fill_px,
+                        order_type=order_type,
+                        entry=_ice0,
+                    )
                 fee_rate = taker_r if order_type == "market" else maker_r
                 notional = order_notional_usdt(qty_base, fill_px)
                 fee = calc_transaction_fee_usdt(qty_base, fill_px, fee_rate)
@@ -498,6 +675,7 @@ class PaperBrokerService:
                     conn,
                     settings=self.settings,
                     account_row=acc,
+                    tenant_id=td,
                     contract_max_leverage=max_lev,
                     requested_leverage=leverage,
                     signal_payload=signal_payload,
@@ -524,6 +702,7 @@ class PaperBrokerService:
                 account_metrics = build_paper_account_risk_metrics(
                     conn,
                     account_id=account_id,
+                    tenant_id=td,
                     account_row=acc,
                     now_ms=now_ms,
                     projected_margin=projected_margin,
@@ -563,8 +742,11 @@ class PaperBrokerService:
                     )
                 leverage = Decimal(str(final_leverage))
                 margin = notional / leverage
-                if equity < margin + fee:
-                    raise ValueError("insufficient equity")
+                repo_account_ledger.assert_sufficient_paper_cash(
+                    available_cash_usdt=account_metrics["available_equity"],
+                    initial_margin_usdt=margin,
+                    order_fee_usdt=fee,
+                )
                 exit_fr: dict[str, Any] | None = None
                 if isinstance(signal_payload, dict):
                     rj = signal_payload.get("reasons_json")
@@ -609,6 +791,7 @@ class PaperBrokerService:
                 pid = repo_positions.insert_position(
                     conn,
                     account_id=account_id,
+                    tenant_id=td,
                     symbol=symbol,
                     side=s,
                     qty_base=qty_base,
@@ -651,7 +834,9 @@ class PaperBrokerService:
                     conn, position_id=pid, ts_ms=now_ms, fee_usdt=fee, reason="entry"
                 )
                 new_eq = equity - margin - fee
-                repo_accounts.update_account_equity(conn, account_id, new_eq)
+                repo_accounts.update_account_equity(
+                    conn, account_id, new_eq, tenant_id=td
+                )
                 total_equity_after = new_eq + account_metrics["used_margin"] + margin
                 repo_position_events.insert_position_event(
                     conn,
@@ -704,6 +889,23 @@ class PaperBrokerService:
                 "risk_engine": risk_decision,
             },
         )
+        if self.settings.paper_shadow_match_publish and isinstance(
+            signal_payload, dict
+        ):
+            eid0 = parse_prebound_execution_id(
+                signal_payload=signal_payload,
+                payload=signal_payload,
+                trace={},
+            )
+            if eid0 and not set_shadow_match_latch(
+                self.settings.redis_url,
+                eid0,
+                ttl_sec=self.settings.paper_shadow_match_redis_ttl_sec,
+            ):
+                logger.warning(
+                    "shadow_match_latch redis set failed execution_id=%s",
+                    eid0,
+                )
         return {
             "position_id": str(pid),
             "fill_price": str(fill_px),
@@ -753,13 +955,14 @@ class PaperBrokerService:
         funded: list[str] = []
         stop_tp_closed: list[str] = []
         with paper_connect(self.settings.database_url, autocommit=True) as conn:
-            positions = repo_positions.list_open_positions(conn)
+            pten = self._paper_tenant_id()
+            positions = repo_positions.list_open_positions(conn, tenant_id=pten)
             for pos in positions:
                 if self.settings.paper_stop_tp_enabled:
                     done = run_stop_tp_for_position(self, conn, pos, now_ms)
                     if done:
                         stop_tp_closed.append(str(pos["position_id"]))
-            positions = repo_positions.list_open_positions(conn)
+            positions = repo_positions.list_open_positions(conn, tenant_id=pten)
             for pos in positions:
                 pid = UUID(str(pos["position_id"]))
                 sym = str(pos["symbol"])
@@ -802,11 +1005,13 @@ class PaperBrokerService:
         now_ms = int(time.time() * 1000)
         with paper_connect(self.settings.database_url) as conn:
             with conn.transaction():
-                pos = repo_positions.get_position(conn, position_id)
+                pten = self._paper_tenant_id()
+                pos = repo_positions.get_position(conn, position_id, tenant_id=pten)
                 if pos is None:
                     raise ValueError("position not found")
                 if str(pos["state"]) in ("closed", "liquidated"):
                     raise ValueError("position not open")
+                pten = str(pos.get("tenant_id") or pten)
                 stop_plan, tp_plan, score, rr_s = build_auto_plan_bundle(
                     conn,
                     position_row=pos,
@@ -855,6 +1060,7 @@ class PaperBrokerService:
                 repo_positions.update_position_plan(
                     conn,
                     position_id,
+                    tenant_id=pten,
                     plan_version=ver,
                     stop_plan_json=stop_plan,
                     tp_plan_json=tp_plan,
@@ -911,7 +1117,9 @@ class PaperBrokerService:
 
     def get_position_plan(self, position_id: UUID) -> dict[str, Any]:
         with paper_connect(self.settings.database_url, autocommit=True) as conn:
-            pos = repo_positions.get_position(conn, position_id)
+            pos = repo_positions.get_position(
+                conn, position_id, tenant_id=self._paper_tenant_id()
+            )
             if pos is None:
                 raise ValueError("position not found")
         return {
@@ -935,11 +1143,13 @@ class PaperBrokerService:
         now_ms = int(time.time() * 1000)
         with paper_connect(self.settings.database_url) as conn:
             with conn.transaction():
-                pos = repo_positions.get_position(conn, position_id)
+                pto = self._paper_tenant_id()
+                pos = repo_positions.get_position(conn, position_id, tenant_id=pto)
                 if pos is None:
                     raise ValueError("position not found")
                 if str(pos["state"]) in ("closed", "liquidated"):
                     raise ValueError("position not open")
+                pto = str(pos.get("tenant_id") or pto)
                 cur_stop = parse_plan_json(pos.get("stop_plan_json")) or {}
                 cur_tp = parse_plan_json(pos.get("tp_plan_json")) or {}
                 new_stop, new_tp = merge_plan_override(
@@ -977,6 +1187,7 @@ class PaperBrokerService:
                 repo_positions.update_position_plan(
                     conn,
                     position_id,
+                    tenant_id=pto,
                     plan_version=ver,
                     stop_plan_json=new_stop,
                     tp_plan_json=new_tp,
@@ -1006,13 +1217,14 @@ class PaperBrokerService:
         now_ms: int,
     ) -> None:
         pid = UUID(str(pos["position_id"]))
+        tid = str(pos.get("tenant_id") or self._paper_tenant_id())
         symbol = str(pos["symbol"])
         side = str(pos["side"])
         qty0 = _dec(pos["qty_base"])
         entry = _dec(pos["entry_price_avg"])
         iso = _dec(pos["isolated_margin"])
         account_id = UUID(str(pos["account_id"]))
-        acc = repo_accounts.get_account(conn, account_id)
+        acc = repo_accounts.get_account(conn, account_id, tenant_id=tid)
         equity = _dec(acc["equity"]) if acc else Decimal("0")
         liq_meta = json.loads(pos["meta"]) if isinstance(pos["meta"], str) else (pos["meta"] or {})
         cfg = self.contract_provider.get(
@@ -1021,12 +1233,20 @@ class PaperBrokerService:
             signal_payload=_contract_payload_from_position_meta(liq_meta),
         )
         _, taker_r = self.contract_provider.effective_fees(cfg)
-        fee = calc_transaction_fee_usdt(qty0, mark, taker_r)
-        notional = order_notional_usdt(qty0, mark)
+        liq_fill = self._liquidation_stress_fill_price(
+            conn,
+            symbol,
+            side,
+            qty0,
+            mark,
+            cfg.price_end_step,
+        )
+        fee = calc_transaction_fee_usdt(qty0, liq_fill, taker_r)
+        notional = order_notional_usdt(qty0, liq_fill)
         if side == "long":
-            realized = (mark - entry) * qty0
+            realized = (liq_fill - entry) * qty0
         else:
-            realized = (entry - mark) * qty0
+            realized = (entry - liq_fill) * qty0
         margin_release = iso
         oid = repo_orders.insert_order(
             conn,
@@ -1044,7 +1264,7 @@ class PaperBrokerService:
             order_id=oid,
             position_id=pid,
             ts_ms=now_ms,
-            price=mark,
+            price=liq_fill,
             qty_base=qty0,
             liquidity="taker",
             fee_usdt=fee,
@@ -1054,15 +1274,25 @@ class PaperBrokerService:
             conn, position_id=pid, ts_ms=now_ms, fee_usdt=fee, reason="exit"
         )
         new_eq = equity + margin_release + realized - fee
-        repo_accounts.update_account_equity(conn, account_id, new_eq)
+        repo_accounts.update_account_equity(
+            conn, account_id, new_eq, tenant_id=tid
+        )
         meta = _meta_dict(pos.get("meta"))
         meta["liquidation"] = True
+        meta["liquidation_stress_fill_price"] = str(liq_fill)
+        meta["mark_at_liq_trigger"] = str(mark)
         repo_positions.set_position_liquidated(
-            conn, pid, updated_ts_ms=now_ms, closed_ts_ms=now_ms, meta=meta
+            conn,
+            pid,
+            tenant_id=tid,
+            updated_ts_ms=now_ms,
+            closed_ts_ms=now_ms,
+            meta=meta,
         )
         post_metrics = build_paper_account_risk_metrics(
             conn,
             account_id=account_id,
+            tenant_id=tid,
             account_row={"equity": str(new_eq), "initial_equity": acc.get("initial_equity") if acc else None},
             now_ms=now_ms,
         )
@@ -1100,10 +1330,12 @@ class PaperBrokerService:
             return
         rate = sf.funding_rate
         src = "sim" if self.settings.paper_sim_mode else "events"
-        positions = repo_positions.list_open_positions(conn)
+        ften = self._paper_tenant_id()
+        positions = repo_positions.list_open_positions(conn, tenant_id=ften)
         for pos in positions:
             pid = UUID(str(pos["position_id"]))
             sym = str(pos["symbol"])
+            tpos = str(pos.get("tenant_id") or ften)
             mark, _, _ = self.get_mark_and_bid_ask(conn, sym)
             if mark <= 0:
                 continue
@@ -1120,13 +1352,16 @@ class PaperBrokerService:
                 source=src,
             )
             acc_id = UUID(str(pos["account_id"]))
-            acc = repo_accounts.get_account(conn, acc_id)
+            acc = repo_accounts.get_account(conn, acc_id, tenant_id=tpos)
             if acc:
                 new_eq = _dec(acc["equity"]) + amt
-                repo_accounts.update_account_equity(conn, acc_id, new_eq)
+                repo_accounts.update_account_equity(
+                    conn, acc_id, new_eq, tenant_id=tpos
+                )
                 post_metrics = build_paper_account_risk_metrics(
                     conn,
                     account_id=acc_id,
+                    tenant_id=tpos,
                     account_row={**acc, "equity": str(new_eq)},
                     now_ms=now_ms,
                 )

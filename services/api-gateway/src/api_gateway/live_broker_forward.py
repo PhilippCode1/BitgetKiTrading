@@ -9,6 +9,7 @@ import urllib.error
 import urllib.request
 from typing import Any
 
+from shared_py.observability.apex_trace import merge_gateway_response_apex
 from shared_py.observability.request_context import get_outbound_trace_headers
 from shared_py.service_auth import INTERNAL_SERVICE_HEADER, internal_service_auth_required
 
@@ -61,15 +62,27 @@ def post_live_broker_json(
         headers=headers,
     )
     t0 = time.perf_counter()
+    t_gw0_ns = time.time_ns()
     try:
         with urllib.request.urlopen(req, timeout=timeout_sec) as resp:
             raw = resp.read()
             elapsed = time.perf_counter() - t0
+            t_gw1_ns = time.time_ns()
             if not raw:
                 observe_live_broker_forward(result="success", elapsed_sec=elapsed)
                 return {}
             body = json.loads(raw.decode("utf-8"))
             observe_live_broker_forward(result="success", elapsed_sec=elapsed)
+            if isinstance(body, dict):
+                body = merge_gateway_response_apex(body, t_gw0_ns=t_gw0_ns, t_gw1_ns=t_gw1_ns)
+                try:
+                    logger.info(
+                        "apex_gateway forward path=%s deltas_ms=%s",
+                        subpath,
+                        (body.get("apex_trace") or {}).get("deltas_ms"),
+                    )
+                except Exception:
+                    pass
             return body
     except urllib.error.HTTPError as e:
         observe_live_broker_forward(

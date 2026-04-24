@@ -2,10 +2,16 @@
 """
 Coverage-Gates nach `coverage run` (Unit; optional mit `coverage run -a` Integration):
 
-1) shared_py (Branches): coverage report --include=**/shared_py/** --fail-under=SHARED_PY_MIN
-2) live_broker (Zeilen, Gesamt): --include=**/live_broker/** --fail-under=LIVE_BROKER_MIN
-3) CRITICAL_SUFFIXES: aggregierte Zeilen-Deckung >= CRITICAL_MIN
-4) HIGH_RISK_SUFFIXES: aggregierte Zeilen-Deckung >= HIGH_RISK_MIN (Kern an Börse/Reconcile)
+1) shared_py (gesamt, Zeilen): --include=**/shared_py/**
+   --fail-under=SHARED_PY_MIN
+2) shared_py/resilience/ (Kernpfad, Zeilen): --fail-under=CORE_PATH_MIN
+3) live_broker (Gesamt, Zeilen): --include=**/live_broker/**
+   --fail-under=LIVE_BROKER_MIN
+4) signal_engine/scoring/ (Kernpfad, Zeilen): --fail-under=CORE_PATH_MIN
+5) live_broker/execution/ (Kernpfad, Zeilen): --fail-under=CORE_PATH_MIN
+6) CRITICAL_SUFFIXES: aggregierte Zeilen-Deckung >= CRITICAL_MIN
+7) HIGH_RISK_SUFFIXES: aggregierte Zeilen-Deckung >= HIGH_RISK_MIN
+   (Kern an Börse/Reconcile)
 
 Aufruf vom Repo-Root: python tools/check_coverage_gates.py
 """
@@ -43,11 +49,20 @@ HIGH_RISK_SUFFIXES = (
     "live_broker/reconcile/service.py",
 )
 
-# Volles shared_py-Paket inkl. Bitget-HTTP/Model-Contract — CI-Gesamtlauf haelt typisch ~80 %+.
+# Volles shared_py inkl. Bitget-HTTP/Model-Contract — CI-Gesamtlauf typisch ~80 %+.
 SHARED_PY_FAIL_UNDER = 80
 LIVE_BROKER_FAIL_UNDER = 62
+# Kernpfad-Verzeichnisse (resilience, scoring, execution) — blockierend in CI
+CORE_PATH_MIN = 90.0
 CRITICAL_MIN = 90.0
 HIGH_RISK_MIN = 81.0
+
+# Reihenfolge: nach shared-Paket, vor/ um live_broker-Gesamtschwelle
+_CORE_PATH_GATES: tuple[tuple[str, str], ...] = (
+    ("shared_py/resilience", "**/shared_py/resilience/**"),
+    ("signal_engine/scoring", "**/signal_engine/scoring/**"),
+    ("live_broker/execution", "**/live_broker/execution/**"),
+)
 
 
 def _root() -> Path:
@@ -104,6 +119,24 @@ def main() -> int:
     )
     if r1.returncode != 0:
         return r1.returncode
+
+    for i, (label, inc) in enumerate(_CORE_PATH_GATES, start=1):
+        r_core = subprocess.run(
+            [
+                "coverage",
+                "report",
+                f"--include={inc}",
+                f"--fail-under={int(CORE_PATH_MIN)}",
+            ],
+            cwd=root,
+            env=env,
+        )
+        if r_core.returncode != 0:
+            print(
+                f"FAIL: Kernpfad-Gate «{label}» unter {CORE_PATH_MIN}%.",
+                file=sys.stderr,
+            )
+            return 6 + i  # 7, 8, 9
 
     r2 = subprocess.run(
         [

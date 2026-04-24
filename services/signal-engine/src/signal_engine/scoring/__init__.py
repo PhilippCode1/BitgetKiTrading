@@ -1,5 +1,9 @@
 from signal_engine.scoring.classification import classify_signal
-from signal_engine.scoring.composite_score import weighted_composite
+from signal_engine.scoring.composite_score import (
+    MicrostructureConfluenceResult,
+    apply_microstructure_confluence,
+    weighted_composite,
+)
 from signal_engine.scoring.history_score import score_history
 from signal_engine.scoring.momentum_score import score_momentum
 from signal_engine.scoring.multi_timeframe_score import score_multi_timeframe
@@ -18,5 +22,7 @@ __all__ = [
     "score_news",
     "score_risk",
     "score_structure",
+    "MicrostructureConfluenceResult",
+    "apply_microstructure_confluence",
     "weighted_composite",
 ]

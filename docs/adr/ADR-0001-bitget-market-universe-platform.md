@@ -259,10 +259,11 @@ Adaptive Exits bleiben Pflicht:
 - Die bereits eingefuehrten family-aware Bitget-Module, Spezialisten-Traces und Stop-Budget-Gates sind kompatibel mit diesem ADR.
 - Neue Familien koennen spaeter ohne neue Parallelarchitekturen integriert werden.
 
-### Negativ / bewusst offen
+### Negativ / bewusst aussenhalb Software-Release
 
-- Das Repo ist noch nicht institutionell freigegeben; laut Freeze bleiben mehrere major Gaps offen.
-- Nicht jede aktuelle Default-Annahme ist bereits auf das Zielbild gezogen.
+- **Institutionelle** Freigabe (Börse, Recht, On-Call) ist bewusst **nicht** Sache des Commits; siehe `docs/LAUNCH_DOSSIER.md` und `docs/adr/ADR-0010-roadmap-accepted-residual-risks.md`.
+- **P0-Software**-Gaps: laut `docs/REPO_FREEZE_GAP_MATRIX.md` (P83) geschlossen; verbleibend P1/P2-Iteration.
+- Nicht jede fachliche Erweiterung muss voll in jedem Service dieselbe Reife haben — Zielbild ADR vorgeben, Umsetzung stufenweise.
 - Das ADR erlaubt keine implizite Aufnahme exotischer Bitget-Kategorien ohne echte Discovery-Evidenz.
 
 ## Abnahmekriterien fuer diesen Architektur-Schritt

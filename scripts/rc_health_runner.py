@@ -68,6 +68,18 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
         type=float,
         help="Fuer --stress, optional.",
     )
+    p.add_argument(
+        "--startup-budget-sec",
+        type=float,
+        default=None,
+        help="Weiterreichen: Startup-Warte/Retry (Default 120s, siehe rc_health_edge).",
+    )
+    p.add_argument(
+        "--stable-window-sec",
+        type=str,
+        default="",
+        help="Weiterreichen: z. B. 10 oder 10s — dauernd gruen; siehe rc_health_edge.",
+    )
     return p.parse_args(argv)
 
 
@@ -106,6 +118,10 @@ def main(arg_list: list[str] | None = None) -> int:
             ext += ["--stress-rounds", str(int(args.stress_rounds))]
         if args.stress_interval_sec is not None:
             ext += ["--stress-interval-sec", str(float(args.stress_interval_sec))]
+    if args.startup_budget_sec is not None:
+        ext += ["--startup-budget-sec", str(float(args.startup_budget_sec))]
+    if (args.stable_window_sec or "").strip():
+        ext += ["--stable-window-sec", str(args.stable_window_sec).strip()]
     rc = subprocess.call([sys.executable, str(script), *ext])
     return 0 if int(rc) == 0 else 1
 

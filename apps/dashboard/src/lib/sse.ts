@@ -4,6 +4,8 @@ export type LiveSseHandlers = {
   onDrawing?: (data: unknown) => void;
   onNews?: (data: unknown) => void;
   onPaper?: (data: unknown) => void;
+  /** Market-Stream: ``market_feed_health`` via Gateway -> SSE event ``feed_health`` */
+  onFeedHealth?: (data: unknown) => void;
   onPing?: () => void;
   onError?: () => void;
 };
@@ -17,8 +19,8 @@ export function buildLiveStreamUrl(symbol: string, timeframe: string): URL {
 }
 
 /**
- * Einmaliger EventSource ohne Reconnect.
- * Fuer das Live-Terminal bevorzugt `startManagedLiveEventSource` aus `@/lib/live-event-source`.
+ * Einmaliger EventSource ohne Reconnect/Heartbeat (Legacy/Demos).
+ * Produktions-Pfad: `startManagedLiveEventSource` (Backoff, 15s-Ping-Watch, globaler UI-Status).
  */
 export function openLiveEventSource(
   symbol: string,
@@ -42,6 +44,7 @@ export function openLiveEventSource(
   es.addEventListener("drawing", wrap(handlers.onDrawing));
   es.addEventListener("news", wrap(handlers.onNews));
   es.addEventListener("paper", wrap(handlers.onPaper));
+  es.addEventListener("feed_health", wrap(handlers.onFeedHealth));
   es.addEventListener("ping", () => handlers.onPing?.());
   es.onerror = () => {
     handlers.onError?.();

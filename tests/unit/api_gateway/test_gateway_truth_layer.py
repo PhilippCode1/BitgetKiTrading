@@ -77,7 +77,7 @@ def test_core_snapshot_matches_merge_ready_details() -> None:
             return_value=(True, "ok"),
         ),
         patch(
-            "api_gateway.gateway_readiness_core.check_redis_url",
+            "api_gateway.gateway_readiness_core.check_redis_url_readiness",
             return_value=(True, "ok"),
         ),
     ):

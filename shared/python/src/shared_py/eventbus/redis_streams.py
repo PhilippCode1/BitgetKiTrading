@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 from dataclasses import dataclass
@@ -7,9 +8,14 @@ from typing import Any
 
 from redis import Redis
 
+from shared_py.observability.metrics import (
+    inc_pipeline_event_drop,
+    set_pipeline_backpressure_queue_size,
+)
 from shared_py.redis_client import create_sync_connection_pool, sync_redis_from_pool
 
-from .envelope import EVENT_STREAMS, EventEnvelope, STREAM_DLQ
+from .canonical import event_envelope_to_canonical_json_text
+from .envelope import EVENT_STREAMS, STREAM_DLQ, EventEnvelope
 
 
 @dataclass(frozen=True)
@@ -27,7 +33,7 @@ class RedisStreamBus:
     default_count: int = 50
 
     @classmethod
-    def from_env(cls) -> "RedisStreamBus":
+    def from_env(cls) -> RedisStreamBus:
         url = os.environ["REDIS_URL"]
         ttl = int(os.environ.get("EVENTBUS_DEDUPE_TTL_SEC", "0"))
         block_ms = int(os.environ.get("EVENTBUS_DEFAULT_BLOCK_MS", "2000"))
@@ -36,8 +42,9 @@ class RedisStreamBus:
             url,
             decode_responses=True,
             max_connections=32,
-            socket_connect_timeout=5,
-            socket_timeout=5,
+            socket_connect_timeout=5.0,
+            socket_timeout=5.0,
+            socket_keepalive=True,
         )
         redis_client = sync_redis_from_pool(pool, health_check_interval=30)
         return cls(
@@ -55,13 +62,14 @@ class RedisStreamBus:
         dedupe_ttl_sec: int = 0,
         default_block_ms: int = 2000,
         default_count: int = 50,
-    ) -> "RedisStreamBus":
+    ) -> RedisStreamBus:
         pool = create_sync_connection_pool(
             redis_url,
             decode_responses=True,
             max_connections=32,
-            socket_connect_timeout=5,
-            socket_timeout=5,
+            socket_connect_timeout=5.0,
+            socket_timeout=5.0,
+            socket_keepalive=True,
         )
         redis_client = sync_redis_from_pool(pool, health_check_interval=30)
         return cls(
@@ -98,7 +106,18 @@ class RedisStreamBus:
             key = f"dedupe:{stream}:{env.dedupe_key}"
             if self.redis.set(key, "1", nx=True, ex=self.dedupe_ttl_sec) is None:
                 return "deduped"
-        return str(self.redis.xadd(stream, {"data": env.model_dump_json()}))
+        mid = str(
+            self.redis.xadd(
+                stream,
+                {"data": event_envelope_to_canonical_json_text(env)},
+            )
+        )
+        with contextlib.suppress(Exception):
+            set_pipeline_backpressure_queue_size(
+                stream=stream,
+                size=int(self.redis.xlen(stream)),
+            )
+        return mid
 
     def ensure_group(self, stream: str, group: str) -> None:
         _validate_stream(stream)
@@ -132,6 +151,11 @@ class RedisStreamBus:
                 try:
                     envelope = EventEnvelope.model_validate_json(raw_payload)
                 except Exception as exc:
+                    with contextlib.suppress(Exception):
+                        inc_pipeline_event_drop(
+                            component="redis_stream_bus",
+                            reason="envelope_parse_failed",
+                        )
                     self.publish_dlq(
                         {
                             "stream": stream_name,
@@ -179,7 +203,15 @@ class RedisStreamBus:
             key = f"dedupe:{STREAM_DLQ}:{envelope.dedupe_key}"
             if self.redis.set(key, "1", nx=True, ex=self.dedupe_ttl_sec) is None:
                 return "deduped"
-        return str(self.redis.xadd(STREAM_DLQ, {"data": envelope.model_dump_json()}))
+        dlq_id = str(
+            self.redis.xadd(STREAM_DLQ, {"data": event_envelope_to_canonical_json_text(envelope)}),
+        )
+        with contextlib.suppress(Exception):
+            set_pipeline_backpressure_queue_size(
+                stream=STREAM_DLQ,
+                size=int(self.redis.xlen(STREAM_DLQ)),
+            )
+        return dlq_id
 
 
 def _validate_stream(stream: str) -> None:

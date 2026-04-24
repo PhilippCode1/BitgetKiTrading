@@ -9,6 +9,12 @@ export function portalPath(segment: string): string {
   return `${PORTAL_BASE}/${s}`;
 }
 
+/** Kunden-Portal: z. B. `billing` -> `/portal/account/billing` */
+export function portalAccountPath(segment: string): string {
+  const s = segment.replace(/^\/+/, "");
+  return `${PORTAL_BASE}/account/${s}`;
+}
+
 /** Pfad unterhalb von {@link CONSOLE_BASE}, z. B. `ops` → `/console/ops`. */
 export function consolePath(segment: string): string {
   const s = segment.replace(/^\/+/, "");

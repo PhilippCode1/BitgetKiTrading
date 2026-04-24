@@ -53,6 +53,13 @@ _ASSIST_CONTEXT_KEY_ALLOWLIST: dict[str, frozenset[str]] = {
             "help_billing_excerpt",
         }
     ),
+    "ops_risk": frozenset(
+        {
+            "decision_brief",
+            "trade_lifecycle_golden",
+            "risk_rejection_inquiry",
+        }
+    ),
 }
 
 

@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+import logging
+import re
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Annotated, Any
 from uuid import UUID
 
 import psycopg
 import psycopg.errors
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
+from fastapi.responses import Response
 from psycopg.rows import dict_row
 from pydantic import BaseModel, Field
 from shared_py.billing_wallet import fetch_prepaid_balance_list_usd
@@ -68,7 +72,14 @@ from api_gateway.db_tenant_lifecycle import (
     transition_lifecycle,
 )
 from api_gateway.payments.capabilities import build_payment_capabilities
-from api_gateway.payments.deposit import resume_stripe_checkout, start_deposit_checkout
+from api_gateway.payments.deposit import (
+    reconcile_stripe_deposits_for_tenant,
+    resume_stripe_checkout,
+    start_deposit_checkout,
+)
+from api_gateway.tenant_rls import gateway_psycopg
+
+_blogger = logging.getLogger("api_gateway.commerce_customer")
 from api_gateway.provider_ops_summary import bitget_env_hints_for_customer_portal
 from api_gateway.telegram_customer_notify import enqueue_customer_notify
 
@@ -163,6 +174,8 @@ class TelegramNotifyPrefsPatch(BaseModel):
     notify_contract: bool | None = None
     notify_risk: bool | None = None
     notify_ai_tip: bool | None = None
+    notify_signal_high_leverage: bool | None = None
+    signal_type_prefs_json: dict[str, bool] | None = None
 
 
 class AdminLifecycleTransitionBody(BaseModel):
@@ -207,7 +220,9 @@ def customer_me(
         "connected": False,
         "console_telegram_required": settings.commercial_telegram_required_for_console,
     }
-    with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
+    with gateway_psycopg(
+        dsn, row_factory=dict_row, connect_timeout=5, tenant_id=tid
+    ) as conn:
         _require_tenant_commercial_state(conn, tid)
         profile = fetch_customer_profile(conn, tenant_id=tid)
         plan = fetch_plan_for_tenant(conn, tenant_id=tid)
@@ -246,7 +261,9 @@ def customer_security_summary(
     _ensure_commercial(settings)
     tid = _resolve_target_tenant(auth, None)
     dsn = get_database_url()
-    with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
+    with gateway_psycopg(
+        dsn, row_factory=dict_row, connect_timeout=5, tenant_id=tid
+    ) as conn:
         _require_tenant_commercial_state(conn, tid)
         try:
             row = fetch_portal_identity_security(conn, tenant_id=tid)
@@ -274,6 +291,88 @@ def customer_security_summary(
     }
 
 
+@customer_router.get(
+    "/audit-report/download",
+    summary="Regulatorischer Pruefbericht (Forensik-PDF)",
+    description="PDF aus app.apex_trade_forensics (Zeitraege, KI, Risiko, Fills, Hash-Nachweis).",
+    response_class=Response,
+)
+def download_apex_regulatory_audit_pdf(
+    request: Request,
+    auth: Annotated[GatewayAuthContext, Depends(require_billing_read)],
+    time_from: datetime = Query(
+        ...,
+        alias="from",
+        description="Untergrenze inkl. (timestamptz / ISO-8601)",
+    ),
+    time_to: datetime = Query(
+        ...,
+        alias="to",
+        description="Obergrenze inkl. (timestamptz / ISO-8601)",
+    ),
+) -> Response:
+    """
+    P78: On-demand-Export fuer Compliance. Query: ?from=...&to=... (zwei ISO-Zeitpunkte, UTC
+    bevorzugt).
+    """
+    settings = get_gateway_settings()
+    _ensure_commercial(settings)
+    tid = _resolve_target_tenant(auth, None)
+    if time_to < time_from:
+        raise HTTPException(
+            status_code=400, detail="invalid_range: to must be >= from"
+        )
+    t0, t1 = time_from, time_to
+    if t0.tzinfo is None:
+        t0 = t0.replace(tzinfo=UTC)
+    if t1.tzinfo is None:
+        t1 = t1.replace(tzinfo=UTC)
+    from shared_py.observability.apex_trade_forensic_store import (
+        fetch_apex_rows_tenant_time_window,
+        fetch_global_apex_chain_tip_hash_hex,
+    )
+    from shared_py.regulatory_audit_report_pdf import (
+        attach_verified_forensics,
+        build_apex_regulatory_compliance_report_pdf_bytes,
+        utc_now_iso,
+    )
+
+    dsn = get_database_url()
+    with gateway_psycopg(
+        dsn, row_factory=dict_row, connect_timeout=10, tenant_id=tid
+    ) as conn:
+        _require_tenant_commercial_state(conn, tid)
+        raw = fetch_apex_rows_tenant_time_window(
+            conn, tenant_id=tid, t_from=t0, t_to=t1
+        )
+        forensics = attach_verified_forensics(raw, conn)
+        tip = fetch_global_apex_chain_tip_hash_hex(conn)
+    body = build_apex_regulatory_compliance_report_pdf_bytes(
+        tenant_id=tid,
+        period_from_iso=t0.isoformat(),
+        period_to_iso=t1.isoformat(),
+        generated_at_iso=utc_now_iso(),
+        forensics_rows=forensics,
+        global_ledger_chain_tip_hash_hex=tip,
+    )
+    rec = re.sub(r"[^a-zA-Z0-9_.-]+", "-", (tid or "tenant")[:48]).strip("-") or "tenant"
+    name = f'regulatory-apex-forensics_{rec}.pdf'
+    record_gateway_audit_line(
+        request,
+        auth,
+        "commerce_apex_regulatory_audit_pdf",
+        extra={
+            "tenant_id": tid,
+            "n_rows": str(len(forensics)),
+        },
+    )
+    return Response(
+        content=body,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{name}"'},
+    )
+
+
 def _http_lifecycle_reject(message: str) -> HTTPException:
     return HTTPException(
         status_code=400,
@@ -297,7 +396,9 @@ def customer_lifecycle_me(
     _ensure_commercial(settings)
     tid = _resolve_target_tenant(auth, None)
     dsn = get_database_url()
-    with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
+    with gateway_psycopg(
+        dsn, row_factory=dict_row, connect_timeout=5, tenant_id=tid
+    ) as conn:
         _require_tenant_commercial_state(conn, tid)
         try:
             apply_trial_expiry_if_due(conn, tenant_id=tid, actor=auth.actor)
@@ -328,7 +429,9 @@ def customer_lifecycle_audit(
     _ensure_commercial(settings)
     tid = _resolve_target_tenant(auth, None)
     dsn = get_database_url()
-    with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
+    with gateway_psycopg(
+        dsn, row_factory=dict_row, connect_timeout=5, tenant_id=tid
+    ) as conn:
         _require_tenant_commercial_state(conn, tid)
         try:
             rows = fetch_lifecycle_audit_recent(conn, tenant_id=tid, limit=limit)
@@ -357,7 +460,9 @@ def customer_lifecycle_start_trial(
     tid = _resolve_target_tenant(auth, None)
     dsn = get_database_url()
     try:
-        with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
+        with gateway_psycopg(
+        dsn, row_factory=dict_row, connect_timeout=5, tenant_id=tid
+    ) as conn:
             _require_tenant_commercial_state(conn, tid)
             transition_lifecycle(
                 conn,
@@ -378,7 +483,9 @@ def customer_lifecycle_start_trial(
     record_gateway_audit_line(
         request, auth, "commerce_customer_lifecycle_start_trial", extra={"tenant_id": tid}
     )
-    with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
+    with gateway_psycopg(
+        dsn, row_factory=dict_row, connect_timeout=5, tenant_id=tid
+    ) as conn:
         row = fetch_tenant_lifecycle_row(conn, tenant_id=tid)
     assert row is not None
     return build_lifecycle_public_payload(row)
@@ -398,7 +505,9 @@ def customer_lifecycle_open_contract(
     tid = _resolve_target_tenant(auth, None)
     dsn = get_database_url()
     try:
-        with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
+        with gateway_psycopg(
+        dsn, row_factory=dict_row, connect_timeout=5, tenant_id=tid
+    ) as conn:
             _require_tenant_commercial_state(conn, tid)
             apply_trial_expiry_if_due(conn, tenant_id=tid, actor=auth.actor)
             row = fetch_tenant_lifecycle_row(conn, tenant_id=tid)
@@ -432,7 +541,9 @@ def customer_lifecycle_open_contract(
     record_gateway_audit_line(
         request, auth, "commerce_customer_lifecycle_open_contract", extra={"tenant_id": tid}
     )
-    with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
+    with gateway_psycopg(
+        dsn, row_factory=dict_row, connect_timeout=5, tenant_id=tid
+    ) as conn:
         row = fetch_tenant_lifecycle_row(conn, tenant_id=tid)
     assert row is not None
     return build_lifecycle_public_payload(row)
@@ -467,7 +578,9 @@ def customer_lifecycle_ack_contract_signed(
     tid = _resolve_target_tenant(auth, None)
     dsn = get_database_url()
     try:
-        with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
+        with gateway_psycopg(
+        dsn, row_factory=dict_row, connect_timeout=5, tenant_id=tid
+    ) as conn:
             _require_tenant_commercial_state(conn, tid)
             transition_lifecycle(
                 conn,
@@ -491,7 +604,9 @@ def customer_lifecycle_ack_contract_signed(
         "commerce_customer_lifecycle_ack_contract_signed",
         extra={"tenant_id": tid},
     )
-    with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
+    with gateway_psycopg(
+        dsn, row_factory=dict_row, connect_timeout=5, tenant_id=tid
+    ) as conn:
         row = fetch_tenant_lifecycle_row(conn, tenant_id=tid)
     assert row is not None
     return build_lifecycle_public_payload(row)
@@ -511,7 +626,9 @@ def customer_me_patch(
     tid = _resolve_target_tenant(auth, None)
     display = sanitize_display_name(body.display_name)
     dsn = get_database_url()
-    with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
+    with gateway_psycopg(
+        dsn, row_factory=dict_row, connect_timeout=5, tenant_id=tid
+    ) as conn:
         _require_tenant_commercial_state(conn, tid)
         with conn.transaction():
             update_customer_display_name(
@@ -548,7 +665,9 @@ def customer_integrations(
         "console_telegram_required": settings.commercial_telegram_required_for_console,
         "deep_link_template": None,
     }
-    with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
+    with gateway_psycopg(
+        dsn, row_factory=dict_row, connect_timeout=5, tenant_id=tid
+    ) as conn:
         _require_tenant_commercial_state(conn, tid)
         snap = fetch_integration_snapshot(conn, tenant_id=tid)
         try:
@@ -618,7 +737,9 @@ def customer_telegram_start_link(
     tid = _resolve_target_tenant(auth, None)
     dsn = get_database_url()
     try:
-        with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
+        with gateway_psycopg(
+        dsn, row_factory=dict_row, connect_timeout=5, tenant_id=tid
+    ) as conn:
             _require_tenant_commercial_state(conn, tid)
             with conn.transaction():
                 token, exp = create_pending_link(conn, tenant_id=tid, ttl_hours=24)
@@ -655,7 +776,9 @@ def customer_telegram_test_message(
     tid = _resolve_target_tenant(auth, None)
     dsn = get_database_url()
     aid: str | None = None
-    with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
+    with gateway_psycopg(
+        dsn, row_factory=dict_row, connect_timeout=5, tenant_id=tid
+    ) as conn:
         _require_tenant_commercial_state(conn, tid)
         try:
             linked = is_telegram_connected(conn, tenant_id=tid)
@@ -707,7 +830,9 @@ def customer_telegram_notify_prefs_get(
     _ensure_commercial(settings)
     tid = _resolve_target_tenant(auth, None)
     dsn = get_database_url()
-    with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
+    with gateway_psycopg(
+        dsn, row_factory=dict_row, connect_timeout=5, tenant_id=tid
+    ) as conn:
         _require_tenant_commercial_state(conn, tid)
         try:
             prefs = fetch_notify_prefs_merged(conn, tenant_id=tid)
@@ -738,7 +863,9 @@ def customer_telegram_notify_prefs_patch(
     if not patch:
         raise HTTPException(status_code=400, detail="no fields to update")
     dsn = get_database_url()
-    with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
+    with gateway_psycopg(
+        dsn, row_factory=dict_row, connect_timeout=5, tenant_id=tid
+    ) as conn:
         _require_tenant_commercial_state(conn, tid)
         try:
             before = fetch_notify_prefs_merged(conn, tenant_id=tid)
@@ -773,8 +900,15 @@ def customer_balance(
     _ensure_commercial(settings)
     tid = _resolve_target_tenant(auth, None)
     dsn = get_database_url()
-    with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
+    with gateway_psycopg(
+        dsn, row_factory=dict_row, connect_timeout=5, tenant_id=tid
+    ) as conn:
         _require_tenant_commercial_state(conn, tid)
+        try:
+            with conn.transaction():
+                reconcile_stripe_deposits_for_tenant(conn, settings, tenant_id=tid)
+        except Exception as exc:  # pragma: no cover - optional Stripe-Abfrage
+            _blogger.debug("stripe_deposit_reconcile_skip tenant=%s err=%s", tid, exc)
         wallet = fetch_customer_wallet(conn, tenant_id=tid) or {
             "tenant_id": tid,
             "prepaid_balance_list_usd": "0",
@@ -827,7 +961,9 @@ def customer_payments(
     _ensure_commercial(settings)
     tid = _resolve_target_tenant(auth, None)
     dsn = get_database_url()
-    with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
+    with gateway_psycopg(
+        dsn, row_factory=dict_row, connect_timeout=5, tenant_id=tid
+    ) as conn:
         _require_tenant_commercial_state(conn, tid)
         items = fetch_payment_events(conn, tenant_id=tid, limit=limit)
     record_gateway_audit_line(
@@ -876,7 +1012,9 @@ def customer_deposit_checkout(
         raise HTTPException(status_code=400, detail="Idempotency-Key too short (min 8)")
     amt = Decimal(str(body.amount_list_usd))
     dsn = get_database_url()
-    with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
+    with gateway_psycopg(
+        dsn, row_factory=dict_row, connect_timeout=5, tenant_id=tid
+    ) as conn:
         _require_tenant_commercial_state(conn, tid)
         with conn.transaction():
             out = start_deposit_checkout(
@@ -910,7 +1048,9 @@ def customer_deposit_resume(
     _ensure_commercial(settings)
     tid = _resolve_target_tenant(auth, None)
     dsn = get_database_url()
-    with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
+    with gateway_psycopg(
+        dsn, row_factory=dict_row, connect_timeout=5, tenant_id=tid
+    ) as conn:
         _require_tenant_commercial_state(conn, tid)
         row = resume_stripe_checkout(
             conn,
@@ -939,7 +1079,9 @@ def customer_deposit_intent_get(
     _ensure_commercial(settings)
     tid = _resolve_target_tenant(auth, None)
     dsn = get_database_url()
-    with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
+    with gateway_psycopg(
+        dsn, row_factory=dict_row, connect_timeout=5, tenant_id=tid
+    ) as conn:
         _require_tenant_commercial_state(conn, tid)
         row = fetch_intent_by_id(conn, intent_id=intent_id, tenant_id=tid)
     if row is None:
@@ -967,7 +1109,9 @@ def customer_history(
     _ensure_commercial(settings)
     tid = _resolve_target_tenant(auth, None)
     dsn = get_database_url()
-    with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
+    with gateway_psycopg(
+        dsn, row_factory=dict_row, connect_timeout=5, tenant_id=tid
+    ) as conn:
         _require_tenant_commercial_state(conn, tid)
         ledger = fetch_ledger_customer_safe(conn, tenant_id=tid, limit=ledger_limit)
         audits = fetch_portal_audit_recent(conn, tenant_id=tid, limit=audit_limit)
@@ -999,7 +1143,9 @@ def admin_lifecycle_transition(
         ) from e
     dsn = get_database_url()
     try:
-        with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
+        with gateway_psycopg(
+        dsn, row_factory=dict_row, connect_timeout=5, tenant_id=tid
+    ) as conn:
             _require_tenant_commercial_state(conn, tid)
             transition_lifecycle(
                 conn,
@@ -1023,7 +1169,9 @@ def admin_lifecycle_transition(
         "commerce_admin_lifecycle_transition",
         extra={"tenant_id": tid, "to_status": target.value},
     )
-    with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
+    with gateway_psycopg(
+        dsn, row_factory=dict_row, connect_timeout=5, tenant_id=tid
+    ) as conn:
         row = fetch_tenant_lifecycle_row(conn, tenant_id=tid)
     assert row is not None
     return {"status": "ok", "lifecycle": build_lifecycle_public_payload(row)}
@@ -1040,7 +1188,9 @@ def admin_lifecycle_set_email_verified(
     tid = body.tenant_id.strip()
     dsn = get_database_url()
     try:
-        with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
+        with gateway_psycopg(
+        dsn, row_factory=dict_row, connect_timeout=5, tenant_id=tid
+    ) as conn:
             _require_tenant_commercial_state(conn, tid)
             set_email_verified(
                 conn,
@@ -1075,7 +1225,9 @@ def admin_record_payment(
     tid = body.tenant_id.strip()
     amt = Decimal(str(body.amount_list_usd))
     dsn = get_database_url()
-    with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
+    with gateway_psycopg(
+        dsn, row_factory=dict_row, connect_timeout=5, tenant_id=tid
+    ) as conn:
         _require_tenant_commercial_state(conn, tid)
         with conn.transaction():
             pid = insert_payment_event(
@@ -1109,7 +1261,9 @@ def admin_wallet_adjust(
     tid = body.tenant_id.strip()
     delta = Decimal(str(body.delta_list_usd))
     dsn = get_database_url()
-    with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
+    with gateway_psycopg(
+        dsn, row_factory=dict_row, connect_timeout=5, tenant_id=tid
+    ) as conn:
         _require_tenant_commercial_state(conn, tid)
         with conn.transaction():
             new_bal = adjust_wallet_balance(
@@ -1138,7 +1292,9 @@ def admin_integrations_patch(
     _ensure_commercial(settings)
     tid = body.tenant_id.strip()
     dsn = get_database_url()
-    with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
+    with gateway_psycopg(
+        dsn, row_factory=dict_row, connect_timeout=5, tenant_id=tid
+    ) as conn:
         _require_tenant_commercial_state(conn, tid)
         with conn.transaction():
             upsert_integration_snapshot(

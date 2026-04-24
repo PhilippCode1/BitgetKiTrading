@@ -17,9 +17,7 @@ export type EmptyStateCTA = Readonly<
 
 type EmptyStateIcon = "inbox" | "layers" | "activity" | "wallet";
 
-type Props = Readonly<{
-  titleKey: string;
-  descriptionKey: string;
+type EmptyStateShared = Readonly<{
   /** Optional: eine klare Nächst-Schritts-Zeile (ohne nummerierte Liste). */
   nextStepKey?: string;
   /** Optionale nummerierte nächste Schritte (z. B. help.signals). */
@@ -28,10 +26,23 @@ type Props = Readonly<{
   icon?: EmptyStateIcon;
   className?: string;
   cta?: EmptyStateCTA;
+  /** Beliebige Aktion (Button/Link) neben oder statt {@link cta}. */
+  actionButton?: ReactNode;
   children?: ReactNode;
   commsPhase?: SystemCommsPhase;
   showActions?: boolean;
 }>;
+
+export type EmptyStateProps = Readonly<
+  | (EmptyStateShared & {
+      titleKey: string;
+      descriptionKey: string;
+    })
+  | (EmptyStateShared & {
+      title: ReactNode;
+      description: ReactNode;
+    })
+>;
 
 function iconSvg(k: EmptyStateIcon): ReactNode {
   const common = {
@@ -149,21 +160,24 @@ function iconSvg(k: EmptyStateIcon): ReactNode {
 }
 
 /**
- * Leerzustand: Icon, Titel, Beschreibung, optionale CTA, optionale Nächst-Schritte-Liste.
+ * Leerzustand: Icon, Titel, Beschreibung (i18n-Keys oder freie Nodes), optionale CTA/Action, Nächst-Schritte-Liste.
  */
-export function EmptyState({
-  titleKey,
-  descriptionKey,
-  nextStepKey,
-  stepKeys,
-  icon = "inbox",
-  className = "",
-  cta,
-  children,
-  commsPhase,
-  showActions,
-}: Props) {
+export function EmptyState(props: EmptyStateProps) {
   const { t } = useI18n();
+  const isI18n = "titleKey" in props;
+  const titleNode = isI18n ? t(props.titleKey) : props.title;
+  const descriptionNode = isI18n ? t(props.descriptionKey) : props.description;
+  const {
+    nextStepKey,
+    stepKeys,
+    icon = "inbox",
+    className = "",
+    cta,
+    actionButton,
+    children,
+    commsPhase,
+    showActions,
+  } = props;
   const hasSteps = (stepKeys?.length ?? 0) > 0;
   return (
     <ContentPanel
@@ -176,8 +190,8 @@ export function EmptyState({
           {iconSvg(icon)}
         </div>
         <div className="empty-state__text">
-          <h3 className="empty-state__title">{t(titleKey)}</h3>
-          <p className="empty-state__body muted">{t(descriptionKey)}</p>
+          <h3 className="empty-state__title">{titleNode}</h3>
+          <p className="empty-state__body muted">{descriptionNode}</p>
           {nextStepKey ? (
             <p className="empty-state__next muted small">{t(nextStepKey)}</p>
           ) : null}
@@ -196,24 +210,25 @@ export function EmptyState({
         </div>
       ) : null}
       {children}
-      {cta ? (
-        "href" in cta ? (
-          <div className="empty-state__cta">
-            <Link className="public-btn ghost" href={cta.href}>
-              {t(cta.labelKey)}
-            </Link>
-          </div>
-        ) : (
-          <div className="empty-state__cta">
-            <button
-              type="button"
-              className="public-btn ghost"
-              onClick={cta.onClick}
-            >
-              {t(cta.labelKey)}
-            </button>
-          </div>
-        )
+      {cta || actionButton ? (
+        <div className="empty-state__cta empty-state__cta--actions">
+          {cta ? (
+            "href" in cta ? (
+              <Link className="public-btn ghost" href={cta.href}>
+                {t(cta.labelKey)}
+              </Link>
+            ) : (
+              <button
+                type="button"
+                className="public-btn ghost"
+                onClick={cta.onClick}
+              >
+                {t(cta.labelKey)}
+              </button>
+            )
+          ) : null}
+          {actionButton}
+        </div>
       ) : null}
       {showActions ? (
         <div className="empty-state__actions">

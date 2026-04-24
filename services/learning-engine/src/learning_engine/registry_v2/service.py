@@ -10,7 +10,11 @@ from fastapi import HTTPException
 from psycopg import errors as pg_errors
 
 from learning_engine.config import LearningEngineSettings
-from learning_engine.registry_v2.champion_promotion_gates import evaluate_champion_promotion_gates
+from learning_engine.registry_v2.champion_promotion_gates import (
+    evaluate_champion_challenger_backtest_gate,
+    evaluate_champion_promotion_gates,
+    get_champion_challenger_backtest_block,
+)
 from learning_engine.storage import (
     repo_model_champion_lifecycle,
     repo_model_runs,
@@ -20,6 +24,7 @@ from learning_engine.storage import (
 from shared_py.model_registry_policy import (
     champion_assignment_calibration_ok,
     model_requires_probability_calibration,
+    parse_metadata_json,
 )
 from shared_py.model_registry_scope import normalize_registry_scope
 
@@ -87,6 +92,13 @@ def assign_champion(
             promotion_scope_key=sk,
         )
         gate_report = {"ok": gr.ok, "reasons": list(gr.reasons), "details": gr.details}
+        cbt_pass = (gr.details or {}).get("champion_challenger_backtest")
+        if gr.ok and isinstance(cbt_pass, dict) and cbt_pass.get("pass"):
+            gate_report["champion_challenger_backtest"] = {
+                **cbt_pass,
+                "status": "PROMOTED",
+                "decision": "champion_assigned",
+            }
         if not gr.ok:
             reason_txt = (promotion_override_reason or "").strip()
             allow_override = (
@@ -108,6 +120,21 @@ def assign_champion(
             gate_report["manual_override"] = True
             gate_report["override_reason"] = reason_txt
             gate_report["changed_by"] = changed_by
+
+    if not skip_promotion_gates and settings.model_challenger_champion_backtest_require_baseline_match:
+        bbt = get_champion_challenger_backtest_block(
+            parse_metadata_json(row.get("metadata_json"))
+        )
+        cbl = (bbt or {}).get("champion_baseline_run_id")
+        if cbl is not None and str(cbl).strip():
+            cur = repo_model_registry_v2.fetch_champion_run_joined(
+                conn, model_name=model_name, scope_type=st, scope_key=sk
+            )
+            if not cur or str(cur.get("run_id")).lower() != str(cbl).strip().lower():
+                raise HTTPException(
+                    status_code=400,
+                    detail="champion_baseline_run_id stimmt nicht mit aktuellem Live-Champion ueberein",
+                )
 
     cal_status = (
         "verified"
@@ -242,16 +269,27 @@ def assign_challenger(
 
 def clear_registry_slot(
     conn: psycopg.Connection[Any],
+    settings: LearningEngineSettings,
     *,
     model_name: str,
     role: str,
     changed_by: str = "api",
     scope_type: str = "global",
     scope_key: str = "",
+    x_champion_clear_secret: str | None = None,
 ) -> dict[str, Any]:
     if role not in ("champion", "challenger"):
         raise HTTPException(status_code=400, detail="role muss champion oder challenger sein")
     st, sk = normalize_registry_scope(scope_type=scope_type, scope_key=scope_key)
+    if role == "champion" and settings.model_registry_champion_deletion_forbidden:
+        need = (settings.model_registry_champion_clear_secret or "").strip()
+        got = (x_champion_clear_secret or "").strip()
+        if not need or got != need:
+            raise HTTPException(
+                status_code=403,
+                detail="champion slot immutable — nur Ersetzung per POST champion oder notfalls "
+                "X-Model-Registry-Champion-Clear-Secret (MODEL_REGISTRY_CHAMPION_CLEAR_SECRET).",
+            )
     if role == "champion":
         _close_champion_history_safe(
             conn,
@@ -273,6 +311,122 @@ def clear_registry_slot(
         payload={"changed_by": changed_by, "scope_type": st, "scope_key": sk},
     )
     return {"status": "ok", "deleted": ok}
+
+
+def mark_challenger_ready_for_live(
+    conn: psycopg.Connection[Any],
+    settings: LearningEngineSettings,
+    *,
+    model_name: str,
+    changed_by: str = "api",
+    scope_type: str = "global",
+    scope_key: str = "",
+) -> dict[str, Any]:
+    """Challenger-Slot auf READY_FOR_LIVE setzen, wenn Backtest-Gate (Sharpe, Drawdown, n>=500) erfuellt ist."""
+    st, sk = normalize_registry_scope(scope_type=scope_type, scope_key=scope_key)
+    chal = repo_model_registry_v2.fetch_challenger_run_joined(
+        conn, model_name=model_name, scope_type=st, scope_key=sk
+    )
+    if chal is None:
+        raise HTTPException(status_code=404, detail="kein Challenger-Slot fuer model_name/scope")
+    if not settings.model_challenger_champion_backtest_gate_enabled:
+        raise HTTPException(
+            status_code=400,
+            detail="MODEL_CHALLENGER_CHAMPION_BACKTEST_GATE_ENABLED muss true sein",
+        )
+    gr = evaluate_champion_challenger_backtest_gate(
+        metadata_json=chal.get("metadata_json"),
+        settings=settings,
+    )
+    if not gr.ok:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "challenger_champion_backtest_not_eligible",
+                "reasons": list(gr.reasons),
+                "details": gr.details,
+            },
+        )
+    if settings.model_challenger_champion_backtest_require_baseline_match:
+        bbt = get_champion_challenger_backtest_block(
+            parse_metadata_json(chal.get("metadata_json"))
+        )
+        cbl = (bbt or {}).get("champion_baseline_run_id")
+        if cbl is not None and str(cbl).strip():
+            cur = repo_model_registry_v2.fetch_champion_run_joined(
+                conn, model_name=model_name, scope_type=st, scope_key=sk
+            )
+            if not cur or str(cur.get("run_id")).lower() != str(cbl).strip().lower():
+                raise HTTPException(
+                    status_code=400,
+                    detail="champion_baseline_run_id stimmt nicht mit aktuellem Live-Champion ueberein",
+                )
+    run_id = UUID(str(chal["run_id"]))
+    cal = "READY_FOR_LIVE"
+    slot = repo_model_registry_v2.upsert_registry_slot(
+        conn,
+        model_name=model_name,
+        role="challenger",
+        run_id=run_id,
+        calibration_status=cal,
+        notes=chal.get("registry_notes") if chal.get("registry_notes") is not None else None,
+        scope_type=st,
+        scope_key=sk,
+    )
+    entity_id = f"{model_name}:challenger:{st}:{sk}"
+    _audit(
+        conn,
+        action="challenger_marked_ready_for_live",
+        entity_id=entity_id,
+        payload={
+            "run_id": str(run_id),
+            "changed_by": changed_by,
+            "scope_type": st,
+            "scope_key": sk,
+            "champion_challenger_backtest": (gr.details or {}).get("champion_challenger_backtest"),
+        },
+    )
+    return {
+        "status": "ok",
+        "slot": slot,
+        "champion_challenger_backtest": (gr.details or {}).get("champion_challenger_backtest"),
+    }
+
+
+def auto_assign_champion_from_ready_challenger(
+    conn: psycopg.Connection[Any],
+    settings: LearningEngineSettings,
+    *,
+    model_name: str,
+    changed_by: str = "api",
+    notes: str | None = None,
+    scope_type: str = "global",
+    scope_key: str = "",
+) -> dict[str, Any]:
+    """Wenn der Challenger-Slot READY_FOR_LIVE traegt, Champion zu dessen run_id hochstufen (Promotions-Gates in assign_champion)."""
+    st, sk = normalize_registry_scope(scope_type=scope_type, scope_key=scope_key)
+    chal = repo_model_registry_v2.fetch_challenger_run_joined(
+        conn, model_name=model_name, scope_type=st, scope_key=sk
+    )
+    if chal is None:
+        raise HTTPException(status_code=404, detail="kein Challenger-Slot")
+    cstat = (chal.get("registry_calibration_status") or "").strip()
+    if cstat != "READY_FOR_LIVE":
+        raise HTTPException(
+            status_code=400,
+            detail="Challenger ist nicht READY_FOR_LIVE (zuvor mark_challenger_ready_for_live / Gate erfuellen)",
+        )
+    rid = UUID(str(chal["run_id"]))
+    return assign_champion(
+        conn,
+        settings,
+        model_name=model_name,
+        run_id=rid,
+        notes=notes,
+        changed_by=changed_by,
+        scope_type=st,
+        scope_key=sk,
+    )
 
 
 def list_registry_snapshot(conn: psycopg.Connection[Any]) -> dict[str, Any]:

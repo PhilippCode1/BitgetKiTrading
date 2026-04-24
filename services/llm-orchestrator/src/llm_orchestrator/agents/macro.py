@@ -133,6 +133,11 @@ class MacroAnalystAgent(BaseTradingAgent):
         prompt = (
             "Du bist der Macro-Analyst der MARL-Flotte.\n"
             "Nutze die folgende Instruktionsschicht (Governance), den NEWS_KONTEXT und optional ONCHAIN_KONTEXT.\n"
+            "Gewichtung: Bei Szenarien mit Liquidations- oder Wick-Risiko (harte Fills, Stops, kurzfristiger "
+            "Gegenmove) sollen frische On-Chain-Wal-Fluesse hoch priorisiert werden: sie koennen Verkaufs-/"
+            "Swap-Druck oder venue-lastige Kapitalverschiebung signalisieren, die chartrein schwer sichtbar ist. "
+            "Erwaehne in der Begruendung explizit, wenn On-Chain-Befunde das Wick-/Liquidation-Szenario "
+            "untermauern oder es relativieren (kein Trade-Rat, nur Einschaetzung).\n"
             "Keine Orderhoheit; nur Bewertung und strukturierte Agent-Nachricht.\n\n"
             f"=== Governance (Referenz: admin_operations_assist) ===\n{self._instruction}\n\n"
             f"NEWS_KONTEXT (JSON):\n{news_json}\n"
@@ -160,7 +165,10 @@ class MacroAnalystAgent(BaseTradingAgent):
                     model=self._settings.openai_model_fast,
                     system_instructions_de=(
                         "Rolle: Macro-Analyst. Antworte nur mit JSON gemaess Schema "
-                        "(agent-comm-v1). Keine Trades."
+                        "(agent-comm-v1). Keine Trades. "
+                        "Wenn im ONCHAIN_KONTEXT Wal- oder DEX-Notional-Events genannt werden: "
+                        "bei Themen Liquidation, Stop-Hunt, abrupte Wicks, Funding-Stress, "
+                        "diese Befunde staerker als reine Preis-Chart-Extrema gewichten."
                     ),
                 )
             else:

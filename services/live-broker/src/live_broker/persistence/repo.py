@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from decimal import Decimal
 from typing import Any, cast
 from uuid import UUID
@@ -9,6 +10,16 @@ from uuid import UUID
 import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Json
+
+try:
+    from psycopg_pool import ConnectionPool
+except ImportError:  # pragma: no cover - Laufzeit nutzt psycopg[pool]
+    ConnectionPool = None  # type: ignore[assignment, misc]
+
+from shared_py.datastore.pool_config import (
+    PSYCOPG_POOL_MAX_LIFETIME_SEC,
+    PSYCOPG_POOL_MAX_SIZE,
+)
 
 logger = logging.getLogger("live_broker.repo")
 
@@ -19,6 +30,7 @@ _REQUIRED_TABLES = (
     "live.exit_plans",
     "live.fills",
     "live.exchange_snapshots",
+    "live.positions",
     "live.kill_switch_events",
     "live.audit_trails",
     "live.paper_reference_events",
@@ -65,6 +77,30 @@ def _json_safe(value: Any) -> Any:
 class LiveBrokerRepository:
     def __init__(self, dsn: str) -> None:
         self._dsn = dsn
+        self._pool: Any = None
+        _use = (os.environ.get("BITGET_USE_PSYCOPG_POOL", "1") or "1").strip().lower() in (
+            "1",
+            "true",
+            "yes",
+            "on",
+            "",
+        )
+        if (
+            _use
+            and dsn.strip()
+            and ConnectionPool is not None
+        ):
+            self._pool = ConnectionPool(
+                dsn.strip(),
+                min_size=1,
+                max_size=PSYCOPG_POOL_MAX_SIZE,
+                max_lifetime=float(PSYCOPG_POOL_MAX_LIFETIME_SEC),
+            )
+
+    def close(self) -> None:
+        if self._pool is not None:
+            self._pool.close()
+            self._pool = None
 
     def schema_ready(self) -> tuple[bool, str]:
         query = """
@@ -75,6 +111,7 @@ class LiveBrokerRepository:
             to_regclass('live.exit_plans') IS NOT NULL AS exit_plans,
             to_regclass('live.fills') IS NOT NULL AS fills,
             to_regclass('live.exchange_snapshots') IS NOT NULL AS exchange_snapshots,
+            to_regclass('live.positions') IS NOT NULL AS positions,
             to_regclass('live.kill_switch_events') IS NOT NULL AS kill_switch_events,
             to_regclass('live.audit_trails') IS NOT NULL AS audit_trails,
             to_regclass('live.paper_reference_events') IS NOT NULL AS paper_reference_events,
@@ -122,6 +159,7 @@ class LiveBrokerRepository:
             row = conn.execute(
                 """
                 INSERT INTO live.execution_decisions (
+                    execution_id,
                     source_service,
                     source_signal_id,
                     symbol,
@@ -141,6 +179,7 @@ class LiveBrokerRepository:
                     payload_json,
                     trace_json
                 ) VALUES (
+                    COALESCE(%(execution_id)s::uuid, gen_random_uuid()),
                     %(source_service)s,
                     %(source_signal_id)s,
                     %(symbol)s,
@@ -164,6 +203,7 @@ class LiveBrokerRepository:
                 """,
                 {
                     **record,
+                    "execution_id": record.get("execution_id"),
                     "payload_json": Json(_json_safe(record.get("payload_json", {}))),
                     "trace_json": Json(_json_safe(record.get("trace_json", {}))),
                 },
@@ -1312,7 +1352,121 @@ class LiveBrokerRepository:
             "recovery_state": self.reconstruct_runtime_state(order_limit=100, fill_limit=100),
         }
 
-    def _connect(self) -> psycopg.Connection[Any]:
+    def list_live_positions(self) -> list[dict[str, Any]]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT *
+                FROM live.positions
+                ORDER BY inst_id, hold_side, product_type
+                """
+            ).fetchall()
+        return [_serialize_row(dict(r)) for r in rows]
+
+    def delete_live_position(self, inst_id: str, product_type: str, hold_side: str) -> bool:
+        with self._connect() as conn:
+            r = conn.execute(
+                """
+                DELETE FROM live.positions
+                WHERE inst_id = %s AND product_type = %s AND hold_side = %s
+                """,
+                (inst_id.strip().upper(), product_type.strip().upper(), hold_side.strip().lower()),
+            )
+            return (r.rowcount or 0) > 0
+
+    def upsert_live_position_from_bitget(
+        self,
+        row: dict[str, Any],
+        *,
+        notional_value: Any,
+    ) -> dict[str, Any]:
+        """Merge aus Bitget-REST/WS-Positionsobjekt (Futures/linear)."""
+        raw = row.get("raw_json") or {}
+        if not isinstance(raw, dict):
+            raw = {}
+        size = raw.get("total")
+        if size in (None, ""):
+            size = raw.get("available")
+        entry = raw.get("openPriceAvg") or raw.get("openAvgPrice")
+        margin = raw.get("margin") or raw.get("marginSize")
+        inst = str(row.get("inst_id") or "").strip().upper()
+        ptype = str(row.get("product_type") or "").strip().upper()
+        hside = str(row.get("hold_side") or "").strip().lower()
+        src = str(row.get("source") or "reconcile_shadow_sync")
+        nvl = notional_value
+        if nvl is not None and not isinstance(nvl, Decimal):
+            nvl = Decimal(str(nvl))
+        with self._connect() as conn:
+            r = conn.execute(
+                """
+                INSERT INTO live.positions (
+                    inst_id, product_type, hold_side, size_base, entry_price, margin, notional_value, raw_json, source
+                ) VALUES (
+                    %(inst_id)s, %(product_type)s, %(hold_side)s, %(size_base)s, %(entry_price)s, %(margin)s, %(notional_value)s, %(raw_json)s, %(source)s
+                )
+                ON CONFLICT (inst_id, product_type, hold_side) DO UPDATE SET
+                    size_base = EXCLUDED.size_base,
+                    entry_price = EXCLUDED.entry_price,
+                    margin = EXCLUDED.margin,
+                    notional_value = EXCLUDED.notional_value,
+                    raw_json = EXCLUDED.raw_json,
+                    source = EXCLUDED.source,
+                    updated_ts = now()
+                RETURNING *
+                """,
+                {
+                    "inst_id": inst,
+                    "product_type": ptype,
+                    "hold_side": hside,
+                    "size_base": size,
+                    "entry_price": entry,
+                    "margin": margin,
+                    "notional_value": nvl,
+                    "raw_json": Json(_json_safe(raw)),
+                    "source": src,
+                },
+            ).fetchone()
+        if r is None:
+            raise RuntimeError("live.positions upsert failed")
+        return _serialize_row(dict(r))
+
+    def upsert_apex_latency_audit(
+        self,
+        *,
+        signal_id: str,
+        execution_id: str | None,
+        apex_trace: dict[str, Any],
+    ) -> None:
+        """Prompt 39: `app.apex_latency_audit` (kein starker Contract mit audit-ledger HTTP)."""
+        if not (signal_id or "").strip() or not isinstance(apex_trace, dict) or not apex_trace:
+            return
+        eid: UUID | None
+        try:
+            eid = UUID(str(execution_id)) if execution_id else None
+        except (TypeError, ValueError):
+            eid = None
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO app.apex_latency_audit (signal_id, execution_id, trace_id, apex_trace, updated_at)
+                VALUES (%(sid)s, %(eid)s, %(tid)s, %(apex)s, now())
+                ON CONFLICT (signal_id) DO UPDATE SET
+                    execution_id = COALESCE(EXCLUDED.execution_id, app.apex_latency_audit.execution_id),
+                    trace_id = EXCLUDED.trace_id,
+                    apex_trace = EXCLUDED.apex_trace,
+                    updated_at = now()
+                """,
+                {
+                    "sid": signal_id.strip()[:2000],
+                    "eid": eid,
+                    "tid": str(apex_trace.get("trace_id") or "") or None,
+                    "apex": Json(_json_safe(apex_trace)),
+                },
+            )
+
+    def _connect(self) -> Any:
+        if self._pool is not None:
+            return self._pool.connection()
         return cast(
             psycopg.Connection[Any],
             psycopg.connect(

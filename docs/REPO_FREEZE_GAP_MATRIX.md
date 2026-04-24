@@ -1,6 +1,6 @@
 # Repo Freeze, Gap-Matrix und Abschluss-Backlog
 
-**Stand:** 2026-04-01 (Roadmap-Stufen 1–10 Abschlussaudit: `docs/ROADMAP_10_10_CLOSEOUT.md`).
+**Stand:** 2026-04-24 (P83 Dokumentations-Paritaet; Roadmap 1–10: `docs/ROADMAP_10_10_CLOSEOUT.md`).
 
 ## Freeze-Update 2026-03-29
 
@@ -14,7 +14,7 @@ kanonische Gap-Matrix fuer den eingefrorenen Ausgangszustand vor weiteren grosse
 | Thema                                                              | Typ                                                                                                                                                                                | Schwere                                                                                   | Evidenz                                                                                                        |
 | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | Paper-Broker Contract bei `live`-Mode                              | In **shadow/production** (`app_env` oder `production`) **kein** Fixture-Fallback bei REST-Fehler (`RuntimeError`); Fixture nur bei `mode=fixture` oder lokaler Nicht-Prod-Umgebung | erledigt (Code+Test)                                                                      | `contract_config.py` (`_fixture_fallback_allowed`), `tests/paper_broker/test_contract_config_family_matrix.py` |
-| BTCUSDT-/USDT-FUTURES-Reste in Fixtures, Beispiel-ENV, Doku, Tests | Drift-/Verwechslungsrisiko, nicht automatischer Live-Default                                                                                                                       | major (teilweise: ETH-Paper-Fixture, Prod-`BITGET_DISCOVERY_SYMBOLS` multi, Truth-Matrix) | `config/settings.py`, `services/paper-broker/fixtures/`, `.env*.example`, `docs/`, `tests/`                    |
+| BTCUSDT-/USDT-FUTURES-Reste in Fixtures, Beispiel-ENV, Doku, Tests | Drift-/Verwechslungsrisiko, nicht automatischer Live-Default                                                                                                                       | **erledigt (P83)** — Multi-Asset-Factory/Katalog, Doku bereinigt, keine P0-Blocker in der Matrix | `MarketInstrumentFactory` / `BitgetInstrumentIdentity` (`shared_py/bitget/instruments.py`), `config/settings.py`, Truth-Matrix, `docs/SYSTEM_AUDIT_MASTER.md` |
 
 ### P1 — Hohe Release-Relevanz
 
@@ -37,10 +37,7 @@ kanonische Gap-Matrix fuer den eingefrorenen Ausgangszustand vor weiteren grosse
 
 ### Freeze-Regel
 
-Dieser Schritt darf **nicht** als vollstaendig abgeschlossen markiert werden, solange
-mindestens ein `major` oder `critical` Befund oben offen ist. Die Folgearbeit muss
-immer gegen `docs/REPO_TRUTH_MATRIX.md`, diese P0/P1/P2-Matrix und das Ziel-ADR
-begruendet werden.
+**P83 (2026-04-24):** Die **P0-Software-Blocker** in dieser Matrix sind im Repo-Stand abgeschlossen; verbleibende Eintraege sind **P1/P2** (iterativ) oder **akzeptierte Restrisiken** (`docs/adr/ADR-0010-roadmap-accepted-residual-risks.md`). **Externe** Go-Live-Punkte (Exchange, Recht, Betrieb) sind nicht Gegenstand dieser Matrix. Aenderungen an Code/Compose werden weiterhin gegen `docs/REPO_TRUTH_MATRIX.md`, diese Matrix und ADR-0001 begruendet.
 
 **Zweck:** Eine **kanonische Freeze-Referenz** fuer alle Folgeprompts: reale Verzeichnisse, Abgleich mit `infra/service-manifest.yaml` und `docker-compose.yml`, priorisierte Luecken und Zuordnung zu Folgeprompt-Bloecken.
 
@@ -281,6 +278,20 @@ Jeder Folgeprompt liefert am Ende:
 | `NEWS_FIXTURE_MODE`, News-Sources                   | lokale/test Ingest                        | `BaseServiceSettings._prod_safety` verbietet Fixture in `PRODUCTION=true` |
 | `LLM_USE_FAKE_PROVIDER`, `fake_provider.py`         | Tests / lokal                             | in Prod geblockt                                                          |
 | `shared/ts/src/eventStreams.ts`, `eventEnvelope.ts` | Eventbus-Typen (Sync mit Katalog manuell) | **P2** bei neuen `event_type` mitpflegen                                  |
+
+---
+
+## Monorepo CI — Freeze-Status (automatisiert, Merge-Gate)
+
+`tools/check_release_approval_gates.py` wertet **nur diese Tabelle** aus. **Status** muss
+`OPEN` (Merge blockiert) oder `CLOSED` (fuer CI OK) lauten. P0/P1+OPEN brechen
+`.github/workflows/ci.yml` (Job `release-approval-gate`) ab. P2+OPEN blockiert
+den Merge-Job nicht.
+
+| Prio | Status | Thema (kurz) |
+| ---- | ---- | ---- |
+| P0 | CLOSED | Kein offener P0-Blocker fuer Monorepo-Merge (Truth/Gates) |
+| P1 | CLOSED | Kein offener P1-Release-Blocker |
 
 ---
 

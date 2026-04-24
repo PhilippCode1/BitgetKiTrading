@@ -36,7 +36,7 @@ def test_settings_reject_chat_fallback_in_shadow(
     assert "LLM_OPENAI_ALLOW_CHAT_FALLBACK" in str(ei.value)
 
 
-def test_retryable_exhaustion_raises_runtime_error(
+def test_retryable_exhaustion_returns_graceful_degraded(
     mock_redis_bus, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("REDIS_URL", "redis://127.0.0.1:6379/0")
@@ -58,13 +58,19 @@ def test_retryable_exhaustion_raises_runtime_error(
     svc._fake.generate_structured = always_timeout  # type: ignore[method-assign]
 
     with patch("llm_orchestrator.service.sleep_backoff"):
-        with pytest.raises(RuntimeError, match="upstream timeout"):
-            svc.run_structured(
-                schema_json=schema,
-                prompt="p",
-                temperature=0.0,
-                provider_preference="auto",
-            )
+        out = svc.run_structured(
+            schema_json=schema,
+            prompt="p",
+            temperature=0.0,
+            provider_preference="auto",
+        )
+    assert out.get("orchestrator_status") == "degraded"
+    assert out.get("llm_error_code") in (
+        "LLM_ORCHESTRATOR_TIMEOUT",
+        "LLM_UPSTREAM_FAILED",
+    )
+    assert out.get("ok") is True
+    assert "result" in out
 
 
 def test_schema_validation_failure_then_success(
@@ -142,7 +148,9 @@ def test_prompt_too_large_http_413(mock_redis_bus, monkeypatch: pytest.MonkeyPat
     assert detail["code"] == "PROMPT_TOO_LARGE"
 
 
-def test_llm_unavailable_502_shape(mock_redis_bus, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_llm_exhausted_graceful_200_degraded(
+    mock_redis_bus, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setenv("REDIS_URL", "redis://127.0.0.1:6379/0")
     monkeypatch.setenv("LLM_USE_FAKE_PROVIDER", "true")
     monkeypatch.setenv("LLM_MAX_RETRIES", "1")
@@ -173,11 +181,11 @@ def test_llm_unavailable_502_shape(mock_redis_bus, monkeypatch: pytest.MonkeyPat
                 "temperature": 0.0,
             },
         )
-    assert r.status_code == 502, r.text
-    detail = r.json()["detail"]
-    assert detail["code"] == "LLM_UNAVAILABLE"
-    assert "rate limited" in detail["message"]
-    assert detail.get("failure_class") == "retry_exhausted"
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body.get("orchestrator_status") == "degraded"
+    assert body.get("llm_error_code") == "LLM_UPSTREAM_FAILED"
+    assert body.get("ok") is True
 
 
 def test_llm_timeout_ms_validation_bounds(mock_redis_bus, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -188,3 +196,89 @@ def test_llm_timeout_ms_validation_bounds(mock_redis_bus, monkeypatch: pytest.Mo
 
     with pytest.raises(ValidationError):
         LLMOrchestratorSettings()
+
+
+def test_json_self_repair_triggers_and_returns_valid_json(
+    mock_redis_bus, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """
+    DoD: ungueltige erste Ausgabe (fehlendes Pflichtfeld) -> Reparatur-Prompt mit
+    \"Das JSON ist ungültig\" -> zweite Ausgabe schema-konform.
+    """
+    monkeypatch.setenv("REDIS_URL", "redis://127.0.0.1:6379/0")
+    monkeypatch.setenv("LLM_USE_FAKE_PROVIDER", "true")
+    monkeypatch.setenv("LLM_MAX_RETRIES", "2")
+    from llm_orchestrator.config import LLMOrchestratorSettings
+    from llm_orchestrator.service import LLMService
+
+    svc = LLMService(LLMOrchestratorSettings())
+    schema = {
+        "type": "object",
+        "required": ["a", "b"],
+        "properties": {
+            "a": {"type": "string"},
+            "b": {"type": "integer"},
+        },
+        "additionalProperties": False,
+    }
+    prompts: list[str] = []
+
+    def first_bad_then_repaired(s: dict, pr: str, **kw: object) -> dict:
+        prompts.append(str(pr))
+        if len(prompts) == 1:
+            return {"a": "truncated-sim"}  # fehlt b — wie abgeschnittener/kaputter Output
+        return {"a": "repaired", "b": 0}
+
+    svc._fake.generate_structured = first_bad_then_repaired  # type: ignore[method-assign]
+    with patch("llm_orchestrator.service.sleep_backoff"):
+        out = svc.run_structured(
+            schema_json=schema, prompt="bitte b ausgeben", temperature=0.0
+        )
+    assert out.get("ok") is True
+    res = out.get("result")
+    assert isinstance(res, dict)
+    assert res.get("a") == "repaired" and res.get("b") == 0
+    assert len(prompts) == 2, "Erwartet: Primaer + ein Selbstreparatur-Call"
+    assert "Das JSON ist ungültig" in prompts[1]
+    assert "Fehler:" in prompts[1]
+    from llm_orchestrator.validation.schema_validate import validate_against_schema
+
+    validate_against_schema(schema, res)
+
+
+def test_circuit_opens_after_three_degraded_events(
+    mock_redis_bus, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from llm_orchestrator.config import LLMOrchestratorSettings
+    from llm_orchestrator.service import LLMService
+
+    monkeypatch.setenv("LLM_USE_FAKE_PROVIDER", "false")
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test-circuit")
+    monkeypatch.setenv("LLM_CIRCUIT_FAIL_THRESHOLD", "3")
+    monkeypatch.setenv("LLM_CIRCUIT_WINDOW_SEC", "60")
+    settings = LLMOrchestratorSettings()
+    assert settings.llm_circuit_fail_threshold == 3
+    assert settings.llm_circuit_window_sec == 60
+
+    svc = LLMService(settings)
+    for _ in range(2):
+        svc._circuit.record_upstream_degraded("openai")
+    assert not svc._circuit.is_open("openai")
+    svc._circuit.record_upstream_degraded("openai")
+    assert svc._circuit.is_open("openai")
+
+    schema = {
+        "type": "object",
+        "properties": {"a": {"type": "string"}},
+        "required": ["a"],
+    }
+    out = svc.run_structured(
+        schema_json=schema, prompt="p", temperature=0.0, provider_preference="auto"
+    )
+    assert out.get("orchestrator_status") == "degraded"
+    assert out.get("llm_error_code") == "LLM_PROVIDER_OFFLINE"
+    out2 = svc.run_structured(
+        schema_json=schema, prompt="p", temperature=0.0, provider_preference="auto"
+    )
+    assert out2.get("orchestrator_status") == "degraded"
+    assert out2.get("llm_error_code") == "LLM_PROVIDER_OFFLINE"

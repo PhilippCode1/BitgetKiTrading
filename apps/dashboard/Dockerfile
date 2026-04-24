@@ -41,6 +41,7 @@ RUN if [ -z "${NEXT_PUBLIC_API_BASE_URL}" ] || [ -z "${NEXT_PUBLIC_WS_BASE_URL}"
       exit 1; \
     fi
 
+# Standalone-Output: kein pnpm-Workspace im Laufzeit-Image, nur getracede node_modules
 RUN pnpm --dir apps/dashboard build
 
 FROM node:20.19.6-alpine3.22 AS runner
@@ -52,15 +53,28 @@ ENV PORT=3000
 
 WORKDIR /app
 
-RUN addgroup -S nodejs && adduser -S nextjs -G nodejs
+RUN addgroup -S -g 10001 modul_mate && adduser -S -u 10001 -G modul_mate -H -h /app modul_mate
 
-COPY --from=builder --chown=nextjs:nodejs /app/apps/dashboard/build/standalone/ /app/
-COPY --from=builder --chown=nextjs:nodejs /app/apps/dashboard/build/static /app/apps/dashboard/build/static
-COPY --from=builder --chown=nextjs:nodejs /app/apps/dashboard/public /app/apps/dashboard/public
+# next.config distDir: build -> build/standalone + build/static
+COPY --from=builder --chown=modul_mate:modul_mate /app/apps/dashboard/build/standalone/ /app/
+COPY --from=builder --chown=modul_mate:modul_mate /app/apps/dashboard/build/static /app/apps/dashboard/build/static
+COPY --from=builder --chown=modul_mate:modul_mate /app/apps/dashboard/public /app/apps/dashboard/public
 
-USER nextjs
+# Keine Sourcemaps im Image
+RUN find /app -type f -name "*.map" -delete 2>/dev/null || true
+
+# Kein pnpm-Workspace-Root: nur Standalone-Trace (getraces node_modules, kein globales pnpm-Install-Layout)
+RUN test -f /app/apps/dashboard/server.js \
+  && ! test -f /app/pnpm-workspace.yaml \
+  && ! test -f /app/pnpm-lock.yaml
+
+USER modul_mate
 
 EXPOSE 3000
+
+# Node 20: fetch
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
 CMD ["node", "apps/dashboard/server.js"]
 

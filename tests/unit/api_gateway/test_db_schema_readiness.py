@@ -5,11 +5,8 @@ from unittest.mock import patch
 
 import pytest
 
-from api_gateway.db import (
-    _migration_sort_key,
-    check_postgres_schema_for_ready,
-    list_expected_migration_filenames,
-)
+from api_gateway.db import check_postgres_schema_for_ready, list_expected_migration_filenames
+from shared_py.postgres_migrations import migration_sort_key
 
 
 def test_migration_sort_key_orders_numeric_prefix_before_lexicographic() -> None:
@@ -18,7 +15,7 @@ def test_migration_sort_key_orders_numeric_prefix_before_lexicographic() -> None
         Path("20_a.sql"),
         Path("020_b.sql"),
     ]
-    names = sorted(paths, key=_migration_sort_key)
+    names = sorted(paths, key=migration_sort_key)
     assert [p.name for p in names] == ["020_b.sql", "20_a.sql", "100_z.sql"]
 
 

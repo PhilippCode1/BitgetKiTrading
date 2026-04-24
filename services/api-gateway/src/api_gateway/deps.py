@@ -4,23 +4,189 @@ from __future__ import annotations
 
 import hashlib
 import logging
+from decimal import Decimal
+from typing import Any
 
 import psycopg
 from fastapi import Depends, HTTPException, Request
 from psycopg.rows import dict_row
+from shared_py.billing_wallet import fetch_prepaid_balance_list_usd
 from shared_py.modul_mate_db_gates import assert_execution_allowed
-from shared_py.product_policy import ExecutionPolicyViolationError
+from shared_py.product_policy import (
+    ExecutionPolicyViolationError,
+    plan_entitlement_key_enabled,
+    prepaid_balance_sufficient,
+)
 
 from api_gateway.audit import record_gateway_audit_line
 from api_gateway.auth import GatewayAuthContext, require_sensitive_auth
 from api_gateway.config import get_gateway_settings
 from api_gateway.db import DatabaseHealthError, get_database_url
 from api_gateway.rate_limit import get_rate_limit_redis
+from api_gateway.tenant_rls import gateway_psycopg
 
 logger = logging.getLogger("api_gateway.deps")
 
 # Stabiler Fehler-Code fuer Clients (i18n-Keys, keine lokalisierten Kundenfloskeln hier)
 LIVE_TRADING_NOT_ALLOWED_ERROR_CODE = "LIVE_TRADING_NOT_ALLOWED_NO_CONTRACT"
+COMMERCIAL_ENTITLEMENT_ERROR_CODE = "COMMERCIAL_ENTITLEMENT_REQUIRED"
+
+
+def _bypasses_commercial_entitlement_check(auth: GatewayAuthContext) -> bool:
+    if auth.has_role("admin:read") or auth.has_role("admin:write"):
+        return True
+    if auth.has_role("operator:mutate"):
+        return True
+    if auth.auth_method in (
+        "gateway_internal_key",
+        "legacy_admin_token",
+        "dev_anonymous",
+    ):
+        return True
+    return False
+
+
+def _evaluate_commercial_feature_access(
+    conn: psycopg.Connection[Any],
+    *,
+    tenant_id: str,
+    feature_name: str,
+) -> tuple[bool, str, dict[str, Any]]:
+    row = conn.execute(
+        """
+        SELECT plan_entitlement_key, min_prepaid_balance_list_usd
+        FROM app.commercial_usage_entitlements
+        WHERE feature_name = %s
+        """,
+        (feature_name,),
+    ).fetchone()
+    if row is None:
+        return True, "feature_catalog_missing", {"feature": feature_name}
+    plan_key = str(row["plan_entitlement_key"])
+    min_b = row["min_prepaid_balance_list_usd"]
+    min_d = (
+        min_b
+        if isinstance(min_b, Decimal)
+        else Decimal(str(min_b)) if min_b is not None else Decimal("0")
+    )
+    trow = conn.execute(
+        """
+        SELECT p.entitlements_json, t.plan_id
+        FROM app.tenant_commercial_state t
+        JOIN app.commercial_plan_definitions p ON p.plan_id = t.plan_id
+        WHERE t.tenant_id = %s
+        """,
+        (tenant_id,),
+    ).fetchone()
+    if trow is None:
+        return (
+            False,
+            "no_tenant_commercial_state",
+            {
+                "feature": feature_name,
+                "plan_entitlement_key": plan_key,
+            },
+        )
+    ent = trow.get("entitlements_json")
+    if isinstance(ent, str):
+        import json
+
+        try:
+            ent = json.loads(ent)
+        except json.JSONDecodeError:
+            ent = {}
+    if not isinstance(ent, dict):
+        ent = {}
+    if not plan_entitlement_key_enabled(ent, key=plan_key):
+        return (
+            False,
+            "plan_feature_disabled",
+            {
+                "feature": feature_name,
+                "plan_id": str(trow.get("plan_id") or ""),
+                "plan_entitlement_key": plan_key,
+            },
+        )
+    bal = fetch_prepaid_balance_list_usd(conn, tenant_id=tenant_id)
+    if not prepaid_balance_sufficient(bal, min_list_usd=min_d):
+        return (
+            False,
+            "insufficient_prepaid",
+            {
+                "feature": feature_name,
+                "min_prepaid_balance_list_usd": str(min_d),
+                "balance_list_usd": str(bal),
+            },
+        )
+    return True, "ok", {"feature": feature_name, "plan_id": str(trow.get("plan_id") or "")}
+
+
+def commercial_feature_access_check_or_http(
+    *,
+    auth: GatewayAuthContext,
+    feature_name: str,
+) -> None:
+    """Wirft 402/503 sofern Feature-Katalog und Mandant existieren; sonst ok."""
+    s = get_gateway_settings()
+    if not s.commercial_enabled or not s.commercial_entitlement_enforce:
+        return
+    if _bypasses_commercial_entitlement_check(auth):
+        return
+    dft = (s.commercial_default_tenant_id or "default").strip()
+    tid = auth.effective_tenant(default_tenant_id=dft)
+    if not (tid or "").strip():
+        raise HTTPException(
+            status_code=402,
+            detail={
+                "error": COMMERCIAL_ENTITLEMENT_ERROR_CODE,
+                "feature": feature_name,
+                "reason": "missing_tenant_id",
+            },
+        )
+    ok, reason, meta = True, "ok", {"feature": feature_name}
+    try:
+        with gateway_psycopg(
+            get_database_url(),
+            row_factory=dict_row,
+            connect_timeout=4,
+            tenant_id=tid,
+        ) as conn:
+            ok, reason, meta = _evaluate_commercial_feature_access(
+                conn, tenant_id=tid, feature_name=feature_name
+            )
+    except psycopg.errors.UndefinedTable as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "error": "COMMERCIAL_ENTITLEMENT_SCHEMA_MISSING",
+                "message": "623_commercial_usage_entitlements_feature_catalog.sql",
+            },
+        ) from exc
+    except DatabaseHealthError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={"error": "GATEWAY_COMMERCIAL_ENTITLEMENT_DB_UNAVAILABLE"},
+        ) from exc
+    if not ok:
+        raise HTTPException(
+            status_code=402,
+            detail={
+                "error": COMMERCIAL_ENTITLEMENT_ERROR_CODE,
+                "feature": feature_name,
+                "reason": reason,
+                **{k: v for k, v in meta.items() if k != "feature"},
+            },
+        )
+
+
+def require_commercial_entitlement(feature_name: str):
+    def _dep(
+        auth: GatewayAuthContext = Depends(require_sensitive_auth),  # noqa: B008
+    ) -> GatewayAuthContext:
+        commercial_feature_access_check_or_http(auth=auth, feature_name=feature_name)
+        return auth
+
+    return _dep
 
 
 def _bypasses_live_tenant_trading_check(auth: GatewayAuthContext) -> bool:
@@ -70,10 +236,11 @@ def _write_live_ok_to_cache(tenant_id: str, *, ttl: int) -> None:
 
 
 def _live_policy_db_check(tenant_id: str) -> None:
-    with psycopg.connect(
+    with gateway_psycopg(
         get_database_url(),
         row_factory=dict_row,
         connect_timeout=4,
+        tenant_id=tenant_id,
     ) as conn:
         assert_execution_allowed(conn, tenant_id=tenant_id, mode="LIVE")
 

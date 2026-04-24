@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import contextlib
 import importlib
 import os
 import sys
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -143,6 +144,14 @@ def test_compute_market_freshness_warm() -> None:
     assert mf["ticker"]["last_pr"] == 42_000.0
 
 
+@contextlib.contextmanager
+def _fake_psycopg_connect(*_a, **_k):
+    # Instrumentenkatalog-Check: Mindest-Row, sonst 400/Abbruch vor build_live_state-Mock
+    m = MagicMock()
+    m.execute.return_value.fetchone.return_value = (1,)
+    yield m
+
+
 def test_live_state_http_envelope_empty_when_no_candles_and_signal() -> None:
     """GET /v1/live/state: GatewayReadStatus empty bei leerem Chart ohne Signal."""
     with (
@@ -154,6 +163,7 @@ def test_live_state_http_envelope_empty_when_no_candles_and_signal() -> None:
 
         importlib.reload(app_module)
         with (
+            patch("api_gateway.routes_live.psycopg.connect", _fake_psycopg_connect),
             patch(
                 "api_gateway.routes_live.build_live_state",
                 return_value=_minimal_live_payload_empty_chart(),

@@ -1,6 +1,6 @@
 {
   "envelope_default_schema_version": "1.0",
-  "envelope_fingerprint_canon_version": "1",
+  "envelope_fingerprint_canon_version": "2",
   "description": "Kanonische Zuordnung event_type <-> Redis-Stream. Python: shared_py.eventbus.envelope; Gateway: routes_events + routes_live importieren aus shared_py. Fingerprint-Kanon: shared_py.eventbus.canonical + shared/ts/src/canonicalJson.ts.",
   "streams": [
     { "event_type": "market_tick", "stream": "events:market_tick" },
@@ -56,7 +56,8 @@
     {
       "event_type": "regime_divergence_detected",
       "stream": "events:regime_divergence_detected"
-    }
+    },
+    { "event_type": "drift_event", "stream": "events:drift_event" }
   ],
   "live_sse_streams": [
     "events:candle_close",
@@ -65,6 +66,7 @@
     "events:news_scored",
     "events:trade_opened",
     "events:trade_updated",
-    "events:trade_closed"
+    "events:trade_closed",
+    "events:market_feed_health"
   ]
 }

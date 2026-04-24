@@ -30,6 +30,7 @@ export const EVENT_TYPE_TO_STREAM = {
   social_sentiment_update: "events:social_sentiment_update",
   intermarket_correlation_update: "events:intermarket_correlation_update",
   regime_divergence_detected: "events:regime_divergence_detected",
+  drift_event: "events:drift_event",
 } as const;
 
 export type EventBusEventType = keyof typeof EVENT_TYPE_TO_STREAM;

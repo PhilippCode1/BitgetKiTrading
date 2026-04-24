@@ -110,6 +110,7 @@ function StrategySignalExplainPanelInner({ signalContextJson }: Props) {
     setEnvelope(null);
     setLoading(true);
     signalLlmChart?.setAnnotationsRaw(null);
+    signalLlmChart?.setRationaleDe(null);
 
     const payload: Record<string, unknown> = {
       signal_context_json: signalContextJson,
@@ -165,6 +166,10 @@ function StrategySignalExplainPanelInner({ signalContextJson }: Props) {
       ) {
         const ca = (r as Record<string, unknown>).chart_annotations;
         signalLlmChart.setAnnotationsRaw(ca !== undefined ? ca : null);
+        const expl = (r as StrategyResult).strategy_explanation_de;
+        signalLlmChart.setRationaleDe(
+          typeof expl === "string" && expl.trim() ? expl.trim() : null,
+        );
       }
     } catch (e) {
       if (!mountedRef.current) {

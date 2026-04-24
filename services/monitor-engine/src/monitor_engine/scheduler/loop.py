@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import time
 from typing import Any
@@ -47,7 +48,7 @@ from monitor_engine.storage.repo_checks import (
     insert_service_checks,
     insert_stream_checks,
 )
-from shared_py.observability import touch_worker_heartbeat
+from shared_py.observability import arun_periodic_heartbeat
 
 logger = logging.getLogger("monitor_engine.scheduler")
 
@@ -96,24 +97,33 @@ class MonitorScheduler:
 
     async def run_forever(self) -> None:
         assert self._bus is not None
-        async with httpx.AsyncClient() as client:
-            while True:
-                try:
-                    await self._tick(client)
-                    self._stats["last_error"] = None
-                except asyncio.CancelledError:
-                    raise
-                except Exception as exc:
-                    self._stats["last_error"] = str(exc)[:200]
-                    logger.exception("monitor tick failed")
-                finally:
-                    touch_worker_heartbeat("monitor_engine")
-                interval = max(1, self.settings.monitor_interval_sec)
-                try:
-                    await asyncio.wait_for(self._wake.wait(), timeout=interval)
-                    self._wake.clear()
-                except TimeoutError:
-                    pass
+        hb_stop = asyncio.Event()
+        hb_task = asyncio.create_task(
+            arun_periodic_heartbeat("monitor_engine", 5.0, hb_stop),
+            name="isolated_heartbeat:monitor_engine",
+        )
+        try:
+            async with httpx.AsyncClient() as client:
+                while True:
+                    try:
+                        await self._tick(client)
+                        self._stats["last_error"] = None
+                    except asyncio.CancelledError:
+                        raise
+                    except Exception as exc:
+                        self._stats["last_error"] = str(exc)[:200]
+                        logger.exception("monitor tick failed")
+                    interval = max(1, self.settings.monitor_interval_sec)
+                    try:
+                        await asyncio.wait_for(self._wake.wait(), timeout=interval)
+                        self._wake.clear()
+                    except TimeoutError:
+                        pass
+        finally:
+            hb_stop.set()
+            hb_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await hb_task
 
     async def run_once(self, client: httpx.AsyncClient | None = None) -> None:
         assert self._bus is not None
@@ -135,6 +145,8 @@ class MonitorScheduler:
                     base,
                     ready_fail_streaks=self._http_ready_streak,
                     ready_fails_to_degrade=self.settings.monitor_http_ready_fails_to_degrade,
+                    heartbeat_stale_warn_sec=self.settings.monitor_heartbeat_stale_warn_sec,
+                    heartbeat_stale_degrade_sec=self.settings.monitor_heartbeat_stale_degrade_sec,
                 )
             )
         try:
@@ -211,6 +223,19 @@ class MonitorScheduler:
                 )
 
         insert_service_checks(self.settings.database_url, svc_results)
+        try:
+            from monitor_engine.self_healing.coordinator import run_self_healing_coordinator
+            from monitor_engine.self_healing.service_restarter import ServiceRestarter
+
+            run_self_healing_coordinator(
+                self.settings.database_url,
+                self._bus,
+                self.settings,
+                svc_results,
+                ServiceRestarter.from_settings(self.settings),
+            )
+        except Exception as exc:
+            logger.warning("self-healing coordinator failed: %s", exc)
 
         stream_rows = check_stream_groups(
             self.settings.redis_url,

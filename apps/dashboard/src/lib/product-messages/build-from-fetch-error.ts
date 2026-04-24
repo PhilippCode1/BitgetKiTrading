@@ -17,6 +17,7 @@ function severityForFetchKind(kind: FetchErrorKind): ProductMessageSeverity {
     case "unreachable":
     case "bff_unreachable":
     case "bad_gateway":
+    case "rate_limited":
     case "timeout":
       return "critical";
     case "server_error":

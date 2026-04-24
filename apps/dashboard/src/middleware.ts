@@ -7,8 +7,7 @@ import {
 } from "@/lib/dashboard-prefs";
 import { isLocale, LOCALE_COOKIE_NAME } from "@/lib/i18n/config";
 import { hasAdminSessionFromDashboardEnv } from "@/lib/operator-jwt";
-import { PORTAL_BASE } from "@/lib/console-paths";
-import { getDashboardPersonaFromRequest } from "@/lib/portal-persona";
+import { decideConsoleAccess } from "@/lib/middleware-console-guard";
 
 function pathnameIsStaticAsset(pathname: string): boolean {
   return /\.(ico|png|jpg|jpeg|gif|webp|svg|txt|xml|webmanifest)$/i.test(
@@ -33,10 +32,10 @@ export async function middleware(request: NextRequest) {
 
   const raw = request.cookies.get(LOCALE_COOKIE_NAME)?.value;
   if (isLocale(raw)) {
-    const persona = await getDashboardPersonaFromRequest(request);
-    if (persona === "customer" && pathname.startsWith("/console")) {
+    const consoleDecision = await decideConsoleAccess(request, pathname);
+    if (consoleDecision.action === "redirect") {
       const url = request.nextUrl.clone();
-      url.pathname = PORTAL_BASE;
+      url.pathname = consoleDecision.location;
       url.search = "";
       return NextResponse.redirect(url);
     }

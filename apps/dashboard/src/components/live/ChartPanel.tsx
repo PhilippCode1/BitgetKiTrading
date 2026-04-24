@@ -1,11 +1,20 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { ISeriesApi, Time } from "lightweight-charts";
 
 import { StrategyOverlayLegendBar } from "@/components/chart/StrategyOverlayLegendBar";
 import {
   ProductCandleChart,
+  type ProductCandleChartHandle,
   type ProductCandleChartReadyContext,
   type ProductStrategyPriceOverlayProps,
 } from "@/components/chart/ProductCandleChart";
@@ -46,18 +55,23 @@ type Props = {
   } | null;
 };
 
+export type ChartPanelHandle = ProductCandleChartHandle;
+
 /**
  * Live-Terminal: Kerzen inkl. Volumen ueber {@link ProductCandleChart}, Zeichnungen/News als Overlays.
  * Overlay-Faehigkeiten folgen {@link CHART_SURFACE_ALLOWLIST.terminal} plus Nutzer-Toggles.
  */
-export function ChartPanel({
-  candles,
-  drawings,
-  news,
-  showDrawings,
-  showNewsMarkers,
-  strategyContext = null,
-}: Props) {
+export const ChartPanel = forwardRef<ChartPanelHandle, Props>(function ChartPanel(
+  {
+    candles,
+    drawings,
+    news,
+    showDrawings,
+    showNewsMarkers,
+    strategyContext = null,
+  },
+  ref,
+) {
   const { t } = useI18n();
   const [chartCtx, setChartCtx] =
     useState<ProductCandleChartReadyContext | null>(null);
@@ -68,10 +82,19 @@ export function ChartPanel({
     defaultStrategyLayerVisibility,
   );
   const [crosshairHint, setCrosshairHint] = useState<string | null>(null);
-
+  const chartImperativeRef = useRef<ProductCandleChartHandle | null>(null);
   const onReady = useCallback((ctx: ProductCandleChartReadyContext) => {
     setChartCtx(ctx);
   }, []);
+  useImperativeHandle(
+    ref,
+    () => ({
+      applyCandleClose: (raw: unknown) => {
+        chartImperativeRef.current?.applyCandleClose(raw);
+      },
+    }),
+    [],
+  );
 
   const lastClose = candles.length ? candles[candles.length - 1]!.close : null;
 
@@ -160,8 +183,10 @@ export function ChartPanel({
   return (
     <div className="terminal-chart-stack">
       <ProductCandleChart
+        ref={chartImperativeRef}
         candles={candles}
         showVolume
+        showThrottledLastClosePill
         hideEmptyOverlay
         height={420}
         fitContentOnData={false}
@@ -187,4 +212,4 @@ export function ChartPanel({
       ) : null}
     </div>
   );
-}
+});

@@ -486,11 +486,27 @@ def process_trade_closed(
                 )
             repo_processed.mark_processed(conn, stream, redis_message_id)
 
-    logger.info(
-        "processed trade_closed paper_trade_id=%s pnl_net_usdt=%s",
-        position_id,
-        eval_row["pnl_net_usdt"],
-    )
+        if settings.learn_ai_attribution_enabled and sig_id is not None:
+            try:
+                from learning_engine.worker import ai_attribution
+
+                ai_attribution.run_ai_attribution_for_evaluation(
+                    conn,
+                    settings,
+                    evaluation_id=eval_uuid,
+                    eval_row=eval_row,
+                    sig_row=sig_row,
+                    decision_ts_ms=int(target_labels.decision_ts_ms),
+                    primary_timeframe=tf,
+                )
+            except Exception as exc:
+                logger.warning("ai_attribution: %s", exc, exc_info=False)
+
+        logger.info(
+            "processed trade_closed paper_trade_id=%s pnl_net_usdt=%s",
+            position_id,
+            eval_row["pnl_net_usdt"],
+        )
 
 
 def process_signal_created(

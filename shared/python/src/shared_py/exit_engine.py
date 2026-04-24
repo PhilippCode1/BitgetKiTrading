@@ -5,6 +5,8 @@ from copy import deepcopy
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
+from shared_py.unified_exit_plan import compute_unified_trailing_line
+
 EXIT_POLICY_VERSION = "shared-exit-v2"
 
 # Einheitlicher Bewertungspfad (evaluate_exit_plan / run_unified_exit_evaluation)
@@ -438,6 +440,8 @@ def build_live_exit_plans(
     timeframe: str | None = None,
     time_stop_deadline_ts_ms: int | None = None,
     runner_arm_after_tp_index: int = 1,
+    runner_trail_retrace_bps: Decimal | None = None,
+    wick_confirm_consecutive_ticks: int = 2,
 ) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
     execution = build_execution_context(
         estimated_fee_bps=estimated_fee_bps,
@@ -456,9 +460,32 @@ def build_live_exit_plans(
     if take_profit is not None and take_profit > 0 and entry_price > 0:
         final_distance = abs(take_profit - entry_price)
         trail_offset = (final_distance / Decimal("3")) * runner_trail_mult if final_distance > 0 else Decimal("0")
+        retrace = runner_trail_retrace_bps
+        r_mode = "callback_bps" if retrace is not None and retrace > 0 else "fixed_offset"
         arm_idx = int(runner_arm_after_tp_index)
         if arm_idx < 0 or arm_idx > 2:
             arm_idx = 1
+        wick_n = int(wick_confirm_consecutive_ticks)
+        if wick_n < 1:
+            wick_n = 1
+        run_obj: dict[str, Any] = {
+            "enabled": bool(runner_enabled),
+            "mode": r_mode,
+            "trail_atr_mult": str(runner_trail_mult),
+            "trail_offset": str(trail_offset) if r_mode == "fixed_offset" else "0",
+            "callback_retrace_bps": str(retrace) if retrace is not None and retrace > 0 else None,
+            "arm_after_tp2": arm_idx >= 2,
+            "arm_after_tp_index": arm_idx,
+            "armed": False,
+            "high_water": None,
+            "low_water": None,
+            "trail_stop": None,
+            "activation_price": None,
+            "wick_confirm_consecutive_ticks": wick_n,
+            "wick_breach_streak": 0,
+        }
+        if run_obj.get("callback_retrace_bps") is None:
+            run_obj.pop("callback_retrace_bps", None)
         tp_plan = {
             "policy_version": EXIT_POLICY_VERSION,
             "timeframe": timeframe,
@@ -471,18 +498,7 @@ def build_live_exit_plans(
                 take_pcts=take_pcts,
                 trigger_type=tp_trigger_type,
             ),
-            "runner": {
-                "enabled": bool(runner_enabled),
-                "mode": "fixed_offset",
-                "trail_atr_mult": str(runner_trail_mult),
-                "trail_offset": str(trail_offset),
-                "arm_after_tp2": arm_idx >= 2,
-                "arm_after_tp_index": arm_idx,
-                "armed": False,
-                "high_water": None,
-                "low_water": None,
-                "trail_stop": None,
-            },
+            "runner": run_obj,
             "break_even": {
                 "enabled": True,
                 "trigger_after_tp_index": int(break_even_after_tp_index),
@@ -557,6 +573,37 @@ def eval_stop_tp_full(
     return hit_stop, hit_tp
 
 
+def _wick_confirm_n(runner: dict[str, Any] | None) -> int:
+    r = dict(runner or {})
+    n = int(_dec(r.get("wick_confirm_consecutive_ticks") or "1", default="1"))
+    return max(1, n)
+
+
+def _wick_streak_read(runner: dict[str, Any] | None) -> int:
+    v = (runner or {}).get("wick_breach_streak")
+    if v is None:
+        return 0
+    if isinstance(v, bool):
+        return 0
+    if isinstance(v, int):
+        return max(0, v)
+    try:
+        s = str(v).strip()
+        if not s:
+            return 0
+        return max(0, int(s))
+    except (TypeError, ValueError, OverflowError):
+        return 0
+
+
+def _wick_streak_set(runner: dict[str, Any], n: int) -> None:
+    nn = int(n)
+    if nn <= 0:
+        runner["wick_breach_streak"] = 0
+    else:
+        runner["wick_breach_streak"] = nn
+
+
 def update_runner_state(
     *,
     side: str,
@@ -564,28 +611,53 @@ def update_runner_state(
     runner: dict[str, Any],
 ) -> tuple[dict[str, Any], bool]:
     state = dict(runner)
-    trail_offset = _dec(state.get("trail_offset"))
-    if trail_offset <= 0:
+    bps = _dec(state.get("callback_retrace_bps"), "0")
+    toff = _dec(state.get("trail_offset"), "0")
+    b_eff: Decimal | None
+    t_eff: Decimal | None
+    if bps > 0:
+        b_eff, t_eff = bps, toff if toff > 0 else None
+    elif toff > 0:
+        b_eff, t_eff = None, toff
+    else:
         return state, False
     changed = False
-    if str(side).lower() == "long":
+    sn = str(side).lower()
+    if sn == "long":
         high_water = max(_dec(state.get("high_water"), default=str(fill_price)), fill_price)
+        low_c = _dec(state.get("low_water"), default=str(fill_price)) if (state.get("low_water") not in (None, "")) else fill_price
         if str(high_water) != str(state.get("high_water")):
             changed = True
         state["high_water"] = str(high_water)
-        trail_stop = high_water - trail_offset
-        if str(trail_stop) != str(state.get("trail_stop")):
+        trail_line = compute_unified_trailing_line(
+            side=side,
+            high_water=high_water,
+            low_water=low_c,
+            callback_retrace_bps=b_eff,
+            trail_offset=t_eff,
+        )
+        if trail_line > 0 and str(trail_line) != str(state.get("trail_stop")):
             changed = True
-        state["trail_stop"] = str(trail_stop)
+        if trail_line > 0:
+            state["trail_stop"] = str(trail_line)
     else:
-        low_water = min(_dec(state.get("low_water"), default=str(fill_price)), fill_price)
+        low_w = _dec(state.get("low_water"), default=str(fill_price))
+        low_water = min(low_w, fill_price)
+        high_c = _dec(state.get("high_water"), default=str(fill_price)) if (state.get("high_water") not in (None, "")) else fill_price
         if str(low_water) != str(state.get("low_water")):
             changed = True
         state["low_water"] = str(low_water)
-        trail_stop = low_water + trail_offset
-        if str(trail_stop) != str(state.get("trail_stop")):
+        trail_line = compute_unified_trailing_line(
+            side=side,
+            high_water=high_c,
+            low_water=low_water,
+            callback_retrace_bps=b_eff,
+            trail_offset=t_eff,
+        )
+        if trail_line > 0 and str(trail_line) != str(state.get("trail_stop")):
             changed = True
-        state["trail_stop"] = str(trail_stop)
+        if trail_line > 0:
+            state["trail_stop"] = str(trail_line)
     return state, changed
 
 
@@ -972,6 +1044,50 @@ def evaluate_exit_plan(
 
     exec_state = dict((tp_next or {}).get("execution_state") or {})
     already_hit = {int(item) for item in (exec_state.get("hit_tp_indices") or [])}
+    tp_default = str((tp_next or {}).get("trigger_type") or "fill_price")
+    trail_breach_confirmed = False
+    runner_pre_changed = False
+    wick_streak_changed = False
+    breach = False
+    wick_n = 1
+    nxt = 0
+    if current_qty > 0 and tp_next is not None:
+        r0 = dict(tp_next.get("runner") or {})
+        wick_n = _wick_confirm_n(r0)
+        runner_enabled = bool(r0.get("enabled", True))
+        if runner_enabled and r0.get("armed"):
+            r0, run_ch = update_runner_state(side=side, fill_price=fill_price, runner=r0)
+            if run_ch:
+                runner_pre_changed = True
+            tp_next["runner"] = r0
+            breach = runner_trail_hit(
+                side=side,
+                mark=mark_price,
+                fill=fill_price,
+                tp_plan=tp_next,
+                trigger_default=tp_default,
+            )
+            prv = _wick_streak_read(r0)
+            nxt = prv + 1 if breach else 0
+            r0 = dict(tp_next.get("runner") or {})
+            if nxt != prv:
+                wick_streak_changed = True
+            _wick_streak_set(r0, nxt)
+            tp_next["runner"] = r0
+        else:
+            r0 = dict(tp_next.get("runner") or {})
+            if _wick_streak_read(r0) != 0:
+                wick_streak_changed = True
+            _wick_streak_set(r0, 0)
+            tp_next["runner"] = r0
+        r_final_pre = (tp_next.get("runner") or {})
+        trail_breach_confirmed = bool(
+            (bool(r_final_pre.get("enabled", True)))
+            and (r_final_pre.get("armed"))
+            and breach
+            and nxt >= wick_n
+        )
+
     hit_stop, hit_tps = eval_stop_tp_full(
         side=side,
         mark=mark_price,
@@ -983,7 +1099,6 @@ def evaluate_exit_plan(
 
     actions: list[dict[str, Any]] = []
     reasons: list[str] = []
-    tp_default = str((tp_next or {}).get("trigger_type") or "fill_price")
 
     if hit_stop and stop_next is not None and current_qty > 0:
         execution = stop_next.get("execution") or {}
@@ -1013,13 +1128,7 @@ def evaluate_exit_plan(
             "updated_tp_plan": tp_next,
         }
 
-    if runner_trail_hit(
-        side=side,
-        mark=mark_price,
-        fill=fill_price,
-        tp_plan=tp_next,
-        trigger_default=tp_default,
-    ) and current_qty > 0:
+    if trail_breach_confirmed and current_qty > 0:
         runner = dict((tp_next or {}).get("runner") or {})
         execution = (tp_next or {}).get("execution") or {}
         actions.append(
@@ -1087,10 +1196,11 @@ def evaluate_exit_plan(
         runner = dict((tp_next or {}).get("runner") or {})
         if (
             index == int(runner.get("arm_after_tp_index") or 1)
-            and runner.get("enabled")
+            and bool(runner.get("enabled", True))
             and not runner.get("armed")
         ):
             runner["armed"] = True
+            runner["activation_price"] = str(fill_price)
             runner, changed = update_runner_state(side=side, fill_price=fill_price, runner=runner)
             if changed:
                 reasons.append("runner_armed")
@@ -1108,23 +1218,24 @@ def evaluate_exit_plan(
         reasons.append("break_even_applied")
 
     runner_live = dict((tp_next or {}).get("runner") or {})
+    runner_end_changed = False
     if runner_live.get("armed"):
-        runner_live, changed = update_runner_state(
+        runner_live, runner_end_changed = update_runner_state(
             side=side,
             fill_price=fill_price,
             runner=runner_live,
         )
-        if changed:
-            if tp_next is not None:
-                tp_next["runner"] = runner_live
-            actions.append(
-                {
-                    "action": "plan_update",
-                    "reason_code": "trailing_updated",
-                    "trail_stop": runner_live.get("trail_stop"),
-                }
-            )
-            reasons.append("trailing_updated")
+        if runner_end_changed and tp_next is not None:
+            tp_next["runner"] = runner_live
+    if runner_pre_changed or wick_streak_changed or runner_end_changed:
+        actions.append(
+            {
+                "action": "plan_update",
+                "reason_code": "trailing_updated",
+                "trail_stop": (tp_next and (tp_next.get("runner") or {}).get("trail_stop")),
+            }
+        )
+        reasons.append("trailing_updated")
 
     return {
         "policy_version": EXIT_POLICY_VERSION,

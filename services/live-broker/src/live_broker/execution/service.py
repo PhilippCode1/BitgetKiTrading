@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 import time
 from collections.abc import Callable
@@ -9,30 +10,53 @@ from typing import Any, cast
 
 import psycopg
 from psycopg.rows import dict_row
-from shared_py.modul_mate_db_gates import assert_execution_allowed
-from shared_py.product_policy import ExecutionPolicyViolationError
-
 from shared_py.bitget import (
     BitgetInstrumentCatalog,
     BitgetInstrumentMetadataService,
     UnknownInstrumentError,
 )
 from shared_py.eventbus import EventEnvelope, RedisStreamBus
-from shared_py.operator_intel import build_operator_intel_envelope_payload
+from shared_py.exit_engine import (
+    build_live_exit_plans,
+    merge_exit_build_overrides,
+    validate_exit_plan,
+)
 from shared_py.exit_family_resolver import extract_exit_execution_hints_from_trace
-from shared_py.exit_engine import build_live_exit_plans, merge_exit_build_overrides, validate_exit_plan
+from shared_py.modul_mate_db_gates import assert_execution_allowed
+from shared_py.observability.apex_trace import (
+    finalize_apex_deltas,
+    log_apex_chain_ms,
+    new_apex_trace,
+    now_ns,
+    set_hop,
+)
 from shared_py.observability.correlation import log_correlation_fields
 from shared_py.observability.execution_forensic import (
     build_live_broker_forensic_snapshot,
     redact_operator_journal_details,
 )
-from shared_py.shadow_live_divergence import assess_shadow_live_divergence
+from shared_py.observability.vpin_redis import (
+    VPIN_HARD_HALT_THRESHOLD_0_1,
+    VPIN_ORDER_SIZE_REDUCE_THRESHOLD_0_1,
+    read_market_vpin_score_0_1,
+)
+from shared_py.operator_intel import build_operator_intel_envelope_payload
+from shared_py.product_policy import ExecutionPolicyViolationError
+from shared_py.shadow_live_divergence import (
+    assess_shadow_live_divergence,
+    parse_prebound_execution_id,
+    wait_for_shadow_match_latch,
+)
 
 from live_broker.config import LiveBrokerSettings
+from live_broker.events import publish_operator_intel
+from live_broker.exceptions import SecurityException
 from live_broker.exchange_client import BitgetExchangeClient
 from live_broker.execution.models import ExecutionIntentRequest
-from live_broker.execution.risk_adapter import build_live_trade_risk_decision
-from live_broker.events import publish_operator_intel
+from live_broker.execution.risk_adapter import (
+    RISK_VPIN_HALT,
+    build_live_trade_risk_decision,
+)
 from live_broker.persistence.repo import LiveBrokerRepository
 from live_broker.private_rest import BitgetRestError
 
@@ -124,27 +148,99 @@ class LiveExecutionService:
     def set_truth_state_fn(self, fn: Callable[[], dict[str, Any]] | None) -> None:
         self._truth_state_fn = fn
 
-    def _assert_db_live_execution_policy(self) -> None:
-        if not self._settings.commercial_gates_enforced_for_exchange_submit:
-            return
+    def _log_security_incident_attempt(
+        self,
+        *,
+        reason: str,
+        policy_exc: ExecutionPolicyViolationError | None,
+        extra: dict[str, Any] | None = None,
+    ) -> None:
+        """
+        Jeder gescheiterte Live-Policy-Check: SECURITY_INCIDENT_ATTEMPT
+        in Provider-Log (live_broker.security) + Eintrag in live.audit_trails, wenn DSN
+        (ohne DSN: nur Log).
+        """
+        tid = (self._settings.modul_mate_gate_tenant_id or "default").strip()
+        pol_r = str(getattr(policy_exc, "reason", "") or "") or reason
+        ex_detail = (
+            str(policy_exc)[:500] if policy_exc is not None else str(extra or {})[:500]
+        )
+        SECURITY.critical(
+            "SECURITY_INCIDENT_ATTEMPT tenant_id=%s policy_reason=%s detail=%s",
+            tid,
+            pol_r,
+            ex_detail,
+        )
         dsn = (self._settings.database_url or "").strip()
         if not dsn:
-            raise ExecutionPolicyViolationError(
-                "LIVE-Execution: DATABASE_URL fehlt bei aktivem commercial gate",
+            return
+        ex = {**(extra or {})}
+        if policy_exc is not None:
+            ex["policy_violation_reason"] = policy_exc.reason
+            ex["message"] = str(policy_exc)[:800]
+        try:
+            self._repo.record_audit_trail(
+                {
+                    "category": "security",
+                    "action": "SECURITY_INCIDENT_ATTEMPT",
+                    "severity": "critical",
+                    "scope": "tenant",
+                    "scope_key": tid,
+                    "source": "live-broker.execution",
+                    "internal_order_id": None,
+                    "symbol": None,
+                    "details_json": {
+                        "incident_type": "SECURITY_INCIDENT_ATTEMPT",
+                        "firewall": "assert_execution_allowed_LIVE",
+                        "reason": reason,
+                        **ex,
+                    },
+                }
+            )
+        except Exception as rec_err:  # noqa: BLE001 — Sicherheits-Pfad: nie Exchange
+            logger.warning("audit_trail SECURITY_INCIDENT failed: %s", rec_err)
+
+    def _assert_db_live_execution_policy(self) -> None:
+        """
+        Unbedingt vor jeder Bitget-I/O in evaluate_intent (LIVE-Modus).
+        Nicht deaktivierbar: MODUL_MATE-Flags gelten u. a. für Orders, nicht
+        um MANUAL-Mirror-Live hier zu zirkumventieren.
+        """
+        dsn = (self._settings.database_url or "").strip()
+        tid = (self._settings.modul_mate_gate_tenant_id or "default").strip()
+        if not dsn:
+            self._log_security_incident_attempt(
+                reason="database_url_required_for_gates", policy_exc=None, extra={}
+            )
+            raise SecurityException(
+                "LIVE-Execution: DATABASE_URL fehlt; "
+                "Kommerz-/Vertragsparameter nicht pruefbar",
                 reason="database_url_required_for_gates",
             )
-        tid = (self._settings.modul_mate_gate_tenant_id or "default").strip()
         try:
-            with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
+            with psycopg.connect(
+                dsn, row_factory=dict_row, connect_timeout=5
+            ) as conn:
                 assert_execution_allowed(conn, tenant_id=tid, mode="LIVE")
         except ExecutionPolicyViolationError as exc:
-            SECURITY.warning(
-                "[SECURITY_WARNING] execution blocked tenant_id=%s reason=%s msg=%s",
-                tid,
-                exc.reason,
-                str(exc)[:500],
+            self._log_security_incident_attempt(
+                reason=exc.reason,
+                policy_exc=exc,
+                extra={"tenant_id": tid},
             )
-            raise
+            raise SecurityException(
+                str(exc)[:2000], reason=exc.reason
+            ) from exc
+        except Exception as exc:  # noqa: BLE001 — z. B. Verbindung / SQL
+            self._log_security_incident_attempt(
+                reason="database_error",
+                policy_exc=None,
+                extra={"tenant_id": tid, "err": str(exc)[:500]},
+            )
+            raise SecurityException(
+                f"LIVE-Execution: Datenbank-Policy-Pruefung fehlgeschlagen: {exc!s}",
+                reason="database_error",
+            ) from exc
 
     def _maybe_publish_operator_intel_execution(
         self,
@@ -330,7 +426,12 @@ class LiveExecutionService:
                 source_signal_id=intent.signal_id,
                 symbol=intent.symbol,
                 match_ok=bool(shadow_live_report.get("match_ok")),
-                gate_blocked=final_reason == "shadow_live_divergence_gate",
+                gate_blocked=final_reason
+                in (
+                    "shadow_live_divergence_gate",
+                    "shadow_match_latch_miss",
+                    "shadow_match_execution_id_required",
+                ),
                 report=shadow_live_report,
             )
         except Exception as exc:
@@ -372,6 +473,8 @@ class LiveExecutionService:
             "shadow_path_active": self._settings.shadow_path_active,
             "live_order_submission_enabled": self._settings.live_order_submission_enabled,
             "require_shadow_match_before_live": self._settings.require_shadow_match_before_live,
+            "shadow_match_latch_timeout_ms": self._settings.shadow_match_latch_timeout_ms,
+            "shadow_match_redis_ttl_sec": self._settings.shadow_match_redis_ttl_sec,
             "shadow_live_thresholds": asdict(self._settings.shadow_live_thresholds()),
             "instrument": self._settings.instrument_identity().model_dump(mode="json"),
         }
@@ -409,6 +512,19 @@ class LiveExecutionService:
         catalog_entry = self._resolve_catalog_entry(intent_eval)
         metadata = self._resolve_metadata(intent_eval)
         signal_payload = self._signal_payload(intent_eval)
+        vpin_f: float | None = read_market_vpin_score_0_1(
+            str(self._settings.redis_url or ""),
+            intent_eval.symbol,
+        )
+        if (
+            vpin_f is not None
+            and vpin_f > VPIN_ORDER_SIZE_REDUCE_THRESHOLD_0_1
+            and vpin_f <= VPIN_HARD_HALT_THRESHOLD_0_1
+            and intent_eval.qty_base is not None
+        ):
+            intent_eval = intent_eval.model_copy(
+                update={"qty_base": intent_eval.qty_base * Decimal("0.5")}
+            )
         router_arb = _signal_router_arbitration(signal_payload)
         exit_preview = self._exit_preview(intent_eval)
         now_ms = int(time.time() * 1000)
@@ -419,6 +535,14 @@ class LiveExecutionService:
             signal_payload=signal_payload,
             now_ms=now_ms,
             survival_mode_active=survival,
+            market_vpin_score_0_1=vpin_f,
+        )
+        pload = intent_eval.payload if isinstance(intent_eval.payload, dict) else {}
+        ttrace = intent_eval.trace if isinstance(intent_eval.trace, dict) else {}
+        prebound_execution_id: str | None = parse_prebound_execution_id(
+            signal_payload=signal_payload if isinstance(signal_payload, dict) else {},
+            payload=pload,
+            trace=ttrace,
         )
         action, reason = self._decide(
             intent_eval,
@@ -459,6 +583,34 @@ class LiveExecutionService:
                 and action == "live_candidate_recorded"
             ):
                 action, reason = "blocked", "shadow_live_divergence_gate"
+        shadow_match_latch: dict[str, Any] = {
+            "skipped": True,
+            "require_shadow_match_before_live": self._settings.require_shadow_match_before_live,
+        }
+        if (
+            effective_mode == "live"
+            and self._settings.require_shadow_match_before_live
+            and not survival_lock
+            and action == "live_candidate_recorded"
+        ):
+            shadow_match_latch["skipped"] = False
+            if not (prebound_execution_id or "").strip():
+                action, reason = "blocked", "shadow_match_execution_id_required"
+                shadow_match_latch.update(
+                    {
+                        "ok": False,
+                        "error": "prebound_execution_id_required",
+                    }
+                )
+            else:
+                wait_out = wait_for_shadow_match_latch(
+                    str(self._settings.redis_url or ""),
+                    prebound_execution_id,
+                    timeout_ms=self._settings.shadow_match_latch_timeout_ms,
+                )
+                shadow_match_latch.update(wait_out)
+                if not bool(wait_out.get("ok")):
+                    action, reason = "blocked", "shadow_match_latch_miss"
         live_mirror_eligible = bool(
             effective_mode == "live"
             and action == "live_candidate_recorded"
@@ -467,9 +619,64 @@ class LiveExecutionService:
                 shadow_live_report is None
                 or bool(shadow_live_report.get("match_ok"))
             )
+            and (
+                bool(shadow_match_latch.get("skipped"))
+                or bool(shadow_match_latch.get("ok"))
+            )
         )
 
-        record = {
+        payload_base: dict[str, Any] = {
+            **intent_eval.payload,
+            "note": intent_eval.note,
+            "catalog_instrument": (
+                catalog_entry.model_dump(mode="json") if catalog_entry is not None else None
+            ),
+            "instrument_metadata": metadata.model_dump(mode="json") if metadata is not None else None,
+            "exchange_preview": preview,
+            "exchange_probe": {
+                "public_api_ok": probe.get("public_api_ok"),
+                "public_detail": probe.get("public_detail"),
+                "private_api_configured": probe.get("private_api_configured"),
+                "private_detail": probe.get("private_detail"),
+                "market_snapshot": probe.get("market_snapshot"),
+            },
+            "exit_preview": exit_preview,
+            "risk_engine": risk_decision,
+            "live_mirror_eligible": live_mirror_eligible,
+            "shadow_match_latch": shadow_match_latch,
+            **(
+                {"shadow_live_divergence": shadow_live_report}
+                if shadow_live_report is not None
+                else {}
+            ),
+        }
+        if action == "blocked" and str(risk_decision.get("trade_action") or "") == "do_not_trade":
+            from shared_py.observability.risk_rejection_inquiry import REJECTED_BY_RISK
+
+            me = risk_decision.get("metrics")
+            if not isinstance(me, dict):
+                me = {}
+            lim = risk_decision.get("limits")
+            if not isinstance(lim, dict):
+                lim = {}
+            rj = risk_decision.get("reasons_json")
+            if not isinstance(rj, list):
+                rj = []
+            payload_base["rejection_terminal_code"] = REJECTED_BY_RISK
+            # Vollstaendiger Ablehnungs-Export fuer Forensik / LLM-Assist (ohne Secrets)
+            payload_base["risk_rejection_for_orchestrator"] = {
+                "broker_decision_reason": str(reason),
+                "engine_trade_action": str(risk_decision.get("trade_action") or ""),
+                "engine_decision_reason": str(
+                    risk_decision.get("decision_reason")
+                    or risk_decision.get("primary_reason")
+                    or ""
+                ),
+                "engine_reasons_json": rj[:32],
+                "engine_metrics": me,
+                "engine_limits": lim,
+            }
+        record: dict[str, Any] = {
             "source_service": intent_eval.source_service,
             "source_signal_id": intent_eval.signal_id,
             "symbol": intent_eval.symbol,
@@ -486,30 +693,7 @@ class LiveExecutionService:
             "entry_price": intent_eval.entry_price,
             "stop_loss": intent_eval.stop_loss,
             "take_profit": intent_eval.take_profit,
-            "payload_json": {
-                **intent_eval.payload,
-                "note": intent_eval.note,
-                "catalog_instrument": (
-                    catalog_entry.model_dump(mode="json") if catalog_entry is not None else None
-                ),
-                "instrument_metadata": metadata.model_dump(mode="json") if metadata is not None else None,
-                "exchange_preview": preview,
-                "exchange_probe": {
-                    "public_api_ok": probe.get("public_api_ok"),
-                    "public_detail": probe.get("public_detail"),
-                    "private_api_configured": probe.get("private_api_configured"),
-                    "private_detail": probe.get("private_detail"),
-                    "market_snapshot": probe.get("market_snapshot"),
-                },
-                "exit_preview": exit_preview,
-                "risk_engine": risk_decision,
-                "live_mirror_eligible": live_mirror_eligible,
-                **(
-                    {"shadow_live_divergence": shadow_live_report}
-                    if shadow_live_report is not None
-                    else {}
-                ),
-            },
+            "payload_json": payload_base,
             "trace_json": {
                 **intent_eval.trace,
                 "source_service": intent_eval.source_service,
@@ -528,6 +712,7 @@ class LiveExecutionService:
                 "exit_preview": exit_preview,
                 "risk_engine": risk_decision,
                 "live_mirror_eligible": live_mirror_eligible,
+                "shadow_match_latch": shadow_match_latch,
                 **(
                     {"shadow_live_divergence": shadow_live_report}
                     if shadow_live_report is not None
@@ -535,6 +720,8 @@ class LiveExecutionService:
                 ),
             },
         }
+        if (prebound_execution_id or "").strip():
+            record["execution_id"] = (prebound_execution_id or "").strip()
         saved = self._repo.record_execution_decision(record)
         ex_id = saved.get("execution_id")
         if ex_id is not None:
@@ -570,6 +757,29 @@ class LiveExecutionService:
                     ex_id,
                     exc,
                 )
+            if (
+                isinstance(risk_decision, dict)
+                and str(risk_decision.get("decision_reason") or "") == RISK_VPIN_HALT
+            ):
+                try:
+                    self._repo.record_execution_journal(
+                        {
+                            "execution_decision_id": str(ex_id),
+                            "internal_order_id": None,
+                            "phase": RISK_VPIN_HALT,
+                            "details_json": {
+                                "toxic_flow_guard": True,
+                                "market_vpin_score_0_1": vpin_f,
+                                "symbol": intent_eval.symbol,
+                            },
+                        }
+                    )
+                except Exception as exc:
+                    logger.warning(
+                        "execution journal RISK_VPIN_HALT failed execution_id=%s err=%s",
+                        ex_id,
+                        exc,
+                    )
         self._persist_execution_audit_sidecars(
             saved=saved,
             risk_decision=risk_decision,
@@ -714,8 +924,54 @@ class LiveExecutionService:
     def list_execution_journal(self, execution_id: str, *, limit: int = 100) -> list[dict[str, Any]]:
         return self._repo.list_execution_journal_for_execution(execution_id, limit=limit)
 
+    def _persist_apex_latency_telemetry(
+        self,
+        *,
+        signal_id: str,
+        execution_id: str | None,
+        apex_trace: dict[str, Any],
+    ) -> None:
+        if not (signal_id or "").strip() or not isinstance(apex_trace, dict) or not apex_trace:
+            return
+        body = {
+            "signal_id": signal_id,
+            "execution_id": execution_id,
+            "trace_id": str(apex_trace.get("trace_id") or ""),
+            "apex_trace": apex_trace,
+        }
+        al = (str(getattr(self._settings, "audit_ledger_internal_url", "") or "").strip())
+        if al:
+            try:
+                import urllib.request
+
+                u = f"{al.rstrip('/')}/internal/v1/apex-latency/upsert"
+                data = json.dumps(body, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+                req = urllib.request.Request(  # noqa: S310
+                    u, data=data, method="POST", headers={"Content-Type": "application/json"}
+                )
+                with urllib.request.urlopen(req, timeout=5.0) as resp:  # noqa: S310
+                    resp.read(1)
+                return
+            except Exception as exc:  # pragma: no cover
+                logger.debug("audit_ledger apex-latency upsert failed, fallback to repo: %s", exc)
+        try:
+            self._repo.upsert_apex_latency_audit(
+                signal_id=signal_id,
+                execution_id=execution_id,
+                apex_trace=apex_trace,
+            )
+        except Exception as exc:  # pragma: no cover
+            logger.debug("apex_latency_upsert skipped: %s", exc)
+
     def handle_signal_event(self, envelope: EventEnvelope) -> dict[str, Any]:
+        base_apex = envelope.apex_trace
+        if not isinstance(base_apex, dict) or not base_apex:
+            base_apex = new_apex_trace()
         if self._settings.paper_path_active:
+            t_lb0 = now_ns()
+            t_lb1 = now_ns()
+            apx = finalize_apex_deltas(set_hop(base_apex, "live_broker", t_lb0, t_lb1))
+            log_apex_chain_ms(apx, stage="live_broker_handle_signal_paper_skip")
             logger.info(
                 "signal event ignored because EXECUTION_MODE=paper event_id=%s",
                 envelope.event_id,
@@ -724,6 +980,7 @@ class LiveExecutionService:
                 "decision_action": "ignored",
                 "decision_reason": "paper_mode_routes_to_paper_broker",
                 "event_id": envelope.event_id,
+                "apex_trace": apx,
             }
         payload = envelope.payload if isinstance(envelope.payload, dict) else {}
         instrument = envelope.instrument.model_dump(mode="json") if envelope.instrument is not None else {}
@@ -817,7 +1074,20 @@ class LiveExecutionService:
             },
             trace=trace_body,
         )
-        return self.evaluate_intent(intent, probe_exchange=False)
+        t_e0 = now_ns()
+        out = self.evaluate_intent(intent, probe_exchange=False)
+        t_e1 = now_ns()
+        apx = finalize_apex_deltas(set_hop(base_apex, "live_broker", t_e0, t_e1))
+        log_apex_chain_ms(apx, stage="live_broker_handle_signal")
+        if isinstance(out, dict):
+            eid = out.get("execution_id")
+            self._persist_apex_latency_telemetry(
+                signal_id=str(intent.signal_id or ""),
+                execution_id=str(eid) if eid is not None else None,
+                apex_trace=apx,
+            )
+            return {**out, "apex_trace": apx}
+        return out
 
     def record_paper_reference_event(
         self,
@@ -955,6 +1225,8 @@ class LiveExecutionService:
 
         if not self._settings.live_trade_enable:
             return "blocked", "live_trade_disabled"
+        # Globales Halt-Bit (Redis) stoppt reale Submits in orders.service
+        # ``_call_private`` (In-Process-Latch) — nicht in dieser DB-Policy-Schicht.
         try:
             if self._repo.safety_latch_is_active():
                 return "blocked", "live_safety_latch_active"

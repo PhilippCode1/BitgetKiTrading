@@ -1,13 +1,10 @@
-import { getServerTranslator } from "@/lib/i18n/server-translate";
+import { redirect } from "next/navigation";
+
+import { portalAccountPath } from "@/lib/console-paths";
 
 export const dynamic = "force-dynamic";
 
-export default async function CustomerContractPage() {
-  const t = await getServerTranslator();
-  return (
-    <div className="panel">
-      <h1 style={{ marginTop: 0 }}>{t("customerPortal.nav.contract")}</h1>
-      <p className="muted">{t("customerPortal.placeholder")}</p>
-    </div>
-  );
+/** Ehemaliger Pfad — Nav zeigt auf Vertrag & Abrechnung unter /portal/account/billing */
+export default function CustomerContractRedirectPage() {
+  redirect(portalAccountPath("billing"));
 }

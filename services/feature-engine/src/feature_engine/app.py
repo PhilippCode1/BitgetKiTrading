@@ -68,6 +68,11 @@ class FeatureEngineSettings(BaseServiceSettings):
         default="inference-server:50051",
         alias="FEATURE_TSFM_INFERENCE_GRPC_TARGET",
     )
+    tsfm_inference_priority: str = Field(
+        default="live",
+        alias="FEATURE_TSFM_INFERENCE_PRIORITY",
+        description="live=ungebremst; shadow=Server-Saettigung per gRPC-Metadata drosselt (P77).",
+    )
     tsfm_model_id: str = Field(
         default="google/timesfm-1.0-200m",
         alias="FEATURE_TSFM_MODEL_ID",
@@ -114,6 +119,17 @@ class FeatureEngineSettings(BaseServiceSettings):
     tsfm_tick_stream: str = Field(default=STREAM_MARKET_TICK, alias="FEATURE_TSFM_TICK_STREAM")
     tsfm_tick_group: str = Field(default="feature-engine-tsfm", alias="FEATURE_TSFM_TICK_GROUP")
     tsfm_tick_consumer: str = Field(default="fe-tsfm-1", alias="FEATURE_TSFM_TICK_CONSUMER")
+    # P80: parallele market_tick-Handler begrenzen (verhindert Task-/OOM-Spitzen)
+    feature_tsfm_tick_concurrency: int = Field(
+        default=1,
+        ge=1,
+        le=64,
+        alias="FEATURE_TSFM_TICK_CONCURRENCY",
+        description=(
+            "1=sequenziell (Default); >1: Batch aus Redis parallel mit Semaphore-Limit. "
+            "Bei vielen parallelen Symbolen kann Reihenfolge geringfuegig voneinander abweichen."
+        ),
+    )
 
     correlation_graph_enabled: bool = Field(default=False, alias="CORRELATION_GRAPH_ENABLED")
     correlation_publish_interval_sec: int = Field(

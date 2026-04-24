@@ -41,6 +41,8 @@ function baseSnap(
       edgeBlocksReads: false,
       worstComponentIds: [],
     },
+    self_healing_items: null,
+    self_healing_error: null,
     ...patch,
   };
   return s;

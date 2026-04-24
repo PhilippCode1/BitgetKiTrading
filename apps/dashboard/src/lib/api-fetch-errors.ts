@@ -1,3 +1,8 @@
+import {
+  extractGatewayCodeAndLayer,
+  refineApiFetchKindForGateway,
+} from "./gateway-error-codes";
+
 /**
  * Typisierte Fetch-Fehler fuer Dashboard → Gateway / BFF (keine stillen Fallbacks).
  * UI kann `kind` gezielt mappen; `message` bleibt fuer Logs/Legacy `Error`-Ketten nutzbar.
@@ -15,7 +20,8 @@ export type ApiFetchKind =
   | "upstream_error"
   | "empty"
   | "schema"
-  | "parse";
+  | "parse"
+  | "rate_limit";
 
 export type ApiFetchErrorInit = Readonly<{
   kind: ApiFetchKind;
@@ -139,6 +145,7 @@ function kindForStatus(status: number): ApiFetchKind {
   if (status === 404) return "not_found";
   if (status === 408 || status === 504) return "timeout";
   if (status === 422) return "validation";
+  if (status === 429) return "rate_limit";
   if (status === 502 || status === 503) return "upstream_down";
   if (status >= 500) return "upstream_error";
   return "upstream_error";
@@ -164,31 +171,16 @@ export function apiFetchErrorFromHttp(args: {
 }): ApiFetchError {
   const detail = extractErrorDetailFromBody(args.bodyText);
   const tail = detail ? ` — ${detail}` : "";
-  const kind = isSchemaHint(detail, args.status)
+  const { code, layer } = extractGatewayCodeAndLayer(args.bodyText);
+  const baseKind = isSchemaHint(detail, args.status)
     ? "schema"
     : kindForStatus(args.status);
-  let code: string | undefined;
-  let layer: string | undefined;
-  try {
-    const j = JSON.parse(args.bodyText) as {
-      code?: unknown;
-      layer?: unknown;
-      error?: { code?: unknown; layer?: unknown };
-    };
-    if (typeof j.code === "string" && j.code.trim()) code = j.code.trim();
-    if (typeof j.layer === "string" && j.layer.trim()) layer = j.layer.trim();
-    if (j.error && typeof j.error === "object" && !Array.isArray(j.error)) {
-      const er = j.error as Record<string, unknown>;
-      if (!code && typeof er.code === "string" && er.code.trim()) {
-        code = er.code.trim();
-      }
-      if (!layer && typeof er.layer === "string" && er.layer.trim()) {
-        layer = er.layer.trim();
-      }
-    }
-  } catch {
-    /* ignore */
-  }
+  const kind = refineApiFetchKindForGateway({
+    status: args.status,
+    baseKind,
+    code,
+    layer,
+  });
   return new ApiFetchError({
     kind,
     path: args.path,

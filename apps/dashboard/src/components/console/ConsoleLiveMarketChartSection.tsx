@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { SurfaceDiagnosticCard } from "@/components/diagnostics/SurfaceDiagnosticCard";
 import { DemoDataNoticeBanner } from "@/components/live/DemoDataNoticeBanner";
@@ -17,7 +17,16 @@ import {
   sanitizeLlmChartAnnotationsDetailed,
   type ChartSurfaceId,
 } from "@/lib/chart/chart-intelligence";
-import { fetchLiveState } from "@/lib/api";
+import { fetchLiveState, fetchMarketUniverseCandles } from "@/lib/api";
+import {
+  liveCandleFromPayload,
+  parsePayloadCandleClose,
+} from "@/lib/chart/payload-candle-close";
+import {
+  mergeCandle,
+  mergeRestCandlesWithSseBuffer,
+} from "@/lib/live-candle-merge";
+import { startManagedLiveEventSource } from "@/lib/live-event-source";
 import { mergeConsoleChartSearch } from "@/lib/chart-prefs";
 import { consolePath } from "@/lib/console-paths";
 import {
@@ -58,6 +67,8 @@ type Props = Readonly<{
   llmChartAnnotationsRaw?: unknown | null;
   llmChartLayerEnabled?: boolean;
   onLlmChartLayerEnabledChange?: (enabled: boolean) => void;
+  /** KI-Begruendungstext (Signaldetail) fuer Chart-Zonen & Tooltips. */
+  llmChartRationaleDe?: string | null;
   /**
    * Steuert erlaubte Overlay-Klassen ({@link CHART_SURFACE_ALLOWLIST}).
    * Standard Konsole ohne Live-KI-Geometrie; Signaldetail setzt `signal_detail`.
@@ -110,6 +121,7 @@ export function ConsoleLiveMarketChartSection({
   llmChartAnnotationsRaw = null,
   llmChartLayerEnabled = true,
   onLlmChartLayerEnabledChange,
+  llmChartRationaleDe = null,
   chartSurfaceId = "console_market",
   showLiveDataSituationBar = true,
   showInlineChartBadges = false,
@@ -125,32 +137,139 @@ export function ConsoleLiveMarketChartSection({
   const [loading, setLoading] = useState(true);
   const [fetchErr, setFetchErr] = useState<string | null>(null);
   const [prefsSaveErr, setPrefsSaveErr] = useState<string | null>(null);
+  const loadGenRef = useRef(0);
+  const hydrationReadyRef = useRef(false);
+  const sseBufferRef = useRef<LiveCandle[]>([]);
 
   const tfOpts = useMemo(() => [...timeframeOptions], [timeframeOptions]);
 
   useEffect(() => {
     let cancelled = false;
+    const myGen = ++loadGenRef.current;
+    hydrationReadyRef.current = false;
+    sseBufferRef.current = [];
     setLoading(true);
     setFetchErr(null);
-    fetchLiveState({
+
+    const rawToLiveCandle = (raw: unknown): LiveCandle | null => {
+      const p = parsePayloadCandleClose(raw);
+      if (p) {
+        return liveCandleFromPayload(p);
+      }
+      if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
+        return null;
+      }
+      const o = raw as Record<string, unknown>;
+      if (
+        typeof o.time_s === "number" &&
+        typeof o.open === "number" &&
+        typeof o.high === "number" &&
+        typeof o.low === "number" &&
+        typeof o.close === "number"
+      ) {
+        return {
+          time_s: o.time_s,
+          open: o.open,
+          high: o.high,
+          low: o.low,
+          close: o.close,
+          volume_usdt:
+            typeof o.volume_usdt === "number" ? o.volume_usdt : 0,
+        };
+      }
+      return null;
+    };
+
+    const onCandle = (raw: unknown) => {
+      if (cancelled || myGen !== loadGenRef.current) {
+        return;
+      }
+      const bar = rawToLiveCandle(raw);
+      if (!bar) {
+        return;
+      }
+      if (!hydrationReadyRef.current) {
+        sseBufferRef.current = mergeCandle(sseBufferRef.current, bar);
+        return;
+      }
+      setLive((s) => {
+        if (!s) {
+          return s;
+        }
+        return { ...s, candles: mergeCandle(s.candles, bar) };
+      });
+    };
+
+    const sse = startManagedLiveEventSource({
       symbol: chartSymbol,
       timeframe: chartTimeframe,
-      limit: 480,
-    })
-      .then((r) => {
-        if (!cancelled) setLive(r);
-      })
-      .catch((e) => {
-        if (!cancelled)
+      handlers: { onCandle },
+    });
+
+    void (async () => {
+      try {
+        const [cRes, meta] = await Promise.all([
+          fetchMarketUniverseCandles({
+            symbol: chartSymbol,
+            timeframe: chartTimeframe,
+            limit: 500,
+          }),
+          fetchLiveState({
+            symbol: chartSymbol,
+            timeframe: chartTimeframe,
+            limit: 1,
+          }),
+        ]);
+        if (cancelled || myGen !== loadGenRef.current) {
+          return;
+        }
+        const rest = cRes.candles ?? [];
+        const merged = mergeRestCandlesWithSseBuffer(
+          rest,
+          sseBufferRef.current,
+        );
+        hydrationReadyRef.current = true;
+        setLive({ ...meta, candles: merged });
+        setFetchErr(null);
+      } catch {
+        if (cancelled || myGen !== loadGenRef.current) {
+          return;
+        }
+        try {
+          const meta = await fetchLiveState({
+            symbol: chartSymbol,
+            timeframe: chartTimeframe,
+            limit: 500,
+          });
+          if (cancelled || myGen !== loadGenRef.current) {
+            return;
+          }
+          const merged = mergeRestCandlesWithSseBuffer(
+            meta.candles,
+            sseBufferRef.current,
+          );
+          hydrationReadyRef.current = true;
+          setLive({ ...meta, candles: merged });
+          setFetchErr(null);
+        } catch (e) {
+          if (cancelled || myGen !== loadGenRef.current) {
+            return;
+          }
+          hydrationReadyRef.current = true;
           setFetchErr(
             e instanceof Error ? e.message : t("errors.fallbackMessage"),
           );
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+        }
+      } finally {
+        if (!cancelled && myGen === loadGenRef.current) {
+          setLoading(false);
+        }
+      }
+    })();
+
     return () => {
       cancelled = true;
+      sse.close();
     };
   }, [chartSymbol, chartTimeframe, t]);
 
@@ -394,6 +513,7 @@ export function ConsoleLiveMarketChartSection({
         llmChartIntegration={llmIntegrationEffective}
         llmChartAnnotationsRaw={llmChartAnnotationsRaw ?? null}
         llmChartLayerEnabled={llmChartLayerEnabled}
+        llmChartRationaleDe={llmChartRationaleDe}
       />
       {chartSurfaceDiag ? (
         <SurfaceDiagnosticCard model={chartSurfaceDiag} />

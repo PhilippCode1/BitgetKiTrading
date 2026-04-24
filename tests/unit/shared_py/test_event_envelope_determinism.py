@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import json
+import random
+import uuid
 from pathlib import Path
+from typing import get_args
 
 import pytest
 
@@ -9,11 +12,15 @@ from shared_py.eventbus import (
     ENVELOPE_FINGERPRINT_CANON_VERSION,
     STREAM_CANDLE_CLOSE,
     EventEnvelope,
+    EventType,
+    event_envelope_to_canonical_json_text,
     envelope_fingerprint_preimage,
     envelope_fingerprint_sha256,
     stable_json_dumps,
 )
 from shared_py.replay_determinism import stable_stream_event_id
+
+_EVENT_TYPES: tuple[str, ...] = get_args(EventType)
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 FIXTURES = REPO_ROOT / "tests" / "fixtures" / "contracts"
@@ -113,6 +120,62 @@ def test_non_replay_fixture_trace_unchanged_ids() -> None:
     env = EventEnvelope.model_validate_json(CANDLE_FIXTURE.read_text(encoding="utf-8"))
     assert env.event_id == "550e8400-e29b-41d4-a716-446655440000"
     assert env.ingest_ts_ms == 1700000000100
+
+
+def test_chained_json_parse_preserves_canonical_envelope_string() -> None:
+    """
+    1000 synthetische Envelopes: kanonische JSON-Zeile bleibt nach
+    json.loads(…) -> erneut stable_json_dumps(…) bytidentisch
+    (Roundtrip-Determinismus wie bei Replay-Deserialisierung).
+    """
+    for i in range(1000):
+        env = _random_envelope(i)
+        wire = event_envelope_to_canonical_json_text(env)
+        back = json.loads(wire)
+        again = stable_json_dumps(back)
+        assert again == wire, f"diverge at seed {i}"
+
+
+def test_envelope_top_level_field_order_invariant_hash() -> None:
+    base = EventEnvelope.model_validate_json(CANDLE_FIXTURE.read_text(encoding="utf-8"))
+    d = base.model_dump(mode="json", exclude_none=False)
+    order = sorted(d.keys(), reverse=True)
+    reordered = {k: d[k] for k in order}
+    assert envelope_fingerprint_sha256(base, mode="wire") == envelope_fingerprint_sha256(
+        EventEnvelope.model_validate(reordered), mode="wire"
+    )
+
+
+def _random_envelope(seed: int) -> EventEnvelope:
+    rng = random.Random(seed * 10009)
+    event_type: EventType = rng.choice(_EVENT_TYPES)  # type: ignore[assignment]
+    symbol = rng.choice([None, "BTCUSDT", "ETHUSDT", "XRPUSDT"])
+    ex = rng.randrange(0, 1_800_000_000_000)
+    payload: dict = {}
+    if rng.random() > 0.2:
+        payload["start_ts_ms"] = rng.randrange(0, 1_800_000_000_000)
+    if rng.random() > 0.2:
+        payload["custom_ts_ms"] = rng.randrange(0, 1_800_000_000_000)
+    n_float = rng.randint(0, 4)
+    for j in range(n_float):
+        payload[f"f_{j}"] = (rng.random() - 0.5) * 1e6
+    if rng.random() > 0.3:
+        payload["nested"] = {
+            "z_ts_ms": rng.randrange(0, 1_000_000),
+            "x": [rng.random(), {"inner_ts_ms": rng.randrange(0, 99_999_999_999)}],
+        }
+    trace: dict = {}
+    if rng.random() > 0.4:
+        trace["r"] = str(uuid.uuid4())
+    return EventEnvelope(
+        event_type=event_type,
+        symbol=symbol,
+        timeframe=rng.choice([None, "1m", "4h", "1d"]),
+        exchange_ts_ms=ex,
+        dedupe_key=rng.choice([None, f"u:{seed}", "a" * 40]),
+        payload=payload,
+        trace=trace,
+    )
 
 
 @pytest.mark.parametrize(

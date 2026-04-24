@@ -8,6 +8,8 @@ z. B. Gateway → Worker; gehoert nicht in Next.js-Client-Code und ersetzt kein 
 
 401-Details: strukturiertes JSON mit code/message/hint (z. B. GATEWAY_JWT_EXPIRED, GATEWAY_INTERNAL_KEY_MISMATCH).
 Kunden-Portal-Bearer auf /v1/admin: 403 GATEWAY_FORBIDDEN_CUSTOMER_SESSION.
+Ohne role=admin in JWT-Claim (Hauptrolle): 403 GATEWAY_FORBIDDEN_JWT_ROLE.
+S2S-Header/Legacy-Admin: keine JWT-Claim-Pruefung.
 """
 
 from __future__ import annotations
@@ -73,6 +75,8 @@ class GatewayAuthContext:
     # Mandanten-ID (JWT, Portal); Grundlage fuer u. a. verify_live_trading_capability
     tenant_id: str | None = None
     portal_roles: frozenset[str] = field(default_factory=_empty_frozenset)
+    # Claim \"role\" (Hauptrolle) aus HS256; None = S2S, Legacy, oder alter Flow
+    jwt_role: str | None = None
 
     def has_role(self, role: str) -> bool:
         return role in self.roles
@@ -212,6 +216,15 @@ def _jwt_tenant_id(payload: dict[str, Any]) -> str | None:
     return s or None
 
 
+def _jwt_main_role_from_payload(payload: dict[str, Any]) -> str | None:
+    """Hauptrollen-Claim role (lowercase). Fehlt oder leer: None."""
+    raw = payload.get("role")
+    if raw is None:
+        return None
+    s = str(raw).strip().lower()
+    return s or None
+
+
 def _jwt_roles(payload: dict[str, Any]) -> frozenset[str]:
     raw = payload.get("gateway_roles")
     if isinstance(raw, list):
@@ -295,6 +308,7 @@ def resolve_gateway_auth_with_diagnostic(
                         roles=roles,
                         tenant_id=None,
                         portal_roles=frozenset(),
+                        jwt_role=None,
                     ),
                     None,
                 )
@@ -367,6 +381,7 @@ def resolve_gateway_auth_with_diagnostic(
             roles=roles,
             tenant_id=_jwt_tenant_id(payload),
             portal_roles=portal_roles,
+            jwt_role=_jwt_main_role_from_payload(payload),
         )
         return (_strip_unauthorized_super_admin_portal(ctx, settings), None)
 
@@ -399,6 +414,7 @@ def resolve_gateway_auth_with_diagnostic(
                     ),
                     tenant_id=None,
                     portal_roles=frozenset(),
+                    jwt_role=None,
                 ),
                 None,
             )
@@ -552,6 +568,42 @@ def _forbid_admin_if_customer_jwt(
     )
 
 
+def _admin_forbidden_jwt_not_admin_role_detail() -> dict[str, str | bool]:
+    return {
+        "code": "GATEWAY_FORBIDDEN_JWT_ROLE",
+        "message": (
+            "Admin-APIs: Claim role muss admin sein (Hauptrolle, neben portal_roles)."
+        ),
+        "hint": (
+            "Mint: scripts/mint_dashboard_gateway_jwt.py setzt role: admin. "
+            "Fehlender/ falscher Wert: abgelehnt. S2S: X-Gateway-Internal-Key."
+        ),
+    }
+
+
+def _forbid_admin_if_jwt_main_role_not_admin(
+    request: Request,
+    ctx: GatewayAuthContext | None,
+    *, event: str
+) -> None:
+    if ctx is None or ctx.auth_method != "jwt":
+        return
+    r = (ctx.jwt_role or "").strip().lower()
+    if r == "admin":
+        return
+    record_gateway_auth_failure(
+        request,
+        event,
+        actor=ctx.actor,
+        auth_method=ctx.auth_method,
+        extra={"failure_code": "GATEWAY_FORBIDDEN_JWT_ROLE", "jwt_role": r or None},
+    )
+    raise HTTPException(
+        status_code=403,
+        detail=_admin_forbidden_jwt_not_admin_role_detail(),
+    )
+
+
 def resolve_gateway_auth(
     *,
     request: Request,
@@ -617,6 +669,7 @@ async def require_admin_read(
     Admin-Lese-Autorisierung. Kein anonymes admin:read mehr, wenn SENSITIVE_AUTH deaktiviert:
     lokal nur mit echtem JWT, X-Gateway-Internal-Key (BFF) oder Legacy-Admin-Token.
     Kunden-Portal-Bearer: immer 403 auf Admin-Routen.
+    Bearer-JWT: Claim role=admin (siehe require_admin_role).
     """
     settings = get_gateway_settings()
     ctx, diag = resolve_gateway_auth_with_diagnostic(
@@ -627,6 +680,9 @@ async def require_admin_read(
     )
     _forbid_admin_if_customer_jwt(
         request, ctx, event="auth_forbidden_customer_admin_read"
+    )
+    _forbid_admin_if_jwt_main_role_not_admin(
+        request, ctx, event="auth_forbidden_jwt_role_admin_read"
     )
     if ctx is not None and ctx.can_admin_read():
         return ctx
@@ -660,6 +716,9 @@ async def require_admin_write(
     )
     _forbid_admin_if_customer_jwt(
         request, ctx, event="auth_forbidden_customer_admin_write"
+    )
+    _forbid_admin_if_jwt_main_role_not_admin(
+        request, ctx, event="auth_forbidden_jwt_role_admin_write"
     )
     if ctx is not None and ctx.can_admin_write():
         return ctx
@@ -863,5 +922,5 @@ async def require_customer_role(
 # --- RBAC: /v1/admin bevorzugt explizit benannte Dependencies ---
 require_admin_read_role = require_admin_read
 require_admin_write_role = require_admin_write
-# Lesende Admin-Standard-Abfrage; Schreibrechte: require_admin_write_role
+# /v1/admin: Kunden-Portal 403, JWT muss role=admin; Schreiben: require_admin_write_role
 require_admin_role = require_admin_read

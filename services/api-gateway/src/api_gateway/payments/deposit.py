@@ -21,6 +21,7 @@ from api_gateway.db_payment_intents import (
     fetch_intent_by_checkout_session,
     fetch_intent_by_id_any_tenant,
     finalize_intent_success,
+    list_stripe_intents_awaiting_reconciliation,
     mark_webhook_done,
     try_claim_webhook,
     update_intent_checkout_session,
@@ -28,10 +29,13 @@ from api_gateway.db_payment_intents import (
     upsert_intent_for_checkout,
 )
 from config.gateway_settings import GatewaySettings
+from shared_py.billing_wallet import payment_deposit_wallet_idempotency_key
 from shared_py.customer_telegram_notify import enqueue_customer_notify
 
 from api_gateway.payments.billing_sync import sync_wallet_deposit_to_billing_ledger
 from api_gateway.payments.stripe_checkout import (
+    retrieve_checkout_session_for_reconciliation,
+    stripe_checkout_session_idempotency_fingerprint,
     stripe_parse_webhook,
     stripe_session_create,
     stripe_session_retrieve_url,
@@ -256,6 +260,7 @@ def apply_successful_deposit(
             delta_list_usd=amount,
             actor=f"webhook:{webhook_provider}",
             reason_code="payment_deposit",
+            idempotency_key=payment_deposit_wallet_idempotency_key(intent_id=intent_uuid),
         )
         sync_wallet_deposit_to_billing_ledger(
             conn,
@@ -370,6 +375,37 @@ def process_mock_webhook(
     }
 
 
+def reconcile_stripe_deposits_for_tenant(
+    conn: psycopg.Connection[Any],
+    settings: GatewaySettings,
+    *,
+    tenant_id: str,
+) -> int:
+    """
+    Fehlende Webhooks: offene Stripe-Sessions live abfragen und bei paid einmalig verbuchen.
+    Idempotenz: gleicher Fingerprint wie Webhook (checkout_paid:session_id).
+    """
+    if not settings.commercial_enabled or not settings.payment_checkout_enabled:
+        return 0
+    if not settings.payment_stripe_enabled or not settings.payment_stripe_secret_key.strip():
+        return 0
+    n_applied = 0
+    for intent in list_stripe_intents_awaiting_reconciliation(conn, tenant_id=tenant_id):
+        sid = str(intent.get("provider_checkout_session_id") or "").strip()
+        if not sid:
+            continue
+        d = retrieve_checkout_session_for_reconciliation(settings, session_id=sid)
+        if not isinstance(d, dict) or str(d.get("payment_status") or "") != "paid":
+            continue
+        build_stripe_deposit_from_session(
+            conn,
+            stripe_event_id="reconciliation_fetch",
+            session_obj=d,
+        )
+        n_applied += 1
+    return n_applied
+
+
 def process_stripe_webhook_payload(
     conn: psycopg.Connection[Any],
     settings: GatewaySettings,
@@ -433,8 +469,31 @@ def build_stripe_deposit_from_session(
     intent = fetch_intent_by_checkout_session(conn, checkout_session_id=sid)
     if intent is None:
         return
+    if str(intent.get("status")) == "succeeded":
+        return
     meta = session_obj.get("metadata") or {}
     if str(meta.get("intent_id") or "") != str(intent.get("intent_id")):
+        return
+    if str(meta.get("tenant_id") or "") != str(intent.get("tenant_id")):
+        return
+    scur = str(session_obj.get("currency") or "usd").strip().lower() or "usd"
+    igr = str(intent.get("currency") or "USD").strip().lower()
+    if igr and scur != igr:
+        return
+    at = session_obj.get("amount_total")
+    if at is not None and scur == "usd":
+        want_minor = int(
+            (Decimal(str(intent["amount_list_usd"])) * Decimal(100)).quantize(
+                Decimal("1")
+            )
+        )
+        if int(at) != want_minor:
+            return
+    try:
+        settlement_fingerprint = stripe_checkout_session_idempotency_fingerprint(
+            session_id=sid
+        )
+    except ValueError:
         return
     pi = session_obj.get("payment_intent")
     pi_s = str(pi) if pi else None
@@ -442,6 +501,7 @@ def build_stripe_deposit_from_session(
     receipt_extra: dict[str, Any] = {
         "stripe_checkout_session_id": _mask_ref(sid),
         "payment_method_types": session_obj.get("payment_method_types"),
+        "stripe_event_id_for_audit": stripe_event_id,
     }
     if amount_total is not None:
         receipt_extra["amount_total_minor"] = amount_total
@@ -449,7 +509,7 @@ def build_stripe_deposit_from_session(
         conn,
         intent=intent,
         webhook_provider="stripe",
-        provider_event_id=stripe_event_id,
+        provider_event_id=settlement_fingerprint,
         provider_payment_intent_id=pi_s,
         receipt_extra=receipt_extra,
     )

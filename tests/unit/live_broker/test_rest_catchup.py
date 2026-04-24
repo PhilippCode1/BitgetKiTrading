@@ -35,6 +35,13 @@ class _FakePrivate:
 class _FakeRepo:
     def __init__(self) -> None:
         self.recorded: list[dict] = []
+        self.upsert_calls: list[dict] = []
+
+    def upsert_live_position_from_bitget(
+        self, row: dict, *, notional_value: object
+    ) -> dict:
+        self.upsert_calls.append({"row": row, "notional_value": notional_value})
+        return {}
 
     def record_exchange_snapshot(self, row: dict) -> None:
         self.recorded.append(row)
@@ -49,6 +56,8 @@ def _settings(monkeypatch: pytest.MonkeyPatch) -> LiveBrokerSettings:
         ("EXECUTION_MODE", "shadow"),
         ("SHADOW_TRADE_ENABLE", "true"),
         ("LIVE_BROKER_ENABLED", "true"),
+        ("LIVE_TRADE_ENABLE", "false"),
+        ("STRATEGY_EXEC_MODE", "manual"),
         ("BITGET_SYMBOL", "ETHUSDT"),
         ("BITGET_MARKET_FAMILY", "futures"),
         ("BITGET_PRODUCT_TYPE", "USDT-FUTURES"),

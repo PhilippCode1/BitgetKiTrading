@@ -9,7 +9,11 @@ from __future__ import annotations
 import time
 from typing import Any
 
-from shared_py.observability import check_postgres, check_redis_url, merge_ready_details
+from shared_py.observability import (
+    check_postgres,
+    check_redis_url_readiness,
+    merge_ready_details,
+)
 
 from api_gateway.config import get_gateway_settings
 from api_gateway.db import check_postgres_schema_for_ready
@@ -41,10 +45,11 @@ def gateway_readiness_core_parts_raw() -> dict[str, tuple[bool, str]]:
             ),
         }
     if rurl:
-        parts["redis"] = check_redis_url(
+        parts["redis"] = check_redis_url_readiness(
             rurl,
-            timeout_sec=float(s.gateway_readiness_redis_timeout_sec),
-            retries=int(s.gateway_readiness_redis_retries),
+            max_attempts=int(s.gateway_readiness_redis_probe_max_attempts),
+            budget_sec=float(s.gateway_readiness_redis_probe_budget_ms) / 1000.0,
+            per_attempt_socket_sec=float(s.gateway_readiness_redis_probe_socket_sec),
         )
     else:
         parts["redis"] = (False, "missing REDIS_URL / REDIS_URL_DOCKER")

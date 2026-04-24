@@ -20,6 +20,7 @@ def allocate_paper_execution_leverage(
     *,
     settings: PaperBrokerSettings,
     account_row: dict[str, Any],
+    tenant_id: str,
     contract_max_leverage: int,
     requested_leverage: Decimal,
     signal_payload: dict[str, Any] | None,
@@ -101,9 +102,11 @@ def allocate_paper_execution_leverage(
         )
 
     projected_margin = (qty_base * entry_price) / max(requested_leverage, Decimal("1"))
+    tid = str(tenant_id).strip() or "default"
     metrics = build_paper_account_risk_metrics(
         conn,
         account_id=UUID(str(account_row.get("account_id"))),
+        tenant_id=tid,
         account_row=account_row,
         now_ms=now_ms if now_ms is not None else int(time.time() * 1000),
         projected_margin=projected_margin,

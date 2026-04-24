@@ -14,6 +14,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import average_precision_score, brier_score_loss, log_loss, roc_auc_score
 
 from learning_engine.config import LearningEngineSettings
+from learning_engine.consensus.tsfm_learning_feedback import enrich_trade_evaluations_with_apex_war_room
 from learning_engine.storage import repo_model_runs
 from learning_engine.training.cv_leakage_family import build_cv_report_with_leakage_family_audit
 from learning_engine.training.cv_runner import (
@@ -55,9 +56,18 @@ def train_take_trade_prob_model(
     *,
     symbol: str | None = None,
     promote: bool = True,
+    min_decision_ts_ms: int | None = None,
+    metadata_extras: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    rows = repo_model_runs.fetch_take_trade_training_rows(conn, symbol=symbol)
-    ds_config = TakeTradeDatasetBuildConfig(max_feature_age_ms=settings.learn_max_feature_age_ms)
+    rows = repo_model_runs.fetch_take_trade_training_rows(
+        conn, symbol=symbol, min_decision_ts_ms=min_decision_ts_ms
+    )
+    if settings.learn_apex_war_room_feedback_in_dataset:
+        rows = enrich_trade_evaluations_with_apex_war_room(conn, rows)
+    ds_config = TakeTradeDatasetBuildConfig(
+        max_feature_age_ms=settings.learn_max_feature_age_ms,
+        include_war_room_consensus=settings.learn_apex_war_room_feedback_in_dataset,
+    )
     examples, dataset_build_report = build_take_trade_training_dataset(rows, ds_config)
     if len(examples) < settings.take_trade_model_min_rows:
         raise ValueError(
@@ -100,6 +110,7 @@ def train_take_trade_prob_model(
         k_folds=k_cv,
         embargo_pct=emb,
         make_estimator=make_est,
+        settings=settings,
     )
     cv_pk = run_purged_kfold_binary_classification(
         X=X_full,
@@ -108,6 +119,7 @@ def train_take_trade_prob_model(
         k_folds=k_cv,
         embargo_pct=emb,
         make_estimator=make_est,
+        settings=settings,
     )
     cv_report = build_cv_report_with_leakage_family_audit(
         cv_wf=cv_wf,
@@ -116,6 +128,7 @@ def train_take_trade_prob_model(
         ranges=ranges,
         k_folds=k_cv,
         embargo_pct=emb,
+        settings=settings,
         metric_summary={
             "walk_forward_mean_roc_auc": mean_fold_metric(cv_wf, "roc_auc"),
             "walk_forward_mean_log_loss": mean_fold_metric(cv_wf, "log_loss"),
@@ -233,7 +246,7 @@ def train_take_trade_prob_model(
         },
     )
 
-    metadata = {
+    metadata: dict[str, Any] = {
         "run_id": str(run_id),
         "model_name": TAKE_TRADE_MODEL_NAME,
         "version": version,
@@ -278,6 +291,8 @@ def train_take_trade_prob_model(
             "trade_relevance_report": "trade_relevance_report.json",
         },
     }
+    if metadata_extras:
+        metadata = {**metadata, **metadata_extras}
     (artifact_dir / "training_manifest.json").write_text(
         json.dumps(training_manifest, indent=2, default=str),
         encoding="utf-8",

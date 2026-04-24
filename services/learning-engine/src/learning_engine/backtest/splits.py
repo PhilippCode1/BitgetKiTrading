@@ -15,17 +15,92 @@ def _overlaps(a: Range, b: Range) -> bool:
     return not (a.end <= b.start or a.start >= b.end)
 
 
+def _band_for_purge_and_embargo(
+    t0: int, t1: int, *, purge_ms: int, embargo_ms: int
+) -> Range:
+    """Sperr-Zeitband: Purge vor Test, Embargo nach Test."""
+    return Range(
+        int(t0) - int(max(0, purge_ms)),
+        int(t1) + int(max(0, embargo_ms)),
+    )
+
+
+def purged_walk_forward_indices(
+    ranges: list[Range],
+    k: int,
+    *,
+    purge_ms: int = 0,
+    embargo_ms: int = 0,
+    min_initial_train: int = 0,
+    exclude_prior_test: bool = True,
+) -> list[tuple[list[int], list[int]]]:
+    """
+    Walk-Forward mit Purge+Embargo-Band; fruehere Test-Indizes optional
+    exklusiv (Index-Menge, naehe Lopez-de-Prado).
+
+    - Train: nur Indizes j < test_lo (chronologisch vor dem aktuellen Test-Block)
+    - Pro Fold: kein range[j] ueberlappt [test_start - purge, test_end + embargo]
+    - Wenn ``exclude_prior_test=True``: j aus vorherigen Test-Blocks nie im Training
+    - ``min_initial_train``: erste m Zeilen ausschliesslich als Trainings-Pool vor dem
+      ersten Test, damit Fold 0 nicht nur Test ist.
+    """
+    if not ranges or k < 1:
+        return []
+    n = len(ranges)
+    min_initial = int(max(0, min(min_initial_train, n - 1)))
+    if n - min_initial < 1:
+        return []
+    rem = n - min_initial
+    fold_size = max(1, rem // k)
+    prev_test: set[int] = set()
+    splits: list[tuple[list[int], list[int]]] = []
+    for i in range(k):
+        lo = min_initial + i * fold_size
+        hi = min(min_initial + (i + 1) * fold_size, n)
+        if lo >= n or lo >= hi:
+            break
+        test_idx = list(range(lo, hi))
+        t0 = min(ranges[j].start for j in test_idx)
+        t1 = max(ranges[j].end for j in test_idx)
+        band = _band_for_purge_and_embargo(
+            t0, t1, purge_ms=purge_ms, embargo_ms=embargo_ms
+        )
+        train_idx: list[int] = []
+        for j in range(n):
+            if j >= lo:
+                break
+            if exclude_prior_test and j in prev_test:
+                continue
+            if _overlaps(ranges[j], band):
+                continue
+            train_idx.append(j)
+        prev_test.update(test_idx)
+        splits.append((train_idx, test_idx))
+    return splits
+
+
 def purged_kfold_embargo_indices(
     ranges: list[Range],
     k: int,
     embargo_pct: float,
+    *,
+    purge_ms: int = 0,
+    embargo_time_ms: int | None = None,
 ) -> list[tuple[list[int], list[int]]]:
-    """Wie purged_kfold_embargo, gibt aber Listen von Sample-Indizes zurück."""
+    """
+    Purged K-Fold + Index-Embargo; optional ``purge_ms`` + Zeit-Embargo (ms) um Test.
+    ``embargo_time_ms`` None: Spannenlaenge * ``embargo_pct`` (ms).
+    """
     if not ranges or k < 1:
         return []
     n = len(ranges)
+    total_span = max(1, ranges[-1].end - ranges[0].start)
     fold_size = max(1, n // k)
     embargo_n = max(0, int(round(n * max(0.0, min(1.0, embargo_pct)))))
+    if embargo_time_ms is None:
+        em_ms = int(round(total_span * max(0.0, min(1.0, embargo_pct))))
+    else:
+        em_ms = max(0, int(embargo_time_ms))
     splits: list[tuple[list[int], list[int]]] = []
     for i in range(k):
         lo = i * fold_size
@@ -35,10 +110,9 @@ def purged_kfold_embargo_indices(
         test_idx = list(range(lo, hi))
         if not test_idx:
             continue
-        test_block = Range(
-            min(ranges[j].start for j in test_idx),
-            max(ranges[j].end for j in test_idx),
-        )
+        t0 = min(ranges[j].start for j in test_idx)
+        t1 = max(ranges[j].end for j in test_idx)
+        band = _band_for_purge_and_embargo(t0, t1, purge_ms=purge_ms, embargo_ms=em_ms)
         embargo_lo = hi
         embargo_hi = min(hi + embargo_n, n)
         embargo_idx = set(range(embargo_lo, embargo_hi))
@@ -48,7 +122,7 @@ def purged_kfold_embargo_indices(
                 continue
             if j in embargo_idx:
                 continue
-            if _overlaps(ranges[j], test_block):
+            if _overlaps(ranges[j], band):
                 continue
             train_idx.append(j)
         splits.append((train_idx, test_idx))
@@ -119,3 +193,17 @@ def range_bounds_for_indices(ranges: list[Range], indices: list[int]) -> dict[st
         return {"start": 0, "end": 0}
     rs = [ranges[i] for i in indices]
     return {"start": min(r.start for r in rs), "end": max(r.end for r in rs)}
+
+
+def range_time_overlap(a: Range, b: Range) -> bool:
+    """Oeffentlich fuer Leakage-Checks (semantik wie internes _overlaps)."""
+    return _overlaps(a, b)
+
+
+def build_purge_embargo_guard_band(
+    test_start: int, test_end: int, *, purge_ms: int, embargo_ms: int
+) -> Range:
+    """Band [test - purge, test + embargo] in ms (Label-Zeit)."""
+    return _band_for_purge_and_embargo(
+        test_start, test_end, purge_ms=purge_ms, embargo_ms=embargo_ms
+    )

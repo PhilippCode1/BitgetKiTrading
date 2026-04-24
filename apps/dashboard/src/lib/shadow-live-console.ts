@@ -36,6 +36,19 @@ export function shadowLiveMatchCellAria(
   return "unknown";
 }
 
+/**
+ * Redis Shadow-Match-Latch (paper shadow:match:{execution_id} vor Live-Submit).
+ */
+export function shadowMatchLatchCellAria(args: {
+  ok: boolean | null | undefined;
+  skipped: boolean | null | undefined;
+}): "unknown" | "gripped" | "miss" | "skipped" {
+  if (args.skipped === true) return "skipped";
+  if (args.ok === true) return "gripped";
+  if (args.ok === false) return "miss";
+  return "unknown";
+}
+
 export function violationEntryCount(value: unknown): number {
   return Array.isArray(value) ? value.length : 0;
 }

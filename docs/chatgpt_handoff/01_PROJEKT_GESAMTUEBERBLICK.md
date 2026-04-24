@@ -185,13 +185,13 @@
 
 ---
 
-## 12. Wichtigste offene Lücken
+## 12. Verbleibende P1/P2- und Produkt-Flächen (kein P0-Softwareblocker, Stand P83)
 
-- **Governance von „metadata-first“ über alle Events/UI** bis replay-stabil — laut Matrix unvollständig. **verifiziert:** `docs/REPO_TRUTH_MATRIX.md`.
+- **Governance von „metadata-first“ über alle Events/UI** bis replay-stabil — laut Matrix unvollständig; kein **Merge-Blocker**. **verifiziert:** `docs/REPO_TRUTH_MATRIX.md`.
 - **Endnutzer-Anbindung aller LLM-Fähigkeiten** — Orchestrator bietet mehr Routen als das Dashboard öffentlich nutzt. **verifiziert:** Vergleich `routes.py` vs. `PRODUCT_STATUS.md`.
-- **Observability-Tiefe** — Grafana-Dashboards und ggf. LLM-Latenz-Metriken als Produktpflicht: laut Produkt-Backlog in `PRODUCT_STATUS.md` / Matrix offen.
-- **Organisatorisches Go-Live** — Checklisten und Dossiers existieren (`docs/LaunchChecklist.md`, `docs/LAUNCH_DOSSIER.md`); deren Abhaken ist **nicht verifiziert** im Repo-Zustand.
-- **Migrationszahl in älteren Doku-Snapshots:** `REPO_TRUTH_MATRIX.md` nennt „65“ Migrationen; aktueller Baum zählt **85** `.sql`-Dateien unter `infra/migrations/postgres/` — **verifiziert** Zählung; **abgeleitet:** Matrix-Abschnitt teilweise veraltet.
+- **Observability-Tiefe** — Grafana/LLM-Latenz als laufendes **Produkt-**Backlog; SRE-Baseline im Repo, Ausbaustufen iterativ. **Hinweis:** `docs/REPO_FREEZE_GAP_MATRIX.md` + `docs/SYSTEM_AUDIT_MASTER.md`.
+- **Organisatorisches Go-Live** — `docs/LaunchChecklist.md` / `docs/LAUNCH_DOSSIER.md` für Sign-off außerhalb reiner Codeänderung.
+- **Zahlen in alten Doku-Snapshots** (z. B. Migrations- oder Version-Zähler) — `REPO_TRUTH_MATRIX.md` bei Bedarf gegen `infra/migrations/postgres/*.sql` und HEAD abgleichen; **P83** hat P0-Drift-Themen in der **Gap-Matrix** adressiert.
 
 ---
 

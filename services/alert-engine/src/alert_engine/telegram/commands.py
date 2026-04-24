@@ -20,6 +20,7 @@ from alert_engine.telegram.api_client import TelegramApiClient
 from shared_py.customer_telegram_notify import enqueue_customer_notify
 from shared_py.customer_telegram_prefs import (
     DEFAULT_PREFS,
+    NOTIFY_PREFS_ORDERED_BOOL_KEYS,
     audit_prefs_changed,
     fetch_notify_prefs_merged,
     upsert_notify_prefs,
@@ -153,7 +154,7 @@ def _dispatch_customer_portal_command(
                 except psycopg.errors.UndefinedTable:
                     prefs = dict(DEFAULT_PREFS)
                 lines = ["Benachrichtigungen (an/aus):"] + [
-                    f"- {k}: {'an' if prefs.get(k) else 'aus'}" for k in sorted(DEFAULT_PREFS)
+                    f"- {k}: {'an' if prefs.get(k) else 'aus'}" for k in NOTIFY_PREFS_ORDERED_BOOL_KEYS
                 ]
                 ctx.api.send_message(chat_id, "\n".join(lines))
             elif cmd == "/set_notify":
@@ -162,14 +163,14 @@ def _dispatch_customer_portal_command(
                     ctx.api.send_message(
                         chat_id,
                         "Syntax: /set_notify <schluessel> <an|aus>\n"
-                        f"Schluessel: {', '.join(sorted(DEFAULT_PREFS))}",
+                        f"Schluessel: {', '.join(NOTIFY_PREFS_ORDERED_BOOL_KEYS)}",
                     )
                     return
                 key, tok = parts[0].strip(), parts[1].strip()
-                if key not in DEFAULT_PREFS:
+                if key not in NOTIFY_PREFS_ORDERED_BOOL_KEYS:
                     ctx.api.send_message(
                         chat_id,
-                        "Unbekannter Schluessel. Erlaubt: " + ", ".join(sorted(DEFAULT_PREFS)),
+                        "Unbekannter Schluessel. Erlaubt: " + ", ".join(NOTIFY_PREFS_ORDERED_BOOL_KEYS),
                     )
                     return
                 b = _parse_notify_bool_token(tok)

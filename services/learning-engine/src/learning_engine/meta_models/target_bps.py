@@ -137,6 +137,7 @@ def train_expected_bps_model(
         k_folds=k_cv,
         embargo_pct=emb,
         make_estimator=make_est,
+        settings=settings,
     )
     cv_pk = run_purged_kfold_regression(
         X=X_full,
@@ -145,6 +146,7 @@ def train_expected_bps_model(
         k_folds=k_cv,
         embargo_pct=emb,
         make_estimator=make_est,
+        settings=settings,
     )
     cv_report = build_cv_report_with_leakage_family_audit(
         cv_wf=cv_wf,
@@ -153,6 +155,7 @@ def train_expected_bps_model(
         ranges=ranges,
         k_folds=k_cv,
         embargo_pct=emb,
+        settings=settings,
         metric_summary={
             "walk_forward_mean_mae_bps": mean_fold_metric(cv_wf, "mae_bps"),
             "purged_kfold_mean_mae_bps": mean_fold_metric(cv_pk, "mae_bps"),

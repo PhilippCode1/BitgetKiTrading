@@ -11,13 +11,20 @@ import {
 
 export { ApiFetchError, isApiFetchError } from "@/lib/api-fetch-errors";
 export type { ApiFetchKind } from "@/lib/api-fetch-errors";
-export type { GatewayFetchErrorInfo } from "@/lib/gateway-fetch-errors";
+import { DASHBOARD_GATEWAY_CLIENT_FAILURE } from "@/lib/dashboard-client-gateway-events";
 import {
   blockedV1MessageForPath,
   getGatewayBootstrapProbeForRequest,
 } from "@/lib/gateway-bootstrap-probe";
-import { getGatewayFetchErrorInfo, type GatewayFetchErrorInfo } from "@/lib/gateway-fetch-errors";
+import {
+  getGatewayFetchErrorInfo,
+  type GatewayFetchErrorInfo,
+} from "@/lib/gateway-fetch-errors";
+
+export type { GatewayFetchErrorInfo };
+
 import { serverEnv } from "@/lib/server-env";
+import { classifyFetchError } from "@/lib/user-facing-fetch-error";
 import {
   fetchGatewayGetWithRetry,
   isRetryableGatewayGetStatus,
@@ -47,6 +54,7 @@ import type {
   LiveBrokerRuntimeResponse,
   LiveStateResponse,
   MonitorAlertsResponse,
+  MarketUniverseCandlesResponse,
   MarketUniverseStatusResponse,
   NewsDetail,
   NewsScoredResponse,
@@ -71,6 +79,12 @@ const BFF_CACHE_FRESH_MS = 5_000;
 const BFF_CACHE_STALE_MS = 90_000;
 const BFF_RETRY_BACKOFF_MS = [220, 600] as const;
 
+/**
+ * API-Client: SSR spricht das Gateway serverseitig an; im Browser laufen Leser
+ * ausschliesslich über den BFF-Pfad `/api/dashboard/gateway/v1/...`. Nicht-OK-HTTP
+ * → {@link apiFetchErrorFromHttp} inkl. Gateway-Code-Heuristik (`gateway-error-codes.ts`);
+ * im Browser zusätzlich {@link notifyBrowserGatewayReadFailure} für die Incident-Zeile.
+ */
 const _serverGetInflight = new Map<string, Promise<unknown>>();
 
 type BffCacheEntry = { data: unknown; freshUntil: number; staleUntil: number };
@@ -114,6 +128,24 @@ function _isTransientBrowserFetchError(e: unknown): boolean {
     m.includes("econnreset") ||
     m.includes("etimedout") ||
     m.includes("aborted")
+  );
+}
+
+/**
+ * BFF-GET im Browser: klassifiziert {@link ApiFetchError} inkl. Gateway-JSON-Codes
+ * und feuert ein Event, damit die Shell (Kunden-Portal) einen Incident-Banner zeigen kann.
+ */
+function notifyBrowserGatewayReadFailure(err: unknown): void {
+  if (typeof window === "undefined" || !isApiFetchError(err)) return;
+  const kind = classifyFetchError(err);
+  window.dispatchEvent(
+    new CustomEvent(DASHBOARD_GATEWAY_CLIENT_FAILURE, {
+      detail: {
+        kind,
+        code: err.code ?? null,
+        path: err.path,
+      },
+    }),
   );
 }
 
@@ -201,7 +233,9 @@ async function getJsonViaDashboardBffExecute<T>(
             snippet: text.slice(0, 240),
             error: e instanceof Error ? e.message : e,
           });
-          throw apiFetchErrorParse(path, bffPath);
+          const pErr = apiFetchErrorParse(path, bffPath);
+          notifyBrowserGatewayReadFailure(pErr);
+          throw pErr;
         }
         _warnIfGatewayReadDegraded(path, bffPath, parsed);
         return parsed;
@@ -218,12 +252,14 @@ async function getJsonViaDashboardBffExecute<T>(
         status: res.status,
         detail: extractErrorDetailFromBody(text).slice(0, 400),
       });
-      throw apiFetchErrorFromHttp({
+      const httpErr = apiFetchErrorFromHttp({
         path,
         bffPath,
         status: res.status,
         bodyText: text,
       });
+      notifyBrowserGatewayReadFailure(httpErr);
+      throw httpErr;
     } catch (e) {
       if (isApiFetchError(e)) throw e;
       lastErr = e;
@@ -232,10 +268,14 @@ async function getJsonViaDashboardBffExecute<T>(
         continue;
       }
       console.error("[dashboard-api] BFF fetch failed", { bffPath, error: e });
-      throw apiFetchErrorNetwork(path, e, bffPath);
+      const nErr = apiFetchErrorNetwork(path, e, bffPath);
+      notifyBrowserGatewayReadFailure(nErr);
+      throw nErr;
     }
   }
-  throw apiFetchErrorNetwork(path, lastErr, bffPath);
+  const lastNet = apiFetchErrorNetwork(path, lastErr, bffPath);
+  notifyBrowserGatewayReadFailure(lastNet);
+  throw lastNet;
 }
 
 async function getJsonViaDashboardBff<T>(
@@ -340,6 +380,19 @@ export async function fetchLiveState(params: {
     symbol: params.symbol,
     timeframe: params.timeframe,
     limit: params.limit,
+  });
+}
+
+/** Letzte N Kerzen aus tsdb; `symbol` setzt der Client (kein versteckter BTC-Default in dieser Route). */
+export async function fetchMarketUniverseCandles(params: {
+  symbol: string;
+  timeframe: string;
+  limit?: number;
+}): Promise<MarketUniverseCandlesResponse> {
+  return getJson<MarketUniverseCandlesResponse>("/v1/market-universe/candles", {
+    symbol: params.symbol,
+    timeframe: params.timeframe,
+    limit: params.limit ?? 500,
   });
 }
 
@@ -530,6 +583,31 @@ export async function fetchMarketUniverseStatus(): Promise<MarketUniverseStatusR
 
 export async function fetchMonitorAlertsOpen(): Promise<MonitorAlertsResponse> {
   return getJson<MonitorAlertsResponse>("/v1/monitor/alerts/open");
+}
+
+/** Prompt 74: ops.self_healing_state via Gateway. */
+export type SelfHealingStatusItem = {
+  service_name: string;
+  health_phase: string;
+  updated_ts: number | null;
+  restart_events_ts: number[];
+  timeline: Array<{
+    ts_ms: number;
+    event: string;
+    message?: string;
+    details?: Record<string, unknown>;
+  }>;
+};
+
+export type SelfHealingStatusResponse = {
+  ok: boolean;
+  items: SelfHealingStatusItem[];
+  empty?: boolean;
+  degradation_reason?: string;
+};
+
+export async function fetchSelfHealingStatus(): Promise<SelfHealingStatusResponse> {
+  return getJson<SelfHealingStatusResponse>("/v1/ops/self-healing/status");
 }
 
 export async function fetchAlertOutboxRecent(): Promise<AlertOutboxResponse> {

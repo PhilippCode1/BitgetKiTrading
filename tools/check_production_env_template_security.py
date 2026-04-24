@@ -3,7 +3,7 @@
 CI-Gate: ENV-Vorlagen ohne aktive Security-Flags und ohne erkennbare Geheimnisse.
 
 Prueft .env.example, .env.production.example, .env.shadow.example auf:
-- verbotene Prod-/Shadow-Flags (z. B. DEBUG=true, API_AUTH_MODE=none) ohne Kommentarzeilen
+- verbotene Prod-/Shadow-Flags (DEBUG=true, API_AUTH_MODE=none, …)
 - typische API-Key-/Token-Muster (OpenAI sk-*, Bitget-artige Mocks, alte Mock-Praefixe)
 """
 
@@ -47,6 +47,11 @@ _PLACEHOLDER_MARKERS: frozenset[str] = frozenset(
         "SET_ME",
         "SETMEFROMDISCOVERY",
         "JWT_MIT_GATEWAY_ROLES",  # legacy: .env.example BFF-Hinweis-Token-Label
+        "YOUR_API_KEY_HERE",
+        "YOUR_SECRET_VALUE_HERE",
+        "YOUR_VALUE_HERE",
+        "YOUR_VALUE_OR_BLANK",  # Redis-Pass z. B. leer
+        "YOUR_BEARER_JWT",
     }
 )
 
@@ -75,9 +80,11 @@ def _is_allowed_placeholder_value(val_u: str) -> bool:
         return True  # <SET_*_FROM_DISCOVERY> etc.
     if s.startswith("<") and s.endswith(">") and "JWT" in su:
         return True  # <jwt_mit_gateway_roles> o.a.
-    if su.startswith("HTTP://") or su.startswith("HTTPS://") or su.startswith("WS://") or su.startswith("WSS://"):
+    if su.startswith((
+        "HTTP://", "HTTPS://", "WS://", "WSS://",
+    )):
         return True
-    if s.startswith("postgresql://") and "<" in s and ">" in s:  # Passwort-Platzhalter in URL
+    if s.startswith("postgresql://") and "<" in s and ">" in s:
         return True
     if s.startswith("redis://"):
         return True
@@ -95,7 +102,7 @@ _DANGEROUS_VALUE_SUBSTR: tuple[str, ...] = (
     "replace_after_mint",  # dummy JWT-Fragment
 )
 
-# OpenAI / OpenAI-nahe: Project-, org-, org-scoped, legacy sk- lange Kette
+# OpenAI: klassische User/Service-Key Laenge 51 = sk- + 48; plus proj- scoped-Varianten
 _PAT_OPENAI: tuple[re.Pattern[str], str] = (
     (
         re.compile(
@@ -103,9 +110,11 @@ _PAT_OPENAI: tuple[re.Pattern[str], str] = (
         ),
         "OpenAI/vendor sk-(proj|ant|test|...)- style key",
     ),
+    # sk- + genau 48 alnum (Vorlagen ohne reale Muster)
+    (re.compile(r"(?i)\bsk-[a-zA-Z0-9]{48}\b"), "OpenAI-User-Key (sk- + 48)"),
     (
         re.compile(r"(?i)\bsk-(?:[A-Za-z0-9_-]){20,}\b"),
-        "OpenAI-style `sk-` + long alnum token (use <CHANGEME> in templates)",
+        "OpenAI-style `sk-` + long alnum token (use YOUR_API_KEY_HERE in templates)",
     ),
 )
 
@@ -114,21 +123,41 @@ _PAT_JWT_THREE: re.Pattern[str] = re.compile(
     r"eyJ[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}"
 )
 
-# Heuristik: Bitget API Key (Base64-Variante, typ. mit Buchstaben/Zahlen, nur als Einzelwert)
-_PAT_BITGET_API_KEY: re.Pattern[str] = re.compile(
-    r"(?i)BITGET_.*(?:KEY|SECRET|PASSPHRASE|TOKEN)\s*=\s*([A-Za-z0-9+/_-]{20,80})\s*$"
+# Heuristik: Bitget – KEY/SECRET/PASSPHRASE/Signatur, Base64- oder Hex-Last
+_PAT_BITGET_EQ: tuple[re.Pattern[str], str] = (
+    (
+        re.compile(
+            r"(?i)^[A-Z_]*BITGET_(?:DEMO_)?(?:API_)?KEY\s*=\s*"
+            r"([A-Za-z0-9+/=]{20,200})\s*$"
+        ),
+        "BITGET_*_KEY: konkreter Wert; nutze YOUR_API_KEY_HERE",
+    ),
+    (
+        re.compile(
+            r"(?i)^[A-Z_]*BITGET_(?:DEMO_)?(?:API_)?SECRET\s*=\s*"
+            r"([A-Za-z0-9+/=]{20,200})\s*$"
+        ),
+        "BITGET_*_SECRET: verdaechtig laange Zeichenkette; Platzhalter verwenden",
+    ),
+    (
+        re.compile(
+            r"(?i)^[A-Z_]*BITGET_(?:DEMO_)?(?:API_)?PASSPHRASE\s*=\s*"
+            r"([^\s#]{12,200})\s*$"
+        ),
+        "BITGET_*_PASSPHRASE: ab 12 Nicht-Whitespace; Platzhalter verwenden",
+    ),
 )
 
 
-def _forbidden_secrets_in_value(
-    val_raw: str,
-) -> list[str]:
+def _forbidden_secrets_in_line(key: str, val_raw: str) -> list[str]:
+    """Wert- und (bei Bitget) Key=Wert-Zeile pruefen; val_raw = RHS."""
     if _is_allowed_placeholder_value(val_raw):
         return []
     msg: list[str] = []
     l_raw = val_raw
     l_norm = _norm_val(val_raw)
     l_u = l_raw.upper()
+    full_eq = f"{key.strip()}={val_raw.strip()}"
 
     for sub in _DANGEROUS_VALUE_SUBSTR:
         if sub.upper() in l_u:
@@ -137,23 +166,27 @@ def _forbidden_secrets_in_value(
     for pat, desc in _PAT_OPENAI:
         if pat.search(l_raw) or (l_norm and pat.search(l_norm)):
             msg.append(desc)
+            break
 
     if re.search(r"rk_(?:live|test)_[A-Za-z0-9]{20,}", l_raw):
-        msg.append("Stripe restricted key (rk_live_/rk_test_); nur <CHANGEME> in Vorlagen")
+        msg.append("Stripe restricted key; nur Platzhalter in Vorlagen")
     if re.search(
         r"\b(?:sk|pk)_(?:live|test)_[A-Za-z0-9]{20,}\b",
         l_raw,
     ):
-        msg.append("Stripe sk_/pk_ live/test key; nur <CHANGEME> in Vorlagen")
+        msg.append("Stripe sk_/pk_ live/test key; nur YOUR_* Platzhalter in Vorlagen")
 
-    m_bg = _PAT_BITGET_API_KEY.search(l_raw)
-    if m_bg and not l_raw.strip().endswith(">"):
+    for pat_bg, desc_bg in _PAT_BITGET_EQ:
+        m_bg = pat_bg.search(full_eq)
+        if not m_bg or l_raw.strip().endswith(">"):
+            continue
         b = m_bg.group(1)
+        if _is_allowed_placeholder_value(b):
+            break
         if b.upper() not in _PLACEHOLDER_MARKERS and "<" not in b:
             if not (b.startswith("<") and b.endswith(">")):
-                msg.append(
-                    "BITGET_* scheint konkrete Zeichenkette; nutze <CHANGEME> in Vorlagen"
-                )
+                msg.append(desc_bg)
+        break
 
     for chunk in (l_raw, l_norm):
         m = _PAT_JWT_THREE.search(chunk)
@@ -161,7 +194,7 @@ def _forbidden_secrets_in_value(
             c_up = chunk.upper()
             if "JWT_MIT" in c_up or (chunk.strip().startswith("<") and ">" in chunk):
                 continue
-            msg.append("Wert enthaelt JWT-Fragment (eyJ…; nur <CHANGEME> o.ae.)")
+            msg.append("Wert enthaelt JWT-Fragment (eyJ…; nur CHANGEME/Platzhalter)")
 
     return msg
 
@@ -190,7 +223,10 @@ def _check_forbidden_flags(path: Path) -> list[str]:
         val_u = val.strip().strip('"').strip("'").upper()
         for fk, fv in _FORBIDDEN:
             if key_u == fk and val_u == fv:
-                msg = f"{path.name}:{lineno}: {fk}={val.strip()} (in Prod/Shadow-Vorlage verboten)"
+                msg = (
+                    f"{path.name}:{lineno}: {fk}={val.strip()} "
+                    "(in Prod/Shadow verboten)"
+                )
                 errors.append(msg)
     return errors
 
@@ -206,9 +242,9 @@ def _check_secrets_in_templates(path: Path) -> list[str]:
             continue
         if "=" not in line:
             continue
-        _key, _, val = line.partition("=")
+        env_key, _, val = line.partition("=")
         v = val.strip()
-        for submsg in _forbidden_secrets_in_value(v):
+        for submsg in _forbidden_secrets_in_line(env_key, v):
             errors.append(
                 f"{path.name}:{lineno}: {submsg} — Wert beginnt: {v[:32]!r}…"
             )

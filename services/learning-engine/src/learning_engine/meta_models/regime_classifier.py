@@ -90,6 +90,7 @@ def train_market_regime_classifier(
         k_folds=k_cv,
         embargo_pct=emb,
         make_estimator=make_est,
+        settings=settings,
     )
     cv_pk = run_purged_kfold_multiclass_classification(
         X=X_full,
@@ -98,6 +99,7 @@ def train_market_regime_classifier(
         k_folds=k_cv,
         embargo_pct=emb,
         make_estimator=make_est,
+        settings=settings,
     )
     cv_report = build_cv_report_with_leakage_family_audit(
         cv_wf=cv_wf,
@@ -106,6 +108,7 @@ def train_market_regime_classifier(
         ranges=ranges,
         k_folds=k_cv,
         embargo_pct=emb,
+        settings=settings,
         metric_summary={
             "walk_forward_mean_accuracy": mean_fold_metric(cv_wf, "accuracy"),
             "walk_forward_mean_log_loss": mean_fold_metric(cv_wf, "log_loss"),

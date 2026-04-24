@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bitget-btc-ai.local/schemas/payload_drift_event.schema.json",
+  "title": "drift_event (MSE/ADWIN Retrain-Trigger)",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "drift_class": { "type": "string" },
+    "model_name": { "type": "string" },
+    "confidence": { "type": "number" },
+    "mse_current": { "type": "number" },
+    "adwin_index": { "type": "integer" }
+  }
+}

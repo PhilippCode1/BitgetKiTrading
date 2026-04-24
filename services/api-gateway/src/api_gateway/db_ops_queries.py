@@ -224,3 +224,35 @@ def _age_ms(value: Any) -> int | None:
     if parsed.tzinfo is None:
         parsed = parsed.replace(tzinfo=timezone.utc)
     return max(0, int((datetime.now(timezone.utc) - parsed.astimezone(timezone.utc)).total_seconds() * 1000))
+
+
+def fetch_self_healing_state_rows(
+    conn: psycopg.Connection[Any],
+) -> list[dict[str, Any]]:
+    try:
+        rows = conn.execute(
+            """
+            SELECT
+              service_name, health_phase,
+              EXTRACT(EPOCH FROM updated_ts)::float AS updated_ts,
+              COALESCE(restart_events_ts, '[]'::jsonb) AS restart_events_ts,
+              COALESCE(timeline, '[]'::jsonb) AS timeline
+            FROM ops.self_healing_state
+            ORDER BY service_name
+            """,
+        ).fetchall()
+    except pg_errors.UndefinedTable:
+        return []
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        d = dict(row)
+        out.append(
+            {
+                "service_name": str(d["service_name"]),
+                "health_phase": str(d["health_phase"]),
+                "updated_ts": d.get("updated_ts"),
+                "restart_events_ts": _j(d.get("restart_events_ts")) or [],
+                "timeline": _j(d.get("timeline")) or [],
+            }
+        )
+    return out

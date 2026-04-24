@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 import { ClientBackgroundRevalidateBanner } from "@/components/console/ClientBackgroundRevalidateBanner";
+import { DashboardQueryProvider } from "@/components/providers/DashboardQueryProvider";
 import { ConsoleExecutionModeRibbon } from "@/components/layout/ConsoleExecutionModeRibbon";
 import { ConsoleGatewayBootstrapBanner } from "@/components/layout/ConsoleGatewayBootstrapBanner";
 import { ConsoleGatewayHeartbeat } from "@/components/layout/ConsoleGatewayHeartbeat";
@@ -61,6 +62,13 @@ export default async function OperatorConsoleLayout({ children }: Props) {
           labelOk={t("ui.incident.heartbeatOk")}
           labelDegraded={t("ui.incident.heartbeatDegraded")}
           labelChecking={t("ui.incident.heartbeatChecking")}
+          liveSseLabels={{
+            CONNECTING: t("ui.incident.liveSseCONNECTING"),
+            CONNECTED: t("ui.incident.liveSseCONNECTED"),
+            DISCONNECTED: t("ui.incident.liveSseDISCONNECTED"),
+            RECONNECTING: t("ui.incident.liveSseRECONNECTING"),
+            GAVE_UP: t("ui.incident.liveSseGAVE_UP"),
+          }}
         />
       }
     >
@@ -72,7 +80,9 @@ export default async function OperatorConsoleLayout({ children }: Props) {
         healthLoadHint={healthLoadHint}
       />
       <ConsoleTrustBanner />
-      <ConsoleTelegramGate>{children}</ConsoleTelegramGate>
+      <ConsoleTelegramGate>
+        <DashboardQueryProvider>{children}</DashboardQueryProvider>
+      </ConsoleTelegramGate>
     </DashboardShell>
   );
 }

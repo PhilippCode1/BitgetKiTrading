@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import sys
+import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-import time
 
 import pytest
 
@@ -18,9 +18,9 @@ for candidate in (REPO_ROOT, LIVE_BROKER_SRC, SHARED_SRC):
         sys.path.insert(0, s)
 
 from live_broker.config import LiveBrokerSettings
+from live_broker.exceptions import SecurityException
 from live_broker.execution.models import ExecutionIntentRequest
 from live_broker.execution.service import LiveExecutionService
-from shared_py.product_policy import ExecutionPolicyViolationError
 
 
 def _pg_context(conn: MagicMock) -> MagicMock:
@@ -148,19 +148,21 @@ def test_evaluate_intent_no_exchange_calls_when_tenant_contract_missing(
         },
     )
     with patch("live_broker.execution.service.psycopg.connect", return_value=_pg_context(conn)):
-        with pytest.raises(ExecutionPolicyViolationError) as ei:
+        with pytest.raises(SecurityException) as ei:
             service.evaluate_intent(intent, probe_exchange=True)
     assert ei.value.reason == "no_active_commercial_contract"
     assert ex.calls == []
+    assert len(repo.audit_trails) == 1
+    assert repo.audit_trails[0].get("action") == "SECURITY_INCIDENT_ATTEMPT"
+    assert (repo.audit_trails[0].get("details_json") or {}).get("incident_type") == (
+        "SECURITY_INCIDENT_ATTEMPT"
+    )
 
 
 def test_evaluate_intent_proceeds_when_contract_and_gates_ok(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from tests.unit.live_broker.test_execution_service import (
-        _FakeRepo,
-        _repo_with_clean_live_snapshots,
-    )
+    from tests.unit.live_broker.test_execution_service import _repo_with_clean_live_snapshots
 
     settings = _settings_live(monkeypatch)
     ex = _SpyExchangeClient()
@@ -201,3 +203,63 @@ def test_evaluate_intent_proceeds_when_contract_and_gates_ok(
     with patch("live_broker.execution.service.psycopg.connect", return_value=_pg_context(conn)):
         service.evaluate_intent(intent, probe_exchange=True)
     assert "build_order_preview" in ex.calls
+
+
+def _row_live_gates_demo_only() -> dict:
+    """admin_live false -> live_trading_not_permitted trotz Contract."""
+    return {
+        "trial_active": False,
+        "contract_accepted": True,
+        "admin_live_trading_granted": False,
+        "subscription_active": True,
+        "account_paused": False,
+        "account_suspended": False,
+    }
+
+
+def test_evaluate_intent_no_bitget_when_live_trading_forbidden_in_db(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Gates + Vertrag, aber product_policy: kein Live — Bitget-Client unberuehrt."""
+    from tests.unit.live_broker.test_execution_service import _FakeRepo
+
+    settings = _settings_live(monkeypatch)
+    ex = _SpyExchangeClient()
+    repo = _FakeRepo()
+    service = LiveExecutionService(settings, ex, repo, catalog=None)  # type: ignore[arg-type]
+    conn = MagicMock()
+    ex_g = MagicMock()
+    ex_c = MagicMock()
+    ex_g.fetchone.return_value = _row_live_gates_demo_only()
+    ex_c.fetchone.return_value = (1,)
+    conn.execute.side_effect = [ex_g, ex_c]
+    now_ms = int(time.time() * 1000)
+    intent = ExecutionIntentRequest(
+        source_service="signal-engine",
+        signal_id="ltd-1",
+        symbol="BTCUSDT",
+        direction="long",
+        requested_runtime_mode="live",
+        leverage=12,
+        qty_base="0.01",
+        entry_price="100000",
+        stop_loss="90000",
+        take_profit="120000",
+        payload={
+            "signal_payload": {
+                "trade_action": "allow_trade",
+                "meta_trade_lane": "candidate_for_live",
+                "decision_state": "accepted",
+                "shadow_divergence_0_1": 0.0,
+                "analysis_ts_ms": now_ms,
+            }
+        },
+    )
+    with patch("live_broker.execution.service.psycopg.connect", return_value=_pg_context(conn)):
+        with pytest.raises(SecurityException) as ei:
+            service.evaluate_intent(intent, probe_exchange=True)
+    assert ei.value.reason == "live_trading_not_permitted"
+    assert ex.calls == []
+    assert any(
+        t.get("action") == "SECURITY_INCIDENT_ATTEMPT" for t in repo.audit_trails
+    )

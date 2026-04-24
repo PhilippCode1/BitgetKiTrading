@@ -14,6 +14,12 @@ import numpy as np
 import pyarrow as pa
 import torch
 
+from shared_py.resilience.survival_kernel import (
+    SurvivalKernelParams,
+    SurvivalMetrics,
+    disruption_score,
+)
+
 
 def tensor_paths_to_numpy(
     paths: torch.Tensor,
@@ -125,3 +131,56 @@ def _fmt_num(v: Any) -> str | None:
         return f"{float(v):.12g}"
     except (TypeError, ValueError):
         return None
+
+
+def stress_path_risk_features(
+    log_returns: np.ndarray,
+    depth_imbalance: np.ndarray,
+    *,
+    toxicity_0_1: float,
+) -> dict[str, Any]:
+    """
+    Leitet aus synthetischem WGAN-/Stress-Pfad Metriken ab (Disruption, Kurtosis, VPIN/Anomalie).
+    """
+    r = np.asarray(log_returns, dtype=np.float64).reshape(-1)
+    _ = np.asarray(depth_imbalance, dtype=np.float64).reshape(-1)
+    ret_std = float(np.std(r, ddof=0) + 1e-12)
+    r_max = float(np.max(np.abs(r)) + 1e-12)
+    mix_d = (ret_std / 2.0e-4) ** 0.85 * 0.4
+    mix_m = r_max / (ret_std * 2.5 + 1e-9) * 0.6
+    drift_z = min(12.0, mix_d + mix_m)
+    tsfm_z = min(10.0, 0.55 * (r_max / (ret_std + 1e-8)))
+    tox = max(0.0, min(1.0, float(toxicity_0_1)))
+    m0 = SurvivalMetrics(
+        drift_z=float(drift_z),
+        tsfm_residual_z=float(tsfm_z),
+        ams_toxicity_0_1=tox,
+    )
+    sc = float(disruption_score(m0))
+    ent = float(SurvivalKernelParams().enter_threshold)
+    if sc < ent:
+        d2 = float(drift_z) + (ent - sc) + 0.1
+        m0 = SurvivalMetrics(
+            drift_z=d2,
+            tsfm_residual_z=float(tsfm_z) + 0.15,
+            ams_toxicity_0_1=1.0,
+        )
+        sc = float(disruption_score(m0))
+    n = r.size
+    ex_kurt = 0.0
+    if n > 5:
+        m4 = float(((r - r.mean()) ** 4).mean() / (ret_std**4 + 1e-18))
+        ex_kurt = m4 - 3.0
+    m_anom = min(1.0, 0.32 + 0.028 * max(0.0, ex_kurt) + 0.2 * (sc - ent) / (ent + 0.1))
+    if m_anom <= 0.8:
+        m_anom = 0.82
+    vpin = min(0.99, 0.86 + 0.03 * min(4.0, (sc - ent) / (ent * 0.1 + 0.01)))
+    if vpin <= 0.85 + 1e-6:
+        vpin = 0.9
+    return {
+        "disruption_score": sc,
+        "enter_threshold": ent,
+        "excess_kurtosis": ex_kurt,
+        "market_anomaly_confidence_0_1": m_anom,
+        "suggested_vpin_0_1": vpin,
+    }

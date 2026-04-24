@@ -9,6 +9,7 @@ from shared_py.bitget.instruments import (
     MARKET_UNIVERSE_SCHEMA_VERSION,
     BitgetInstrumentCatalogEntry,
     BitgetMarketCapabilityMatrixRow,
+    MarketInstrument,
     build_capability_matrix,
 )
 
@@ -55,6 +56,23 @@ def _snapshot_payload(row: dict[str, Any] | None) -> dict[str, Any] | None:
         "warnings": list(row.get("warnings_json") or []),
         "errors": list(row.get("errors_json") or []),
     }
+
+
+def _by_product_family(
+    instruments: list[BitgetInstrumentCatalogEntry],
+) -> dict[str, Any]:
+    buckets: dict[str, list[MarketInstrument]] = {}
+    for entry in instruments:
+        fam = str(entry.market_family or "").lower()
+        buckets.setdefault(fam, []).append(MarketInstrument.from_catalog_entry(entry))
+    out: dict[str, Any] = {}
+    for fam, items in sorted(buckets.items(), key=lambda x: x[0]):
+        out[fam] = {
+            "product_family": fam,
+            "instrument_count": len(items),
+            "instruments": [m.model_dump(mode="json") for m in items],
+        }
+    return out
 
 
 def _summary(
@@ -132,6 +150,7 @@ def fetch_market_universe_status(
         "configuration": configuration_snapshot,
         "snapshot": _snapshot_payload(snapshot_row),
         "summary": _summary(categories=categories, instruments=instruments),
+        "by_product_family": _by_product_family(instruments),
         "categories": [item.model_dump(mode="json") for item in categories],
         "instruments": [item.model_dump(mode="json") for item in instruments],
     }

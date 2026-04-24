@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import time
 import uuid
 from collections.abc import Generator
 from pathlib import Path
@@ -16,6 +17,7 @@ from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
+import redis
 from psycopg.rows import dict_row
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -26,8 +28,13 @@ for _p in (REPO_ROOT, str(LIVE_BROKER_SRC), str(_SHARED_SRC)):
         sys.path.insert(0, _p)
 
 from live_broker.config import LiveBrokerSettings
+from live_broker.exceptions import GlobalHaltException
 from live_broker.execution.models import ExecutionIntentRequest
 from live_broker.execution.service import LiveExecutionService
+from live_broker.global_halt_latch import (
+    GlobalHaltLatch,
+    publish_global_halt_state,
+)
 from live_broker.orders.models import OrderCreateRequest
 from live_broker.orders.service import LiveBrokerOrderService
 from live_broker.persistence.repo import LiveBrokerRepository
@@ -48,6 +55,16 @@ def _test_dsn() -> str:
     if not dsn:
         pytest.skip("TEST_DATABASE_URL nicht gesetzt")
     return dsn
+
+
+def _test_redis_url() -> str:
+    u = (os.getenv("TEST_REDIS_URL") or os.getenv("REDIS_URL") or "redis://127.0.0.1:6379/0").strip()
+    try:
+        r = redis.Redis.from_url(u, socket_connect_timeout=1.0)
+        r.ping()
+    except Exception:  # noqa: BLE001
+        pytest.skip("Redis fuer Global-Halt-Test nicht erreichbar")
+    return u
 
 
 def _live_broker_test_env(monkeypatch: pytest.MonkeyPatch, dsn: str) -> None:
@@ -269,6 +286,69 @@ def test_safety_latch_blocks_live_intent(
     out = svc.evaluate_intent(_execution_intent(), probe_exchange=False)
     assert out.get("decision_action") == "blocked"
     assert out.get("decision_reason") == "live_safety_latch_active"
+
+
+def test_global_halt_stops_order_mutation_before_bitget_via_redis(
+    integration_postgres_conn, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """
+    Simulierter Trade-Pfad: letzter private Exchange-Call (place-order-Äquivalent)
+    darf bei gesetztem system:global_halt nicht laufen; kein Netz (Mock).
+
+    Kein Polling in der Relais-DB: Latch per Redis SET+PUBLISH + In-Memory-Check
+    in ``_call_private`` unmittelbar vor ``call()``.
+    """
+    dsn = _test_dsn()
+    ru = _test_redis_url()
+    _live_broker_test_env(monkeypatch, dsn)
+    monkeypatch.setenv("REDIS_URL", ru)
+
+    publish_global_halt_state(ru, False)
+    latch = GlobalHaltLatch(ru)
+    latch.start()
+    try:
+        time.sleep(0.15)
+        settings = LiveBrokerSettings()
+        repo = LiveBrokerRepository(dsn)
+        private = MagicMock()
+        private.place_order = MagicMock(
+            side_effect=AssertionError("Bitget place_order: Netzwerk-Call unerlaubt")
+        )
+        svc = LiveBrokerOrderService(
+            settings,
+            repo,
+            private,
+            bus=None,
+            global_halt=latch,
+        )
+        time.sleep(0.05)
+        publish_global_halt_state(ru, True)
+        for _ in range(50):
+            if latch.is_halted:
+                break
+            time.sleep(0.02)
+        assert latch.is_halted
+
+        def _boom() -> object:
+            raise AssertionError("private REST call — nicht erlaubt")
+
+        with pytest.raises(GlobalHaltException):
+            svc._call_private(  # wie order_submit, direkt vor Bitget-Transport
+                internal_order_id=str(uuid.uuid4()),
+                action="create",
+                request_path="/api/v2/mix/order/place-order",
+                request_json={"symbol": "BTCUSDT", "test": True},
+                call=_boom,
+                client_oid="coi-test",
+                exchange_order_id=None,
+            )
+        private.place_order.assert_not_called()
+    finally:
+        try:
+            publish_global_halt_state(ru, False)
+        except Exception:  # noqa: BLE001
+            pass
+        latch.stop()
 
 
 def test_db_tenant_gates_reject_demo_when_account_paused(

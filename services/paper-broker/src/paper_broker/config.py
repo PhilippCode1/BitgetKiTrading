@@ -30,12 +30,48 @@ class PaperBrokerSettings(BaseServiceSettings):
 
     database_url: str = Field(default="", alias="DATABASE_URL")
     redis_url: str = Field(default="", alias="REDIS_URL")
+    paper_shadow_match_publish: bool = Field(
+        default=True,
+        alias="PAPER_SHADOW_MATCH_PUBLISH",
+        description="Nach erfolgreichem Paper-Open Redis-Key shadow:match:{execution_id} setzen (Live-Latch).",
+    )
+    paper_shadow_match_redis_ttl_sec: int = Field(
+        default=300,
+        ge=1,
+        le=86_400,
+        alias="PAPER_SHADOW_MATCH_REDIS_TTL_SEC",
+    )
     paper_broker_port: int = Field(default=8085, alias="PAPER_BROKER_PORT")
     paper_account_initial_equity_usdt: str = Field(default="10000", alias="PAPER_ACCOUNT_INITIAL_EQUITY_USDT")
     paper_default_margin_mode: str = Field(default="isolated", alias="PAPER_DEFAULT_MARGIN_MODE")
     paper_default_leverage: int = Field(default=7, alias="PAPER_DEFAULT_LEVERAGE")
     paper_max_leverage: int = Field(default=75, alias="PAPER_MAX_LEVERAGE")
     paper_default_slippage_bps: str = Field(default="3", alias="PAPER_DEFAULT_SLIPPAGE_BPS")
+    paper_atrp_slippage_bps_per_0_1: str = Field(
+        default="25",
+        alias="PAPER_ATRP_SLIPPAGE_BPS_PER_0_1",
+        description="Zusatzbps pro 0.1 Einheit atrp_14 (0..1) aus market-stream / Tick-Cache.",
+    )
+    paper_vpin_slippage_bps_per_0_1: str = Field(
+        default="8",
+        alias="PAPER_VPIN_SLIPPAGE_BPS_PER_0_1",
+        description="Zusatzbps pro 0.1 Einheit VPIN 0..1 (Tick-Cache/Events).",
+    )
+    paper_liquidation_stress_book_levels: int = Field(
+        default=5,
+        alias="PAPER_LIQUIDATION_STRESS_BOOK_LEVELS",
+        description="Liq: schlechtester Top-N Bid/Ask, nicht Mark.",
+    )
+    paper_trading_halt: bool = Field(
+        default=False,
+        alias="PAPER_TRADING_HALT",
+        description="Blockiert Open und manuelles Schliessen; SL/TP umgehen Halt.",
+    )
+    paper_pipeline_lag_halt_ms: int = Field(
+        default=3_000,
+        alias="PAPER_PIPELINE_LAG_HALT_MS",
+        description="Tick pipeline_lag_ms > Schwellwert: Trading-Halt (Open/Reduce).",
+    )
     paper_orderbook_levels: int = Field(default=25, alias="PAPER_ORDERBOOK_LEVELS")
     paper_fee_source: str = Field(default="contract_config", alias="PAPER_FEE_SOURCE")
     paper_default_maker_fee: str = Field(default="0.0002", alias="PAPER_DEFAULT_MAKER_FEE")
@@ -150,6 +186,16 @@ class PaperBrokerSettings(BaseServiceSettings):
     billing_min_balance_new_trade_usd: str = Field(
         default="50",
         alias="BILLING_MIN_BALANCE_NEW_TRADE_USD",
+    )
+    paper_tenant_id: str | None = Field(
+        default=None,
+        alias="PAPER_TENANT_ID",
+        description="Tenant-Scope fuer paper.* (Accounts/Positions); sonst BILLING_PREPAID_TENANT_ID bzw. default",
+    )
+    paper_modul_mate_gate_enforced: bool = Field(
+        default=True,
+        alias="PAPER_MODUL_MATE_GATE_ENFORCED",
+        description="M604/604: kein Paper-Trade ohne erlaubtes demo_trading in app.tenant_modul_mate_gates.",
     )
     strategy_require_telegram: bool = Field(
         default=False,

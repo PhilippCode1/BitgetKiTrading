@@ -6,7 +6,6 @@ from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import numpy as np
-import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 FE_SRC = ROOT / "services" / "feature-engine" / "src"
@@ -36,6 +35,12 @@ def test_tick_buffer_maxlen_and_tail() -> None:
 
 
 def test_prepare_context_under_5ms_for_full_buffer() -> None:
+    # `coverage run` nutzt sys.settrace — dasselbe Budget ist unter Tracing unzuverlaessig.
+    budget = 5.0
+    max_wall_ms = 5.0
+    if sys.gettrace() is not None:
+        budget = 100.0
+        max_wall_ms = 200.0
     buf = TickBuffer(maxlen=MAX_TICKS_PER_SYMBOL)
     base = 50_000.0
     rng = np.random.default_rng(42)
@@ -50,13 +55,13 @@ def test_prepare_context_under_5ms_for_full_buffer() -> None:
         context_len=1024,
         rolling_z_window=256,
         use_numba=False,
-        budget_ms=5.0,
+        budget_ms=budget,
     )
     elapsed_ms = (time.perf_counter() - t0) * 1000.0
     assert vec.shape == (1024,)
     assert vec.dtype == np.float32
-    assert meta["prepare_context_ms"] < 5.0
-    assert elapsed_ms < 5.0
+    assert meta["prepare_context_ms"] < budget
+    assert elapsed_ms < max_wall_ms
 
 
 def test_build_context_and_confidence() -> None:

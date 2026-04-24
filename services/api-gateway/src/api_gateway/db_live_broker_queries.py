@@ -80,16 +80,29 @@ def _runtime_instrument_metadata(raw: Any) -> dict[str, Any] | None:
 def _shadow_live_fields(payload: dict[str, Any]) -> dict[str, Any]:
     raw = payload.get("shadow_live_divergence")
     if not isinstance(raw, dict):
-        return {
+        out: dict[str, Any] = {
             "shadow_live_match_ok": None,
             "shadow_live_hard_violations": None,
             "shadow_live_soft_violations": None,
         }
-    return {
-        "shadow_live_match_ok": raw.get("match_ok"),
-        "shadow_live_hard_violations": raw.get("hard_violations"),
-        "shadow_live_soft_violations": raw.get("soft_violations"),
-    }
+    else:
+        out = {
+            "shadow_live_match_ok": raw.get("match_ok"),
+            "shadow_live_hard_violations": raw.get("hard_violations"),
+            "shadow_live_soft_violations": raw.get("soft_violations"),
+        }
+    sml = payload.get("shadow_match_latch")
+    if isinstance(sml, dict):
+        out["shadow_match_latch_ok"] = sml.get("ok")
+        out["shadow_match_latch_skipped"] = sml.get("skipped")
+        out["shadow_match_latch_waited_ms"] = sml.get("waited_ms")
+        out["shadow_match_latch_error"] = sml.get("error")
+    else:
+        out["shadow_match_latch_ok"] = None
+        out["shadow_match_latch_skipped"] = None
+        out["shadow_match_latch_waited_ms"] = None
+        out["shadow_match_latch_error"] = None
+    return out
 
 
 def bitget_private_status_from_reconcile_details(details: Any) -> dict[str, Any]:
@@ -434,6 +447,8 @@ def fetch_live_broker_runtime(conn: psycopg.Connection[Any]) -> dict[str, Any] |
         for row in kill_switch_rows
     ]
     req_shadow = bool(execution_controls.get("require_shadow_match_before_live"))
+    sm_to = execution_controls.get("shadow_match_latch_timeout_ms")
+    sm_ttl = execution_controls.get("shadow_match_redis_ttl_sec")
     live_te = bool(execution_controls.get("live_trade_enable"))
     live_sub = bool(data["live_submission_enabled"])
     operator_live_submission = compute_operator_live_submission_summary(
@@ -462,6 +477,8 @@ def fetch_live_broker_runtime(conn: psycopg.Connection[Any]) -> dict[str, Any] |
         "live_submission_enabled": live_sub,
         "live_order_submission_enabled": live_sub,
         "require_shadow_match_before_live": req_shadow,
+        "shadow_match_latch_timeout_ms": int(sm_to) if sm_to is not None else 500,
+        "shadow_match_redis_ttl_sec": int(sm_ttl) if sm_ttl is not None else 300,
         "decision_counts": _j(data.get("decision_counts_json")) or {},
         "details": details,
         "order_status_counts": {
@@ -1213,7 +1230,7 @@ def fetch_execution_forensic_timeline(
             SELECT position_id, signal_id, symbol, side, state, qty_base, entry_price_avg,
                    leverage, opened_ts_ms, closed_ts_ms, canonical_instrument_id, market_family,
                    product_type, stop_plan_json, tp_plan_json, stop_quality_score, rr_estimate,
-                   plan_updated_ts_ms, meta
+                   plan_updated_ts_ms, meta, tenant_id
             FROM paper.positions
             WHERE signal_id = %s::uuid
             ORDER BY opened_ts_ms DESC
@@ -1225,6 +1242,7 @@ def fetch_execution_forensic_timeline(
             {
                 "position_id": str(dict(r)["position_id"]),
                 "signal_id": str(dict(r)["signal_id"]) if dict(r).get("signal_id") else None,
+                "tenant_id": dict(r).get("tenant_id"),
                 "symbol": dict(r).get("symbol"),
                 "side": dict(r).get("side"),
                 "state": dict(r).get("state"),
@@ -1609,7 +1627,7 @@ def fetch_execution_forensic_timeline(
             cc = snap.get("correlation_chain")
             corr_chain = cc if isinstance(cc, dict) else None
 
-    return {
+    out: dict[str, Any] = {
         "execution_id": execution_id,
         "decision": decision_out,
         "signal_context": sig_block,
@@ -1639,3 +1657,100 @@ def fetch_execution_forensic_timeline(
         "forensic_model_version": "forensic-timeline-v3",
         "schema_version": 3,
     }
+    out = _attach_apex_trade_forensic_golden_record(conn, out)
+    return out
+
+
+def _attach_apex_trade_forensic_golden_record(
+    conn: psycopg.Connection[Any], timeline: dict[str, Any]
+) -> dict[str, Any]:
+    from psycopg import errors as pg_errors
+
+    from shared_py.observability.apex_trade_forensic_store import (
+        expected_previous_chain_for_row,
+        fetch_apex_trade_forensic_row,
+        upsert_apex_trade_forensic,
+        verify_row_integrity,
+    )
+    from shared_py.observability.trade_lifecycle_audit import build_golden_record_from_timeline
+
+    ex = str(timeline.get("execution_id") or "")
+    if not ex:
+        timeline["apex_trade_forensic"] = None
+        return timeline
+    tenant_apex: str = "default"
+    dec0 = timeline.get("decision")
+    if isinstance(dec0, dict):
+        tj0 = _j(dec0.get("trace_json"))
+        if isinstance(tj0, dict) and tj0.get("tenant_id"):
+            tenant_apex = str(tj0["tenant_id"]).strip() or "default"
+    pps0 = timeline.get("paper_positions")
+    if (
+        tenant_apex == "default"
+        and isinstance(pps0, list)
+        and pps0
+        and isinstance(pps0[0], dict)
+        and pps0[0].get("tenant_id")
+    ):
+        tenant_apex = str(pps0[0]["tenant_id"]).strip() or "default"
+    cor = timeline.get("correlation")
+    cor = cor if isinstance(cor, dict) else {}
+    signal_id: str | None = cor.get("signal_id")
+    if signal_id is not None:
+        signal_id = str(signal_id)
+    try:
+        golden = build_golden_record_from_timeline(timeline)
+        m = upsert_apex_trade_forensic(
+            conn,
+            execution_id=ex,
+            signal_id=signal_id,
+            golden_record=golden,
+            tenant_id=tenant_apex,
+        )
+        row = fetch_apex_trade_forensic_row(conn, execution_id=ex)
+    except (pg_errors.Error, OSError, RuntimeError, ValueError, TypeError) as e:
+        timeline["apex_trade_forensic"] = {
+            "ok": False,
+            "error": str(e)[:200],
+        }
+        return timeline
+
+    is_ver: dict[str, Any] = {"is_verified": False}
+    gr0 = row.get("golden_record") if row else None
+    g: dict[str, Any] = gr0 if isinstance(gr0, dict) else golden
+    if row:
+        try:
+            rid = int(row["id"])
+            expect_prev = expected_previous_chain_for_row(conn, row_id=rid)
+            is_ver = verify_row_integrity(row, expected_prev_link=expect_prev)
+        except (TypeError, KeyError, ValueError, AttributeError):
+            is_ver = {"is_verified": False, "error": "verify_failed"}
+    pr = row.get("prev_chain_checksum") if row else None
+    ch = row.get("chain_checksum") if row else None
+    if isinstance(pr, memoryview):
+        pr = pr.tobytes()
+    if isinstance(ch, memoryview):
+        ch = ch.tobytes()
+    stored = row is not None
+    timeline["apex_trade_forensic"] = {
+        "ok": stored,
+        "materialize": m,
+        "is_verified": is_ver.get("is_verified") if stored else False,
+        "verification": is_ver,
+        "golden_record": g if isinstance(g, dict) else None,
+        "chain_checksum_hex": ch.hex() if isinstance(ch, (bytes, memoryview)) else None,
+        "prev_chain_checksum_hex": pr.hex() if isinstance(pr, (bytes, memoryview)) else None,
+    }
+    return timeline
+
+
+def fetch_ops_risk_assist_context(
+    conn: psycopg.Connection[Any], *, execution_id: str
+) -> dict[str, Any] | None:
+    """Kontext fuer Multiturn ops_risk Assist (Golden Record + Policy-Treffer)."""
+    from shared_py.observability.risk_rejection_inquiry import build_ops_risk_assist_context
+
+    row = fetch_execution_forensic_timeline(conn, execution_id=execution_id)
+    if row is None:
+        return None
+    return build_ops_risk_assist_context(row)

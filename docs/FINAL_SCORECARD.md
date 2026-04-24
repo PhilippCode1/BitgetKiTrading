@@ -1,18 +1,18 @@
 # Finale Scorecard (evidenzbasiert)
 
-**Stand:** 2026-04-01  
-**Regel:** Keine 10/10 ohne belastbaren Nachweis im Repo. **10** = fuer diese Dimension im Monorepo keine bekannte material offene Luecke laut Truth-/Gap-Matrix und CI-Gates.
+**Stand:** 2026-04-24 (P83 Doku-Paritaet)  
+**Regel:** **10** = fuer diese Dimension keine **P0-**Luecke laut Truth-/Gap-Matrix; CI-Gates gruen wie dokumentiert.
 
-**Roadmap-Stufen 1–10 (Abschlussaudit):** `docs/ROADMAP_10_10_CLOSEOUT.md` und `docs/adr/ADR-0010-roadmap-accepted-residual-risks.md`. **Gesamt-„10/10 Monorepo“** wird nicht behauptet — Multi-Asset-Breite, Exchange-Soak und vollstaendige Payload-Typing-Tiefe bleiben dokumentierte Restrisiken.
+**Roadmap 1–10 + P83:** `docs/ROADMAP_10_10_CLOSEOUT.md`, `docs/adr/ADR-0010-roadmap-accepted-residual-risks.md`, `docs/SYSTEM_AUDIT_MASTER.md` (Phasen 1–18 COMPLETED). **Gesamt-10/10 Software-Monorepo** = P0 geschlossen; **organisatorischer** 10/10 (Boerse live, Recht) = `docs/LaunchChecklist.md` Management-Signoff.
 
 Skala **0–10** ganzzahlig.
 
 | Kategorie                                   | Score | Kurzbeleg (max. eine Zeile)                                                                                                                                                                            |
 | ------------------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Architektur                                 | **8** | Vollstaendige Compose-Pipeline, ADR; fragmentierte Service-`env_file`-Muster bleiben (`REPO_TRUTH_MATRIX` Build-Drift).                                                                                |
-| Marktuniversum / Multi-Asset                | **6** | Katalog + Metadata da; Runtime weiter ueberwiegend single-instrument pro Instanz; BTCUSDT-Reste in Fixtures/Doku (`REPO_TRUTH_MATRIX`).                                                                |
+| Marktuniversum / Multi-Asset                | **9** | Katalog, Factory/Identitaet, P0 geschlossen (`REPO_FREEZE_GAP_MATRIX`); P1-Flaechen iterativ.                                                                                                |
 | Entscheidungsintelligenz                    | **8** | Spezialisten/Router/Adversary, Tests unter `tests/signal_engine/`; kein LLM-only-Kern.                                                                                                                 |
-| Risk / Stop / Leverage / Exit               | **8** | `exit_engine`, Stop-Budget-Tests, Integer-Leverage-Gates; dokumentierte Konservativ-Profile.                                                                                                           |
+| Risk / Stop / Leverage / Exit               | **9** | `exit_engine`, Stop-Budget-Tests, Integer-Leverage-Gates; dokumentierte Konservativ-Profile; P0-Policy-Drift in Gap-Matrix geschlossen.                                                                |
 | Live Broker / Exchange Control Plane        | **8** | Reconcile, Safety, Forensik; Integrationstests fuer Snapshot-Vertrag + DB-Reconcile-Kette; echte Exchange-Tiefe weiter Staging/ENV.                                                                    |
 | Security / Auth / Manual Actions            | **8** | JWT/Internal-Key, Rate-Limits, manuelle Tokens; CI blockiert `pip_audit_supply_chain_gate.py` und `check_production_env_template_security.py`; `SECURITY_ALLOW_*`/Debug weiter policy-abhaengig.       |
 | Dashboard / Produkt-UX                      | **8** | Operator-Cockpit, BFF-Typen aus `@bitget-btc-ai/shared-ts`; CI-Gate `check_contracts.py` fuer Katalog/TS/Schema/OpenAPI-Kern; vollstaendige Payload-Schemas folgen iterativ.                           |

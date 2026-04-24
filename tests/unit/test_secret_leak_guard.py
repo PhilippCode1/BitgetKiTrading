@@ -19,11 +19,12 @@ def test_scrub_plaintext_bitget_env_line() -> None:
     assert "BITGET_API_SECRET=***" in out
 
 
-def test_scrub_audit_payload_strips_secret_keys() -> None:
+def test_scrub_audit_payload_masks_secret_keys() -> None:
     d = scrub_audit_payload({"api_key": "x", "nested": {"password": "y", "ok": 1}}, max_depth=4)
     assert isinstance(d, dict)
-    assert "api_key" not in d
-    assert "password" not in d.get("nested", {})
+    assert d.get("api_key") == "***"
+    assert d.get("nested", {}).get("password") == "***"
+    assert d.get("nested", {}).get("ok") == 1
 
 
 def test_assert_float64_c_contiguous_ok() -> None:

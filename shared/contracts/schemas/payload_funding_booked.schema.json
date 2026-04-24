@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bitget-btc-ai.local/schemas/payload_funding_booked.schema.json",
+  "title": "funding_booked payload (minimale Huell-Validierung)",
+  "type": "object",
+  "additionalProperties": true
+}

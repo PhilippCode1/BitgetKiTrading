@@ -8,6 +8,9 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 
+# require_admin_read: lokal / nicht-production mit GATEWAY_ENFORCE_SENSITIVE_AUTH=false: Legacy-Admin-Token
+_ASSIST_ADMIN_HEADERS = {"X-Admin-Token": "admin-token-123456789012"}
+
 
 @pytest.fixture
 def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
@@ -77,6 +80,7 @@ def test_assist_admin_operations_turn(mock_post, _audit, client: TestClient) -> 
         json=_turn_body(
             context_json={"platform_health": {"ok": True}, "evil": 1},
         ),
+        headers=_ASSIST_ADMIN_HEADERS,
     )
     assert r.status_code == 200, r.text
     mock_post.assert_called_once()
@@ -112,6 +116,7 @@ def test_assist_turn_rejects_invalid_conversation_uuid(client: TestClient) -> No
             "conversation_id": "not-a-uuid",
             "user_message_de": "Zu kurz?",  # noqa: wrong len — pydantic may catch uuid first
         },
+        headers=_ASSIST_ADMIN_HEADERS,
     )
     assert r.status_code == 422
 

@@ -21,14 +21,16 @@ def build_paper_account_risk_metrics(
     conn: psycopg.Connection[Any],
     *,
     account_id: UUID,
+    tenant_id: str,
     account_row: dict[str, Any],
     now_ms: int,
     projected_margin: Decimal = Decimal("0"),
     projected_fee: Decimal = Decimal("0"),
 ) -> dict[str, Any]:
+    tid = str(tenant_id).strip() or "default"
     open_positions = [
         position
-        for position in repo_positions.list_open_positions(conn)
+        for position in repo_positions.list_open_positions(conn, tenant_id=tid)
         if str(position.get("account_id") or "") == str(account_id)
         and str(position.get("state") or "").lower() in {"open", "partially_closed"}
     ]
@@ -58,17 +60,20 @@ def build_paper_account_risk_metrics(
     all_points = repo_position_events.list_account_equity_points(
         conn,
         account_id=account_id,
+        tenant_id=tid,
         limit=5000,
     )
     day_points = repo_position_events.list_account_equity_points(
         conn,
         account_id=account_id,
+        tenant_id=tid,
         since_ts_ms=max(0, now_ms - _DAY_MS),
         limit=2000,
     )
     week_points = repo_position_events.list_account_equity_points(
         conn,
         account_id=account_id,
+        tenant_id=tid,
         since_ts_ms=max(0, now_ms - _WEEK_MS),
         limit=5000,
     )

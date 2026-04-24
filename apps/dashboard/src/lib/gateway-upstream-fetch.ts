@@ -34,6 +34,21 @@ export function isRetryableGatewayGetStatus(status: number): boolean {
   return GET_RETRYABLE_HTTP_STATUS.has(status);
 }
 
+/** Tab-/Client-Abort (BFF) mit optionalem Server-Timeout kombinieren. */
+function mergeWithClientAbort(
+  base: AbortSignal,
+  client: AbortSignal | null | undefined,
+): AbortSignal {
+  if (client == null) return base;
+  const any = (
+    AbortSignal as unknown as { any?: (signals: readonly AbortSignal[]) => AbortSignal }
+  ).any;
+  if (typeof any === "function") {
+    return any([base, client]);
+  }
+  return client;
+}
+
 export type FetchGatewayUpstreamInit = Readonly<{
   method?: string;
   searchParams?: URLSearchParams;
@@ -45,9 +60,14 @@ export type FetchGatewayUpstreamInit = Readonly<{
   /**
    * `undefined`: Standard-Timeout (60s).
    * Zahl: explizites Timeout in ms.
-   * `null`: kein AbortSignal (z. B. SSE-Longpoll).
+   * `null`: kein Timeout-Signal; optional ``abortSignal`` (z. B. Tab-Schliessen BFF, SSE-Longpoll).
    */
   timeoutMs?: number | null;
+  /**
+   * Z. B. ``Request.signal`` im BFF: Bricht Upstream ab, sobald der Browser-Tab/Client weg ist
+   * (verhindert doppelte Gateway-Zombie-Verbindungen).
+   */
+  abortSignal?: AbortSignal | null;
 }>;
 
 /**
@@ -77,10 +97,16 @@ export async function fetchGatewayUpstream(
     cache: "no-store",
   };
   const t = init.timeoutMs;
+  const clientAbort = init.abortSignal;
   if (t === undefined) {
-    reqInit.signal = AbortSignal.timeout(GATEWAY_UPSTREAM_TIMEOUT_DEFAULT_MS);
+    reqInit.signal = mergeWithClientAbort(
+      AbortSignal.timeout(GATEWAY_UPSTREAM_TIMEOUT_DEFAULT_MS),
+      clientAbort,
+    );
   } else if (t !== null) {
-    reqInit.signal = AbortSignal.timeout(t);
+    reqInit.signal = mergeWithClientAbort(AbortSignal.timeout(t), clientAbort);
+  } else if (clientAbort) {
+    reqInit.signal = clientAbort;
   }
   return fetch(url.toString(), reqInit);
 }
@@ -109,10 +135,16 @@ export async function fetchGatewayWithoutBearer(
     cache: "no-store",
   };
   const t = init.timeoutMs;
+  const clientAbort = init.abortSignal;
   if (t === undefined) {
-    reqInit.signal = AbortSignal.timeout(GATEWAY_UPSTREAM_TIMEOUT_DEFAULT_MS);
+    reqInit.signal = mergeWithClientAbort(
+      AbortSignal.timeout(GATEWAY_UPSTREAM_TIMEOUT_DEFAULT_MS),
+      clientAbort,
+    );
   } else if (t !== null) {
-    reqInit.signal = AbortSignal.timeout(t);
+    reqInit.signal = mergeWithClientAbort(AbortSignal.timeout(t), clientAbort);
+  } else if (clientAbort) {
+    reqInit.signal = clientAbort;
   }
   return fetch(url.toString(), reqInit);
 }

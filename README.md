@@ -1,6 +1,17 @@
 # Bitget Marktuniversum KI
 
-Monorepo fuer eine **produktionsfaehige** Pipeline: Marktdaten → Features → Struktur/Drawings → **deterministischer Signal-Kern** (Risk, Uncertainty, Gating) → Paper / **Shadow** / **Live** ueber den **Live-Broker** als Control-Plane. Das Repo ist nicht mehr nur auf `BTCUSDT`/`USDT-FUTURES` konzipiert, sondern auf ein **Bitget-Marktuniversum** mit expliziten Marktfamilien (`spot`, `margin`, `futures`), family-aware Instrumentidentitaet und spezialisierten Entscheidungsstapeln. **LLM** ist unterstuetzend (z. B. News), **nicht** der alleinige Trading-Kern.
+Monorepo fuer eine **produktionsfaehige** Pipeline: Marktdaten → Features → Struktur/Drawings → **deterministischer Signal-Kern** (Risk, Uncertainty, Gating) → Paper / **Shadow** / **Live** ueber den **Live-Broker** als Control-Plane. Das Repo ist nicht mehr nur auf `BTCUSDT`/`USDT-FUTURES` konzipiert, sondern auf ein **Bitget-Marktuniversum** mit expliziten Marktfamilien (`spot`, `margin`, `futures`), family-aware Instrumentidentitaet (u. a. `MarketInstrumentFactory` / `BitgetInstrumentIdentity` in `shared/python/src/shared_py/bitget/instruments.py`) und spezialisierten Entscheidungsstapeln. **LLM** ist unterstuetzend (z. B. News), **nicht** der alleinige Trading-Kern.
+
+## Produktreife 10/10 (Software-Repo) und „Production Launch“
+
+**Stand (P83 — Doku-Paritaet & Audit-Master):** Im **Umfang dieses Repos** gilt **10/10** fuer gelieferte Technik, CI, geschlossene P0-Gap-Matrix, harte Multi-Asset-Pfade, Gate-Dokument `docs/SYSTEM_AUDIT_MASTER.md` (Phasen 1–18 **COMPLETED**), technisch abgehakte `docs/LaunchChecklist.md` und vollstaendig dokumentierte Trennung **Kunden- vs. Operator-** UI (BFF, Proxy, `server-env.ts` / `API_GATEWAY_URL`). Echte Boersen-Keys, Recht und Management-Unterschriften sind **kein** Git-Commit — siehe `docs/LAUNCH_DOSSIER.md` und die Signoff-Tabelle in `docs/LaunchChecklist.md`.
+
+**Empfohlener erste Live-Stufe — Manual Mirror R1 (operativ, Kurzfassung):**
+
+1. Nur nach erfuellter Shadow-Burn-in-Matrix und archiviertem Bericht (`docs/shadow_burn_in_ramp.md`, ggf. `scripts/verify_shadow_burn_in.py`).
+2. ENV: `EXECUTION_MODE=live`, `STRATEGY_EXEC_MODE=manual`, `LIVE_TRADE_ENABLE=true`, `RISK_ALLOWED_LEVERAGE_MAX=7`, `RISK_GOVERNOR_LIVE_RAMP_MAX_LEVERAGE=7` (Obergrenze nur erhoehen, wenn laut Runbook explizit freigegeben).
+3. Gates: `LIVE_REQUIRE_EXECUTION_BINDING=true`, `REQUIRE_SHADOW_MATCH_BEFORE_LIVE=true`, `LIVE_REQUIRE_OPERATOR_RELEASE_FOR_LIVE_OPEN=true`; nur Kandidaten mit abgestimmtem Shadow/Live-Status laut Katalog/Forensik.
+4. Ablauf und Checkboxen: **`docs/LaunchChecklist.md`** (technische [x] = Repostand) + **persoenliches** Management-Signoff in derselben Datei.
 
 ## Kernregeln (Betrieb)
 

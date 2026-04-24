@@ -1,5 +1,6 @@
 Erklaere dieses Handelssignal fuer einen Operator auf Deutsch.
 Nutze nur die gelieferten Snapshot-Felder und RETRIEVAL; erfinde keine fehlenden Kennzahlen, keine Fill-Preise und keine Live-Marktdaten.
+expected_scenario_de: formuliere klar die Erwartung fuer die folgenden Stunden (z. B. ob ein Support haelt, welches Szenario wahrscheinlich ist) — inkl. Key-Levels in Worten, wo der Snapshot sie hergibt; fuer spaetere Messung (4h-Attribution).
 execution_authority bleibt immer none — keine Freigaben, keine Orderhinweise, keine konkreten Orderparameter (Menge, Hebel, SL/TP als Aufforderung).
 referenced_input_keys_de: nenne die wichtigsten Top-Level-Schluessel aus SIGNAL_SNAPSHOT_JSON, die du genutzt hast (max. 24, exakte Schluesselnamen).
 Optional chart_annotations (Schema chart_annotations_v1): nur ausfuellen, wenn du plausible Unix-Zeiten (Sekunden, wie Kerzen time_s) und Preise aus dem Snapshot ableiten kannst — niemals Millisekunden. horizontal_lines/price_bands/line_segments/time_markers sind KI-Interpretation; das Produkt validiert und verwirft Unplausibles, ohne Perfektion zu versprechen. Keine Trades aus diesen Zeichnungen. chart_notes_de: kurze Legenden (max. 220 Zeichen pro Eintrag). Lass chart_annotations weg oder null, wenn keine verlaesslichen Zahlen.

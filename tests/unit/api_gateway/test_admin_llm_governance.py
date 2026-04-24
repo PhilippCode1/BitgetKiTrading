@@ -57,9 +57,25 @@ def _admin_jwt() -> str:
     return jwt.encode(
         {
             "sub": "admin-tester",
+            "role": "admin",
             "aud": "api-gateway",
             "iss": "bitget-btc-ai-gateway",
             "gateway_roles": ["admin:read"],
+        },
+        "unit-test-gateway-jwt-secret-32b!",
+        algorithm="HS256",
+    )
+
+
+def _customer_jwt() -> str:
+    return jwt.encode(
+        {
+            "sub": "cu-1",
+            "role": "customer",
+            "aud": "api-gateway",
+            "iss": "bitget-btc-ai-gateway",
+            "gateway_roles": ["billing:read", "admin:read"],
+            "portal_roles": ["customer"],
         },
         "unit-test-gateway-jwt-secret-32b!",
         algorithm="HS256",
@@ -85,3 +101,16 @@ def test_admin_llm_governance_ok(mock_get, _audit, client: TestClient) -> None:
     assert body["summary"]["ok"] is True
     mock_get.assert_called_once()
     assert mock_get.call_args[0][1] == "/llm/governance/summary"
+
+
+@patch("api_gateway.routes_admin.get_llm_orchestrator_json")
+def test_admin_llm_governance_403_for_portal_customer_jwt(mock_get, client: TestClient) -> None:
+    """Gueltiges Kunden-JWT: /v1/admin trotzdem 403 (RBAC, nicht nur Build-Flags)."""
+    r = client.get(
+        "/v1/admin/llm-governance",
+        headers={"Authorization": f"Bearer {_customer_jwt()}"},
+    )
+    assert r.status_code == 403, r.text
+    body = r.json()
+    assert body["detail"]["code"] == "GATEWAY_FORBIDDEN_CUSTOMER_SESSION"
+    mock_get.assert_not_called()

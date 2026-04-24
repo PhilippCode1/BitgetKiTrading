@@ -15,10 +15,9 @@ from shared_py.bitget.instruments import (
     BitgetInstrumentIdentity,
     BitgetMarketCapabilityMatrixRow,
     MarginAccountMode,
+    MarketInstrumentFactory,
     build_capability_matrix,
     endpoint_profile_for,
-    trading_status_allows_subscription,
-    trading_status_allows_trading,
 )
 
 _FUTURES_PRODUCT_TYPES: tuple[ProductType, ...] = (
@@ -219,57 +218,12 @@ class BitgetMarketDiscoveryClient:
         self,
         rows: Sequence[dict[str, Any]],
     ) -> list[BitgetInstrumentCatalogEntry]:
-        profile = endpoint_profile_for("spot")
+        rts = int(time.time() * 1000)
         entries: list[BitgetInstrumentCatalogEntry] = []
         for row in rows:
-            trading_status = str(row.get("status") or "unknown").strip().lower() or "unknown"
-            eligibility = self._eligibility_flags(
-                trading_enabled=trading_status_allows_trading(trading_status),
-                subscribe_enabled=trading_status_allows_subscription(trading_status),
-                execution_adapter_available=profile.private_place_order_path is not None,
-            )
-            entries.append(
-                BitgetInstrumentCatalogEntry(
-                    market_family="spot",
-                    symbol=str(row.get("symbol") or self._settings.symbol),
-                    symbol_aliases=[str(row.get("symbol") or self._settings.symbol)],
-                    base_coin=str(row.get("baseCoin") or "") or None,
-                    quote_coin=str(row.get("quoteCoin") or "") or None,
-                    public_ws_inst_type=profile.public_ws_inst_type,
-                    private_ws_inst_type=profile.public_ws_inst_type,
-                    metadata_source=profile.public_symbol_config_path,
-                    metadata_verified=True,
-                    status=trading_status,
-                    inventory_visible=eligibility["inventory_visible"],
-                    analytics_eligible=eligibility["analytics_eligible"],
-                    paper_shadow_eligible=eligibility["paper_shadow_eligible"],
-                    live_execution_enabled=eligibility["live_execution_enabled"],
-                    execution_disabled=eligibility["execution_disabled"],
-                    trading_status=trading_status,
-                    trading_enabled=eligibility["trading_enabled"],
-                    subscribe_enabled=eligibility["subscribe_enabled"],
-                    supports_reduce_only=profile.supports_reduce_only,
-                    supports_long_short=profile.supports_long_short,
-                    supports_shorting=profile.supports_shorting,
-                    supports_leverage=profile.supports_leverage,
-                    uses_spot_public_market_data=profile.uses_spot_public_market_data,
-                    price_tick_size=self._spot_tick_size(row),
-                    quantity_step=self._spot_quantity_step(row),
-                    quantity_min=str(row.get("minTradeAmount") or "") or None,
-                    quantity_max=str(row.get("maxTradeAmount") or "") or None,
-                    min_notional_quote=str(row.get("minTradeUSDT") or "") or None,
-                    price_precision=self._optional_int(row.get("pricePrecision")),
-                    quantity_precision=self._optional_int(row.get("quantityPrecision")),
-                    quote_precision=self._optional_int(row.get("quotePrecision")),
-                    symbol_type="spot",
-                    session_metadata={
-                        "schedule": "24x7",
-                        "timezone": "UTC",
-                    },
-                    refresh_ts_ms=int(time.time() * 1000),
-                    raw_metadata=row,
-                )
-            )
+            ent = MarketInstrumentFactory.catalog_entry_from_spot_row(row, refresh_ts_ms=rts)
+            if ent is not None:
+                entries.append(ent)
         return entries
 
     def _futures_contract_rows(self, *, symbol: str | None = None) -> list[dict[str, Any]]:
@@ -295,83 +249,12 @@ class BitgetMarketDiscoveryClient:
         self,
         rows: Sequence[dict[str, Any]],
     ) -> list[BitgetInstrumentCatalogEntry]:
-        profile = endpoint_profile_for("futures")
+        rts = int(time.time() * 1000)
         entries: list[BitgetInstrumentCatalogEntry] = []
         for row in rows:
-            product_type = str(row.get("productType") or "").strip().upper()
-            if not product_type:
-                continue
-            trading_status = (
-                str(row.get("symbolStatus") or row.get("status") or "unknown").strip().lower()
-                or "unknown"
-            )
-            eligibility = self._eligibility_flags(
-                trading_enabled=trading_status_allows_trading(trading_status),
-                subscribe_enabled=trading_status_allows_subscription(trading_status),
-                execution_adapter_available=profile.private_place_order_path is not None,
-            )
-            margin_coin = self._first_list_value(row.get("supportMarginCoins")) or str(
-                row.get("marginCoin") or ""
-            )
-            session_metadata = {
-                "schedule": "24x7",
-                "timezone": "UTC",
-                "symbol_type": str(row.get("symbolType") or "") or None,
-                "off_time": self._optional_int(row.get("offTime")),
-                "limit_open_time": self._optional_int(row.get("limitOpenTime")),
-                "delivery_time": self._optional_int(row.get("deliveryTime")),
-                "delivery_start_time": self._optional_int(row.get("deliveryStartTime")),
-                "launch_time": self._optional_int(row.get("launchTime")),
-                "maintain_time": self._optional_int(row.get("maintainTime")),
-            }
-            entries.append(
-                BitgetInstrumentCatalogEntry(
-                    market_family="futures",
-                    symbol=str(row.get("symbol") or self._settings.symbol),
-                    symbol_aliases=[str(row.get("symbol") or self._settings.symbol)],
-                    product_type=product_type,
-                    margin_coin=margin_coin or None,
-                    base_coin=str(row.get("baseCoin") or "") or None,
-                    quote_coin=str(row.get("quoteCoin") or "") or None,
-                    settle_coin=str(row.get("settleCoin") or margin_coin or "") or None,
-                    margin_account_mode="isolated",
-                    public_ws_inst_type=product_type,
-                    private_ws_inst_type=product_type,
-                    metadata_source=profile.public_symbol_config_path,
-                    metadata_verified=True,
-                    status=trading_status,
-                    inventory_visible=eligibility["inventory_visible"],
-                    analytics_eligible=eligibility["analytics_eligible"],
-                    paper_shadow_eligible=eligibility["paper_shadow_eligible"],
-                    live_execution_enabled=eligibility["live_execution_enabled"],
-                    execution_disabled=eligibility["execution_disabled"],
-                    trading_status=trading_status,
-                    trading_enabled=eligibility["trading_enabled"],
-                    subscribe_enabled=eligibility["subscribe_enabled"],
-                    supports_funding=profile.supports_funding,
-                    supports_open_interest=profile.supports_open_interest,
-                    supports_reduce_only=profile.supports_reduce_only,
-                    supports_long_short=profile.supports_long_short,
-                    supports_shorting=profile.supports_shorting,
-                    supports_leverage=profile.supports_leverage,
-                    price_tick_size=str(row.get("priceEndStep") or "") or None,
-                    quantity_step=str(row.get("sizeMultiplier") or "") or None,
-                    quantity_min=str(row.get("minTradeNum") or "") or None,
-                    quantity_max=str(row.get("maxOrderQty") or "") or None,
-                    market_order_quantity_max=str(row.get("maxMarketOrderQty") or "") or None,
-                    min_notional_quote=str(row.get("minTradeUSDT") or "") or None,
-                    price_precision=self._optional_int(row.get("pricePlace")),
-                    quantity_precision=self._optional_int(row.get("volumePlace")),
-                    leverage_min=self._optional_int(row.get("minLever")),
-                    leverage_max=self._optional_int(row.get("maxLever")),
-                    funding_interval_hours=self._optional_int(row.get("fundInterval")),
-                    symbol_type=str(row.get("symbolType") or "") or None,
-                    supported_margin_coins=list(row.get("supportMarginCoins") or []),
-                    session_metadata={k: v for k, v in session_metadata.items() if v is not None},
-                    refresh_ts_ms=int(time.time() * 1000),
-                    raw_metadata=row,
-                )
-            )
+            ent = MarketInstrumentFactory.catalog_entry_from_futures_row(row, refresh_ts_ms=rts)
+            if ent is not None:
+                entries.append(ent)
         return entries
 
     def _margin_catalog_entries(
@@ -432,61 +315,20 @@ class BitgetMarketDiscoveryClient:
             for row in data
             if isinstance(row, dict) and str(row.get("symbol") or "").strip()
         }
+        rts = int(time.time() * 1000)
         entries: list[BitgetInstrumentCatalogEntry] = []
         for symbol in sorted(symbols):
             spot_row = spot_by_symbol.get(symbol)
             if not spot_row:
                 continue
-            spot_status = str(spot_row.get("status") or "unknown").strip().lower() or "unknown"
-            trading_status = f"{spot_status}_account_visible"
-            eligibility = self._eligibility_flags(
-                trading_enabled=trading_status_allows_trading(spot_status),
-                subscribe_enabled=trading_status_allows_subscription(spot_status),
-                execution_adapter_available=profile.private_place_order_path is not None,
+            ent = MarketInstrumentFactory.catalog_entry_from_margin_spot_row(
+                symbol=symbol,
+                spot_row=spot_row,
+                margin_account_mode=margin_account_mode,
+                refresh_ts_ms=rts,
             )
-            entries.append(
-                BitgetInstrumentCatalogEntry(
-                    market_family="margin",
-                    symbol=symbol,
-                    symbol_aliases=[symbol],
-                    margin_account_mode=margin_account_mode,
-                    public_ws_inst_type=profile.public_ws_inst_type,
-                    private_ws_inst_type=profile.private_ws_inst_type,
-                    metadata_source=profile.private_account_assets_path,
-                    metadata_verified=True,
-                    status=trading_status,
-                    inventory_visible=eligibility["inventory_visible"],
-                    analytics_eligible=eligibility["analytics_eligible"],
-                    paper_shadow_eligible=eligibility["paper_shadow_eligible"],
-                    live_execution_enabled=eligibility["live_execution_enabled"],
-                    execution_disabled=eligibility["execution_disabled"],
-                    trading_status=trading_status,
-                    trading_enabled=eligibility["trading_enabled"],
-                    subscribe_enabled=eligibility["subscribe_enabled"],
-                    supports_reduce_only=profile.supports_reduce_only,
-                    supports_long_short=profile.supports_long_short,
-                    supports_shorting=profile.supports_shorting,
-                    supports_leverage=profile.supports_leverage,
-                    uses_spot_public_market_data=profile.uses_spot_public_market_data,
-                    base_coin=str(spot_row.get("baseCoin") or "") or None,
-                    quote_coin=str(spot_row.get("quoteCoin") or "") or None,
-                    price_tick_size=self._spot_tick_size(spot_row),
-                    quantity_step=self._spot_quantity_step(spot_row),
-                    quantity_min=str(spot_row.get("minTradeAmount") or "") or None,
-                    quantity_max=str(spot_row.get("maxTradeAmount") or "") or None,
-                    min_notional_quote=str(spot_row.get("minTradeUSDT") or "") or None,
-                    price_precision=self._optional_int(spot_row.get("pricePrecision")),
-                    quantity_precision=self._optional_int(spot_row.get("quantityPrecision")),
-                    quote_precision=self._optional_int(spot_row.get("quotePrecision")),
-                    symbol_type="margin",
-                    session_metadata={
-                        "schedule": "24x7",
-                        "timezone": "UTC",
-                    },
-                    refresh_ts_ms=int(time.time() * 1000),
-                    raw_metadata=spot_row,
-                )
-            )
+            if ent is not None:
+                entries.append(ent)
         return entries
 
     def _dedupe_catalog_entries(
@@ -497,28 +339,6 @@ class BitgetMarketDiscoveryClient:
             entry.canonical_instrument_id or entry.instrument_key: entry for entry in entries
         }
         return list(deduped.values())
-
-    def _eligibility_flags(
-        self,
-        *,
-        trading_enabled: bool,
-        subscribe_enabled: bool,
-        execution_adapter_available: bool,
-    ) -> dict[str, bool]:
-        inventory_visible = True
-        analytics_eligible = bool(subscribe_enabled)
-        paper_shadow_eligible = bool(trading_enabled and execution_adapter_available)
-        live_execution_enabled = bool(trading_enabled and execution_adapter_available)
-        execution_disabled = inventory_visible and analytics_eligible and not live_execution_enabled
-        return {
-            "inventory_visible": inventory_visible,
-            "analytics_eligible": analytics_eligible,
-            "paper_shadow_eligible": paper_shadow_eligible,
-            "live_execution_enabled": live_execution_enabled,
-            "execution_disabled": execution_disabled,
-            "trading_enabled": bool(trading_enabled),
-            "subscribe_enabled": bool(subscribe_enabled),
-        }
 
     def _category_descriptor(
         self,
@@ -576,34 +396,6 @@ class BitgetMarketDiscoveryClient:
             uses_spot_public_market_data=uses_spot_public_market_data,
             reasons=list(reasons),
         )
-
-    def _spot_tick_size(self, row: dict[str, Any]) -> str | None:
-        precision = self._optional_int(row.get("pricePrecision"))
-        if precision is None:
-            return None
-        return format(10 ** (-precision), "f")
-
-    def _spot_quantity_step(self, row: dict[str, Any]) -> str | None:
-        precision = self._optional_int(row.get("quantityPrecision"))
-        if precision is None:
-            return None
-        return format(10 ** (-precision), "f")
-
-    def _first_list_value(self, value: object) -> str | None:
-        if isinstance(value, list):
-            for item in value:
-                normalized = str(item).strip().upper()
-                if normalized:
-                    return normalized
-        return None
-
-    def _optional_int(self, value: object) -> int | None:
-        if value in (None, ""):
-            return None
-        try:
-            return int(str(value).strip())
-        except ValueError:
-            return None
 
     def _public_json(
         self,

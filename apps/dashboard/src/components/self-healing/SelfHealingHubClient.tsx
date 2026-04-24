@@ -134,7 +134,7 @@ export function SelfHealingHubClient() {
   }, [load]);
 
   const runRepair = useCallback(
-    async (action: string, targetId?: string) => {
+    async (action: string, targetId?: string, serviceName?: string) => {
       setRepairing(true);
       setErr(null);
       try {
@@ -145,6 +145,7 @@ export function SelfHealingHubClient() {
           body: JSON.stringify({
             action,
             target_component_id: targetId ?? null,
+            service_name: serviceName ?? null,
           }),
         });
         if (!res.ok) {
@@ -171,6 +172,25 @@ export function SelfHealingHubClient() {
     },
     [appendHistory, t],
   );
+
+  const recoveryTimeline = useMemo(() => {
+    const items = snap?.self_healing_items;
+    if (!items?.length) return [];
+    const flat: { ts_ms: number; line: string; service: string }[] = [];
+    for (const it of items) {
+      for (const e of it.timeline) {
+        const msg = (e as { message?: string }).message ?? (e as { event?: string }).event ?? "event";
+        const ev = (e as { event?: string }).event ?? "event";
+        flat.push({
+          ts_ms: (e as { ts_ms: number }).ts_ms,
+          line: `${it.service_name}: ${ev} — ${String(msg).slice(0, 200)}`,
+          service: it.service_name,
+        });
+      }
+    }
+    flat.sort((a, b) => b.ts_ms - a.ts_ms);
+    return flat;
+  }, [snap?.self_healing_items]);
 
   const narrative = useMemo(() => {
     if (!snap) return "";
@@ -347,6 +367,58 @@ export function SelfHealingHubClient() {
             <li key={h.id}>{t(h.messageKey)}</li>
           ))}
         </ul>
+      </section>
+
+      <section className="panel self-healing-section" aria-labelledby="sh-auto-recover">
+        <h2 id="sh-auto-recover">
+          {t("pages.selfHealing.sectionAutoRecover")}
+        </h2>
+        <p className="muted small">
+          {t("pages.selfHealing.sectionAutoRecoverLead")}
+        </p>
+        {snap?.self_healing_error ? (
+          <p className="small self-healing-sev--warning" role="status">
+            {snap.self_healing_error}
+          </p>
+        ) : null}
+        <div className="self-healing-repair-row" style={{ marginBottom: "0.75rem" }}>
+          {["feature-engine", "drawing-engine", "signal-engine"].map((id) => (
+            <button
+              key={id}
+              type="button"
+              className="public-btn ghost self-healing-mini-btn"
+              onClick={() => {
+                void runRepair("worker_restart", undefined, id);
+              }}
+            >
+              {t("pages.selfHealing.buttons.restartWorker", { name: id })}
+            </button>
+          ))}
+        </div>
+        <p className="muted small">
+          {t("pages.selfHealing.autoRecoverDegradedOnly")}
+        </p>
+        {recoveryTimeline.length ? (
+          <ol
+            className="self-healing-history"
+            style={{ marginTop: "0.5rem" }}
+            aria-label={t("pages.selfHealing.recoveryTimelineAria")}
+          >
+            {recoveryTimeline.slice(0, 20).map((e, i) => (
+              <li key={`${e.ts_ms}-${e.line}-${i}`}>
+                <time dateTime={new Date(e.ts_ms).toISOString()}>
+                  {new Date(e.ts_ms).toLocaleString()}
+                </time>
+                {" — "}
+                <span className="small">{e.line}</span>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p className="muted small">
+            {t("pages.selfHealing.noRecoveryTimelineYet")}
+          </p>
+        )}
       </section>
 
       <section className="panel self-healing-section" aria-labelledby="sh-manual">

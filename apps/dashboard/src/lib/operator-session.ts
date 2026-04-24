@@ -8,9 +8,12 @@ import { serverEnv } from "@/lib/server-env";
 export type { OperatorSession };
 
 /**
- * Kryptographisch bzw. serverseitig gepruefter Operator-Status (DASHBOARD_GATEWAY_AUTHORIZATION).
- * `role === 'admin'` gemaess gateway_roles (admin:read|write) und ohne Kunden-Portal-Block (customer in portal_roles).
- * Kein Abgleich mit NEXT_PUBLIC_*-Build-Flags.
+ * BFF-Operator-Identitaet: `DASHBOARD_GATEWAY_AUTHORIZATION` (kein Browser-Cookie).
+ * `role === 'admin'` gemaess gateway_roles + role-Claim; Kunden-Portal-Block bei customer in portal_roles.
+ *
+ * Endkunden-UI: (customer)/portal, Persona via Cookie `bitget_portal_jwt` —
+ * `getDashboardPersonaForServerComponent` (portal-persona) / `useCustomerPortalPersona`.
+ * Middleware blockt /console/* fuer Kunden.
  */
 export async function getOperatorSession(): Promise<OperatorSession | null> {
   return resolveOperatorSessionFromToken(

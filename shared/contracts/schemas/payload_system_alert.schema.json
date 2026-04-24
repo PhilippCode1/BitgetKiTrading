@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bitget-btc-ai.local/schemas/payload_system_alert.schema.json",
+  "title": "system_alert payload (minimale Huell-Validierung)",
+  "type": "object",
+  "additionalProperties": true
+}

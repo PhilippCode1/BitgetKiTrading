@@ -7,21 +7,31 @@ check_production_env_template_security.py (Prod/Shadow-.example, wie CI).
 Zusaetzlich: .env.local.example mit CI-Platzhalter-Ersatz durch validate_env_profile
 (local), falls die Datei existiert.
 
+Bei ``APP_ENV=production`` (streng, Prompt 35): nach bestandenem modul_mate_selfcheck
+PFLICHT ``DATABASE_URL`` und sofort ``tools/db_production_hardening.py``
+(DB-Ping, MIGRATIONS-Hash, LIVE_APP_SCHEMA, Seed-Lock).
+Bei sonst profilbedingt prod-aehnlichem Lauf (PRODUCTION, ``APP_ENV`` staging|shadow
+oder SELFCHECK_DATABASE_REQUIRED): ``db_production_hardening`` wie bisher, analog
+``pnpm run config:validate:production`` (validate_env_profile, production ohne DB-SKIP).
+
 Vor Pytest: `ruff check` auf den Selfcheck-Pfaden; `black --check` auf
 den Tools + tests/shared/test_model_layer_contract.py (wie CI, ohne Legacy-tests/unit);
 `mypy` auf Risk/Exit- plus Kommerz-Gate-Module in shared_py (wie CI, cwd shared/python).
 
 Lokal:   python tools/production_selfcheck.py
-Mit DB: DATABASE_URL gesetzt: modul_mate_selfcheck prueft
-app.tenant_modul_mate_gates.
+DB:      modul_mate_selfcheck prueft M604 (app.tenant_modul_mate_gates) inkl.
+         product_policy, wenn DATABASE_URL gesetzt ist. Ohne gesetztes DATABASE_URL
+         im Profil production|staging|shadow, PRODUCTION=true oder
+         SELFCHECK_DATABASE_REQUIRED=1 → Exit 1 (kein stilles SKIP).
 
 Optional (CI-aehnlicher Repo-Scan, kann auf grossen Trees langsam sein):
   PRODUCTION_SELFCHECK_REPO_SCAN=1  bzw. unter PowerShell:
   $env:PRODUCTION_SELFCHECK_REPO_SCAN='1'
 
 Exit-Codes:
-  0 — Alle Schritte erfolgreich; DB-Teil von modul_mate_selfcheck nur bei gesetztem
-      DATABASE_URL, sonst SKIP (kein Fehler).
+  0 — Alle Subschritte erfolgreich. modul_mate_selfcheck: DB-SKIP ist nur im lokalen
+      Dev-Profil ohne PRODUCTION/APP_ENV production|staging|shadow/SELFCHECK_DATABASE
+      zulässig; in prod-ähnlichen Profilen fehlendes DATABASE_URL → 1.
   != 0 — Rückgabewert des ersten fehlgeschlagenen Subprozesses (welcher Schritt, steht
       als „FAIL: …“ direkt davor).
 """
@@ -37,8 +47,13 @@ from pathlib import Path
 _CI_PLACEHOLDER_FILL = "ci_repeatable_secret_min_32_chars_x"
 
 _SELFCHECK_RUFF_PATHS = (
+    "tools/db_production_hardening.py",
+    "tools/live_app_schema_fingerprint.py",
     "tools/modul_mate_selfcheck.py",
     "tools/production_selfcheck.py",
+    "tools/refresh_migrations_schema_hash.py",
+    "tools/refresh_schema_master_hash.py",
+    "tools/validate_env_profile.py",
     "tests/unit/tools/test_selfcheck_cli_contract.py",
     "tests/unit/shared_py/test_modul_mate_db_gates.py",
     "tests/unit/shared_py/test_product_policy.py",
@@ -63,17 +78,75 @@ _MYPY_SHARED_TARGETS = (
 )
 
 
+def _prod_like_requires_database_url() -> bool:
+    """Gleiche Logik wie modul_mate_selfcheck: DB in prod nicht optional."""
+    s = (os.environ.get("SELFCHECK_DATABASE_REQUIRED") or "").strip()
+    if s in ("1", "true", "yes", "on"):
+        return True
+    s = (os.environ.get("PRODUCTION") or "").strip().lower()
+    if s in ("1", "true", "yes", "on"):
+        return True
+    app = (os.environ.get("APP_ENV") or "development").strip().lower()
+    return app in ("production", "staging", "shadow")
+
+
 def main() -> int:
     root = Path(__file__).resolve().parents[1]
     mm = root / "tools" / "modul_mate_selfcheck.py"
     print(
-        "==> modul_mate_selfcheck (Migration 604, shared_py-Import, optional DB)",
+        "==> modul_mate_selfcheck (M604 app.tenant_modul_mate_gates, "
+        "profilbasiert DB-Pflicht)",
         flush=True,
     )
     r0 = subprocess.run([sys.executable, str(mm)], cwd=root)
     if r0.returncode != 0:
         print("FAIL: modul_mate_selfcheck", flush=True)
         return r0.returncode
+
+    app_env_l = (os.environ.get("APP_ENV") or "").strip().lower()
+    if app_env_l == "production":
+        dsn = (os.environ.get("DATABASE_URL") or "").strip()
+        if not dsn:
+            print(
+                "FAIL: APP_ENV=production: DATABASE_URL PFLICHT fuer "
+                "DB-Ping/Schema-Hash-Check (Prompt 35) — kein stilles Ueberspringen.",
+                flush=True,
+            )
+            return 1
+        print(
+            "==> db_production_hardening (APP_ENV=production, "
+            "DB-Ping + MIGRATIONS/LIVE_APP_HASH Pflicht, Prompt 23+35)",
+            flush=True,
+        )
+        r_prod = subprocess.run(
+            [sys.executable, str(root / "tools" / "db_production_hardening.py")],
+            cwd=root,
+            env=os.environ.copy(),
+        )
+        if r_prod.returncode != 0:
+            print(
+                "FAIL: db_production_hardening under APP_ENV=production "
+                "(Schema-Hash, LIVE_APP_SCHEMA, Seeds; siehe config/schema_master.hash)",
+                flush=True,
+            )
+            return r_prod.returncode
+    elif _prod_like_requires_database_url():
+        print(
+            "==> db_production_hardening (Schema-Hash, Seed-Lock; prod-aehnliches Profil)",
+            flush=True,
+        )
+        r_h = subprocess.run(
+            [sys.executable, str(root / "tools" / "db_production_hardening.py")],
+            cwd=root,
+            env=os.environ.copy(),
+        )
+        if r_h.returncode != 0:
+            print(
+                "FAIL: db_production_hardening (Schema-Drift oder "
+                "Test-Platzhalter/Seeds in DB; siehe config/schema_master.hash)",
+                flush=True,
+            )
+            return r_h.returncode
 
     print("==> ruff check (Selfcheck-Pfade)", flush=True)
     ruff_argv = [sys.executable, "-m", "ruff", "check", *(_SELFCHECK_RUFF_PATHS)]

@@ -6,8 +6,13 @@ Live-Candidates blockieren (REQUIRE_SHADOW_MATCH_BEFORE_LIVE).
 
 from __future__ import annotations
 
+import logging
+import time
+import uuid
 from dataclasses import dataclass
 from typing import Any
+
+logger = logging.getLogger("shared_py.shadow_live_divergence")
 
 
 SHADOW_LIVE_DIVERGENCE_PROTOCOL_VERSION = "p28-v1"
@@ -157,4 +162,194 @@ def assess_shadow_live_divergence(
             "timing_violation_hard": thresholds.timing_violation_hard,
             "max_slippage_expectation_bps": thresholds.max_slippage_expectation_bps,
         },
+    }
+
+
+# --- Shadow-Match-Latch (REQUIRE_SHADOW_MATCH_BEFORE_LIVE): externer Redis-Beweis ---
+
+SHADOW_MATCH_REDIS_PREFIX = "shadow:match:"
+DEFAULT_SHADOW_MATCH_LATCH_TIMEOUT_MS = 500
+DEFAULT_SHADOW_MATCH_REDIS_TTL_SEC = 300
+SHADOW_MATCH_LATCH_VALUE = "1"
+
+
+def shadow_match_latch_redis_key(execution_id: str) -> str:
+    """Redis-Key Live-Broker/Paper: ``shadow:match:{execution_id}`` (UUID, gemeinsam mit live.execution_decisions)."""
+    e = str(execution_id).strip()
+    if not e:
+        return SHADOW_MATCH_REDIS_PREFIX
+    return f"{SHADOW_MATCH_REDIS_PREFIX}{e}"
+
+
+def parse_prebound_execution_id(
+    *,
+    signal_payload: dict[str, Any] | None,
+    payload: dict[str, Any] | None,
+    trace: dict[str, Any] | None,
+) -> str | None:
+    """
+    Muss in Signal/Live-Intent vorkommen, bevor der Paper-Shadow-Preis-Trade dieselbe
+    :func:`shadow_match_latch_redis_key` setzen kann. Reihenfolge: gleiche UUID in paper + live.
+    """
+    for bag in (payload or {}, trace or {}, (signal_payload or {})):
+        if not isinstance(bag, dict):
+            continue
+        for k in (
+            "execution_id",
+            "prebound_execution_id",
+            "correlation_execution_id",
+        ):
+            raw = bag.get(k)
+            if raw in (None, ""):
+                continue
+            s = str(raw).strip()
+            if not s:
+                continue
+            try:
+                uuid.UUID(s)
+            except (ValueError, TypeError, AttributeError):
+                continue
+            return s
+    return None
+
+
+def set_shadow_match_latch(
+    redis_url: str,
+    execution_id: str,
+    *,
+    ttl_sec: int = DEFAULT_SHADOW_MATCH_REDIS_TTL_SEC,
+) -> bool:
+    """
+    Wird von der Shadow-/Paper-Engine aufgerufen, nachdem die Simulation (Demo) erfolgreich war.
+    Returns False wenn kein Redis oder Set fehlschlaegt (kein harter Fehler in Paper-Open).
+    """
+    u = (redis_url or "").strip()
+    if not u or not (execution_id or "").strip():
+        return False
+    key = shadow_match_latch_redis_key(execution_id)
+    try:
+        import redis as _redis
+    except ImportError:  # pragma: no cover
+        return False
+    try:
+        r = _redis.Redis.from_url(
+            u, decode_responses=True, socket_connect_timeout=2, socket_timeout=2
+        )
+        r.set(key, SHADOW_MATCH_LATCH_VALUE, ex=max(1, int(ttl_sec)))
+        return True
+    except Exception:
+        return False
+
+
+def get_shadow_match_latch_present(redis_url: str, execution_id: str) -> bool:
+    u = (redis_url or "").strip()
+    if not u or not (execution_id or "").strip():
+        return False
+    key = shadow_match_latch_redis_key(execution_id)
+    try:
+        import redis as _redis
+    except ImportError:  # pragma: no cover
+        return False
+    try:
+        r = _redis.Redis.from_url(
+            u, decode_responses=True, socket_connect_timeout=2, socket_timeout=2
+        )
+        v = r.get(key)
+        return v is not None and str(v) != ""
+    except Exception:
+        return False
+
+
+def get_shadow_match_latch_read_status(redis_url: str, execution_id: str) -> str:
+    """
+    Lesezustand fuer Live-Gating: ``present`` | ``absent`` | ``redis_unavailable``.
+
+    ``redis_unavailable`` = Verbindung/Timeout (Fail-Closed: kein stilles "Key fehlt").
+    """
+    u = (redis_url or "").strip()
+    eid = (execution_id or "").strip()
+    if not u or not eid:
+        return "absent"
+    key = shadow_match_latch_redis_key(eid)
+    try:
+        import redis as _redis
+    except ImportError:  # pragma: no cover
+        return "redis_unavailable"
+    r = None
+    v: Any = None
+    try:
+        r = _redis.Redis.from_url(
+            u, decode_responses=True, socket_connect_timeout=2, socket_timeout=2
+        )
+        v = r.get(key)
+    except (OSError, _redis.exceptions.ConnectionError, _redis.exceptions.TimeoutError) as exc:
+        logger.warning("shadow_match_latch: redis read failed: %s", exc)
+        return "redis_unavailable"
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("shadow_match_latch: redis read unexpected: %s", exc)
+        return "redis_unavailable"
+    finally:
+        if r is not None:
+            try:
+                r.close()
+            except Exception:  # noqa: BLE001
+                pass
+    if v is not None and str(v) != "":
+        return "present"
+    return "absent"
+
+
+def wait_for_shadow_match_latch(
+    redis_url: str,
+    execution_id: str,
+    *,
+    timeout_ms: int = DEFAULT_SHADOW_MATCH_LATCH_TIMEOUT_MS,
+    poll_ms: int = 25,
+) -> dict[str, Any]:
+    """
+    Live-Broker: Wartet auf Redis-Key ``shadow:match:{execution_id}`` (enges Fenster).
+    Ohne Key nach ``timeout_ms``: ``ok=false`` (kein Echtgeld-Submit hinterher).
+    """
+    u = (redis_url or "").strip()
+    t0 = time.monotonic()
+    if not u or not (execution_id or "").strip():
+        return {
+            "ok": False,
+            "waited_ms": 0,
+            "key": shadow_match_latch_redis_key(execution_id or ""),
+            "error": "redis_or_execution_id_missing",
+        }
+    key = shadow_match_latch_redis_key(execution_id)
+    limit_ms = max(0, int(timeout_ms))
+    poll = max(1, min(100, int(poll_ms)))
+    last_err: str | None = None
+    try:
+        import redis as _redis
+    except ImportError as exc:  # pragma: no cover
+        return {
+            "ok": False,
+            "waited_ms": 0,
+            "key": key,
+            "error": f"redis_import:{exc!s}",
+        }
+    r = _redis.Redis.from_url(
+        u, decode_responses=True, socket_connect_timeout=1, socket_timeout=2
+    )
+    end_mono = t0 + limit_ms / 1000.0
+    while time.monotonic() < end_mono:
+        try:
+            v = r.get(key)
+            if v is not None and str(v) != "":
+                waited = (time.monotonic() - t0) * 1000.0
+                return {"ok": True, "waited_ms": int(waited), "key": key}
+        except Exception as exc:  # noqa: BLE001
+            last_err = str(exc)[:200]
+        if time.monotonic() + (poll / 1000.0) < end_mono:
+            time.sleep(poll / 1000.0)
+    waited = (time.monotonic() - t0) * 1000.0
+    return {
+        "ok": False,
+        "waited_ms": int(min(waited, float(limit_ms) + 50)),
+        "key": key,
+        "error": last_err or "shadow_match_key_absent",
     }

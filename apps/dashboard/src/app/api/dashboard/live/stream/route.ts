@@ -22,6 +22,8 @@ export async function GET(req: Request) {
       extraHeaders: streamHeaders,
       traceSource: req.headers,
       timeoutMs: null,
+      /** Tab/Navigation weg: Upstream sofort beenden, kein hängendes Proxy-SSE. */
+      abortSignal: req.signal,
     });
   } catch (e) {
     return upstreamFetchFailedResponse(e);

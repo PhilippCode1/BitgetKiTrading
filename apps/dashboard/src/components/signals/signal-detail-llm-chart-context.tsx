@@ -12,6 +12,9 @@ import {
 type SignalDetailLlmChartContextValue = Readonly<{
   annotationsRaw: unknown | null;
   setAnnotationsRaw: (v: unknown | null) => void;
+  /** strategy_explanation_de o. a. — Zonenrollen (Short/Widerstand) + Popover-Text. */
+  rationaleDe: string | null;
+  setRationaleDe: (v: string | null) => void;
   layerEnabled: boolean;
   setLayerEnabled: (v: boolean) => void;
 }>;
@@ -26,9 +29,14 @@ export function SignalDetailLlmChartProvider({
     null,
   );
   const [layerEnabled, setLayerEnabledState] = useState(true);
+  const [rationaleDe, setRationaleDeState] = useState<string | null>(null);
 
   const setAnnotationsRaw = useCallback((v: unknown | null) => {
     setAnnotationsRawState(v);
+  }, []);
+
+  const setRationaleDe = useCallback((v: string | null) => {
+    setRationaleDeState(v);
   }, []);
 
   const setLayerEnabled = useCallback((v: boolean) => {
@@ -40,10 +48,19 @@ export function SignalDetailLlmChartProvider({
       ({
         annotationsRaw,
         setAnnotationsRaw,
+        rationaleDe,
+        setRationaleDe,
         layerEnabled,
         setLayerEnabled,
       }) satisfies SignalDetailLlmChartContextValue,
-    [annotationsRaw, layerEnabled, setAnnotationsRaw, setLayerEnabled],
+    [
+      annotationsRaw,
+      rationaleDe,
+      layerEnabled,
+      setAnnotationsRaw,
+      setRationaleDe,
+      setLayerEnabled,
+    ],
   );
 
   return (

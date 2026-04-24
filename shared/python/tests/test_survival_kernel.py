@@ -6,10 +6,13 @@ import os
 import pytest
 
 from shared_py.resilience.survival_kernel import (
+    RISK_VOLATILITY_CLAMP_ACTIVE,
     SurvivalKernelParams,
     SurvivalMetrics,
+    adaptive_leverage_cap_from_atr_percent,
     apply_survival_signal_overrides,
     disruption_score,
+    effective_atr_percent_for_volatility_clamp,
     merge_survival_truth,
     process_survival_metrics,
     survival_tick,
@@ -82,3 +85,30 @@ def test_process_survival_metrics_with_fake_redis(monkeypatch: pytest.MonkeyPatc
 def test_disruption_score_matches_expected() -> None:
     m = SurvivalMetrics(drift_z=2.0, tsfm_residual_z=1.0, ams_toxicity_0_1=0.5)
     assert abs(disruption_score(m) - 5.0) < 1e-9
+
+
+def test_adaptive_leverage_cap_atr_matrix_prompt_73() -> None:
+    """
+    DoD: ATR 0,5 % -> roher Cap 20 (min mit Live-Ramp 7), 2 % -> 5, 5 % -> 2.
+    Formel: min(SYSTEM_MAX, floor(1/((p/100)*10))).
+    """
+    assert adaptive_leverage_cap_from_atr_percent(0.5, system_max_leverage=75) == 20
+    assert adaptive_leverage_cap_from_atr_percent(2.0, system_max_leverage=75) == 5
+    assert adaptive_leverage_cap_from_atr_percent(5.0, system_max_leverage=75) == 2
+    # Nach typischer 7x-Ramp: min(7, roh)
+    assert min(7, adaptive_leverage_cap_from_atr_percent(0.5, system_max_leverage=75)) == 7
+    assert min(7, adaptive_leverage_cap_from_atr_percent(2.0, system_max_leverage=75)) == 5
+    assert min(7, adaptive_leverage_cap_from_atr_percent(5.0, system_max_leverage=75)) == 2
+
+
+def test_risk_volatility_clamp_bff_token() -> None:
+    assert RISK_VOLATILITY_CLAMP_ACTIVE == "RISK_VOLATILITY_CLAMP_ACTIVE"
+
+
+def test_effective_atr_stress_above_ema() -> None:
+    # ATR 2 %, EMA 1 % -> Faktor 2, eff 4 %
+    e = effective_atr_percent_for_volatility_clamp(atr_percent=2.0, atr_ema_24h_percent=1.0)
+    assert abs(e - 4.0) < 1e-9
+    assert (
+        effective_atr_percent_for_volatility_clamp(atr_percent=1.0, atr_ema_24h_percent=2.0) == 1.0
+    )

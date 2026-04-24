@@ -1,6 +1,24 @@
 const path = require("path");
+const { NEXT_PUBLIC_KEYS } = require("./public-env-allowlist.cjs");
 
 const isProdBuild = process.env.NODE_ENV === "production";
+
+if (process.env.NEXT_CONFIG_SKIP_PUBLIC_ENV_ALLOWLIST !== "1") {
+  for (const k of Object.keys(process.env)) {
+    if (!k.startsWith("NEXT_PUBLIC_") || NEXT_PUBLIC_KEYS.has(k)) {
+      continue;
+    }
+    if (isProdBuild) {
+      throw new Error(
+        `[next.config] Nicht in public-env-allowlist.cjs: ${k}. Ueber BFF/Server-ENV bleibt Gateway-Logik in server-env.ts (API_GATEWAY_URL).`,
+      );
+    }
+    if (process.env.NEXT_LOG_DISALLOWED_PUBLIC_ENV === "1") {
+      console.warn(`[next.config] Dev: unbekannte ${k} (nicht in Whitelist) bleibt gesetzt.`);
+    }
+  }
+}
+
 const apiBaseRaw = (process.env.NEXT_PUBLIC_API_BASE_URL || "").trim();
 if (isProdBuild && !apiBaseRaw) {
   console.warn(
@@ -54,8 +72,8 @@ const connectSrc = isProdBuild
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  /** Repo-Root: damit `pnpm dev` / Turbo aus apps/dashboard die gleiche .env.local wie Docker/Compose nutzt */
-  envDir: path.join(__dirname, "../.."),
+  // Next 16: envDir entfaellt; Repo-Root-`.env*`: Symlink in apps/dashboard/ nutzen
+  // oder ENV bei Build setzen (Docker-ARG, CI-Variablen). Siehe CONFIGURATION.md.
   reactStrictMode: true,
   async redirects() {
     const legacy = [
@@ -88,6 +106,8 @@ const nextConfig = {
   distDir: process.env.NEXT_DIST_DIR || "build",
   output: "standalone",
   outputFileTracingRoot: path.join(__dirname, "../.."),
+  productionBrowserSourceMaps: false,
+  compress: true,
   poweredByHeader: false,
   async headers() {
     const csp = [
@@ -101,19 +121,29 @@ const nextConfig = {
       "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
       `connect-src ${connectSrc}`,
     ].join("; ");
+    const security = [
+      { key: "X-Content-Type-Options", value: "nosniff" },
+      { key: "X-Frame-Options", value: "SAMEORIGIN" },
+      { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+      {
+        key: "Permissions-Policy",
+        value: "camera=(), microphone=(), geolocation=(), payment=()",
+      },
+      { key: "Content-Security-Policy", value: csp },
+    ];
     return [
       {
-        source: "/:path*",
+        source: "/_next/static/:path*",
         headers: [
-          { key: "X-Content-Type-Options", value: "nosniff" },
-          { key: "X-Frame-Options", value: "SAMEORIGIN" },
-          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           {
-            key: "Permissions-Policy",
-            value: "camera=(), microphone=(), geolocation=(), payment=()",
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
           },
-          { key: "Content-Security-Policy", value: csp },
         ],
+      },
+      {
+        source: "/:path*",
+        headers: security,
       },
     ];
   },

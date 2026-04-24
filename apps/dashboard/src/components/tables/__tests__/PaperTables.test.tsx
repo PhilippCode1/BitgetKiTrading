@@ -6,6 +6,8 @@ import type { ReactElement } from "react";
 
 import { I18nProvider } from "@/components/i18n/I18nProvider";
 
+import { EmptyState } from "@/components/ui/EmptyState";
+
 import { OpenPositionsTable } from "../OpenPositionsTable";
 import { TradesTable } from "../TradesTable";
 
@@ -28,11 +30,29 @@ describe("Paper-Tabellen (i18n)", () => {
     expect(screen.getByText("Keine offenen Positionen")).toBeInTheDocument();
   });
 
-  it("TradesTable: Leerzustand auf Deutsch", () => {
+  it("TradesTable: Leerzustand auf Deutsch (leerer API-/Listen-Response)", () => {
     wrap(<TradesTable trades={[]} />);
     expect(
-      screen.getByText("Noch keine geschlossenen Trades"),
+      screen.getByText("Keine abgeschlossenen Trades"),
     ).toBeInTheDocument();
+  });
+
+  it("EmptyState: Titel und Beschreibung als freie Nodes + actionButton", () => {
+    wrap(
+      <EmptyState
+        icon="inbox"
+        title="Beispiel-Titel"
+        description="Beispiel-Beschreibung"
+        actionButton={
+          <button type="button" className="public-btn ghost">
+            Aktion
+          </button>
+        }
+      />,
+    );
+    expect(screen.getByText("Beispiel-Titel")).toBeInTheDocument();
+    expect(screen.getByText("Beispiel-Beschreibung")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Aktion" })).toBeInTheDocument();
   });
 
   it("OpenPositionsTable: Skeleton während isLoading", () => {

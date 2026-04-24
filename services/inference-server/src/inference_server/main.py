@@ -57,7 +57,7 @@ async def _serve() -> None:
     await server.start()
     logger.info("gRPC TimesFmInference auf %s (Modell=%s)", grpc_addr, settings.timesfm_model_id)
 
-    app = create_app()
+    app = create_app(servicer=servicer)
     if settings.embedding_enabled:
         app.include_router(build_embedding_router(settings))
     uv_cfg = uvicorn.Config(

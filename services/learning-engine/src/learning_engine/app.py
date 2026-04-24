@@ -38,6 +38,7 @@ from learning_engine.api.routes_summary import build_summary_router
 from learning_engine.api.routes_trades import build_trades_router
 from learning_engine.api.routes_self_healing import build_self_healing_router
 from learning_engine.api.routes_tsfm_war_room_audit import build_tsfm_war_room_audit_router
+from learning_engine.api.routes_war_room_precision import build_war_room_precision_router
 from learning_engine.api.routes_adversarial import build_adversarial_proxy_router
 from learning_engine.api.routes_resilience import build_resilience_router
 from learning_engine.backtest.routes import build_backtests_router
@@ -99,6 +100,7 @@ def create_app() -> FastAPI:
     app.include_router(build_models_router(settings))
     app.include_router(build_governance_router(settings))
     app.include_router(build_tsfm_war_room_audit_router(settings))
+    app.include_router(build_war_room_precision_router())
     app.include_router(build_self_healing_router(settings))
     app.include_router(build_adversarial_proxy_router(settings))
     app.include_router(build_resilience_router(settings))

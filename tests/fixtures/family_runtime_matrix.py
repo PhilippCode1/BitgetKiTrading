@@ -78,4 +78,10 @@ def catalog_entry_for_case(case: dict[str, Any]) -> BitgetInstrumentCatalogEntry
         trading_status="normal",
         trading_enabled=True,
         subscribe_enabled=True,
+        quantity_step=str(case["size_multiplier"]),
+        price_tick_size=str(case["price_end_step"]),
+        funding_interval_hours=case["fund_interval_hours"],
+        leverage_max=case["max_lever"],
+        quantity_min="0.001",
+        min_notional_quote="5",
     )

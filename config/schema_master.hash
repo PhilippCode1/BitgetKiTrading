@@ -1,0 +1,5 @@
+# MIGRATIONS: SHA-256 aller .sql-Dateien (Sortierung deterministisch).
+# LIVE_APP_SCHEMA: Katalog-Hash (app), braucht DATABASE_URL (migrierte DB).
+# python tools/refresh_schema_master_hash.py
+MIGRATIONS:438628295fc120fd456e071d73fa4e96bd83be1caf6bd7e71d057b903bac5340
+LIVE_APP_SCHEMA:a320e7889ecf1f870c49aba2cfe2e67d6f41f1dd3404e4d10bc633b101c6bec3

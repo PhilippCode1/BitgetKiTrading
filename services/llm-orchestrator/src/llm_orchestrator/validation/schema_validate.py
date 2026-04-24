@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from jsonschema import Draft202012Validator
@@ -30,3 +31,18 @@ def format_schema_errors_for_prompt(errors: list[str], *, max_items: int = 12) -
     n = max(1, int(max_items))
     parts = [str(x).strip() for x in (errors or []) if str(x).strip()][:n]
     return "; ".join(parts) if parts else "unbekannter Schemafehler"
+
+
+def compact_schema_for_repair_prompt(
+    schema: dict[str, Any], *, max_chars: int = 10_000
+) -> str:
+    """Gekapptes JSON-Schema-Textstück für den Reparatur-Prompt."""
+    try:
+        s = json.dumps(schema, ensure_ascii=False, default=str, indent=2)
+    except (TypeError, ValueError, OverflowError) as exc:
+        return f"(Schema nicht serialisierbar: {exc!s})"[:max_chars]
+    if len(s) > max_chars:
+        return (
+            s[:max_chars] + "\n... (gekuerzt, volles Schema liegt im Dienst)"
+        )
+    return s

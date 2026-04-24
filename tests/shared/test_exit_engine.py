@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from decimal import Decimal
 
 from shared_py.exit_engine import (
@@ -221,6 +222,8 @@ def test_evaluate_exit_plan_runner_trail_hit() -> None:
             "armed": True,
             "trail_stop": "104",
             "trigger_type": "fill_price",
+            "wick_confirm_consecutive_ticks": 1,
+            "wick_breach_streak": 0,
         },
         "break_even": {"enabled": False},
     }
@@ -491,3 +494,66 @@ def test_build_live_exit_plans_unified_meta_and_time_stop() -> None:
     assert s["time_stop"]["deadline_ts_ms"] == 2_000_000_000_000
     assert t is not None
     assert t["unified_exit"]["pipeline_version"] == "shared-exit-v2"
+
+
+def test_replay_5pct_trailing_retrace_paper_matches_engine_twice() -> None:
+    """5 % Callback, zwei aufeinanderfolgende Breach-Ticks; Paper == gleiche evaluate_exit_plan-Logik."""
+    tp0 = {
+        "trigger_type": "fill_price",
+        "targets": [],
+        "execution": {},
+        "execution_state": {"hit_tp_indices": [], "initial_qty": "1"},
+        "break_even": {"enabled": False},
+        "runner": {
+            "enabled": True,
+            "armed": True,
+            "mode": "callback_bps",
+            "callback_retrace_bps": "500",
+            "trail_offset": "0",
+            "wick_confirm_consecutive_ticks": 2,
+            "wick_breach_streak": 0,
+            "high_water": "100",
+            "low_water": "100",
+            "trigger_type": "fill_price",
+        },
+    }
+    t0 = 1_000_000_000_000
+    # innerhalb 10s simuliert (3 Ticks) — wichtig ist: konsekutiv im Trigger-Intervall
+    d1 = evaluate_exit_plan(
+        side="long",
+        entry_price=Decimal("100"),
+        current_qty=Decimal("1"),
+        mark_price=Decimal("94.0"),
+        fill_price=Decimal("94.0"),
+        stop_plan=None,
+        tp_plan=deepcopy(tp0),
+        now_ms=t0 + 0,
+    )
+    d2a = evaluate_exit_plan(
+        side="long",
+        entry_price=Decimal("100"),
+        current_qty=Decimal("1"),
+        mark_price=Decimal("94.0"),
+        fill_price=Decimal("94.0"),
+        stop_plan=None,
+        tp_plan=deepcopy((d1.get("updated_tp_plan") or {})),
+        now_ms=t0 + 4_000,
+    )
+    d2b = evaluate_exit_plan(
+        side="long",
+        entry_price=Decimal("100"),
+        current_qty=Decimal("1"),
+        mark_price=Decimal("94.0"),
+        fill_price=Decimal("94.0"),
+        stop_plan=None,
+        tp_plan=deepcopy((d1.get("updated_tp_plan") or {})),
+        now_ms=t0 + 4_000,
+    )
+    assert not any(a.get("action") == "close_full" for a in d1.get("actions") or [])
+    assert d2a["actions"] == d2b["actions"]
+    assert d2a["updated_tp_plan"] == d2b["updated_tp_plan"]
+    assert d2a["actions"][0]["action"] == "close_full"
+    assert d2a["actions"][0]["reason_code"] == "runner_trail_hit"
+    assert d2a["actions"][0]["trigger_price"] == "94.0"
+    r = (d2a.get("updated_tp_plan") or {}).get("runner") or {}
+    assert abs(Decimal(str(r.get("trail_stop"))) - Decimal("95")) < Decimal("0.0001")

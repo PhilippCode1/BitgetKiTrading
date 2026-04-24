@@ -10,6 +10,7 @@ from __future__ import annotations
 import ctypes
 import json
 import logging
+import math
 import os
 import time
 from dataclasses import dataclass
@@ -28,6 +29,8 @@ SYSTEM_EXIT_SURVIVAL_MODE = "SYSTEM_EXIT_SURVIVAL_MODE"
 SURVIVAL_REDIS_KEY = "ops:survival_kernel:v1"
 SURVIVAL_ENV_FLAG = "BITGET_SURVIVAL_MODE"
 SURVIVAL_LIB_ENV = "SURVIVAL_KERNEL_LIB_PATH"
+# BFF / Dashboard: Volatility-Clamp (Prompt 73)
+RISK_VOLATILITY_CLAMP_ACTIVE = "RISK_VOLATILITY_CLAMP_ACTIVE"
 
 
 @dataclass(frozen=True)
@@ -59,6 +62,36 @@ class SurvivalTickResult:
 def disruption_score(m: SurvivalMetrics) -> float:
     t = max(0.0, min(1.0, float(m.ams_toxicity_0_1)))
     return min(1.0e6, abs(float(m.drift_z)) + abs(float(m.tsfm_residual_z)) + 4.0 * t)
+
+
+def portfolio_diversification_risk_buffer_0_1(
+    *,
+    distinct_instruments: int,
+    buffer_per_instrument: float = 0.05,
+) -> float:
+    """
+    Je mehr parallele (unkorrelierte) Instrumente im Portfolio, desto hoeherer Sicherheitsabschlag
+    (Risk-Buffer) auf die erlaubte Notional-Summe relativ zur Equity.
+    """
+    n = max(0, int(distinct_instruments))
+    if n <= 1:
+        return 0.0
+    b = float(buffer_per_instrument) * float(n - 1)
+    return min(0.5, b)
+
+
+def effective_portfolio_exposure_limit_pct(
+    *,
+    base_limit_pct: float,
+    distinct_instruments: int,
+    buffer_per_instrument: float = 0.05,
+) -> float:
+    """Effektive Obergrenze = Basis * (1 - Buffer), unten begrenzt (Kopplung live-broker risk_adapter)."""
+    buf = portfolio_diversification_risk_buffer_0_1(
+        distinct_instruments=distinct_instruments,
+        buffer_per_instrument=buffer_per_instrument,
+    )
+    return max(0.05, float(base_limit_pct) * (1.0 - buf))
 
 
 def _survival_step_py(
@@ -225,6 +258,11 @@ def merge_survival_truth(
     *,
     redis: Redis | None = None,
 ) -> dict[str, Any]:
+    """
+    Redis/Env-Survival-Zustand in eine Truth-Map einmischen.
+    Multi-Asset-Portfolio-Stress (Notional-Cap) wird separat in live-broker
+    ``risk_adapter`` via ``effective_portfolio_exposure_limit_pct`` angewendet, nicht hier.
+    """
     out = dict(base)
     st = read_survival_state_from_redis(redis)
     active = bool(st.get("active")) if isinstance(st, dict) else False
@@ -434,3 +472,39 @@ def publish_survival_hedge_operator_intel(bus: Any, *, symbol: str) -> None:
         trace={"source": "survival-kernel"},
     )
     bus.publish(STREAM_OPERATOR_INTEL, env)
+
+
+def effective_atr_percent_for_volatility_clamp(
+    *,
+    atr_percent: float,
+    atr_ema_24h_percent: float | None = None,
+) -> float:
+    """
+    ATR in Prozentpunkten (z. B. 0.5 = 0,5 %). Liegt ATR über dem 24h-EMA, wird die
+    effektive Vola fuer den Clamp hochgezogen (adaptive Gefahr).
+    """
+    a = max(0.0, float(atr_percent))
+    if atr_ema_24h_percent is None or float(atr_ema_24h_percent) <= 0:
+        return a
+    e = max(1e-9, float(atr_ema_24h_percent))
+    if a <= e:
+        return a
+    return a * max(1.0, a / e)
+
+
+def adaptive_leverage_cap_from_atr_percent(
+    current_atr_percent: float,
+    *,
+    system_max_leverage: int = 75,
+) -> int:
+    """
+    Volatility Clamp: ``min(SYSTEM_MAX_LEVERAGE, floor(1 / (p * 10)))`` mit
+    ``p = current_atr_percent / 100`` (ATR als Bruchteil des Preises, Eingabe in %).
+
+    Beispiele: 0,5 % -> 20 (vor Live-Ramp), 2 % -> 5, 5 % -> 2.
+    """
+    sm = max(1, int(system_max_leverage))
+    p = max(1e-12, float(current_atr_percent)) / 100.0
+    inv = 1.0 / (p * 10.0)
+    c = int(math.floor(inv))
+    return max(1, min(sm, c))

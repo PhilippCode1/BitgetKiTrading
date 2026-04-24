@@ -36,6 +36,7 @@ def _jwt(
     tenant_id: str | None = None,
     portal_roles: list[str] | None = None,
     platform_role: str | None = None,
+    role: str | None = None,
 ) -> str:
     payload: dict = {
         "sub": sub,
@@ -50,6 +51,8 @@ def _jwt(
         payload["portal_roles"] = portal_roles
     if platform_role is not None:
         payload["platform_role"] = platform_role
+    if role is not None:
+        payload["role"] = role
     return jwt.encode(payload, secret, algorithm="HS256")
 
 
@@ -343,6 +346,7 @@ def test_require_admin_write_forbids_customer_portal_jwt_even_with_write_role() 
             tok = _jwt(
                 secret="unit-test-gateway-jwt-secret-32b!",
                 roles=["admin:write"],
+                role="admin",
                 portal_roles=["customer"],
             )
             req = MagicMock()
@@ -357,6 +361,41 @@ def test_require_admin_write_forbids_customer_portal_jwt_even_with_write_role() 
             d = ei.value.detail
             assert isinstance(d, dict)
             assert d.get("code") == "GATEWAY_FORBIDDEN_CUSTOMER_SESSION"
+
+    asyncio.run(_run())
+
+
+def test_require_admin_read_forbids_jwt_with_admin_roles_but_missing_role_admin_claim() -> None:
+    """/v1/admin: JWT braucht role=admin; fehlender Claim trotz admin:read -> 403."""
+    from api_gateway.auth import require_admin_read
+
+    async def _run() -> None:
+        with patch.dict(
+            os.environ,
+            {
+                "GATEWAY_ENFORCE_SENSITIVE_AUTH": "true",
+                "GATEWAY_JWT_SECRET": "unit-test-gateway-jwt-secret-32b!",
+                "PRODUCTION": "false",
+            },
+            clear=False,
+        ):
+            _clear_gateway_settings_cache()
+            tok = _jwt(
+                secret="unit-test-gateway-jwt-secret-32b!",
+                roles=["admin:read"],
+            )
+            req = MagicMock()
+            with pytest.raises(HTTPException) as ei:
+                await require_admin_read(
+                    req,
+                    authorization=f"Bearer {tok}",
+                    x_gateway_internal_key=None,
+                    x_admin_token=None,
+                )
+            assert ei.value.status_code == 403
+            d = ei.value.detail
+            assert isinstance(d, dict)
+            assert d.get("code") == "GATEWAY_FORBIDDEN_JWT_ROLE"
 
     asyncio.run(_run())
 
@@ -379,6 +418,7 @@ def test_require_admin_read_allows_super_admin_portal_jwt() -> None:
             tok = _jwt(
                 secret="unit-test-gateway-jwt-secret-32b!",
                 roles=["admin:read"],
+                role="admin",
                 platform_role="super_admin",
             )
             req = MagicMock()
@@ -407,7 +447,11 @@ def test_require_admin_write_rejects_jwt_without_write() -> None:
             clear=False,
         ):
             _clear_gateway_settings_cache()
-            tok = _jwt(secret="unit-test-gateway-jwt-secret-32b!", roles=["gateway:read"])
+            tok = _jwt(
+                secret="unit-test-gateway-jwt-secret-32b!",
+                roles=["gateway:read"],
+                role="admin",
+            )
             req = MagicMock()
             with pytest.raises(HTTPException) as ei:
                 await require_admin_write(

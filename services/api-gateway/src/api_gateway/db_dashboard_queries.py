@@ -11,13 +11,17 @@ import psycopg
 from psycopg import errors as pg_errors
 from psycopg.types.json import Json
 
-from api_gateway.db_live_queries import fetch_online_drift_state_row, normalize_tf_for_db
+from api_gateway.db_live_queries import (
+    fetch_online_drift_state_row,
+    normalize_tf_for_db,
+)
 from api_gateway.signal_contract import (
     SIGNAL_API_CONTRACT_VERSION,
     build_explanation_layers,
     build_signal_view_detail,
     build_signal_view_list_item,
 )
+from shared_py.strategy_config_hash import compute_configuration_hash
 
 
 def _j(data: Any) -> Any:
@@ -530,6 +534,10 @@ def fetch_signals_recent(
                     ->'live_execution_block_reasons_json') AS rg_live_blocks_raw,
                (s.source_snapshot_json->'hybrid_decision'->'risk_governor'
                     ->'universal_hard_block_reasons_json') AS rg_universal_blocks_raw,
+               (s.source_snapshot_json->'hybrid_decision'->'risk_governor'
+                    ->>'risk_volatility_clamp_active') AS rg_vol_clamp_raw,
+               (s.source_snapshot_json->'hybrid_decision'->'risk_governor'
+                    ->'governor_bff_risk_flags_json') AS rg_bff_flags_raw,
                (s.reasons_json->'decision_control_flow'->'end_decision_binding'
                     ->>'exit_family_effective_primary') AS exit_family_effective_primary,
                (s.reasons_json->'decision_control_flow'->'end_decision_binding'
@@ -790,6 +798,10 @@ def fetch_signals_recent(
                 "live_execution_block_reasons_json": live_blocks,
                 "governor_universal_hard_block_reasons_json": uni_hard,
                 "live_execution_clear_for_real_money": len(live_blocks) == 0,
+                "risk_volatility_clamp_active": _coerce_bool(d.get("rg_vol_clamp_raw")),
+                "governor_bff_risk_flags_json": _j(d.get("rg_bff_flags_raw"))
+                if d.get("rg_bff_flags_raw") is not None
+                else [],
                 **latest_status,
             }
         row_payload["signal_contract_version"] = SIGNAL_API_CONTRACT_VERSION
@@ -989,6 +1001,13 @@ def fetch_signal_by_id(conn: psycopg.Connection[Any], signal_id: UUID) -> dict[s
         "governor_universal_hard_block_reasons_json": uni_hard,
         "portfolio_risk_synthesis_json": rg.get("portfolio_risk_synthesis_json"),
         "live_execution_clear_for_real_money": len(live_blocks) == 0,
+        "max_leverage_cap": rg.get("max_leverage_cap"),
+        "risk_volatility_clamp_active": bool(rg.get("risk_volatility_clamp_active"))
+        if rg.get("risk_volatility_clamp_active") is not None
+        else None,
+        "governor_bff_risk_flags_json": rg.get("governor_bff_risk_flags_json")
+        if isinstance(rg.get("governor_bff_risk_flags_json"), list)
+        else [],
         **latest_status,
     }
     payload["signal_contract_version"] = SIGNAL_API_CONTRACT_VERSION
@@ -1513,7 +1532,7 @@ def fetch_strategy_detail(conn: psycopg.Connection[Any], strategy_id: UUID) -> d
     s = dict(strat)
     versions = conn.execute(
         """
-        SELECT strategy_version_id, version, created_ts
+        SELECT strategy_version_id, version, configuration_hash, created_ts
         FROM learn.strategy_versions
         WHERE strategy_id = %s
         ORDER BY created_ts DESC
@@ -1531,7 +1550,10 @@ def fetch_strategy_detail(conn: psycopg.Connection[Any], strategy_id: UUID) -> d
         (str(strategy_id),),
     ).fetchall()
     st = conn.execute(
-        "SELECT current_status, updated_ts FROM learn.strategy_status WHERE strategy_id = %s",
+        """
+        SELECT current_status, updated_ts, live_champion_version_id
+        FROM learn.strategy_status WHERE strategy_id = %s
+        """,
         (str(strategy_id),),
     ).fetchone()
     st_d = dict(st) if st else {}
@@ -1566,6 +1588,7 @@ def fetch_strategy_detail(conn: psycopg.Connection[Any], strategy_id: UUID) -> d
     sig_map = fetch_signal_aggregate_by_strategy_names(conn, [nm])
     sig = sig_map.get(nm) or {"signal_count": 0, "last_signal_ts_ms": None}
     cs = st_d.get("current_status")
+    lcv = st_d.get("live_champion_version_id")
     perf_empty = len(performance_rolling) == 0
     return {
         "strategy_id": str(s["strategy_id"]),
@@ -1575,6 +1598,7 @@ def fetch_strategy_detail(conn: psycopg.Connection[Any], strategy_id: UUID) -> d
         "created_ts": s["created_ts"].isoformat() if s.get("created_ts") else None,
         "updated_ts": s["updated_ts"].isoformat() if s.get("updated_ts") else None,
         "current_status": cs,
+        "live_champion_version_id": str(lcv) if lcv is not None else None,
         "lifecycle_status": cs if cs else "not_set",
         "performance_rolling_empty": perf_empty,
         "performance_rolling_empty_hint_de": (
@@ -1589,7 +1613,14 @@ def fetch_strategy_detail(conn: psycopg.Connection[Any], strategy_id: UUID) -> d
             {
                 "strategy_version_id": str(dict(v)["strategy_version_id"]),
                 "version": dict(v)["version"],
-                "created_ts": dict(v)["created_ts"].isoformat() if dict(v).get("created_ts") else None,
+                "configuration_hash": (
+                    str(dict(v)["configuration_hash"])
+                    if dict(v).get("configuration_hash") is not None
+                    else None
+                ),
+                "created_ts": (
+                    dict(v)["created_ts"].isoformat() if dict(v).get("created_ts") else None
+                ),
             }
             for v in versions
         ],
@@ -1634,7 +1665,7 @@ def fetch_strategy_status_row(
 ) -> dict[str, Any] | None:
     row = conn.execute(
         """
-        SELECT s.strategy_id, s.name, st.current_status, st.updated_ts
+        SELECT s.strategy_id, s.name, st.current_status, st.updated_ts, st.live_champion_version_id
         FROM learn.strategies s
         LEFT JOIN learn.strategy_status st ON st.strategy_id = s.strategy_id
         WHERE s.strategy_id = %s
@@ -1645,10 +1676,12 @@ def fetch_strategy_status_row(
         return None
     d = dict(row)
     cs = d.get("current_status")
+    lcv = d.get("live_champion_version_id")
     return {
         "strategy_id": str(d["strategy_id"]),
         "name": d["name"],
         "current_status": cs,
+        "live_champion_version_id": str(lcv) if lcv is not None else None,
         "lifecycle_status": cs if cs else "not_set",
         "updated_ts": d["updated_ts"].isoformat() if d.get("updated_ts") else None,
     }
@@ -1938,6 +1971,72 @@ def upsert_admin_rules(
         """,
         (rule_set_id, Json(rules_json)),
     )
+
+
+def fetch_registry_strategy_mutation_state(
+    conn: psycopg.Connection[Any], strategy_id: UUID
+) -> dict[str, Any] | None:
+    row = conn.execute(
+        """
+        SELECT s.strategy_id, st.current_status, st.live_champion_version_id
+        FROM learn.strategies s
+        LEFT JOIN learn.strategy_status st ON st.strategy_id = s.strategy_id
+        WHERE s.strategy_id = %s
+        """,
+        (str(strategy_id),),
+    ).fetchone()
+    if row is None:
+        return None
+    d = dict(row)
+    lcv = d.get("live_champion_version_id")
+    return {
+        "strategy_id": str(d["strategy_id"]),
+        "current_status": d.get("current_status"),
+        "live_champion_version_id": str(lcv) if lcv is not None else None,
+    }
+
+
+def fetch_version_row_for_registry(
+    conn: psycopg.Connection[Any], *, strategy_id: UUID, strategy_version_id: UUID
+) -> dict[str, Any] | None:
+    row = conn.execute(
+        """
+        SELECT strategy_version_id, strategy_id, version, configuration_hash
+        FROM learn.strategy_versions
+        WHERE strategy_id = %s AND strategy_version_id = %s
+        """,
+        (str(strategy_id), str(strategy_version_id)),
+    ).fetchone()
+    if row is None:
+        return None
+    d = dict(row)
+    d["strategy_version_id"] = str(d["strategy_version_id"])
+    return d
+
+
+def registry_insert_strategy_version(
+    conn: psycopg.Connection[Any],
+    *,
+    strategy_id: UUID,
+    version: str,
+    definition: dict[str, Any],
+    parameters: dict[str, Any],
+    risk_profile: dict[str, Any],
+) -> dict[str, Any]:
+    h = compute_configuration_hash(definition, parameters, risk_profile)
+    row = conn.execute(
+        """
+        INSERT INTO learn.strategy_versions
+          (strategy_id, version, definition_json, parameters_json, risk_profile_json, configuration_hash)
+        VALUES (%s, %s, %s::jsonb, %s::jsonb, %s::jsonb, %s)
+        RETURNING strategy_version_id, version, configuration_hash, created_ts
+        """,
+        (str(strategy_id), version, Json(definition), Json(parameters), Json(risk_profile), h),
+    ).fetchone()
+    assert row is not None
+    d = dict(row)
+    d["strategy_version_id"] = str(d["strategy_version_id"])
+    return d
 
 
 def update_strategy_status(

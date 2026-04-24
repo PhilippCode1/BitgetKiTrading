@@ -23,6 +23,7 @@ from api_gateway.db import DatabaseHealthError, get_database_url
 from api_gateway.deps import audited_sensitive
 from api_gateway.db_live_broker_queries import (
     fetch_execution_forensic_timeline,
+    fetch_ops_risk_assist_context,
     fetch_live_broker_audit_trails,
     fetch_live_broker_decisions,
     fetch_live_broker_fills,
@@ -114,6 +115,50 @@ def live_broker_execution_forensic_timeline(
             {"execution_id": str(execution_id), "error": "query_failed"},
             status="degraded",
             message="Forensik nicht ladbar.",
+            empty_state=True,
+            degradation_reason="database_error",
+            next_step=NEXT_STEP_DB,
+        )
+    if row is None:
+        raise HTTPException(status_code=404, detail="execution not found")
+    return merge_read_envelope(
+        row,
+        status="ok",
+        message=None,
+        empty_state=False,
+        degradation_reason=None,
+        next_step=None,
+    )
+
+
+@router.get("/executions/{execution_id}/ops-risk-assist-context", response_model=None)
+def live_broker_ops_risk_assist_context(
+    execution_id: UUID,
+    _auth: Annotated[
+        GatewayAuthContext, Depends(audited_sensitive("live_broker_forensic_timeline_view"))
+    ],
+) -> dict[str, Any]:
+    """Kompakter Assist-Kontext (Policy vs. Metrik, Golden Record) — gleiche Sichtbarkeit wie Forensik."""
+    try:
+        dsn = get_database_url()
+        with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
+            row = fetch_ops_risk_assist_context(conn, execution_id=str(execution_id))
+    except DatabaseHealthError as exc:
+        logger.warning("live_broker ops_risk assist: %s", exc)
+        return merge_read_envelope(
+            {"execution_id": str(execution_id), "error": "database_unconfigured"},
+            status="degraded",
+            message="Datenbank ist nicht konfiguriert.",
+            empty_state=True,
+            degradation_reason="database_url_missing",
+            next_step=NEXT_STEP_DB,
+        )
+    except Exception as exc:
+        logger.warning("live_broker ops_risk assist: %s", exc)
+        return merge_read_envelope(
+            {"execution_id": str(execution_id), "error": "query_failed"},
+            status="degraded",
+            message="Kontext nicht ladbar.",
             empty_state=True,
             degradation_reason="database_error",
             next_step=NEXT_STEP_DB,

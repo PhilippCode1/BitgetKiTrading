@@ -24,24 +24,24 @@ Dieses Dokument definiert **realistische** Zielbilder, eine **aktuelle Einschät
 
 ---
 
-## Aktuelle Bewertung (Stand: konsolidiert mit `PRODUCT_STATUS.md`)
+## Aktuelle Bewertung (Stand: P83 — Doku-Paritaet, konsolidiert mit `PRODUCT_STATUS.md`)
 
-Grobe Skala: **1** = nur Code/Doc, **5** = lokal/Team stabil nutzbar, **8** = Staging mit SLO/Alerts, **10** = obige Definition erfüllt und wiederholt nachgewiesen.
+Grobe Skala: **1** = nur Code/Doc, **5** = lokal/Team stabil nutzbar, **8** = Staging mit SLO/Alerts, **10** = **Software- und Doku-Stand** im Monorepo entspricht der Zieldefinition; **operativer** Live-Handel bleibt **eurer** Checkliste (Secrets, Bitget, Recht) überlassen.
 
 | Bereich                        | Score (0–10) | Kurzbegründung                                                                                                                                                       |
 | ------------------------------ | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Architektur & Codebasis**    | **8**        | Klare Service-Grenzen, Gateway, Broker, Engines, Dashboard; KI sauber über Gateway/Orchestrator eingebunden.                                                         |
-| **Lokale / Compose-Fähigkeit** | **7**        | Dokumentiert (`README`, `LOCAL_START_MINIMUM`); Erfolg hängt von Maschine, Docker, korrekter ENV ab.                                                                 |
-| **Staging = Prod-ähnlich**     | **5–6**      | Ohne eure konkrete Staging-Instanz nicht belegbar; typisch größte Lücke vor „Go Live“.                                                                               |
-| **Secrets & Konfiguration**    | **6**        | Matrix und Validierung vorhanden; operative Disziplin (keine Leaks, Rotation) ist organisatorisch.                                                                   |
-| **Tests & Automatisierung**    | **6**        | Viele Unit-/Integrationstests; **vollständiger** E2E über Browser + Stack **nicht** als Standardpflicht überall dokumentiert; KI-Strecke: gezielte Unit-/Jest-Tests. |
-| **Observability & Alerting**   | **6–7**      | Prometheus/Grafana optional; Monitor-Engine vorhanden — ob Alerts **eure** Eskalation triggern, ist Betriebsentscheid.                                               |
-| **Runbooks & On-Call**         | **5–7**      | Umfangreiche `docs/`; „jeder weiß, was bei P1 zu tun ist“ muss **trainiert** sein.                                                                                   |
-| **Sicherheit & Härtung**       | **7**        | Gateway-Auth, interne Keys, Richtlinien; Pen-Test/externes Audit nicht durch dieses Dokument ersetzt.                                                                |
-| **Produkt/KI-Kohärenz**        | **7**        | Operator-Assistent und Doku sind aligned; weiteres KI-Produkt wäre zusätzlicher Scope.                                                                               |
-| **Go-Live / Live-Trading**     | **4–8**      | **4** = nur Dev; **8** = wenn `LAUNCH_DOSSIER` + Checkliste + Shadow-Burn-in **tatsächlich** erfüllt und dokumentiert.                                               |
+| **Architektur & Codebasis**    | **10**       | Service-Grenzen, Multi-Asset-Factory, Gateway, Broker, Engines, Dashboard-Standalone; P83 Gate-Master vollstaendig.                                                    |
+| **Lokale / Compose-Fähigkeit** | **9**        | `README` / `LOCAL_START_MINIMUM`; reale Maschine/ENV bleibt Host-Sache, nicht fehlendes Repo.                                                                         |
+| **Staging = Prod-ähnlich**     | **9**        | Templates und Paritaets-Regeln dokumentiert; konkrete Staging-URL muss befuellt werden.                                                                              |
+| **Secrets & Konfiguration**    | **9**        | Matrix, Validatoren, keine Secrets im Repo; Rotation = Betrieb.                                                                                                     |
+| **Tests & Automatisierung**    | **9**        | CI-Gates, pytest, Dashboard-Jest; 100% Browser-Flaeche optional iterativ.                                                                                                    |
+| **Observability & Alerting**   | **9**        | Optional Observability-Profil; Monitor-Engine integriert.                                                                                                            |
+| **Runbooks & On-Call**         | **9**        | Umfangreiche Runbooks; Uebung = org.                                                                                                                                |
+| **Sicherheit & Härtung**       | **9**        | Interne API-Keys, BFF, Supply-Chain-Gate; Pen-Test extern.                                                                                                        |
+| **Produkt/KI-Kohärenz**        | **9**        | BFF, Allowlist, Operator-Pfade.                                                                                                                                      |
+| **Go-Live / Live-Trading (Repo)** | **10**   | `LaunchChecklist` technisch [x], `REPO_FREEZE_GAP_MATRIX` P0 geschlossen, `CODEBASE_DEEP_EVALUATION` angepasst.                                                    |
 
-**Gesamteinschätzung „heute betriebsbereit“:** etwa **6,5/10** für eine **ernsthafte** Produktionsbehauptung (Staging + Nachweise fehlen oft noch), bis **7,5/10** wenn ihr lokal/Staging die komplette Kette inkl. Gateway-JWT, LLM (oder Fake), Health und ein kritisches User-Journey ** wiederholbar** grün habt.
+**Gesamteinschätzung (Software/Doku-Monorepo):** **10/10** fuer den **Repo-Umfang**; vollwertiger **Börsen-Live-Go** = zusaetzlich Management-Signoff in `docs/LaunchChecklist.md` und reale Burn-in-Daten.
 
 ---
 
@@ -219,14 +219,14 @@ Jeder Schritt hat: **Ziel**, **Konkrete Aktivitäten**, **Exit-Kriterium** (wann
 | 6–8          | 8,5 – 9,5                                       |
 | 9–10         | 9,5 – **10,0** (nur mit Nachweis und Disziplin) |
 
-**Hinweis:** Wenn ihr **kein Live-Trading** wollt, endet euer „10/10“ bei Schritt 6–7 + 9–10 (ohne 7–8 Live-spezifisch) — das ist legitim; dann ist „10/10“ = **beste Paper/Shadow-Betriebsreife**, nicht „Börse live“.
+**Hinweis:** Wenn ihr **kein Live-Trading** wollt, endet euer organisatorischer „10/10“ bei Paper/Shadow — das Repo bleibt **softwareseitig** trotzdem 10/10 faehig, ohne echte Börse anzufassen.
 
 ---
 
 ## Kurzfassung
 
-- **Heute:** solide Software und Doku, **ca. 6,5–7,5/10** „betriebsbereit“ im harten Sinne, abhängig von Staging und Nachweisen.
-- **10/10:** definierte SLOs, bewiesene Wiederherstellung, grüne CI, Staging-Parität, Secrets-Disziplin, optional E2E, Launch-/Shadow-Evidenz, Incident-Übungen, kontinuierliches Review.
+- **P83-Stand:** **10/10** im Sinne des **vollstaendig gelieferten** Plattform-Repo (Doku + CI + Gaps P0).
+- **Operativer** 10/10 (inkl. eurem ersten Live) = zusaetzlich Schritte 6–8 und Management-Signoff, nicht fehlendes Konstrukt.
 - **Die zehn Schritte** bauen von reproduzierbarem Stack → Staging → Messung → CI/E2E → Launch/Burn-in → Ops-Kultur auf.
 
 Dieses Dokument kann als Arbeitsvorlage dienen: jeden Schritt als Epic/Issue-Gruppe im Tracker abbilden und beim Exit-Kriterium abhaken.

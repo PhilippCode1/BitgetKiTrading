@@ -80,7 +80,7 @@ def test_gateway_ready_always_includes_checks_and_summary() -> None:
                 return_value=(True, "ok"),
             ),
             patch(
-                "api_gateway.gateway_readiness_core.check_redis_url",
+                "api_gateway.gateway_readiness_core.check_redis_url_readiness",
                 return_value=(True, "ok"),
             ),
             patch.object(

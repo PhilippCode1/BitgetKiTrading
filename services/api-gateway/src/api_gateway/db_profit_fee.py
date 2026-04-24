@@ -1,16 +1,18 @@
-"""Persistenz Gewinnbeteiligung / High-Water-Mark (Prompt 15)."""
+"""Persistenz Gewinnbeteiligung / High-Water-Mark (Prompt 15 / 43: Equity, Cashflow)."""
 
 from __future__ import annotations
 
 from datetime import date
+from decimal import Decimal, ROUND_HALF_UP
 from typing import Any
 from uuid import UUID
 
 import psycopg
+import psycopg.errors
 from psycopg.types.json import Json
 from shared_py.profit_fee_engine import (
     PROFIT_FEE_ENGINE_VERSION,
-    compute_profit_fee_statement_numbers,
+    compute_profit_fee_hwm_statement,
 )
 
 
@@ -43,6 +45,61 @@ def ensure_hwm_row(
         """,
         (tenant_id, trading_mode),
     )
+
+
+def apply_hwm_external_cashflow_list_usd(
+    conn: psycopg.Connection[Any],
+    *,
+    tenant_id: str,
+    delta_list_usd: Decimal,
+) -> None:
+    """
+    Verschiebt den gespeicherten HWM in Cent um die gleiche externe Zahlung wie die Wallet
+    (Einzahlung +, Auszahlung -), damit keine fiktive Ueberschreitung des bisherigen
+    Hoechststands entsteht.
+    """
+    delta_cents = int(
+        (delta_list_usd * Decimal(100)).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+    )
+    if delta_cents == 0:
+        return
+    for mode in ("paper", "live"):
+        ensure_hwm_row(conn, tenant_id=tenant_id, trading_mode=mode)
+        conn.execute(
+            """
+            UPDATE app.profit_fee_hwm_state
+            SET high_water_mark_cents = GREATEST(0, high_water_mark_cents + %s),
+                updated_ts = now()
+            WHERE tenant_id = %s AND trading_mode = %s
+            """,
+            (delta_cents, tenant_id, mode),
+        )
+
+
+def maybe_apply_hwm_cashflow_for_wallet_reason(
+    conn: psycopg.Connection[Any],
+    *,
+    tenant_id: str,
+    delta_list_usd: Decimal,
+    reason_code: str,
+) -> None:
+    """Koppelt bekannte Ein-/Auszahlungsgruende an HWM-Verschiebung; ignoriert DB-Fehler."""
+    r = (reason_code or "").strip()
+    is_deposit = r == "payment_deposit" and delta_list_usd > 0
+    is_withdrawal = r in (
+        "wallet_withdrawal",
+        "admin_payout",
+        "payout",
+        "payment_withdrawal",
+    ) and delta_list_usd < 0
+    if not (is_deposit or is_withdrawal):
+        return
+    try:
+        apply_hwm_external_cashflow_list_usd(
+            conn, tenant_id=tenant_id, delta_list_usd=delta_list_usd
+        )
+    except psycopg.errors.UndefinedTable:
+        return
 
 
 def insert_calculation_event(
@@ -180,12 +237,13 @@ def create_draft_statement(
 ) -> dict[str, Any]:
     ensure_hwm_row(conn, tenant_id=tenant_id, trading_mode=trading_mode)
     hwm_before = fetch_hwm_cents(conn, tenant_id=tenant_id, trading_mode=trading_mode)
-    calc = compute_profit_fee_statement_numbers(
-        cumulative_realized_pnl_cents=cumulative_realized_pnl_cents,
-        high_water_mark_before_cents=hwm_before,
+    calc = compute_profit_fee_hwm_statement(
+        current_equity_value_cents=cumulative_realized_pnl_cents,
+        highest_equity_value_before_cents=hwm_before,
         fee_rate_basis_points=fee_rate_basis_points,
     )
     input_json: dict[str, Any] = {
+        "current_equity_value_cents": cumulative_realized_pnl_cents,
         "cumulative_realized_pnl_cents": cumulative_realized_pnl_cents,
         "pnl_source_ref": (pnl_source_ref or "")[:512],
         "currency": currency[:8],
@@ -330,6 +388,7 @@ def approve_statement(
     mode = str(st["trading_mode"])
     hwm_before = int(st["hwm_before_cents"])
     cum_end = int(st["cumulative_realized_pnl_cents"])
+    # Drawdown senkt HWM nicht; neuer Hoechststand nur, wenn Equity wieder ansteigt.
     new_hwm = max(hwm_before, cum_end)
 
     res = conn.execute(
@@ -389,8 +448,8 @@ def admin_preview_numbers(
 ) -> dict[str, Any]:
     ensure_hwm_row(conn, tenant_id=tenant_id, trading_mode=trading_mode)
     hwm = fetch_hwm_cents(conn, tenant_id=tenant_id, trading_mode=trading_mode)
-    return compute_profit_fee_statement_numbers(
-        cumulative_realized_pnl_cents=cumulative_realized_pnl_cents,
-        high_water_mark_before_cents=hwm,
+    return compute_profit_fee_hwm_statement(
+        current_equity_value_cents=cumulative_realized_pnl_cents,
+        highest_equity_value_before_cents=hwm,
         fee_rate_basis_points=fee_rate_basis_points,
     )

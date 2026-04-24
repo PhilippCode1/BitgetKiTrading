@@ -270,6 +270,13 @@ export type LiveStateResponse = GatewayReadEnvelope & {
   demo_data_notice: DemoDataNotice;
 };
 
+/** GET /v1/market-universe/candles — Kerzen-Historie (Hydration; `symbol` verpflichtend im Gateway). */
+export type MarketUniverseCandlesResponse = GatewayReadEnvelope & {
+  candles: LiveCandle[];
+  symbol: string;
+  timeframe: string;
+};
+
 /** Prompt 26 — Dashboard APIs */
 
 export type StrategyScopeSnapshot = {
@@ -394,8 +401,44 @@ export type MarketUniverseInstrumentItem = {
   funding_interval_hours?: number | null;
   symbol_type?: string | null;
   supported_margin_coins: string[];
+  price_precision?: number | null;
+  quantity_precision?: number | null;
+  session_metadata?: Record<string, unknown>;
+  raw_metadata?: Record<string, unknown>;
   refresh_ts_ms?: number | null;
 };
+
+/** Kanonische Gateway-Gruppierung; `product_family` = spot | margin | futures, `lot_size` = Menge-Stufe. */
+export type MarketUniverseByProductFamily = Record<
+  string,
+  {
+    product_family: string;
+    instrument_count: number;
+    instruments: Array<{
+      schema_version: string;
+      venue: string;
+      product_family: string;
+      symbol: string;
+      canonical_instrument_id: string | null;
+      category_key: string | null;
+      product_type: string | null;
+      margin_account_mode: string;
+      margin_coin: string | null;
+      base_coin: string | null;
+      quote_coin: string | null;
+      settle_coin: string | null;
+      price_precision: number | null;
+      quantity_precision: number | null;
+      lot_size: string | null;
+      price_tick_size: string | null;
+      trading_status: string;
+      metadata_verified: boolean;
+      metadata_source: string;
+      public_ws_inst_type: string;
+      private_ws_inst_type: string | null;
+    }>;
+  }
+>;
 
 export type MarketUniverseStatusResponse = GatewayReadEnvelope & {
   schema_version: string;
@@ -427,6 +470,7 @@ export type MarketUniverseStatusResponse = GatewayReadEnvelope & {
     execution_disabled_instrument_count: number;
   };
   categories: MarketUniverseCategoryRow[];
+  by_product_family: MarketUniverseByProductFamily;
   instruments: MarketUniverseInstrumentItem[];
 };
 
@@ -1476,6 +1520,8 @@ export type LiveBrokerRuntimeItem = {
   live_submission_enabled: boolean;
   live_order_submission_enabled: boolean;
   require_shadow_match_before_live?: boolean;
+  shadow_match_latch_timeout_ms?: number;
+  shadow_match_redis_ttl_sec?: number;
   decision_counts: Record<string, number>;
   details: Record<string, unknown>;
   bitget_private_status?: LiveBrokerBitgetPrivateStatus;
@@ -1539,6 +1585,11 @@ export type LiveBrokerDecisionItem = {
   shadow_live_match_ok?: boolean | null;
   shadow_live_hard_violations?: unknown;
   shadow_live_soft_violations?: unknown;
+  /** Redis shadow:match:{execution_id} (Paper-Shadow-OK vor Live) */
+  shadow_match_latch_ok?: boolean | null;
+  shadow_match_latch_skipped?: boolean | null;
+  shadow_match_latch_waited_ms?: number | null;
+  shadow_match_latch_error?: string | null;
   payload: Record<string, unknown>;
   trace: Record<string, unknown>;
   created_ts: string | null;

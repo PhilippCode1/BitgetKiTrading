@@ -78,7 +78,13 @@ def test_publish_dedupes_same_candle_close_event() -> None:
         timeframe="1m",
         exchange_ts_ms=1_700_000_060_000,
         dedupe_key="BTCUSDT:1m:1700000000000",
-        payload={"close": "68123.4"},
+        payload={
+            "start_ts_ms": 1_700_000_000_000,
+            "open": 1.0,
+            "high": 2.0,
+            "low": 0.5,
+            "close": 68123.4,
+        },
     )
 
     first = bus.publish(STREAM_CANDLE_CLOSE, envelope)

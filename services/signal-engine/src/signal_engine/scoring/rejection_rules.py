@@ -5,6 +5,7 @@ Harte Ablehnungs- / Downgrade-Regeln (Pflicht).
 from __future__ import annotations
 
 from dataclasses import dataclass
+
 from shared_py.signal_contracts import DecisionState
 
 from signal_engine.config import SignalEngineSettings
@@ -20,6 +21,10 @@ class RejectionOutcome:
     rejection_reasons: list[str]
 
 
+# Orderbuch: >70 % Gegenseite = harte Ablehnung (BUY vs Ask-Druck, SHORT vs Bid-Druck)
+ORDERBOOK_OPPOSING_PRESSURE_THRESHOLD_0_1 = 0.7
+
+
 def apply_rejections(
     ctx: ScoringContext,
     settings: SignalEngineSettings,
@@ -32,6 +37,8 @@ def apply_rejections(
     layer_flags: list[str],
     structured_rejection_soft: list[str] | None = None,
     structured_rejection_hard: list[str] | None = None,
+    ask_pressure_0_1: float | None = None,
+    bid_pressure_0_1: float | None = None,
 ) -> RejectionOutcome:
     reasons: list[str] = []
     if not settings.signal_rejection_enabled:
@@ -115,6 +122,19 @@ def apply_rejections(
         if composite > 60:
             reasons.append("momentum_structure_friction")
 
+    if (
+        proposed_direction == "long"
+        and ask_pressure_0_1 is not None
+        and ask_pressure_0_1 > ORDERBOOK_OPPOSING_PRESSURE_THRESHOLD_0_1
+    ):
+        reasons.append("orderbook_ask_pressure_against_long")
+    if (
+        proposed_direction == "short"
+        and bid_pressure_0_1 is not None
+        and bid_pressure_0_1 > ORDERBOOK_OPPOSING_PRESSURE_THRESHOLD_0_1
+    ):
+        reasons.append("orderbook_bid_pressure_against_short")
+
     for bucket in (structured_rejection_soft, structured_rejection_hard):
         if not bucket:
             continue
@@ -156,6 +176,8 @@ def apply_rejections(
         "adverse_funding_too_high",
         "context_hard_event_veto_long",
         "context_hard_event_veto_short",
+        "orderbook_ask_pressure_against_long",
+        "orderbook_bid_pressure_against_short",
     }
     hit_hard = [x for x in reasons if x in hard]
 

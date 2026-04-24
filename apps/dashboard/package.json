@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "verify:standalone": "node scripts/verify-standalone.cjs",
     "start": "node build/standalone/apps/dashboard/server.js",
     "check-types": "tsc --noEmit",
     "check-locale-de": "node ../../scripts/check_dashboard_de_copy.mjs",
@@ -16,6 +17,7 @@
   },
   "dependencies": {
     "@bitget-btc-ai/shared-ts": "workspace:*",
+    "@tanstack/react-query": "5.90.2",
     "jose": "^5.10.0",
     "lightweight-charts": "4.2.3",
     "next": "16.2.1",

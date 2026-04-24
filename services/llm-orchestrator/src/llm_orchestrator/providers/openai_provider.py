@@ -59,7 +59,7 @@ def _record_openai_call_metrics(
     resp: Any = None,
 ) -> None:
     observe_request_duration(
-        task_type, duration_sec, "openai", transport
+        duration_sec, "openai", transport, task_type=task_type
     )
     p, t = 0, 0
     if comp is not None:
@@ -67,7 +67,7 @@ def _record_openai_call_metrics(
     elif resp is not None:
         p, t = _usage_from_responses_api(resp)
     if p or t:
-        add_tokens(task_type, prompt_tokens=p, completion_tokens=t)
+        add_tokens(prompt_tokens=p, completion_tokens=t)
 
 
 def _json_loads_for_metrics(text: str, task_type: str | None) -> Any:
@@ -234,17 +234,17 @@ class OpenAIProvider:
             )
         except RateLimitError as exc:
             observe_request_duration(
-                task_type, time.perf_counter() - t0, "openai", "responses"
+                time.perf_counter() - t0, "openai", "responses", task_type=task_type
             )
             raise RetryableLLMError(str(exc), status_code=429) from exc
         except APITimeoutError as exc:
             observe_request_duration(
-                task_type, time.perf_counter() - t0, "openai", "responses"
+                time.perf_counter() - t0, "openai", "responses", task_type=task_type
             )
             raise RetryableLLMError(str(exc), status_code=504) from exc
         except APIError as exc:
             observe_request_duration(
-                task_type, time.perf_counter() - t0, "openai", "responses"
+                time.perf_counter() - t0, "openai", "responses", task_type=task_type
             )
             status = getattr(exc, "status_code", None)
             if status in (429, 500, 502, 503, 504):
@@ -318,22 +318,28 @@ class OpenAIProvider:
             )
         except RateLimitError as exc:
             observe_request_duration(
-                task_type, time.perf_counter() - t0, "openai", "chat_completions"
+                time.perf_counter() - t0,
+                "openai",
+                "chat_completions",
+                task_type=task_type,
             )
             raise RetryableLLMError(str(exc), status_code=429) from exc
         except APITimeoutError as exc:
             observe_request_duration(
-                task_type, time.perf_counter() - t0, "openai", "chat_completions"
+                time.perf_counter() - t0,
+                "openai",
+                "chat_completions",
+                task_type=task_type,
             )
             raise RetryableLLMError(str(exc), status_code=504) from exc
         except APIError as exc:
             status = getattr(exc, "status_code", None)
             if status in (429, 500, 502, 503, 504):
                 observe_request_duration(
-                    task_type,
                     time.perf_counter() - t0,
                     "openai",
                     "chat_completions",
+                    task_type=task_type,
                 )
                 raise RetryableLLMError(str(exc), status_code=status) from exc
             if self._settings.llm_openai_allow_chat_fallback:
@@ -342,10 +348,10 @@ class OpenAIProvider:
                     exc,
                 )
                 observe_request_duration(
-                    task_type,
                     time.perf_counter() - t0,
                     "openai",
                     "chat_completions",
+                    task_type=task_type,
                 )
                 return self._generate_json_object_fallback(
                     use_model,
@@ -358,7 +364,10 @@ class OpenAIProvider:
                     task_type=task_type,
                 )
             observe_request_duration(
-                task_type, time.perf_counter() - t0, "openai", "chat_completions"
+                time.perf_counter() - t0,
+                "openai",
+                "chat_completions",
+                task_type=task_type,
             )
             raise
 
@@ -410,14 +419,20 @@ class OpenAIProvider:
             )
         except (RateLimitError, APITimeoutError) as exc:
             observe_request_duration(
-                task_type, time.perf_counter() - t0, "openai", "chat_json_object"
+                time.perf_counter() - t0,
+                "openai",
+                "chat_json_object",
+                task_type=task_type,
             )
             if isinstance(exc, RateLimitError):
                 raise RetryableLLMError(str(exc), status_code=429) from exc
             raise RetryableLLMError(str(exc), status_code=504) from exc
         except APIError as exc:
             observe_request_duration(
-                task_type, time.perf_counter() - t0, "openai", "chat_json_object"
+                time.perf_counter() - t0,
+                "openai",
+                "chat_json_object",
+                task_type=task_type,
             )
             status = getattr(exc, "status_code", None)
             if status in (429, 500, 502, 503, 504):

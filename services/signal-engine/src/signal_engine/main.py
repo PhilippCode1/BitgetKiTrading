@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+"""
+Entry-Point: HTTP-Server. Multi-Asset-Risk (Spot/Margin/Futures) wird in
+`hybrid_decision` / `risk_governor` / `specialists` umgesetzt, nicht hier.
+"""
+
 import logging
 import os
 

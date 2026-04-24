@@ -1,4 +1,11 @@
-"""Forensik-Snapshots fuer Live-Execution (keine Secrets, keine LLM-Rohprompts)."""
+"""
+Forensik-Snapshots fuer Live-Execution (keine Secrets, keine LLM-Rohprompts).
+
+Apex-Audit-Ledger (entscheidungs-Hash-Kette, Signatur): Begruendungspaket
+``build_ledger_decision_package`` bzw. :mod:`shared_py.observability.ledger_decision_package`.
+
+Golden Record je Trade (Signal→KI→Risiko→Fill, Hash-Kette): :mod:`shared_py.observability.trade_lifecycle_audit`.
+"""
 
 from __future__ import annotations
 
@@ -443,3 +450,10 @@ def redact_operator_journal_details(details: dict[str, Any] | None) -> dict[str,
     if not isinstance(details, dict):
         return {}
     return redact_nested_mapping(details, max_depth=4)
+
+
+# Audit-Ledger: fachliche Fingerabdruecke (Signal / LLM+Konsens / Risk)
+from shared_py.observability.ledger_decision_package import (  # noqa: E402
+    build_ledger_decision_package,
+    content_sha256_hex,
+)

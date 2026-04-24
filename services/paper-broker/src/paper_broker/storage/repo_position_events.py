@@ -36,10 +36,12 @@ def list_account_equity_points(
     conn: psycopg.Connection[Any],
     *,
     account_id: UUID,
+    tenant_id: str,
     since_ts_ms: int | None = None,
     limit: int = 5000,
 ) -> list[str]:
-    params: list[Any] = [str(account_id)]
+    tid = str(tenant_id).strip() or "default"
+    params: list[Any] = [str(account_id), tid]
     since_clause = ""
     if since_ts_ms is not None:
         since_clause = "AND pe.ts_ms >= %s"
@@ -54,6 +56,7 @@ def list_account_equity_points(
         FROM paper.position_events pe
         JOIN paper.positions p ON p.position_id = pe.position_id
         WHERE p.account_id = %s
+          AND p.tenant_id = %s
           AND COALESCE(
             pe.details->>'account_total_equity_after',
             pe.details->>'account_equity_after'

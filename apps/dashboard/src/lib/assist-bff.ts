@@ -7,6 +7,7 @@ export const ASSIST_DASHBOARD_SEGMENTS = [
   "strategy-signal",
   "customer-onboarding",
   "support-billing",
+  "ops-risk",
 ] as const;
 
 export type AssistDashboardSegment = (typeof ASSIST_DASHBOARD_SEGMENTS)[number];

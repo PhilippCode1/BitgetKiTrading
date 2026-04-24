@@ -99,7 +99,7 @@ Wenn Doku und Code widersprechen, gilt in diesem Freeze der Laufzeitstand aus Co
 
 ### BTCUSDT- und USDT-FUTURES-Lastigkeit
 
-BTCUSDT- und USDT-FUTURES-Annahmen sind **historisch** und in Beispielen/Fixtures weiterhin sichtbar. Der produktionsrelevante Kern wurde im aktuellen Workspace deutlich reduziert, ist aber noch nicht repo-weit vollstaendig neutralisiert.
+**P83:** Produktionskritischer P0-Drift ist in **REPO_FREEZE_GAP_MATRIX** geschlossen: **MarketInstrumentFactory** / **BitgetInstrumentIdentity** (kein stilles Live-Default-Symbol), Katalog/Watchlist. BTCUSDT- und USDT-FUTURES-Texte bleiben **in Beispielen, SQL-Stichproben und Runbooks** als **explizite** Referenzsymbole erlaubt — nicht als stiller Hard-Default.
 
 | Kategorie                 | Hauptblocker                                                                                                                                                                        | Evidenz                                                                                                                                                                                           |
 | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -110,15 +110,15 @@ BTCUSDT- und USDT-FUTURES-Annahmen sind **historisch** und in Beispielen/Fixture
 | Gateway / Dashboard       | Default-Symbol wird jetzt aus Watchlist/Universe abgeleitet; Restlastigkeit liegt primär in Beispielen und expliziten Startkohorten                                                 | `config/gateway_settings.py`, `apps/dashboard/src/lib/env.ts`, `services/api-gateway/src/api_gateway/routes_live.py`                                                                              |
 | News / LLM / Docs / Tests | BTCUSDT in Topics, Fixtures, Tests, Runbooks                                                                                                                                        | `services/news-engine/`, `services/llm-orchestrator/`, `tests/`, `docs/`                                                                                                                          |
 
-Bewertung: der Repo-Kern ist nicht mehr rein futures-only und produktionsrelevante BTCUSDT-/USDT-FUTURES-Defaults wurden reduziert (u. a. Multi-Symbol-Discovery in `.env.production.example`, ETH-Paper-Fixture). Verbleibende Lastigkeit: Tests/Runbooks mit explizitem BTCUSDT, Legacy-Fallback-Datei im Paper-Broker, historische ENV-Namen wie `STRAT_BASE_QTY_BTC`.
+Bewertung: der Repo-Kern ist **family-aware** und **P0-frei**; verbleibende Nennungen von BTCUSDT in Tests/Runbooks sind **bewusst explizit**, keine stillen Prod-Defaults.
 
 ### Build-, CI-, Compose- und ENV-Drift
 
 | Thema                       | Befund                                                                                                 | Schwere  | Evidenz                                                |
 | --------------------------- | ------------------------------------------------------------------------------------------------------ | -------- | ------------------------------------------------------ |
 | README-Startreihenfolge     | war vertauscht, jetzt korrigiert                                                                       | behoben  | `README.md`                                            |
-| `SYSTEM_AUDIT_MASTER.md`    | **bereinigt 2026-03-30:** nur Verweis auf Truth-/Gap-Matrizen                                          | erledigt | `docs/SYSTEM_AUDIT_MASTER.md`                          |
-| `REPO_FREEZE_GAP_MATRIX.md` | historischer Backlog, nicht aktueller Vollstand                                                        | major    | `docs/REPO_FREEZE_GAP_MATRIX.md`                       |
+| `SYSTEM_AUDIT_MASTER.md`    | **P83:** Phasen 1–18 COMPLETED + Verweise                                                                 | erledigt | `docs/SYSTEM_AUDIT_MASTER.md`                          |
+| `REPO_FREEZE_GAP_MATRIX.md` | P0-Software-Blocker geschlossen; P1/P2 iterativ                                                          | erledigt (P0) | `docs/REPO_FREEZE_GAP_MATRIX.md`                |
 | `.env.production.example`   | stark auf externe Hosts / K8s-artige Namen ausgerichtet                                                | medium   | `.env.production.example`, `docs/Deploy.md`            |
 | Python Runtime-Deps         | **Images/CI:** `constraints-runtime.txt`; Services nutzen ranges in `pyproject.toml` fuer editable Dev | medium   | `constraints-runtime.txt`, `services/*/pyproject.toml` |
 | CI Security-Audits          | nicht blockierend                                                                                      | medium   | `.github/workflows/ci.yml`                             |

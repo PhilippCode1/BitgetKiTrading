@@ -33,6 +33,8 @@ describe("buildSelfHealingSnapshot", () => {
       },
       open_alerts: [],
       outbox_items: [],
+      self_healing_items: null,
+      self_healing_error: null,
     };
     const snap = buildSelfHealingSnapshot(raw, t);
     expect(snap.schema_version).toBe(1);
@@ -61,6 +63,8 @@ describe("buildSelfHealingSnapshot", () => {
       },
       open_alerts: [],
       outbox_items: [],
+      self_healing_items: null,
+      self_healing_error: null,
     };
     const snap = buildSelfHealingSnapshot(raw, t);
     const hi = snap.incidents.find((i) => i.id === "inc:health_load");

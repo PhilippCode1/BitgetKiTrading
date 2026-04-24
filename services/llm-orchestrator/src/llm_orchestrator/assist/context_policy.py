@@ -9,6 +9,7 @@ AssistRole = Literal[
     "strategy_signal",
     "customer_onboarding",
     "support_billing",
+    "ops_risk",
 ]
 
 _ROLE_TO_TASK: dict[str, str] = {
@@ -16,6 +17,7 @@ _ROLE_TO_TASK: dict[str, str] = {
     "strategy_signal": "strategy_signal_assist",
     "customer_onboarding": "customer_onboarding_assist",
     "support_billing": "support_billing_assist",
+    "ops_risk": "ops_risk_assist",
 }
 
 

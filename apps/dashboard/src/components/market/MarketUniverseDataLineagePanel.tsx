@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { PlatformExecutionStreamsGrid } from "@/components/console/PlatformExecutionStreamsGrid";
+import { MarketUniverseDataLineageTableClient } from "@/components/market/MarketUniverseDataLineageTableClient";
 import {
   buildCoreSymbolRows,
   MARKET_UNIVERSE_CORE_SYMBOLS,
@@ -30,6 +31,7 @@ export async function MarketUniverseDataLineagePanel({
     instruments,
     MARKET_UNIVERSE_CORE_SYMBOLS,
   );
+  const streamSymbol = coreRows[0]?.symbol ?? "BTCUSDT";
 
   return (
     <section
@@ -42,61 +44,29 @@ export async function MarketUniverseDataLineagePanel({
 
       <PlatformExecutionStreamsGrid health={health} variant="bare" />
 
-      <h3 className="market-universe-lineage__sub">
-        {t("pages.marketUniverse.lineageCoreSymbols")}
-      </h3>
-      <div className="table-wrap">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>{t("pages.marketUniverse.lineageThSymbol")}</th>
-              <th>{t("pages.marketUniverse.lineageThRegistry")}</th>
-              <th>{t("pages.marketUniverse.lineageThLive")}</th>
-              <th>{t("pages.marketUniverse.lineageThSubscribe")}</th>
-              <th>{t("pages.marketUniverse.lineageThTrade")}</th>
-              <th>{t("pages.marketUniverse.lineageThStatus")}</th>
-              <th>{t("pages.marketUniverse.lineageThChart")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {coreRows.map((row) => (
-              <tr key={row.symbol}>
-                <td className="mono-small">{row.symbol}</td>
-                <td>{row.inRegistry ? t("account.yes") : t("account.no")}</td>
-                <td>
-                  {row.inRegistry
-                    ? row.liveEnabled
-                      ? t("account.yes")
-                      : t("account.no")
-                    : "—"}
-                </td>
-                <td>
-                  {row.inRegistry
-                    ? row.subscribeEnabled
-                      ? t("account.yes")
-                      : t("account.no")
-                    : "—"}
-                </td>
-                <td>
-                  {row.inRegistry
-                    ? row.tradingEnabled
-                      ? t("account.yes")
-                      : t("account.no")
-                    : "—"}
-                </td>
-                <td>{row.inRegistry ? row.tradingStatus : "—"}</td>
-                <td>
-                  <Link
-                    href={`${consolePath("market-universe")}?${new URLSearchParams({ symbol: row.symbol }).toString()}`}
-                  >
-                    {t("pages.marketUniverse.lineageOpenChart")}
-                  </Link>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <MarketUniverseDataLineageTableClient
+        coreRows={coreRows}
+        streamSymbol={streamSymbol}
+        i18n={{
+          sub: t("pages.marketUniverse.lineageCoreSymbols"),
+          thSymbol: t("pages.marketUniverse.lineageThSymbol"),
+          thRegistry: t("pages.marketUniverse.lineageThRegistry"),
+          thLive: t("pages.marketUniverse.lineageThLive"),
+          thSubscribe: t("pages.marketUniverse.lineageThSubscribe"),
+          thTrade: t("pages.marketUniverse.lineageThTrade"),
+          thStatus: t("pages.marketUniverse.lineageThStatus"),
+          thChart: t("pages.marketUniverse.lineageThChart"),
+          thPipelineLag: t("pages.marketUniverse.lineageThPipelineLag"),
+          thVpin: t("pages.marketUniverse.lineageThVpin"),
+          yes: t("account.yes"),
+          no: t("account.no"),
+          openChart: t("pages.marketUniverse.lineageOpenChart"),
+          pulseStreamLabel: t("pages.marketUniverse.pulseStreamLabel"),
+          pulseLagLabel: t("pages.marketUniverse.pulseLagLabel"),
+          pulseNoSse: t("pages.marketUniverse.pulseNoSse"),
+          notApplicableRow: t("pages.marketUniverse.pulseNotOtherSymbol"),
+        }}
+      />
 
       <p className="muted small market-universe-lineage__footer">
         {t("pages.marketUniverse.lineageSelfHealHint")}{" "}
