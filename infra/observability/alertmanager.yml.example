@@ -1,0 +1,146 @@
+# Beispiel: Alertmanager-Routing (nicht eins zu eins deployen — Secrets/URLs aus Vault/ENV).
+# Ref: prometheus-alerts.yml (Labels/alertname), alertmanager-inhibit-rules.example.yml
+# Referenz: https://prometheus.io/docs/alerting/latest/configuration/
+#
+# Vertrag: Kritische Trading-/Sicherheits-Alarme gehen an P0/P1-Receiver, nicht nur an
+#   einen generischen "warning"-Kanal. Runbook-Links sitzen in Prometheus-annotations;
+#   hier optional repeat_interval + receiver pro Lane.
+#
+# Deployment: Inhalt per envsubst/Helm; Webhook-URLs niemals im Klartext committen.
+
+global:
+  resolve_timeout: 5m
+  # http_config: Basic auth aus Kubernetes Secret, falls nötig
+
+# Testalarm: `amtool` oder POST /api/v1/alerts mit label test_alert=true
+# (Receiver `test_only` unten; in Prod-Overlay deaktivieren oder time-restricted route)
+
+route:
+  receiver: default_low_priority
+  group_by: [alertname, namespace, service]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    # --- P0: global trading halt / production blocker (siehe alert_tier=p0, bitget_sli) ---
+    - matchers:
+        - alert_tier = "p0"
+      receiver: p0_trading_halt
+      group_wait: 10s
+      repeat_interval: 1h
+      continue: true
+
+    # --- Survival / Safety-Latch: effektiv Handel gestoppt (kein reines "warning") ---
+    - matchers:
+        - alertname = "SafetyLatchActive"
+      receiver: p0_trading_halt
+      repeat_interval: 30m
+      continue: true
+
+    # --- Live-Broker: Reconcile fehlgeschlagen / Drift (kritische Reconcile-Sicht) ---
+    - matchers:
+        - alertname =~ "Reconcile.*"
+      receiver: live_broker_reconcile
+      continue: true
+
+    # --- Kill-Switch ---
+    - matchers:
+        - alertname = "KillSwitchActive"
+      receiver: safety_kill_switch
+      continue: true
+
+    # --- Stale market / Kerzen-Pipeline ---
+    - matchers:
+        - alertname =~ "MarketPipelineLag|DataStaleCandles1m|DataStaleSignals"
+      receiver: market_data_stale
+      continue: true
+
+    # --- Gateway-Auth-Anomalien (kritisch = P0/P1, nicht nur info) ---
+    - matchers:
+        - alertname = "GatewayAuthAnomalies"
+      receiver: gateway_security
+      continue: true
+
+    # --- Redis / DB / Queue / LLM-Pipeline-Infra ---
+    - matchers:
+        - alertname =~ "RedisDown|DatabaseDown|RedisStreamLag(Critical|High)|LLMPipelineStaleOrDLQ|MonitorEngineTickStalled"
+      receiver: infra_data_stack
+      continue: true
+
+    # --- LLM: Operator-Funktionen (Fehlerrate / Latenz) — critical, nicht nur warning ---
+    - matchers:
+        - alertname =~ "LlmHigh(ErrorRate|Latency)"
+      receiver: llm_ops
+      continue: true
+
+    # --- Test / Dry-Run: nur in Staging-Overlay mit Matcher test_alert=true aktivieren ---
+    - matchers:
+        - test_alert = "true"
+      receiver: test_only
+      group_interval: 1m
+      repeat_interval: 5m
+
+receivers:
+  - name: default_low_priority
+    # Platzhalter: niedrige Priorität, Arbeitszeit; siehe .env.production.example
+    email_configs:
+      - to: ${ALERTMANAGER_EMAIL_DEFAULT_TO:-ops-alerts@example.invalid}
+        from: ${ALERTMANAGER_EMAIL_FROM:-alertmanager@example.invalid}
+        headers:
+          Subject: "[BTC-AI] {{ .GroupLabels.alertname }}"
+
+  - name: p0_trading_halt
+    slack_configs:
+      - channel: ${ALERTMANAGER_SLACK_CHANNEL_P0:-#p0-btc-ai}
+        send_resolved: true
+        title: "P0 {{ .CommonLabels.alertname }}"
+        text: "{{ range .Alerts }}{{ .Annotations.description }}\nRunbook: {{ .Annotations.runbook }}\n{{ end }}"
+        api_url: ${ALERTMANAGER_SLACK_WEBHOOK_P0_URL}
+    pagerduty_configs:
+      - routing_key: ${ALERTMANAGER_PAGERDUTY_ROUTING_KEY_P0}
+        description: "{{ .CommonLabels.alertname }} P0"
+    webhook_configs:
+      - url: ${ALERTMANAGER_WEBHOOK_P0_URL}
+        send_resolved: true
+
+  - name: live_broker_reconcile
+    slack_configs:
+      - channel: ${ALERTMANAGER_SLACK_CHANNEL_TRADING:-#trading-ops}
+        api_url: ${ALERTMANAGER_SLACK_WEBHOOK_TRADING_URL}
+        title: "Reconcile {{ .GroupLabels.alertname }}"
+
+  - name: safety_kill_switch
+    slack_configs:
+      - channel: ${ALERTMANAGER_SLACK_CHANNEL_SAFETY:-#safety}
+        api_url: ${ALERTMANAGER_SLACK_WEBHOOK_SAFETY_URL}
+    pagerduty_configs:
+      - routing_key: ${ALERTMANAGER_PAGERDUTY_ROUTING_KEY_SAFETY}
+
+  - name: market_data_stale
+    slack_configs:
+      - channel: ${ALERTMANAGER_SLACK_CHANNEL_DATA:-#market-data}
+        api_url: ${ALERTMANAGER_SLACK_WEBHOOK_DATA_URL}
+
+  - name: gateway_security
+    slack_configs:
+      - channel: ${ALERTMANAGER_SLACK_CHANNEL_SEC:-#security-ops}
+        api_url: ${ALERTMANAGER_SLACK_WEBHOOK_SEC_URL}
+
+  - name: infra_data_stack
+    slack_configs:
+      - channel: ${ALERTMANAGER_SLACK_CHANNEL_INFRA:-#infra}
+        api_url: ${ALERTMANAGER_SLACK_WEBHOOK_INFRA_URL}
+
+  - name: llm_ops
+    slack_configs:
+      - channel: ${ALERTMANAGER_SLACK_CHANNEL_LLM:-#llm-ops}
+        api_url: ${ALERTMANAGER_SLACK_WEBHOOK_LLM_URL}
+
+  - name: test_only
+    slack_configs:
+      - channel: ${ALERTMANAGER_SLACK_CHANNEL_TEST:-#alert-test}
+        api_url: ${ALERTMANAGER_SLACK_WEBHOOK_TEST_URL}
+
+# Deduplication: group_by oben; optional inhibit_rules aus alertmanager-inhibit-rules.example.yml einbinden
+
+inhibit_rules: []

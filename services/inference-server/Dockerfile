@@ -11,8 +11,8 @@ WORKDIR /app
 RUN apt-get update \
     && apt-get install -y --no-install-recommends build-essential \
     && rm -rf /var/lib/apt/lists/* \
-    && python -m pip install --upgrade "pip<26" \
-    && python -m venv /opt/venv
+    && python -m venv /opt/venv \
+    && /opt/venv/bin/python -m pip install --upgrade "pip<26"
 
 ENV PATH="/opt/venv/bin:$PATH"
 

@@ -5,6 +5,7 @@ import sys
 import time
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from unittest.mock import patch
 from uuid import UUID, uuid4
 
 import httpx
@@ -33,6 +34,7 @@ from live_broker.orders.service import (
     LiveBrokerOrderService,
     client_oid_for_internal_order,
 )
+from live_broker.exceptions import ShadowDivergenceError
 from live_broker.private_rest import BitgetPrivateRestClient, BitgetRestError
 
 
@@ -270,6 +272,90 @@ def test_order_service_blocks_open_when_execution_binding_required(
     assert "source_execution_decision_id" in str(exc.value).lower()
 
 
+def test_order_service_blocks_open_without_operator_release(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = _settings(
+        monkeypatch,
+        LIVE_REQUIRE_EXECUTION_BINDING="true",
+        LIVE_REQUIRE_OPERATOR_RELEASE_FOR_LIVE_OPEN="true",
+        REQUIRE_SHADOW_MATCH_BEFORE_LIVE="false",
+    )
+    repo = InMemoryOrderRepo()
+    execution_id = uuid4()
+    repo.seed_execution_candidate(execution_id)
+    service = LiveBrokerOrderService(
+        settings,
+        repo,  # type: ignore[arg-type]
+        BitgetPrivateRestClient(
+            settings,
+            transport=httpx.MockTransport(
+                lambda r: _server_time_response()
+                if r.url.path == "/api/v2/public/time"
+                else httpx.Response(500)
+            ),
+        ),
+    )
+    with pytest.raises(BitgetRestError) as exc:
+        service.create_order(
+            OrderCreateRequest(
+                source_service="manual",
+                symbol="BTCUSDT",
+                side="buy",
+                order_type="limit",
+                size="0.01",
+                price="65000",
+                source_execution_decision_id=execution_id,
+            )
+        )
+    assert exc.value.classification == "validation"
+    assert "operator_release_required" in str(exc.value)
+
+
+def test_order_service_blocks_open_without_shadow_match_latch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = _settings(
+        monkeypatch,
+        LIVE_REQUIRE_EXECUTION_BINDING="true",
+        LIVE_REQUIRE_OPERATOR_RELEASE_FOR_LIVE_OPEN="true",
+        REQUIRE_SHADOW_MATCH_BEFORE_LIVE="true",
+    )
+    repo = InMemoryOrderRepo()
+    execution_id = uuid4()
+    repo.seed_execution_candidate(execution_id)
+    repo.seed_operator_release(execution_id)
+    service = LiveBrokerOrderService(
+        settings,
+        repo,  # type: ignore[arg-type]
+        BitgetPrivateRestClient(
+            settings,
+            transport=httpx.MockTransport(
+                lambda r: _server_time_response()
+                if r.url.path == "/api/v2/public/time"
+                else httpx.Response(500)
+            ),
+        ),
+    )
+    with patch(
+        "live_broker.orders.service.get_shadow_match_latch_read_status",
+        return_value="absent",
+    ):
+        with pytest.raises(ShadowDivergenceError) as exc:
+            service.create_order(
+                OrderCreateRequest(
+                    source_service="manual",
+                    symbol="BTCUSDT",
+                    side="buy",
+                    order_type="limit",
+                    size="0.01",
+                    price="65000",
+                    source_execution_decision_id=execution_id,
+                )
+            )
+    assert "shadow_match_latch_absent" in (exc.value.reason or "")
+
+
 def test_order_service_open_hits_spot_endpoint_when_request_family_spot(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -324,6 +410,9 @@ def _settings(monkeypatch: pytest.MonkeyPatch, **extra: str) -> LiveBrokerSettin
         "LIVE_BROKER_ENABLED": "true",
         "SHADOW_TRADE_ENABLE": "false",
         "LIVE_TRADE_ENABLE": "true",
+        "LIVE_REQUIRE_EXECUTION_BINDING": "false",
+        "LIVE_REQUIRE_OPERATOR_RELEASE_FOR_LIVE_OPEN": "false",
+        "REQUIRE_SHADOW_MATCH_BEFORE_LIVE": "false",
         "LIVE_REQUIRE_EXCHANGE_HEALTH": "false",
         "LIVE_BROKER_BASE_URL": "https://api.bitget.com",
         "LIVE_BROKER_WS_PRIVATE_URL": "wss://ws.bitget.com/v2/ws/private",

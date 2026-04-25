@@ -4,6 +4,7 @@ import asyncio
 import contextlib
 import gc
 import logging
+import math
 import time
 from contextlib import asynccontextmanager
 from typing import Any, ClassVar, Literal
@@ -232,7 +233,7 @@ class MarketStreamSettings(BitgetSettings):
     @classmethod
     def _validate_vpin_bucket(cls, value: float) -> float:
         x = float(value)
-        if not (x > 0.0 and x.is_finite()):
+        if not (x > 0.0 and math.isfinite(x)):
             raise ValueError("MARKET_STREAM_VPIN_BUCKET_VOLUME muss endlich und > 0 sein")
         return x
 

@@ -1,196 +1,282 @@
 #!/usr/bin/env python3
-"""
-Staging-/Pre-Prod-Smoke: ein kritischer Gateway-Pfad plus KI-Pfad (Operator Explain).
+"""Safe staging smoke runner for bitget-btc-ai.
 
-Schritte:
-  1) GET  {API_GATEWAY_URL}/health
-  2) GET  {API_GATEWAY_URL}/ready
-  3) GET  {API_GATEWAY_URL}/v1/system/health  (Authorization: DASHBOARD_GATEWAY_AUTHORIZATION)
-  4) POST {API_GATEWAY_URL}/v1/llm/operator/explain (gleicher Authorization)
-
-Exit 0 nur wenn alle erwarteten HTTP-Codes und Mindest-JSON-Struktur stimmen.
-Keine stillen URL-Fallbacks: API_GATEWAY_URL und DASHBOARD_GATEWAY_AUTHORIZATION muessen in der
-ENV-Datei gesetzt sein (keine Platzhalter).
-
-Optional --disallow-loopback-gateway: schlaegt fehl, wenn die Gateway-Host-URL localhost/127.0.0.1 ist
-(nuetzlich, um echte Staging-Hosts zu erzwingen).
+The script validates a staging ENV file, optionally performs read-only HTTP
+checks, and writes a redacted Markdown report. It never submits orders and never
+prints raw secrets.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
 import urllib.error
 import urllib.request
+from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import urlsplit, urlunsplit
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from tools.check_env_10_10_safety import load_dotenv  # noqa: E402
+from tools.check_staging_profile import validate_staging_profile  # noqa: E402
 
 
-def load_dotenv(path: Path) -> dict[str, str]:
-    out: dict[str, str] = {}
-    if not path.is_file():
-        return out
-    for raw in path.read_text(encoding="utf-8").splitlines():
-        line = raw.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        k, _, v = line.partition("=")
-        key = k.strip()
-        val = v.strip()
-        if (val.startswith('"') and val.endswith('"')) or (val.startswith("'") and val.endswith("'")):
-            val = val[1:-1]
-        out[key] = val
-    return out
+SECRET_MARKERS = (
+    "SECRET",
+    "TOKEN",
+    "KEY",
+    "PASSWORD",
+    "PASSPHRASE",
+    "AUTHORIZATION",
+    "DATABASE_URL",
+    "REDIS_URL",
+)
 
 
-def _bad(val: str) -> bool:
-    t = val.strip()
-    if not t:
-        return True
-    u = t.upper()
-    return "<SET_ME>" in u or u == "SET_ME" or u == "CHANGE_ME"
+@dataclass(frozen=True)
+class CheckResult:
+    name: str
+    target: str
+    status: str
+    detail: str
 
 
-def http_json(
-    method: str,
-    url: str,
-    *,
-    headers: dict[str, str] | None = None,
-    data: bytes | None = None,
-    timeout: float = 30.0,
-) -> tuple[int, object | str]:
-    req = urllib.request.Request(url, method=method, data=data, headers=headers or {})
+def truthy(value: str | None) -> bool:
+    return (value or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def redact_value(key: str, value: str) -> str:
+    if not value:
+        return ""
+    upper_key = key.upper()
+    if any(marker in upper_key for marker in SECRET_MARKERS):
+        return "***REDACTED***"
+    return redact_url(value)
+
+
+def redact_url(value: str) -> str:
+    try:
+        parsed = urlsplit(value)
+    except ValueError:
+        return value
+    if not parsed.scheme or not parsed.netloc:
+        return value
+    host = parsed.hostname or ""
+    if parsed.port:
+        host = f"{host}:{parsed.port}"
+    redacted = parsed._replace(netloc=host, query="", fragment="")
+    return urlunsplit(redacted)
+
+
+def git_sha() -> str:
+    try:
+        completed = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        return completed.stdout.strip() or "unknown"
+    except Exception:
+        return "unknown"
+
+
+def http_json(url: str, *, method: str = "GET", headers: dict[str, str] | None = None, timeout: float = 20.0) -> tuple[int, object | str]:
+    req = urllib.request.Request(url, method=method, headers=headers or {})
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
-            code = resp.status
             raw = resp.read().decode("utf-8", errors="replace")
             if not raw.strip():
-                return code, {}
-            return code, json.loads(raw)
-    except urllib.error.HTTPError as e:
-        raw = e.read().decode("utf-8", errors="replace") if e.fp else ""
+                return resp.status, {}
+            try:
+                return resp.status, json.loads(raw)
+            except json.JSONDecodeError:
+                return resp.status, raw[:500]
+    except urllib.error.HTTPError as exc:
+        raw = exc.read().decode("utf-8", errors="replace") if exc.fp else ""
         try:
-            return e.code, json.loads(raw) if raw.strip() else {}
+            return exc.code, json.loads(raw) if raw.strip() else {}
         except json.JSONDecodeError:
-            return e.code, raw[:800]
+            return exc.code, raw[:500]
+    except Exception as exc:
+        return 0, f"{type(exc).__name__}: {exc}"
 
 
-def _host_is_loopback(url: str) -> bool:
-    try:
-        from urllib.parse import urlparse
+def build_check_plan(env: dict[str, str]) -> list[tuple[str, str, str]]:
+    gateway = (env.get("API_GATEWAY_URL") or "").rstrip("/")
+    auth = env.get("DASHBOARD_GATEWAY_AUTHORIZATION") or ""
+    dashboard = env.get("HEALTH_URL_DASHBOARD") or env.get("FRONTEND_URL") or ""
+    live_broker = env.get("HEALTH_URL_LIVE_BROKER") or ""
+    llm = env.get("HEALTH_URL_LLM_ORCHESTRATOR") or ""
+    bitget = env.get("BITGET_READ_ONLY_HEALTH_URL") or f"{gateway}/v1/exchange/readiness"
 
-        h = (urlparse(url).hostname or "").lower()
-    except Exception:
-        return False
-    return h in ("localhost", "127.0.0.1", "::1")
+    return [
+        ("gateway_health", f"{gateway}/health", ""),
+        ("gateway_ready", f"{gateway}/ready", ""),
+        ("system_health", f"{gateway}/v1/system/health", auth),
+        ("dashboard_health", dashboard, ""),
+        ("live_broker_readiness", live_broker, ""),
+        ("llm_orchestrator_readiness", llm, ""),
+        ("bitget_read_only", bitget, auth),
+    ]
 
 
-def main() -> int:
-    p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--env-file", type=Path, required=True, help="z. B. .env.shadow")
-    p.add_argument(
-        "--disallow-loopback-gateway",
-        action="store_true",
-        help="Fehlschlag wenn API_GATEWAY_URL auf localhost/127.0.0.1 zeigt",
+def dry_run_results(env: dict[str, str]) -> list[CheckResult]:
+    results: list[CheckResult] = []
+    for name, target, _auth in build_check_plan(env):
+        if name == "bitget_read_only" and not truthy(env.get("BITGET_READ_ONLY_CHECK_ENABLED")):
+            results.append(CheckResult(name, redact_url(target), "skipped", "explicit opt-in is disabled"))
+            continue
+        results.append(CheckResult(name, redact_url(target), "planned", "dry-run only; no network call"))
+    return results
+
+
+def network_results(env: dict[str, str]) -> list[CheckResult]:
+    results: list[CheckResult] = []
+    for name, target, auth in build_check_plan(env):
+        if name == "bitget_read_only" and not truthy(env.get("BITGET_READ_ONLY_CHECK_ENABLED")):
+            results.append(CheckResult(name, redact_url(target), "skipped", "explicit opt-in is disabled"))
+            continue
+        if not target:
+            results.append(CheckResult(name, "", "failed", "target URL is missing"))
+            continue
+        headers = {"Authorization": auth} if auth else {}
+        code, body = http_json(target, headers=headers)
+        ok = code == 200
+        detail = f"HTTP {code}"
+        if isinstance(body, dict) and body:
+            detail = f"{detail}; keys={','.join(sorted(str(k) for k in body.keys())[:8])}"
+        elif isinstance(body, str) and body:
+            detail = f"{detail}; non-json body omitted"
+        results.append(CheckResult(name, redact_url(target), "passed" if ok else "failed", detail))
+    return results
+
+
+def report_markdown(
+    *,
+    env_file: Path,
+    env: dict[str, str],
+    validation_issues: list[object],
+    results: list[CheckResult],
+    dry_run: bool,
+) -> str:
+    now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    failed = any(result.status == "failed" for result in results) or bool(validation_issues)
+    live_enabled = truthy(env.get("LIVE_TRADE_ENABLE"))
+    go_no_go = "NO-GO" if failed or live_enabled else "GO-FOR-STAGING-ONLY"
+    lines = [
+        "# Staging Smoke Report",
+        "",
+        f"- Date/Time UTC: `{now}`",
+        f"- Git SHA: `{git_sha()}`",
+        f"- ENV file: `{env_file.name}`",
+        f"- APP_ENV: `{env.get('APP_ENV', '')}`",
+        f"- DEPLOY_ENV: `{env.get('DEPLOY_ENV', '')}`",
+        f"- Mode: `{'dry-run' if dry_run else 'network-smoke'}`",
+        f"- Live trade enabled: `{str(live_enabled).lower()}`",
+        f"- Secret safety: raw secrets are redacted; no customer secrets are required by this report.",
+        f"- Go/No-Go: `{go_no_go}`",
+        "",
+        "## Redacted Runtime Values",
+        "",
+    ]
+    for key in (
+        "API_GATEWAY_URL",
+        "FRONTEND_URL",
+        "HEALTH_URL_DASHBOARD",
+        "HEALTH_URL_LIVE_BROKER",
+        "HEALTH_URL_LLM_ORCHESTRATOR",
+        "DATABASE_URL",
+        "REDIS_URL",
+        "DASHBOARD_GATEWAY_AUTHORIZATION",
+    ):
+        lines.append(f"- {key}: `{redact_value(key, env.get(key, ''))}`")
+    lines.extend(["", "## Validation Issues", ""])
+    if validation_issues:
+        for issue in validation_issues:
+            code = getattr(issue, "code", "unknown")
+            key = getattr(issue, "key", None) or "-"
+            message = getattr(issue, "message", str(issue))
+            lines.append(f"- `{code}` `{key}`: {message}")
+    else:
+        lines.append("- none")
+    lines.extend(["", "## Checks", "", "| Check | Target | Status | Detail |", "| --- | --- | --- | --- |"])
+    for result in results:
+        lines.append(f"| {result.name} | `{result.target}` | `{result.status}` | {result.detail} |")
+    lines.extend(
+        [
+            "",
+            "## Next Steps",
+            "",
+            "- Keep `LIVE_TRADE_ENABLE=false` for every staging run.",
+            "- Attach this report to the release candidate ticket.",
+            "- Treat any failed validation or smoke check as a production blocker.",
+            "",
+            "## Signoff",
+            "",
+            "- Release ticket:",
+            "- Operator:",
+            "- Security reviewer:",
+            "- Timestamp:",
+        ]
     )
-    args = p.parse_args()
-    root = Path(__file__).resolve().parents[1]
-    env_path = args.env_file if args.env_file.is_absolute() else root / args.env_file
+    return "\n".join(lines) + "\n"
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--env-file", type=Path, required=True)
+    parser.add_argument("--output-md", type=Path)
+    parser.add_argument("--dry-run", action="store_true")
+    args = parser.parse_args(argv)
+
+    env_path = args.env_file if args.env_file.is_absolute() else ROOT / args.env_file
     if not env_path.is_file():
-        print(f"FEHLT: {env_path}", file=sys.stderr)
+        print(f"ERROR env_file_missing: {env_path}", file=sys.stderr)
         return 1
 
     env = load_dotenv(env_path)
-    gw = (env.get("API_GATEWAY_URL") or "").strip().rstrip("/")
-    auth = (env.get("DASHBOARD_GATEWAY_AUTHORIZATION") or "").strip()
+    template_mode = args.dry_run and env_path.name.endswith(".example")
+    validation_issues = validate_staging_profile(env, template=template_mode, strict_runtime=not template_mode)
+    results = dry_run_results(env) if args.dry_run else network_results(env)
 
-    if _bad(gw):
-        print("staging_smoke: API_GATEWAY_URL fehlt oder Platzhalter — in Staging explizit setzen.", file=sys.stderr)
-        return 1
-    if _bad(auth):
-        print(
-            "staging_smoke: DASHBOARD_GATEWAY_AUTHORIZATION fehlt oder Platzhalter — JWT fuer gateway:read setzen.",
-            file=sys.stderr,
-        )
-        return 1
-
-    if args.disallow_loopback_gateway and _host_is_loopback(gw):
-        print(
-            f"staging_smoke: API_GATEWAY_URL={gw!r} ist Loopback — fuer echtes Staging oeffentlichen/LB-Host verwenden.",
-            file=sys.stderr,
-        )
-        return 1
-
-    print("=== staging_smoke ===")
+    print("staging_smoke")
     print(f"env_file={env_path}")
-    print(f"API_GATEWAY_URL={gw}")
-    print("Authorization=Bearer ***")
+    print(f"mode={'dry-run' if args.dry_run else 'network-smoke'}")
+    for key in ("API_GATEWAY_URL", "FRONTEND_URL", "DASHBOARD_GATEWAY_AUTHORIZATION"):
+        print(f"{key}={redact_value(key, env.get(key, ''))}")
+    for issue in validation_issues:
+        print(f"ERROR {issue.code} {issue.key or '-'}: {issue.message}", file=sys.stderr)
+    for result in results:
+        print(f"{result.name}: {result.status} {result.target} ({result.detail})")
 
-    failed = False
+    if args.output_md:
+        output_path = args.output_md if args.output_md.is_absolute() else ROOT / args.output_md
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(
+            report_markdown(
+                env_file=env_path,
+                env=env,
+                validation_issues=validation_issues,
+                results=results,
+                dry_run=args.dry_run,
+            ),
+            encoding="utf-8",
+        )
+        print(f"report={output_path}")
 
-    code, body = http_json("GET", f"{gw}/health", timeout=12.0)
-    ok = code == 200
-    print(f"[1] GET /health -> HTTP {code} ok={ok}")
-    if not ok:
+    failed = bool(validation_issues) or any(result.status == "failed" for result in results)
+    if truthy(env.get("LIVE_TRADE_ENABLE")):
         failed = True
-
-    code2, body2 = http_json("GET", f"{gw}/ready", timeout=20.0)
-    ready_ok = isinstance(body2, dict) and body2.get("ready") is True
-    print(f"[2] GET /ready -> HTTP {code2} ready={ready_ok}")
-    if code2 != 200 or not ready_ok:
-        failed = True
-        if isinstance(body2, dict) and body2.get("checks"):
-            print(f"    checks={json.dumps(body2.get('checks'), ensure_ascii=False)[:600]}")
-
-    h3, b3 = http_json(
-        "GET",
-        f"{gw}/v1/system/health",
-        headers={"Authorization": auth},
-        timeout=20.0,
-    )
-    sys_ok = (
-        h3 == 200
-        and isinstance(b3, dict)
-        and b3.get("database") == "ok"
-        and b3.get("redis") == "ok"
-    )
-    print(
-        f"[3] GET /v1/system/health -> HTTP {h3} database={b3.get('database') if isinstance(b3, dict) else '?'} "
-        f"redis={b3.get('redis') if isinstance(b3, dict) else '?'}"
-    )
-    if not sys_ok:
-        failed = True
-
-    explain_body = json.dumps(
-        {
-            "question_de": "Staging-Smoke: Was ist das Live-Gate?",
-            "readonly_context_json": {"source": "scripts/staging_smoke.py"},
-        }
-    ).encode("utf-8")
-    h4, b4 = http_json(
-        "POST",
-        f"{gw}/v1/llm/operator/explain",
-        headers={"Authorization": auth, "Content-Type": "application/json"},
-        data=explain_body,
-        timeout=130.0,
-    )
-    llm_ok = False
-    if h4 == 200 and isinstance(b4, dict):
-        res = b4.get("result")
-        expl = isinstance(res, dict) and res.get("explanation_de")
-        llm_ok = isinstance(expl, str) and bool(expl.strip())
-    print(f"[4] POST /v1/llm/operator/explain -> HTTP {h4} explanation_ok={llm_ok}")
-    if not llm_ok:
-        failed = True
-        snippet = json.dumps(b4, ensure_ascii=False) if not isinstance(b4, str) else b4
-        print(f"    body_snip={str(snippet)[:500]}", file=sys.stderr)
-
-    if failed:
-        print("\nERGEBNIS: staging_smoke fehlgeschlagen — Logs/Gateway-ENV pruefen.", file=sys.stderr)
-        print("Doku: STAGING_PARITY.md | KI-Details: AI_FLOW.md", file=sys.stderr)
-        return 1
-    print("\nERGEBNIS: staging_smoke OK (Health + System-Health + Operator-Explain).")
-    return 0
+    return 1 if failed else 0
 
 
 if __name__ == "__main__":

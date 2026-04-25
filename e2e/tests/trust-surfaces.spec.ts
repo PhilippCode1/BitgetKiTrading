@@ -14,8 +14,8 @@ const ASSET_DIR = path.join(
   "..",
   "..",
   "docs",
-  "cursor_execution",
-  "49_trust_assets",
+  "release_evidence",
+  "trust_surfaces",
 );
 
 function tryWriteScreenshot(name: string, buf: Buffer) {

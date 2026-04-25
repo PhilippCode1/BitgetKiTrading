@@ -154,6 +154,6 @@ P0-Regeln stehen in der Gruppe `p0_production_blocker`; alle weiteren `groups` s
 - **Neu:** Trace-Middleware im **llm-orchestrator** (Korrelation mit Gateway).
 - **Neu:** **BFF** `operator-explain` reicht `X-Request-ID` / `X-Correlation-ID` und gibt sie zurueck.
 - **Erweitert (Prompt 23):** Zentrale Trace-Header fuer praktisch alle `fetchGatewayUpstream`-Aufrufe; strukturierte `corr_*`-Felder im LLM-Forward-Log; `edge-status` liefert `supportReference` pro Diagnose-Lauf; Beispiel **Alertmanager inhibit_rules** unter `infra/observability/alertmanager-inhibit-rules.example.yml`; Prometheus-Regeln leicht entschaerft/annotiert (DataStaleSignals, Shadow-Live-Gate, Alert-Backlog).
-- **Monitor-Engine:** `ops.alerts.details` und `events:system_alert` enthalten strukturierte Betreiberfelder (`operator_*`, `correlation`) — `docs/cursor_execution/20_monitor_alerts_and_observability.md`.
+- **Monitor-Engine:** `ops.alerts.details` und `events:system_alert` enthalten strukturierte Betreiberfelder (`operator_*`, `correlation`) — `docs/observability.md`, `services/monitor-engine/`.
 
 Aeltere Basis: `docs/observability.md`, `docs/observability_slos.md`, `shared_py.observability`, Gateway-Request-ID-Middleware.

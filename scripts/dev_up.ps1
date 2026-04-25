@@ -5,7 +5,7 @@
 
 .DESCRIPTION
   Nutzt dieselbe Compose-Kombination wie bootstrap_stack (local): docker-compose.yml +
-  docker-compose.local-publish.yml - Host-Publish fuer Worker-Debugging (siehe docs/chatgpt_handoff/02_SYSTEM_TOPOLOGIE_UND_SERVICES.md).
+  docker-compose.local-publish.yml - Host-Publish fuer Worker-Debugging (siehe docs/structure.md, docs/compose_runtime.md).
   Mit -NoLocalPublish nur Basis-Compose (Edge :8000/:3000, keine Worker-Ports auf dem Host).
   Schreibt standardmaessig DASHBOARD_GATEWAY_AUTHORIZATION per mint_dashboard_gateway_jwt.
   Optional: Datenbank/Redis-Volumes vorher leeren (-ResetDb).

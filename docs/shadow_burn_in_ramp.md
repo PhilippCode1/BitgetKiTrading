@@ -103,26 +103,21 @@ durch u.a.:
 **Nutzung:**
 
 ```text
-# DATABASE_URL muss die Ops-/Live-Postgres-Instanz zeigen (z. B. .env lokal)
-set DATABASE_URL=postgresql://...
-python scripts/verify_shadow_burn_in.py --hours 72
+# DATABASE_URL: Staging/Shadow-Postgres; alternativ: --env-file <pfad>
+python scripts/verify_shadow_burn_in.py --hours 72 --strict \
+  --output-md reports/shadow_burn_in.md --output-json reports/shadow_burn_in.json
 ```
 
-Zusätzliche praktische Flags:
+Wichtige Flags:
 
-- `--max-pipeline-lag-ms` (z. B. 5000, entspricht „Pipeline-Lag oberhalb
-  5s“-Warnungen, wenn die DB `lag`/`latency_ms` führt)
-- `--max-heartbeat-gap-sec` (Obergrenze für lückenlose
-  `health`-Checks, Default z. B. 600s – an Betrieb anpassen)
-- `--output-md /pfad/zur/shadow_burn_in_cert.md` schreibt denselben
-  Markdown-Report in eine Datei; die Konsole druckt immer den
-  vollständigen Text.
+- `--env-file` / `--database-url` (Default: `DATABASE_URL`)
+- `--strict` — fehlende Kerntabellen oder leere Kerndaten: **`NO_EVIDENCE`**, Exitcodes **0/1/2** (PASS / FAIL / NO_EVIDENCE)
+- `--output-json` — u. a. `verdict`, `git_sha`, `report_sha256` (SHA-256 des Markdown-Reporttextes)
+- `--min-decisions` / `--min-signals` / `--max-reconcile-fail-ratio` / `--max-ticker-stale-sec` / …
+- `--max-pipeline-lag-ms`, `--max-heartbeat-gap-sec`, Slippage-Grenzen — siehe `python … --help`
+- Doku-Template: `docs/production_10_10/04_shadow_burn_in_certificate.md`
 
-**Ausgabe:** Ein Zertifikat-Block in Markdown. Auf **stderr** erscheint eine
-Kurzzeile `[PASS] …` oder `[FAIL] …` mit Begründung, sodass
-Automationen den Exit-Code (0/1) und die letzte Fehlermeldung parsen
-können. Das Skript **ersetzt** nicht die Kalender-/Kohortenmatrix oben, sondern
-dokumentiert Stabilitäts- und Sicherheits-**Datenrückseite** parallel.
+**Ausgabe:** Markdown auf stdout und optional Dateien. **stderr** kurz `[PASS/GO]`, `[NO-GO/FAIL]`, oder `[NO_EVIDENCE]`. Nicht ersetzen: **Kalender-/Kohortenmatrix** und ENV-Nachweis; das Skript liefert **DB-Evidenz** dazu.
 
 ## Harte Freigabekriterien vor Echtgeld-Mirror
 

@@ -80,7 +80,7 @@ _KNOWN: dict[str, dict[str, str]] = {
         next_step=(
             "Market-Stream und Feature-Pipeline starten, 1–2 Minuten warten, "
             "dann diese Seite neu laden. Optional lokal: BITGET_ALLOW_DEMO_SCHEMA_SEEDS=true "
-            "und zweite Migrate-Phase (postgres_demo), siehe docs/cursor_execution/11_migrations_and_seed_separation.md."
+            "und zweite Migrate-Phase (postgres_demo), siehe docs/migrations.md."
         ),
         related_services="market-stream, feature-engine",
     ),

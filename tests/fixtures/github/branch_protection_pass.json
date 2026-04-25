@@ -1,0 +1,47 @@
+{
+  "fixture_version": 1,
+  "raw_note": "Simuliert 200-Response-Teilmenge der GitHub REST API GET /repos/{o}/{r}/branches/{b}/protection",
+  "data": {
+    "required_status_checks": {
+      "strict": true,
+      "checks": [
+        {
+          "context": "ci / python",
+          "app_id": 12345
+        },
+        {
+          "context": "ci / dashboard",
+          "app_id": 12345
+        },
+        {
+          "context": "ci / compose_healthcheck",
+          "app_id": 12345
+        },
+        {
+          "context": "ci / release-approval-gate",
+          "app_id": 12345
+        }
+      ],
+      "contexts": [
+        "ci / python",
+        "ci / dashboard",
+        "ci / compose_healthcheck",
+        "ci / release-approval-gate"
+      ]
+    },
+    "required_pull_request_reviews": {
+      "required_approving_review_count": 1
+    },
+    "enforce_admins": {
+      "enabled": true,
+      "url": "https://api.github.com/"
+    },
+    "restrictions": null,
+    "allow_force_pushes": {
+      "enabled": false
+    },
+    "allow_deletions": {
+      "enabled": false
+    }
+  }
+}

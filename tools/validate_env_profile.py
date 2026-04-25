@@ -29,8 +29,7 @@ from config.required_secrets import required_env_names_for_env_file_profile
 
 _DOC_BASE = (
     "docs/CONFIGURATION.md | docs/env_profiles.md | "
-    "docs/chatgpt_handoff/03_ENV_SECRETS_AUTH_MATRIX.md | "
-    "docs/cursor_execution/08_env_profiles_and_secrets_sync.md"
+    "docs/SECRETS_MATRIX.md | docs/operator_urls_and_secrets.md"
 )
 
 # Substrings in NEXT_PUBLIC_*-Schluesseln, die auf Secrets/Server-only hindeuten (niemals im Browser-Prefix).
@@ -193,7 +192,7 @@ def conditional_env_issues(env: dict[str, str], profile: str) -> list[str]:
         issues.append(
             "BITGET_ALLOW_DEMO_SCHEMA_SEEDS=true ist fuer shadow/production/staging verboten "
             "(nur lokale optional SQL unter infra/migrations/postgres_demo/). "
-            "Siehe docs/cursor_execution/11_migrations_and_seed_separation.md."
+            "Siehe docs/migrations.md (Demo-SQL)."
         )
 
     return issues

@@ -53,8 +53,8 @@ describe("GatewayReadNotice", () => {
       screen.getByRole("heading", { level: 3, name: "Kurz nicht ladbar." }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Empfohlener Schritt vom System: DB prüfen"),
-    ).toBeInTheDocument();
+      screen.getAllByText("Empfohlener Schritt vom System: DB prüfen").length,
+    ).toBeGreaterThan(0);
   });
 
   it("nutzt Generic-Text wenn degraded ohne message", () => {

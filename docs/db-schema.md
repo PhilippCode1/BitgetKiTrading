@@ -12,7 +12,7 @@ Reihenfolge der Namen der Abhaengigkeit entspricht.
 **Demo-Seed (nur lokal, optional):** `infra/migrations/postgres_demo/912_demo_local_learning_registry_seed.sql`
 (wird nur mit `BITGET_ALLOW_DEMO_SCHEMA_SEEDS=true` und `migrate.py --demo-seeds` angewendet).
 Die Dateien `596`/`597`/`603` unter `postgres/` bleiben als **No-Op** fuer `schema_migrations`-Kontinuitaet.
-Siehe `docs/cursor_execution/11_migrations_and_seed_separation.md`.
+Siehe `docs/migrations.md` (Demo-Seeds, `postgres_demo/`).
 
 Die Datenbank trennt u. a.:
 

@@ -16,7 +16,7 @@ const diagnosticDe = {
       embeddedSafetyLead:
         "Eingebettete Sicherheits-Diagnose: Frage anpassen und senden. Kontext ist mit dieser Oberfläche vorbelegt.",
       refDocLine:
-        "Referenz: docs/chatgpt_handoff/08_FEHLER_ALERTS_UND_ROOT_CAUSE_DOSSIER.md · docs/cursor_execution/38_safety_ai_architecture.md",
+        "Referenz: docs/PROVIDER_ERROR_SURFACES.md · docs/emergency_runbook.md",
       sectionCauses: "Wahrscheinliche Ursachen (Priorität je nach Stack)",
       sectionServices: "Typisch betroffene Dienste / Runtime",
       sectionInterfaces: "Schnittstellen & Code-Pfade",
@@ -241,7 +241,7 @@ const diagnosticEn = {
       embeddedSafetyLead:
         "Embedded safety diagnosis: adjust the question and submit. Context is pre-seeded for this surface.",
       refDocLine:
-        "Reference: docs/chatgpt_handoff/08_FEHLER_ALERTS_UND_ROOT_CAUSE_DOSSIER.md · docs/cursor_execution/38_safety_ai_architecture.md",
+        "Reference: docs/PROVIDER_ERROR_SURFACES.md · docs/emergency_runbook.md",
       sectionCauses: "Likely causes (priority depends on your stack)",
       sectionServices: "Typically affected services / runtime",
       sectionInterfaces: "Interfaces and code paths",

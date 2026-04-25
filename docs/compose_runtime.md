@@ -20,7 +20,7 @@ bash scripts/healthcheck.sh
 
 Oder: `bash scripts/bootstrap_stack.sh local` (setzt Compose-Files automatisch; am Anfang `tools/compose_start_preflight.py`).
 
-**Windows:** `pnpm dev:up` / `pwsh scripts/dev_up.ps1` nutzen **dieselbe** Kombination wie der Bootstrap (**`docker-compose.yml` + `docker-compose.local-publish.yml`**) — Host-Publish der Worker-Ports fuer Debugging (siehe `docs/chatgpt_handoff/02_SYSTEM_TOPOLOGIE_UND_SERVICES.md`). Nur Edge-Ports wie Shadow/Prod: `dev_up.ps1 -NoLocalPublish`. Daten zuruecksetzen: `pnpm dev:reset-db` / `dev_reset_db.ps1` (gleiche Compose-Files wie `dev_up`).
+**Windows:** `pnpm dev:up` / `pwsh scripts/dev_up.ps1` nutzen **dieselbe** Kombination wie der Bootstrap (**`docker-compose.yml` + `docker-compose.local-publish.yml`**) — Host-Publish der Worker-Ports fuer Debugging (Ueberblick: `docs/structure.md`, `docs/dev-workflow.md`). Nur Edge-Ports wie Shadow/Prod: `dev_up.ps1 -NoLocalPublish`. Daten zuruecksetzen: `pnpm dev:reset-db` / `dev_reset_db.ps1` (gleiche Compose-Files wie `dev_up`).
 
 Release-Candidate (Start, Stop, Logs, Health, typische Fehler): **`docs/LOCAL_RELEASE_CANDIDATE.md`**.
 

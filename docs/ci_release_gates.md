@@ -6,9 +6,28 @@ Ergänzung zu **`docs/LAUNCH_DOSSIER.md`** (Freigabeleiter). Technische Details:
 
 - **Push-CI** läuft nur auf **`main`** und **`master`** (kein automatischer CI-Push auf beliebige Feature-Branches) — Qualität kommt über **PRs** in den geschützten Branch.
 - Im GitHub-Repo unter **Settings → Branches → Branch protection** für `main` (und ggf. `master`) mindestens aktivieren:
-  - **Require status checks** vor dem Merge: Jobs **`python`**, **`dashboard`**, **`compose_healthcheck`** aus Workflow `ci`.
-  - Optional: **Require branches to be up to date** vor dem Merge.
+  - **Require a pull request before merging** (kein ungeprüfter Direktpush in den Normalfall; Admin-Umgehung ist organisationsspezifisch und separat prüfbar).
+  - **Require status checks** vor dem Merge: exakt die Jobs aus `.github/workflows/ci.yml` (Workflow-Name: `ci`), sichtbar als:
+    - `ci / python` — *Python (Ruff, pytest, …)*
+    - `ci / dashboard` — *Dashboard (types, Jest, build, pnpm audit)*
+    - `ci / compose_healthcheck` — *Docker Compose + Health + KI-Smoke + Playwright E2E*
+    - `ci / release-approval-gate` — *Unified Release Gate (all jobs + FREEZE + version lock)* (zieht `tools/check_release_approval_gates.py` + Freeze-Matrix; **für abgesichertes Merging zwingend**).
+  - **Force-Disallow:** Force-Pushes in den Regeln verbieten, soweit Policy; **Löschungen** abwehren, soweit nicht explizit erforderlich.
+  - Optional: **Require branches to be up to date** vor dem Merge; optional **Enforce** für Admins, wenn eure Orga das dulden kann (sonst: Eskalation über Org-Owner, nicht im Repo-allein sichtbar).
 - **Wöchentlicher Lauf:** Workflow `ci` per `schedule` (Montag 05:00 UTC) führt **`python`** und **`dashboard`** aus — **ohne** Docker-Compose-Job (Kosten/Laufzeit). Vollstack weiterhin bei jedem PR/Push auf `main`.
+
+### Werkzeug: `tools/check_github_branch_protection.py`
+
+- **Zweck:** Gegenprüfung, ob laut GitHub-API (oder **Offline-Fixture** in Tests) die erforderlichen Status-Checks inkl. **`release-approval-gate`** erfasst werden und PR-/Force-Policy-Teile lesbar sind.
+- **Ohne** `GITHUB_TOKEN` / `GH_TOKEN` / `gh` mit Berechtigung: kein `PASS` — `UNKNOWN_NO_GITHUB_AUTH` (Evidenz bleibt **extern / BLOCKED** bis zum laufenden `read_scope`-Token im CI oder einem Admin-Run).
+- **Befehle (Beispiele):**
+  - Lokal mit Leserechten (Repo: Standard `GITHUB_REPOSITORY` aus der Umgebung, sonst `--repo owner/name`):
+    - `python tools/check_github_branch_protection.py --repo PhilippCode1/BitgetKiTrading --branch main`
+  - Strikter Go-/Abnahmecheck: `--strict` → **Exit-Code 1** bei alles, was kein `PASS` ist (inkl. `UNKNOWN*`), damit **Echtgeld-Go** nicht fälschlich belegt ist.
+  - **Offline-Tests/Regression:** `pytest tests/unit/tools/test_check_github_branch_protection.py -q`
+- **Evidenz für 10/10-Map (Evidenz, nicht Doku-Claim):** Screenshot/Export aus GitHub **und** mindestens eine Lauf-JSON-Ausgabe des Werkzeugs:  
+  `python tools/check_github_branch_protection.py --repo <owner>/<repo> --branch main --json docs/release_evidence/branch_protection_YYYYMMDD.json` (nach erfolgreichem `PASS`; bei `UNKNOWN` nur als **Hinweis-Blocker**, in `docs/production_10_10/...` kennzeichnen), optional `--report-md` für die gleiche Sitzung.
+- **Hinweis:** Der CI-Job-Step „Branch-Protection-Tool (informativ)“ ist **non-blocking** (`continue-on-error: true`); der Standard-`GITHUB_TOKEN` in Actions liefert oft **403/UNKNOWN** auf den Protection-Read — Ergebnis wird geloggt, **echter** L4/L5-Nachweis bleibt `BLOCKED_EXTERNAL` bis ein Admin-Token/Org-Export o. a. vorgelegt wird.
 
 ## Merge (jedes PR / Push auf geschützte Branches)
 

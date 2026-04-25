@@ -67,10 +67,26 @@ describe("SidebarNav", () => {
     const quickHeading = screen.getByText("Quick access");
     const quickNav = quickHeading.nextElementSibling;
     expect(quickNav?.tagName.toLowerCase()).toBe("nav");
-    const quickLinks = within(quickNav as HTMLElement).getAllByRole("link");
-    expect(quickLinks[0]).toHaveTextContent(/AI & system status/i);
-    expect(quickLinks[1]).toHaveTextContent(/Practice \(paper\)/i);
-    expect(quickLinks[2]).toHaveTextContent(/^My account$/i);
+    expect(
+      within(quickNav as HTMLElement).getByRole("link", {
+        name: /AI & system status/i,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(quickNav as HTMLElement).getByRole("link", {
+        name: /Central diagnostics/i,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(quickNav as HTMLElement).getByRole("link", {
+        name: /Practice \(paper\)/i,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(quickNav as HTMLElement).getByRole("link", {
+        name: /^My account$/i,
+      }),
+    ).toBeInTheDocument();
 
     const helpLink = screen.getByRole("link", { name: /Help & overview/i });
     expect(helpLink).toHaveAttribute("href", "/console/help");

@@ -3618,7 +3618,7 @@
         "safetyAiToggle": "Optional safety-AI deep dive (collapsed)",
         "safetyAiLead": "Prefilled context includes technical hints for this surface. Answers are indicative — see prompt 38 architecture and error dossier 08.",
         "embeddedSafetyLead": "Embedded safety diagnosis: adjust the question and submit. Context is pre-seeded for this surface.",
-        "refDocLine": "Reference: docs/chatgpt_handoff/08_FEHLER_ALERTS_UND_ROOT_CAUSE_DOSSIER.md · docs/cursor_execution/38_safety_ai_architecture.md",
+        "refDocLine": "Reference: docs/PROVIDER_ERROR_SURFACES.md · docs/emergency_runbook.md",
         "sectionCauses": "Likely causes (priority depends on your stack)",
         "sectionServices": "Typically affected services / runtime",
         "sectionInterfaces": "Interfaces and code paths",
@@ -3783,19 +3783,86 @@
     "nav": {
       "aria": "Customer portal main navigation",
       "overview": "Overview",
+      "trial": "Trial",
+      "risk": "Risk disclosure",
+      "exchange": "Exchange connection",
       "performance": "Performance",
       "contractAndBilling": "Contract & billing",
+      "trading": "Signals (read-only)",
       "helpSupport": "Help & support"
     },
     "overviewTitle": "Overview",
     "overviewSubhead": "Balance & active strategy",
     "overviewLead": "Your contract context, balances, and the status of approved strategies will appear here — separate from the operator console.",
+    "overviewBffNote": "Account data is loaded on the server via the BFF. No API keys or gateway secrets are exposed to the browser. If the BFF is not fully configured, you will see a clear not_configured or backend message — not a fake “ready for production” state.",
+    "safety": {
+      "title": "Product safety and boundaries",
+      "liveGated": "Live (real) trading is not active without a valid contract, recorded risk disclosure acknowledgement, and an explicit operator or management go-live step.",
+      "keysNeverInBrowser": "Provider or exchange API keys must never be shown or stored in the browser. Connection status is only described with non-secret hints from the server.",
+      "modesShadowPaperLive": "The system can be operated in separate modes (e.g. shadow, paper, live). Your portal shows a read-only summary only — it does not mutate live strategy or execution."
+    },
+    "bffState": {
+      "title": "BFF and data state",
+      "aggregate": "Aggregate BFF data state",
+      "ok": "ok (customer/me reachable; other sections may be partially unavailable)",
+      "degraded": "degraded (some sub-resources missing or not parseable; see hint)",
+      "notConfigured": "not_configured (missing API base URL and/or DASHBOARD_GATEWAY_AUTHORIZATION on the Next server).",
+      "backendUnavailable": "backend_unavailable (main customer profile request did not return HTTP 2xx).",
+      "unknown": "unknown",
+      "reason": "Reason",
+      "reasons": {
+        "apiGatewayUrlMissing": "API_GATEWAY_URL is not set (or is invalid) on the server.",
+        "gatewayBffAuthMissing": "DASHBOARD_GATEWAY_AUTHORIZATION (server-side BFF token) is not set; see project docs for minting a dashboard gateway JWT."
+      },
+      "commerceMe": "GET /v1/commerce/customer/me",
+      "parsed": "(parsed)",
+      "unparsedOrEmpty": "(empty or not JSON)",
+      "hintPrefix": "Internal hint (no secrets):",
+      "tradingStub": "Read-only trading/signal roll-up: no BFF route is wired for end-customer yet (explicit not_configured marker)."
+    },
+    "trialPage": {
+      "title": "Trial and test period",
+      "lead": "Trial status comes from the commerce lifecycle when the BFF and gateway are available; otherwise the section is empty by design (no success fiction).",
+      "unavailable": "Lifecycle is not available (BFF or gateway not configured, or the tenant has no commercial lifecycle record).",
+      "status": "Status",
+      "trialEnds": "Trial ends (UTC, if any)",
+      "clock": "Trial window active",
+      "active": "active",
+      "inactive": "inactive or ended",
+      "nextContract": "To review contract and billing, open",
+      "contractLink": "Contract & billing"
+    },
+    "riskPage": {
+      "title": "Risk disclosure",
+      "lead": "This product involves financial risk, including the risk of total loss. Nothing here is personal investment or tax advice.",
+      "point1": "You may lose part or all of the capital you allocate to this product.",
+      "point2": "Execution quality and regulatory treatment depend on your exchange, jurisdiction, and the agreed contract.",
+      "point3": "Past performance, simulations, and demo data (where shown) are not a guarantee of future results.",
+      "point4": "A recorded acknowledgement of risk, contract acceptance, and operator approval (where required) is separate from this general disclosure.",
+      "ackProcess": "A formal, auditable risk acknowledgement in your commercial lifecycle is a prerequisite for a live (real) go-live, together with a signed/accepted contract. This text does not replace a signed agreement."
+    },
+    "exchangePage": {
+      "title": "Exchange connection (status)",
+      "lead": "Broker and exchange state are shown with non-secret hints; keys never appear in the web client.",
+      "unavailable": "Integrations are not available (BFF, gateway, or no integration snapshot for the tenant).",
+      "brokerState": "Broker state (operator-side snapshot):",
+      "noKeys": "This screen never shows API key material. Full credentials live only in operator-controlled configuration."
+    },
+    "tradingPage": {
+      "title": "Signals and activity (read-only)",
+      "lead": "A minimal read-only summary is planned. Today there is no end-customer BFF endpoint for signals; the field below is an explicit not_configured state.",
+      "bffState": "BFF read-only state:",
+      "noExecution": "The customer portal has no order placement, parameter mutation, or live strategy changes — those remain in operator and backend flows with separate controls and audits."
+    },
     "placeholder": "This section is a placeholder for now.",
     "backToProduct": "Back to product home",
     "accountBilling": {
       "title": "Contract & billing",
+      "bffSource": "Data below is from the BFF and gateway (GET /v1/commerce/customer/me) when configured — no secrets in the browser. If the plan line shows \"—\", the BFF is not able to return a full profile (see overview BFF state).",
       "contractHeading": "Your contract",
-      "billingHeading": "Your billing"
+      "planLine": "Current plan (non-secret fields): {plan}.",
+      "billingHeading": "Your billing",
+      "billingStub": "Payment history and provider-specific billing UI are not part of this skeleton; link out or extend the BFF with documented commerce endpoints (no success fiction without backend integration)."
     },
     "help": {
       "title": "Help & support",

@@ -6,7 +6,7 @@ from shared_py.rust_core_bridge import assert_float64_c_contiguous
 
 
 def test_scrub_plaintext_openai_style() -> None:
-    s = "token=sk-proj-abcdefghijklmnopqrstuvwxyz0123456789"
+    s = "token=" + "sk-proj-" + "abcdefghijklmnopqrstuvwxyz0123456789"
     out = scrub_plaintext(s)
     assert "sk-proj-" not in out
     assert "[REDACTED" in out

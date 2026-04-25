@@ -183,6 +183,12 @@ class LiveReconcileService:
                                 self._settings.live_safety_latch_on_reconcile_fail
                             ),
                             "live_order_replace_enabled": self._settings.live_order_replace_enabled,
+                            "live_require_execution_binding": (
+                                self._settings.live_require_execution_binding
+                            ),
+                            "live_require_operator_release_for_live_open": (
+                                self._settings.live_require_operator_release_for_live_open
+                            ),
                             "require_shadow_match_before_live": (
                                 self._settings.require_shadow_match_before_live
                             ),

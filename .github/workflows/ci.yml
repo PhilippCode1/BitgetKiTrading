@@ -93,7 +93,7 @@ jobs:
 
       - name: Ruff (tests, tools, integration inkl. fixtures)
         run: >-
-          ruff check tests/unit tests/integration tests/signal_engine tests/shared
+          ruff check tests/unit tests/unit/scripts tests/integration tests/signal_engine tests/shared
           tests/paper_broker tests/fixtures tests/conftest.py
           tests/integration/fixtures config/required_secrets.py config/bootstrap.py
           tools/check_schema.py tools/check_contracts.py
@@ -106,6 +106,10 @@ jobs:
           tools/run_llm_eval.py
           tools/validate_eval_baseline.py
           tools/check_release_approval_gates.py
+          tools/check_github_branch_protection.py
+          tools/dr_postgres_restore_drill.py
+          tools/verify_alert_routing.py
+          scripts/verify_shadow_burn_in.py
 
       - name: LLM eval baseline manifest (Prompt 5)
         run: python tools/validate_eval_baseline.py
@@ -113,7 +117,7 @@ jobs:
       - name: Black (ohne tests/unit — Legacy-Format dort)
         run: >-
           black --check tests/integration tests/signal_engine tests/shared
-          tests/paper_broker tests/conftest.py tests/fixtures tools/check_schema.py
+          tests/unit/scripts tests/paper_broker tests/conftest.py tests/fixtures tools/check_schema.py
           tools/check_contracts.py tools/check_coverage_gates.py tools/release_sanity_checks.py
           tools/validate_env_profile.py tools/pip_audit_supply_chain_gate.py
           tools/check_production_env_template_security.py
@@ -123,6 +127,10 @@ jobs:
           tools/run_llm_eval.py
           tools/validate_eval_baseline.py
           tools/check_release_approval_gates.py
+          tools/check_github_branch_protection.py
+          tools/dr_postgres_restore_drill.py
+          tools/verify_alert_routing.py
+          scripts/verify_shadow_burn_in.py
 
       - name: Mypy (kritische shared_py-Module, strict package)
         working-directory: shared/python
@@ -198,6 +206,10 @@ jobs:
         run: |
           python -m pip install pip-audit==2.7.3 cvss==3.2
           python tools/pip_audit_supply_chain_gate.py
+
+      - name: Branch-Protection-Tool (informativ, kein blockierendes Grün ohne API)
+        run: python3 tools/check_github_branch_protection.py --repo "${{ github.repository }}"
+        continue-on-error: true
 
   dashboard:
     name: Dashboard (types, Jest, build, pnpm audit)

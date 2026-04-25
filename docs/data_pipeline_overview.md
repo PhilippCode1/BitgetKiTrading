@@ -20,7 +20,7 @@ Kurzüberblick für Betrieb und Entwicklung (Prompt 11). Detaillierte Live-Termi
 
 ## Leerer lokaler Stack
 
-- **Kanonische** Migrationen `596`/`597`/`603` sind **No-Op-Platzhalter** (Forward-only); aktive Demo-INSERTs liegen nur unter **`infra/migrations/postgres_demo/`** und laufen nur mit **`BITGET_ALLOW_DEMO_SCHEMA_SEEDS=true`** und zweiter Phase `python infra/migrate.py --demo-seeds` (Compose-`migrate`-Entrypoint macht das automatisch nach dem Hauptlauf). Vertrag: `docs/cursor_execution/11_migrations_and_seed_separation.md`.
+- **Kanonische** Migrationen `596`/`597`/`603` sind **No-Op-Platzhalter** (Forward-only); aktive Demo-INSERTs liegen nur unter **`infra/migrations/postgres_demo/`** und laufen nur mit **`BITGET_ALLOW_DEMO_SCHEMA_SEEDS=true`** und zweiter Phase `python infra/migrate.py --demo-seeds` (Compose-`migrate`-Entrypoint macht das automatisch nach dem Hauptlauf). Vertrag: `docs/migrations.md` (Abschnitt Demo-SQL).
 - **400** (`learn.online_drift_state`): Seed-Zeile `global`/`ok` bei frischer DB (Schema, kein Markt-Demo).
 
 ## Erklärung ohne stille Lücken

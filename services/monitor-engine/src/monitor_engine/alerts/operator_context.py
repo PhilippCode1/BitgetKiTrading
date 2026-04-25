@@ -2,7 +2,7 @@
 Strukturierte Betreiberhinweise fuer ops.alerts / events:system_alert.
 
 Ziel: Alert zeigt nicht nur das Symptom, sondern wahrscheinliche Ursachen,
-Einstieg im Stack, betroffene Dienste und erwartete Folgewirkung (Datei 08 / SLOs).
+Einstieg im Stack, betroffene Dienste und erwartete Folgewirkung (Runbooks / SLOs).
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ _DOC_STACK = "docs/stack_readiness.md"
 _DOC_OBS = "docs/observability.md"
 _DOC_OBS_SLO = "docs/observability_slos.md"
 _DOC_ROOT_SLO = "OBSERVABILITY_AND_SLOS.md"
-_DOC_08 = "docs/chatgpt_handoff/08_FEHLER_ALERTS_UND_ROOT_CAUSE_DOSSIER.md"
+_DOC_INCIDENTS = "docs/emergency_runbook.md"
 
 
 def _family(alert_key: str) -> str:
@@ -139,7 +139,7 @@ def merge_operator_guidance(
         ]
         first_steps = [
             "Gateway `GET /v1/system/health` → data_freshness / warnings_display lesen.",
-            f"Passenden Producer laut {_DOC_08} Abschnitt 5 zuordnen.",
+            f"Passenden Producer laut Stack-Doku zuordnen ({_DOC_STACK}, {_DOC_OBS}).",
             "`DATA_STALE_WARN_MS` nur nach Ursachenfix anpassen, nicht zur Alert-Unterdrueckung.",
         ]
         if dp.startswith("candles"):
@@ -171,7 +171,7 @@ def merge_operator_guidance(
         first_steps = [
             "market-stream Logs: WebSocket, 429, Reconnect.",
             "Redis: Stream-Laenge und letzte IDs pruefen; Producer-Prozess healthy.",
-            f"Runbook: {_DOC_08} Abschnitt 4 (stream stalled).",
+            f"Runbook: Redis-Streams / Backlog pruefen ({_DOC_OBS}, {_DOC_INCIDENTS}).",
         ]
         stack_entry = "market-stream und Bitget-Verbindung zuerst, dann Redis-Stream."
         downstream = (
@@ -204,7 +204,7 @@ def merge_operator_guidance(
         causes = ["Siehe title/message und details; Familie nicht speziell klassifiziert."]
         first_steps = [
             "`GET /v1/monitor/alerts/open` und `GET /v1/system/health` (JWT).",
-            f"monitor-engine Logs; Referenz {_DOC_08}.",
+            f"monitor-engine Logs; Referenz {_DOC_INCIDENTS}.",
         ]
         stack_entry = "monitor-engine → betroffenen Subsystem aus alert_key ableiten."
         downstream = "Folgewirkung abhaengig vom Subsystem — Health- und Integrationsmatrix pruefen."
@@ -217,7 +217,7 @@ def merge_operator_guidance(
     out["operator_stack_entry_de"] = stack_entry
     out["operator_downstream_impact_de"] = downstream
     out["operator_doc_refs"] = [
-        _DOC_08,
+        _DOC_INCIDENTS,
         _DOC_ROOT_SLO,
         _DOC_OBS_SLO,
         _DOC_OBS,

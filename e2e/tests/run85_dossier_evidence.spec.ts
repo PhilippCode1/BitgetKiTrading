@@ -9,8 +9,8 @@ const DOSSIER_DIR = path.join(
   "..",
   "..",
   "docs",
-  "cursor_execution",
-  "85_run_evidence",
+  "release_evidence",
+  "run85",
 );
 // __dirname = e2e/tests → ".." ".." = Repo-Root
 

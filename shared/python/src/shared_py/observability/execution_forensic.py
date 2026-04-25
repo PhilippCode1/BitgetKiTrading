@@ -450,10 +450,3 @@ def redact_operator_journal_details(details: dict[str, Any] | None) -> dict[str,
     if not isinstance(details, dict):
         return {}
     return redact_nested_mapping(details, max_depth=4)
-
-
-# Audit-Ledger: fachliche Fingerabdruecke (Signal / LLM+Konsens / Risk)
-from shared_py.observability.ledger_decision_package import (  # noqa: E402
-    build_ledger_decision_package,
-    content_sha256_hex,
-)

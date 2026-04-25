@@ -1,6 +1,6 @@
 # monitor-engine
 
-Periodische Ueberwachung: HTTP `/health`/`/ready`/`/metrics` anderer Services, Redis-Streams (`XPENDING`, `XINFO GROUPS`, `XINFO STREAM`), Datenfrische in Postgres, DLQ/LLM-Heuristik. Schreibt nach `ops.*` und publiziert `events:system_alert` (Dedupe + Rate-Limit). **Alert-`details`** enthalten strukturierte Betreiberhinweise (`operator_*`, `correlation`) via `alerts/operator_context.py` — siehe `docs/cursor_execution/20_monitor_alerts_and_observability.md`.
+Periodische Ueberwachung: HTTP `/health`/`/ready`/`/metrics` anderer Services, Redis-Streams (`XPENDING`, `XINFO GROUPS`, `XINFO STREAM`), Datenfrische in Postgres, DLQ/LLM-Heuristik. Schreibt nach `ops.*` und publiziert `events:system_alert` (Dedupe + Rate-Limit). **Alert-`details`** enthalten strukturierte Betreiberhinweise (`operator_*`, `correlation`) via `alerts/operator_context.py` — siehe `docs/observability.md`, `docs/monitoring_runbook.md`.
 
 ## Endpoints
 

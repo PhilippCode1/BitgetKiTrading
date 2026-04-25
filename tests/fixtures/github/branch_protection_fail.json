@@ -1,0 +1,37 @@
+{
+  "fixture_version": 1,
+  "raw_note": "Required checks vollstaendig, zentraler release-approval-gate FEHLT",
+  "data": {
+    "required_status_checks": {
+      "strict": true,
+      "checks": [
+        {
+          "context": "ci / python",
+          "app_id": 1
+        },
+        {
+          "context": "ci / dashboard",
+          "app_id": 1
+        },
+        {
+          "context": "ci / compose_healthcheck",
+          "app_id": 1
+        }
+      ],
+      "contexts": [
+        "ci / python",
+        "ci / dashboard",
+        "ci / compose_healthcheck"
+      ]
+    },
+    "required_pull_request_reviews": {
+      "required_approving_review_count": 0
+    },
+    "allow_force_pushes": {
+      "enabled": true
+    },
+    "allow_deletions": {
+      "enabled": false
+    }
+  }
+}

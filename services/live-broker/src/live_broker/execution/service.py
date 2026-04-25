@@ -1225,6 +1225,11 @@ class LiveExecutionService:
 
         if not self._settings.live_trade_enable:
             return "blocked", "live_trade_disabled"
+        if (
+            intent.leverage is not None
+            and int(intent.leverage) > int(self._settings.risk_governor_live_ramp_max_leverage)
+        ):
+            return "blocked", "live_ramp_leverage_cap_exceeded"
         # Globales Halt-Bit (Redis) stoppt reale Submits in orders.service
         # ``_call_private`` (In-Process-Latch) — nicht in dieser DB-Policy-Schicht.
         try:

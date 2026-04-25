@@ -4,7 +4,7 @@ Monorepo fuer eine **produktionsfaehige** Pipeline: Marktdaten → Features → 
 
 ## Produktreife 10/10 (Software-Repo) und „Production Launch“
 
-**Stand (P83 — Doku-Paritaet & Audit-Master):** Im **Umfang dieses Repos** gilt **10/10** fuer gelieferte Technik, CI, geschlossene P0-Gap-Matrix, harte Multi-Asset-Pfade, Gate-Dokument `docs/SYSTEM_AUDIT_MASTER.md` (Phasen 1–18 **COMPLETED**), technisch abgehakte `docs/LaunchChecklist.md` und vollstaendig dokumentierte Trennung **Kunden- vs. Operator-** UI (BFF, Proxy, `server-env.ts` / `API_GATEWAY_URL`). Echte Boersen-Keys, Recht und Management-Unterschriften sind **kein** Git-Commit — siehe `docs/LAUNCH_DOSSIER.md` und die Signoff-Tabelle in `docs/LaunchChecklist.md`.
+**Stand (P83 — Doku-Paritaet & Audit-Master):** Im **Umfang dieses Repos** gilt **10/10** fuer gelieferte Technik, CI, geschlossene P0-Gap-Matrix, harte Multi-Asset-Pfade, Gate-Dokument `docs/SYSTEM_AUDIT_MASTER.md` (Phasen 1–18 **COMPLETED**), technisch abgehakte `docs/LaunchChecklist.md` und vollstaendig dokumentierte Trennung **Kunden- vs. Operator-** UI (BFF, Proxy, `server-env.ts` / `API_GATEWAY_URL`). Echte Boersen-Keys, Recht und Management-Unterschriften sind **kein** Git-Commit — siehe `docs/LAUNCH_DOSSIER.md` und die Signoff-Tabelle in `docs/LaunchChecklist.md`. **Diese „Software-Repo 10/10“ ist nicht** dasselbe wie ein institutioneller **Echtgeld-Go-Live-10/10** (L4–L5-Evidenz, externe Beweise) — trennende Map und Audit: `docs/production_10_10/README.md`, Befehl `python tools/production_readiness_audit.py` (ohne Doku-Claims fiktiv gruen zu stellen).
 
 **Empfohlener erste Live-Stufe — Manual Mirror R1 (operativ, Kurzfassung):**
 

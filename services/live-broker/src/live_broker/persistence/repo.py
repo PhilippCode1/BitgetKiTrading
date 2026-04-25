@@ -124,7 +124,9 @@ class LiveBrokerRepository:
         """
         try:
             with self._connect() as conn:
-                row = conn.execute(query).fetchone()
+                with conn.cursor(row_factory=dict_row) as cur:
+                    cur.execute(query)
+                    row = cur.fetchone()
         except Exception as exc:
             return False, str(exc)[:200]
         if row is None:

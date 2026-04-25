@@ -21,7 +21,7 @@ Iron Curtain (``--iron-curtain``):
 
 Legacy: siehe ehemaliger Ablauf (Vorgates, selfcheck, Probes, optional E2E).
 
-`docs/cursor_execution/07_ci_and_release_contract.md` — Abgleich.
+Siehe CI-Definition in `.github/workflows/ci.yml` und `package.json` (check-types, tests, release scripts).
 """
 from __future__ import annotations
 

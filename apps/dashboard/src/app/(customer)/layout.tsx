@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 import { CustomerShell } from "@/components/layout/CustomerShell";
+import { CustomerTrustBanner } from "@/components/portal/CustomerTrustBanner";
 import { getServerTranslator } from "@/lib/i18n/server-translate";
 import { getDashboardPersonaForServerComponent } from "@/lib/portal-persona";
 
@@ -23,5 +24,10 @@ type Props = Readonly<{ children: ReactNode }>;
  */
 export default async function CustomerPortalLayout({ children }: Props) {
   const persona = await getDashboardPersonaForServerComponent();
-  return <CustomerShell persona={persona}>{children}</CustomerShell>;
+  return (
+    <CustomerShell persona={persona}>
+      <CustomerTrustBanner />
+      {children}
+    </CustomerShell>
+  );
 }

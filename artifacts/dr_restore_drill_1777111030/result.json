@@ -1,0 +1,23 @@
+{
+  "status": "MISSING_TOOL",
+  "message": "fehlend:pg_dump,psql",
+  "schema_name": "(n/a)",
+  "dsn_sanitized": "(kein dsn)",
+  "git_sha": "bddd54fd27cef4650e0046bd24c4eaebb9ee4dd4",
+  "rto_sec": null,
+  "rpo_model_sec": null,
+  "total_sec": 0.0,
+  "before_sha256": "",
+  "after_sha256": "",
+  "checksums_match": false,
+  "rto_gate_ok": false,
+  "rpo_gate_ok": false,
+  "require_rto_sec": null,
+  "require_rpo_sec": null,
+  "dry_run": true,
+  "details": "pg_dump,psql",
+  "tool_check": [
+    "pg_dump",
+    "psql"
+  ]
+}

@@ -8,13 +8,15 @@ WORKDIR /app
 RUN apt-get update \
     && apt-get install -y --no-install-recommends build-essential \
     && rm -rf /var/lib/apt/lists/* \
-    && python -m pip install --upgrade "pip<26" \
-    && python -m venv /opt/venv
+    && python -m venv /opt/venv \
+    && /opt/venv/bin/python -m pip install --upgrade "pip<26"
+
 ENV PATH="/opt/venv/bin:$PATH"
 COPY constraints-runtime.txt /app/constraints-runtime.txt
 COPY config /app/config
 COPY shared/python /app/shared/python
 COPY shared/contracts /app/shared/contracts
+COPY shared/prompts /app/shared/prompts
 COPY services/llm-orchestrator /app/services/llm-orchestrator
 COPY services/signal-engine/src/signal_engine /app/services/signal-engine/src/signal_engine
 WORKDIR /app/services/llm-orchestrator

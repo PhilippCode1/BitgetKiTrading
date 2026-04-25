@@ -44,6 +44,22 @@ python tools/validate_env_profile.py --env-file .env.production --profile produc
 
 Bei Fehler: Exit-Code 1 und Liste fehlender oder Platzhalter-Variablen.
 
+Vollstaendige Secret-Surface-Tabelle (Matrix + `NEXT_PUBLIC`-Allowlist + kritischer Zusatz): `python tools/inventory_secret_surfaces.py --report-md docs/production_10_10/07_secret_surface_inventory.md`.  
+Production-Datei hart pruefen (keine Werte-Logs, nur redigierte Diagnose auf stderr): `python tools/verify_production_secret_sources.py --env-file <path> --strict --report-md /tmp/secret_source_report.md` — **erwartet FAIL** auf `.env.production.example` (Platzhalter-Template, kein gruenes „Production-Pass“).  
+Zusatzregel: `NEXT_PUBLIC_*` mit Secret-ähnlichen Namen (`...SECRET`, `...TOKEN`, `...API_KEY`, `...JWT`) wird als **public leak risk** gewertet und failt in `--strict`.
+
+## Leak, Rotation, Fail-Closed (Ablauf)
+
+1. **Leak vermutet oder bestaetigt:** Live-Handel sofort begrenzen (Kill-Switch / `LIVE_TRADE_ENABLE=false` / `EXECUTION_MODE=shadow` laut Betriebsprozess), betroffene Dienste isolieren, kein Re-Commit von Rohtoken in Git/Tickets/Logs.
+2. **Trennung nach Klasse:**  
+   - **Bitget/Exchange:** neue API-Key-Tripel in Vault/SM, alte im Anbieter rotieren/verwerfen, `live-broker` / Gateway neu starten, Operator-Audit.  
+   - **DB/Redis:** Zugangsdaten und `DATABASE_URL`/`REDIS_URL` aus Secret-Store, Verbindungsabbau erzwingen, Migrationen nur nach Freigabe.  
+   - **JWT (`GATEWAY_JWT_SECRET`, `JWT_SECRET`, `DASHBOARD_GATEWAY_AUTHORIZATION`):** Secret rotieren, alle Session-/Bearer ableiten, Dashboard-Gateway-JWT neu minten.  
+   - **Telegram/Provider:** `TELEGRAM_BOT_TOKEN`, Webhook-Secret, `OPENAI_API_KEY` getrennt rotieren; Webhooks im Bot-Provider neu setzen.  
+   - **Zahlungen:** `STRIPE_*` bzw. Mock/Prod-Webhooks; Webhook-Endpoint-Geheimnisse im Gateway und Dashboard BFF.  
+3. **Auditlog:** z. B. Gateway-Audit, Monitor-Alerts, Changelog mit Ticket/Owner; kein Secret im Klartext in Reports.  
+4. **Evidenz:** Ampel **Secrets / Vault** im Gap-Register bleibt ohne reellen Vault-KMS-Drill **nicht** voll gruen (`docs/production_10_10/00_master_gap_register.md`).
+
 ## Staging-Smoke (Gateway + KI)
 
 ```bash

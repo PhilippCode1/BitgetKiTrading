@@ -1,0 +1,9 @@
+{
+  "fixture_version": 1,
+  "raw_note": "Unvollstaendig / 403-Analog — keine pruefbaren required checks",
+  "data": {
+    "required_status_checks": null,
+    "required_pull_request_reviews": null,
+    "message": "API-Daten lueckenhaft"
+  }
+}

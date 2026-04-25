@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-P85: Baut docs/cursor_execution/85_final_release_dossier.md (Go/No-Go, Evidenz).
+P85: Baut docs/release_evidence/85_final_release_dossier.md (Go/No-Go, Evidenz).
 
 Voraussetzungen je Abschnitt:
 - Iron Curtain: Log-Datei oder --run-iron (sehr lange) / copy von pnpm release:gate:full
@@ -27,8 +27,8 @@ from pathlib import Path
 from typing import Any
 
 _ROOT = Path(__file__).resolve().parents[1]
-_DOCS = _ROOT / "docs" / "cursor_execution"
-_DEFAULT_EVID = _DOCS / "85_run_evidence"
+_DOCS = _ROOT / "docs" / "release_evidence"
+_DEFAULT_EVID = _DOCS / "run85"
 _OUT_MD = _DOCS / "85_final_release_dossier.md"
 
 
@@ -153,7 +153,7 @@ def _build(
             "hint": "Log nach pnpm release:gate:full nachliefern",
         }
         iron_snip = (
-            "Kein iron_curtain.log in 85_run_evidence/ und kein --run-iron. "
+            "Kein iron_curtain.log in run85/ und kein --run-iron. "
             "Befehl: pnpm release:gate:full (liefert vollstaendigen Iron-Curtain-Lauf); "
             "Log nach " + str(iron_path.name) + " kopieren."
         )
@@ -315,14 +315,14 @@ def _build(
         if len(sbody) > 12000:
             sbody = (
                 sbody[:8000]
-                + "\n\n…(gekürzt; vollständig: `85_run_evidence/shadow_burn_in.md`)\n"
+                + "\n\n…(gekürzt; vollständig: `run85/shadow_burn_in.md`)\n"
             )
         shadow_incl = f"\n\n<details><summary>Shadow / Burn-In Report (Auszug)</summary>\n\n```markdown\n{sbody}\n```\n\n</details>\n"
     else:
         shadow_incl = "\n*(Kein `shadow_burn_in.md` — siehe Befehl in Abschnitt 2.)*\n"
 
     sh_lines = [
-        f"![{n}](85_run_evidence/{n})" for n in screen_names if (evidence / n).is_file()
+        f"![{n}](run85/{n})" for n in screen_names if (evidence / n).is_file()
     ]
 
     fazit_engineering = (
@@ -336,7 +336,7 @@ def _build(
 
 **Erstellt (UTC):** {ts}  
 **Git HEAD:** `{sha}`  
-**Evidenzordner:** [`85_run_evidence/`](85_run_evidence/) (inkl. `dossier_meta.json`)
+**Evidenzordner:** [`run85/`](run85/) (inkl. `dossier_meta.json`)
 
 Dieses Dokument ist die zentrale Management-Basis (Go/No-Go) und fasst die technischen
 Nachweise aus 85+ Prompt-Iteraten zusammen — inkl. Iron-Curtain-Gate (P84), Shadow
@@ -348,10 +348,10 @@ Burn-in (P25/Readiness), UI-Evidenz (Kundenportal + Health) und AI-Reasoning-Met
 
 | Säule | Status (Run 85) | Beweis |
 |-------|-----------------|--------|
-| **1) Iron-Curtain-Gate (P84)** | **{s_iron}** | [iron_curtain.log](85_run_evidence/iron_curtain.log) (oder vgl. Konsolenauszug unten) |
-| **2) Shadow-Burn-in / Readiness (P25)** | **{s_sh}** | [shadow_burn_in.md](85_run_evidence/shadow_burn_in.md) (falls generiert) |
-| **3) UI — Health-Grid + Kundenportal** | **{s_sc}** | Playwright-Run, PNG in `85_run_evidence/` |
-| **4) AI Reasoning Accuracy (P70)** | **{s_re}** | [reasoning_accuracy.json](85_run_evidence/reasoning_accuracy.json) & Report-Skript |
+| **1) Iron-Curtain-Gate (P84)** | **{s_iron}** | [iron_curtain.log](run85/iron_curtain.log) (oder vgl. Konsolenauszug unten) |
+| **2) Shadow-Burn-in / Readiness (P25)** | **{s_sh}** | [shadow_burn_in.md](run85/shadow_burn_in.md) (falls generiert) |
+| **3) UI — Health-Grid + Kundenportal** | **{s_sc}** | Playwright-Run, PNG in `run85/` |
+| **4) AI Reasoning Accuracy (P70)** | **{s_re}** | [reasoning_accuracy.json](run85/reasoning_accuracy.json) & Report-Skript |
 {re_md}
 **Technischer Sammel-Status (dieser Lauf):** {summary_text}
 
@@ -368,7 +368,7 @@ Status: **{s_iron}** — ein Fehler in einem Rand-Service (z. B. onchain-sniffer
 ```
 
 - Voll-Lauf: `pnpm release:gate:full` (setzt `ENVIRONMENT=production` + Iron Curtain + E2E).
-- Nur Hash der Evidenz oder CI: Log nach `85_run_evidence/iron_curtain.log` speichern.
+- Nur Hash der Evidenz oder CI: Log nach `run85/iron_curtain.log` speichern.
 
 ---
 
@@ -376,7 +376,7 @@ Status: **{s_iron}** — ein Fehler in einem Rand-Service (z. B. onchain-sniffer
 
 Status: **{s_sh}**
 
-- Erzeugen: `python scripts/verify_shadow_burn_in.py --hours 72 --readiness-out docs/cursor_execution/85_run_evidence/shadow_burn_in.md`
+- Erzeugen: `python scripts/verify_shadow_burn_in.py --hours 72 --readiness-out docs/release_evidence/run85/shadow_burn_in.md`
 - Voraussetzung: migrierte **Postgres** mit Laufzeitdaten im Analysefenster; sonst *SKIP*.
 
 {shadow_incl}
@@ -400,8 +400,8 @@ Vollbild-Health-Seite: **Operator `/console/health`**. Kunden**portal**: **`/por
 
 Status: **{s_re}**
 
-- JSON: [reasoning_accuracy.json](85_run_evidence/reasoning_accuracy.json)
-- CLI: `python scripts/ai_reasoning_accuracy_report.py --limit 30 --json-out 85_run_evidence/reasoning_accuracy.json`
+- JSON: [reasoning_accuracy.json](run85/reasoning_accuracy.json)
+- CLI: `python scripts/ai_reasoning_accuracy_report.py --limit 30 --json-out run85/reasoning_accuracy.json`
 
 **Hinweis:** Leere Tabelle `learn.post_trade_review` ist ein **leeres Learning-Fenster**, kein technischer Mismatch der Pipeline — für „PASS“-Gate-Status siehe `reasoning_accuracy.json:status` (`ok` / `empty`).
 
@@ -409,7 +409,7 @@ Status: **{s_re}**
 
 ## 5) Sammel-Artefakte (optional `collect_release_evidence.ps1`)
 
-Bei Ingest: `collect_*` Kopien in `85_run_evidence/`.
+Bei Ingest: `collect_*` Kopien in `run85/`.
 
 {'' if (ingest and ingest.is_dir()) else '*(kein --ingest in diesem Lauf)*' }
 
@@ -436,7 +436,7 @@ def main() -> int:
         "--evidence",
         type=Path,
         default=_DEFAULT_EVID,
-        help="Ordner für Artefakte (default: docs/cursor_execution/85_run_evidence)",
+        help="Ordner für Artefakte (default: docs/release_evidence/run85)",
     )
     p.add_argument(
         "--out",
@@ -448,7 +448,7 @@ def main() -> int:
         "--ingest",
         type=Path,
         default=None,
-        help="Vorheriger collect_release_evidence-Ordner (Kopie nach 85_run_evidence)",
+        help="Vorheriger collect_release_evidence-Ordner (Kopie nach run85)",
     )
     p.add_argument(
         "--run-iron",

@@ -19,6 +19,8 @@ Nach Neustart rekonstruiert der Worker den Runtime-Read-Model-Pfad aus **Orders 
 
 ## 1.1. DR-Übung: Postgres-Restore (stündliches Backup, Staging/Prod)
 
+**Automatisierte Evidenz (Schema-Drill, Dump/Restore/Check):** Wiederkehrende und für Release-Evidence prüfbare Läufe: `docs/production_10_10/03_postgres_restore_drill.md` und `tools/dr_postgres_restore_drill.py` (RTO/RPO-Metriken, `PASS`/`FAIL` im Markdown-Bericht). Ergänzt, ersetzt nicht, ein vollständiges Stunden-Backup-`pg_restore` in eine Klon-DB (unten).
+
 Vor Echtgeld-Go/Operator-Freigabe: **stündliches** Backup mindestens einmal in eine **Klon-Umgebung** (z. B. Staging) einspielen und Lese-/Write-Pfade (Migrationen, Ops-API, Live-Broker-Read) validieren. App-Instanzen vor dem Einspielen stoppen, die leere Zieldatenbank anlegen oder `DROP/CREATE` (Schema-only nicht ausreichend, wenn Inhalte referenziert werden).
 
 **Custom-Format-Dump (üblich, von `pg_dump -Fc` erzeugt):** Ziel-DSN ersetzen; Host/Port/User aus Geheimnissen (nicht in Git).

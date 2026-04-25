@@ -4,7 +4,7 @@ import path from "node:path";
 import { expect, test } from "@playwright/test";
 
 /**
- * Responsive Smoke + optionale Screenshots für docs/cursor_execution/47_responsive_assets/
+ * Responsive Smoke + optionale Screenshots unter docs/release_evidence/responsive/
  * (nur wenn Verzeichnis beschreibbar; bei `pnpm e2e` mit laufendem Dashboard).
  */
 const ASSET_DIR = path.join(
@@ -12,8 +12,8 @@ const ASSET_DIR = path.join(
   "..",
   "..",
   "docs",
-  "cursor_execution",
-  "47_responsive_assets",
+  "release_evidence",
+  "responsive",
 );
 
 async function primeConsoleSession(page: import("@playwright/test").Page) {

@@ -7,7 +7,7 @@ Felder (immer gesetzt):
 - empty_state: bool
 - degradation_reason: Maschinencode oder null
 - next_step: konkrete Handlungsempfehlung oder null
-- read_envelope_contract_version: int (stabil fuer Clients/Logs; siehe docs/cursor_execution/30)
+- read_envelope_contract_version: int (stabil fuer Clients/Logs; vgl. BFF in docs/INTERNAL_SERVICE_ROUTES.md)
 """
 
 from __future__ import annotations

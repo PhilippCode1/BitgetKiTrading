@@ -6,7 +6,7 @@
 
 **Pruefmethode:** Suche nach typischen Frontend-Artefakten (`package.json` im Root-Webapp, `apps/web`, Next.js).
 
-**Ergebnis:** **Kein** dediziertes Kunden- oder Admin-**Web-UI** als ausgelieferte App im Workspace-Stichprobe (kein `web/` wie in `CURSOR_IMPLEMENTATION_MODE` empfohlen).
+**Ergebnis:** **Kein** separater `web/`-Wurzel-Workspace: Kunden- und Admin-Oberflaeche liegen im **Dashboard** (`apps/dashboard`) als Route-Gruppen.
 
 **Konsequenz:** Die **Haelfte** der Zielbewertung („Oberflaeche“) ist fuer ein **serioeses** Modul-Mate-Produkt **nicht** erfuellt — unabhaengig von der Backend-Qualitaet.
 

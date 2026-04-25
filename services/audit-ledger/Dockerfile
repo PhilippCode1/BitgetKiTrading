@@ -8,12 +8,14 @@ WORKDIR /app
 RUN apt-get update \
     && apt-get install -y --no-install-recommends build-essential \
     && rm -rf /var/lib/apt/lists/* \
-    && python -m pip install --upgrade "pip<26" \
-    && python -m venv /opt/venv
+    && python -m venv /opt/venv \
+    && /opt/venv/bin/python -m pip install --upgrade "pip<26"
+
 ENV PATH="/opt/venv/bin:$PATH"
 COPY constraints-runtime.txt /app/constraints-runtime.txt
 COPY config /app/config
 COPY shared/python /app/shared/python
+COPY shared/contracts /app/shared/contracts
 COPY services/audit-ledger /app/services/audit-ledger
 WORKDIR /app/services/audit-ledger
 RUN pip install --no-cache-dir -c /app/constraints-runtime.txt -e /app/shared/python \

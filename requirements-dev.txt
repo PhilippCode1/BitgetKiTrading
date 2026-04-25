@@ -3,6 +3,7 @@
 # Hinweis: Laufzeit-Abhaengigkeiten der Services liegen in den jeweiligen services/*/pyproject.toml.
 
 pytest==8.3.4
+PyYAML==6.0.2
 PyJWT==2.12.1
 pytest-cov==6.0.0
 httpx==0.28.1

@@ -5,7 +5,7 @@
 
   Windows PowerShell 5.1: In doppelten Anfuehrungszeichen keine Em-Dash-Zeichen (U+2014)
   und keine anderen mehrbyte-UTF-8-Zeichen ohne UTF-8-BOM - sonst ParserError.
-  Siehe docs/cursor_execution/02_windows_smoke_and_powershell_fix.md
+  UTF-8-BOM fuer Skripte mit Nicht-ASCII: Editor/PS-Kodierung beachten; siehe docs/dev-workflow.md
 #>
 
 $script:DevDefaultEnvFile = ".env.local"

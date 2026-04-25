@@ -28,8 +28,6 @@ _SKIP_PARTS = frozenset(
         "coverage",
         ".turbo",
         "__pycache__",
-        # Eigenes App-Shell/Generator-Tree; nicht mit Workspace-Root versionieren
-        "Super_Bau_App",
     }
 )
 

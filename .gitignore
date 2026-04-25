@@ -6,6 +6,7 @@
 /.env production/
 !.env.example
 !.env.local.example
+!.env.staging.example
 !.env.shadow.example
 !.env.production.example
 !.env.test.example
@@ -103,5 +104,3 @@ pnpm-debug.log*
 Thumbs.db
 .idea/
 .vscode/
-
-Super_Bau_App/

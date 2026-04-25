@@ -1,7 +1,7 @@
 """
-Cursor-Liefermodus: Antwortformat, Bauabschnitte, Kennzeichner (Modul Mate GmbH).
+LLM/Assist-Liefermodus: Antwortformat, Abschnitte, Kennzeichner (unveraenderte Konstanten, Kompatibilitaet).
 
-Bezug: docs/CURSOR_IMPLEMENTATION_MODE_MODUL_MATE.md (Prompt 10).
+Historische Dokument-ID; Spezifikation in diesem Modul und zugehoerigen Vertragsdateien.
 
 Dient als maschinenlesbare Referenz fuer Skripte, CI-Hinweise oder Generator-Tools.
 """

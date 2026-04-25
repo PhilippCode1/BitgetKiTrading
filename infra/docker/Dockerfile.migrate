@@ -12,8 +12,8 @@ WORKDIR /app
 RUN apt-get update \
     && apt-get install -y --no-install-recommends build-essential \
     && rm -rf /var/lib/apt/lists/* \
-    && python -m pip install --upgrade "pip<26" \
-    && python -m venv /opt/venv
+    && python -m venv /opt/venv \
+    && /opt/venv/bin/python -m pip install --upgrade "pip<26"
 
 ENV PATH="/opt/venv/bin:$PATH"
 COPY constraints-runtime.txt /app/constraints-runtime.txt
@@ -35,7 +35,9 @@ COPY --from=builder /opt/venv /opt/venv
 COPY infra/migrate.py /app/infra/migrate.py
 COPY infra/migrations /app/infra/migrations
 COPY infra/docker/migrate_entrypoint.sh /app/infra/docker/migrate_entrypoint.sh
-RUN chown -R modul_mate:modul_mate /app \
+# Windows-Arbeitskopie kann CRLF liefern; Shebang+CRLF -> "no such file or directory" im Linux-Container
+RUN sed -i 's/\r$//' /app/infra/docker/migrate_entrypoint.sh \
+    && chown -R modul_mate:modul_mate /app \
     && chmod +x /app/infra/docker/migrate_entrypoint.sh
 
 USER modul_mate

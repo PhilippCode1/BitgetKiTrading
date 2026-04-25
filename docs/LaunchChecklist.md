@@ -12,7 +12,7 @@ Nebenbefunde aus Audits (eingearbeitet in Doku, Tests und Skripte):
 - **Redis:** Timeouts und Client-Härtung in Betrieb/ENV zu setzen; Chaos-/Recovery-Pfade in Integrations- und Runbook-Dokumenten referenziert.
 - **Admin / Kommerz-Gates:** `MODUL_MATE_GATE` / Tenant-Gates pro ENV aktiv; Echtgeld-Submit nur mit abgeschlossenem Verwaltungs- und Vertragsworkflow (siehe `shared_py.modul_mate_db_gates`, `docs/commercial_transparency.md`).
 - **Kunden- vs. Operator-UI:** Dashboard-Operator-Proxy, getrennte Rollen und keine Strategie-Mutation per Chat; siehe `docs/dashboard_operator.md`, `docs/dashboard_operator_console.md`.
-- **Shadow-Burn-In:** Kriterien und Zeitfenster `docs/shadow_burn_in_ramp.md`; **Zertifikat/Report** datenbasiert: `python scripts/verify_shadow_burn_in.py --hours 72` (Postgres, Markdown-Ausgabe; siehe gleiche Doku).
+- **Shadow-Burn-In:** Kriterien `docs/shadow_burn_in_ramp.md`; Zertifikat: `python scripts/verify_shadow_burn_in.py --hours 72 --strict` + `--output-json` (Feld `report_sha256`); Doku `docs/production_10_10/04_shadow_burn_in_certificate.md`.
 - **Kill-Switch / Safety-Latch:** Integrationstest `tests/integration/test_kill_switch_behavior.py` (mit `TEST_DATABASE_URL`); Runbooks: `docs/emergency_runbook.md`, `docs/recovery_runbook.md` (u. a. DR-Restore).
 
 Vor Go-Live (**shadow** als Referenz-Betrieb oder **live** mit echten Orders) die Punkte unten abhaken. **Reihenfolge einhalten:** erst Daten und Gates, dann Stack, dann Tests und Burn-in, zuletzt Live-Freigabe.
@@ -32,10 +32,12 @@ Vor Go-Live (**shadow** als Referenz-Betrieb oder **live** mit echten Orders) di
    - Dashboard: `pnpm install --frozen-lockfile` und `pnpm --dir apps/dashboard run lint` sowie `pnpm --dir apps/dashboard test`
    - **Compose-Stack (wie CI):** nach grünem `scripts/healthcheck.sh` nacheinander `python scripts/rc_health_runner.py .env.local` und `python scripts/verify_ai_operator_explain.py --env-file .env.local --mode orchestrator` (Dashboard-Health, Gateway-Kernpfade, **KI mit Fake-Provider**)
 8. **Replay-Determinismus:** deterministische Pfade in Shared/Risk/Exit/Paper/Live-Execution per Tests abgedeckt (`tests/`, `shared/python/tests/`); vollständige Bit-für-Bit-Replay des **gesamten** Stacks inkl. LLM-Orchestrator ist **nicht** als abgeschlossen dokumentiert (`docs/REPO_FREEZE_GAP_MATRIX.md` — u. a. Backoff mit Zufall im LLM-Service). Fuer Go-Live: Trading-Kern = deterministische Safety-Layer + quant/ML + Risk + Uncertainty + Gating; LLM nur unterstützend.
-9. **Shadow-Burn-in:** zuerst `EXECUTION_MODE=shadow`, `SHADOW_TRADE_ENABLE=true`, `LIVE_TRADE_ENABLE=false`, `LIVE_BROKER_ENABLED=true`, `LIVE_REQUIRE_EXECUTION_BINDING=true`, `LIVE_REQUIRE_OPERATOR_RELEASE_FOR_LIVE_OPEN=true`, `REQUIRE_SHADOW_MATCH_BEFORE_LIVE=true`; Burn-in-Kohorten und Kriterien laut `docs/shadow_burn_in_ramp.md`; **Burn-In-Zertifikat** (z. B. 72h) per `python scripts/verify_shadow_burn_in.py --hours 72` (Exit 0 = PASS) dokumentiert und archiviert.
+9. **Shadow-Burn-in:** zuerst `EXECUTION_MODE=shadow`, `SHADOW_TRADE_ENABLE=true`, `LIVE_TRADE_ENABLE=false`, `LIVE_BROKER_ENABLED=true`, `LIVE_REQUIRE_EXECUTION_BINDING=true`, `LIVE_REQUIRE_OPERATOR_RELEASE_FOR_LIVE_OPEN=true`, `REQUIRE_SHADOW_MATCH_BEFORE_LIVE=true`; Burn-in-Kohorten und Kriterien laut `docs/shadow_burn_in_ramp.md`; **Burn-In-Zertifikat** (z. B. 72h) per `python scripts/verify_shadow_burn_in.py --hours 72 --strict --output-md <pfad> --output-json <pfad>`: Exit **0** = `verdict: PASS` im JSON; `report_sha256` und Durchführung archiviert (Release-Evidence).
 10. **Konservative Erstfreigabe Hebel:** für die erste Echtgeldstufe bleiben **`RISK_ALLOWED_LEVERAGE_MAX=7`** und **`RISK_GOVERNOR_LIVE_RAMP_MAX_LEVERAGE=7`** gesetzt. Erhöhung nur nach dokumentierter Evidenz, nicht aus Marketing-Gründen.
-11. **Live-Mirror-Freigabe** erst nach Shadow-Burn-in: `EXECUTION_MODE=live`, `LIVE_TRADE_ENABLE=true`, `STRATEGY_EXEC_MODE=manual`, Live-Broker enabled, Bitget-Keys und Passphrase nur zur Laufzeit; nur `candidate_for_live` + `live_mirror_eligible=true` + `shadow_live_match_ok=true`.
-12. **Vor letztem Grün-Go (extern, nicht voll im Repo prüfbar):** Whitelist/Keys für Bitget API, Stripe-/Zahlungs-Webhooks, produktive Vault-Secrets — laut `docs/EXTERNAL_GO_LIVE_DEPENDENCIES.md`; `python tools/release_sanity_checks.py` weist am Log-Ende per **WARNING** erneut darauf hin.
+11. **Postgres-DR-Restore-Drill (Evidenz):** Vor **Live-Mirror** muss mindestens ein in Staging (oder vorproduktionsnahe analoge) ausgeführter Lauf `tools/dr_postgres_restore_drill.py` mit **Status `PASS`**, dokumentierten **RTO/RPO** (vs. Vorgabe), **Datum (UTC)**, **Umgebung**, `git_sha` (Bericht/CI) und archiviertem Markdown+Artefakten vorliegen — Ablauf `docs/production_10_10/03_postgres_restore_drill.md`. Ein reines Runbook ohne Report erfüllt die Freigabe nicht.
+12. **Live-Mirror-Freigabe** erst nach Shadow-Burn-in **und** nach Erfüllung von Ziffer 11 **und** nach PASS von `python scripts/verify_live_mirror_gate.py --env-file <prod-env> --strict`: `EXECUTION_MODE=live`, `LIVE_TRADE_ENABLE=true`, `STRATEGY_EXEC_MODE=manual`, Live-Broker enabled, Bitget-Keys und Passphrase nur zur Laufzeit; nur `candidate_for_live` + `live_mirror_eligible=true` + `shadow_live_match_ok=true`.
+13. **Alert-Routing-Evidenz** vor Echtgeld-Rampe: `python tools/verify_alert_routing.py --strict` muss lokal/CI gruen sein; reale On-Call-Zustellung bleibt externe Evidenz (`BLOCKED_EXTERNAL` falls nicht verfuegbar).
+14. **Vor letztem Grün-Go (extern, nicht voll im Repo prüfbar):** Whitelist/Keys für Bitget API, Stripe-/Zahlungs-Webhooks, produktive Vault-Secrets — laut `docs/EXTERNAL_GO_LIVE_DEPENDENCIES.md`; `python tools/release_sanity_checks.py` weist am Log-Ende per **WARNING** erneut darauf hin.
 
 ## Checkliste (Checkboxen)
 
@@ -50,7 +52,8 @@ Vor Go-Live (**shadow** als Referenz-Betrieb oder **live** mit echten Orders) di
 ### Daten und Migrationen
 
 - [x] `DATABASE_URL`, `REDIS_URL` aus Secret Manager; bei Compose zusätzlich `DATABASE_URL_DOCKER`, `REDIS_URL_DOCKER` konsistent; Redis-**Timeouts** und Stabilität in ENV/Client wie betrieblich vorgegeben.
-- [x] Migrationen angewendet (`infra/migrate.py`); Backup-/Restore-Strategie und DR-Übung inkl. `pg_restore` siehe `docs/recovery_runbook.md`.
+- [x] Migrationen angewendet (`infra/migrate.py`); Backup-/Restore-Strategie inkl. `pg_restore` siehe `docs/recovery_runbook.md`.
+- [ ] **(Release-Evidence / Staging, vor Live-Mirror):** archivierter Postgres-Restore-Drill mit **`PASS`**, RTO/RPO, Datum, Umgebung, `git_sha` laut `docs/production_10_10/03_postgres_restore_drill.md` (reines Lokaltooling ohne Staging-Report = **keine** harte Geld-Freigabe).
 
 ### Ausführungsmodus und Risk
 
@@ -74,7 +77,7 @@ Vor Go-Live (**shadow** als Referenz-Betrieb oder **live** mit echten Orders) di
 ### Shadow-Burn-in und Echtgeld-Ramp
 
 - [x] Repräsentative Burn-in-Matrix laut `docs/shadow_burn_in_ramp.md` abgeschlossen.
-- [x] Data Health, Route Stability, No-Trade Quality, Stop Fragility, Shadow-Live Divergence, Reconcile Cleanliness und Incident-Free Runtime gleichzeitig grün (Härte-Soft-Kriterien dort); **Zertifikat-Report** (DB-basiert) abgelegt, z. B. `python scripts/verify_shadow_burn_in.py --hours 72 --output-md reports/shadow_burn_in.md`.
+- [x] Data Health, Route Stability, No-Trade Quality, Stop Fragility, Shadow-Live Divergence, Reconcile Cleanliness und Incident-Free Runtime gleichzeitig grün (Härte-Soft-Kriterien dort); **Zertifikat-Report** (DB-basiert) z. B. `python scripts/verify_shadow_burn_in.py --hours 72 --strict --output-md reports/sbi.md --output-json reports/sbi.json` — für Freigabelinie: archivierter Lauf `verdict: PASS` und `report_sha256` aus JSON.
 - [x] Operator-Readiness-Drill: Release, Kill-Switch, Safety-Latch, Emergency-Flatten, Forensik.
 - [x] Startkohorte für Echtgeld-Mirror dokumentiert: Familie, Symbole, Playbook-Familien, Hebelstufe.
 - [x] No-Go-/Fallback-Bedingungen definiert; bei Verstoß fällt der Stack wieder auf `shadow-only`.
@@ -100,5 +103,6 @@ Vor Go-Live (**shadow** als Referenz-Betrieb oder **live** mit echten Orders) di
 | ---- | ----------------- | ---------------------- |
 | Checkliste (dieses Dokument) |  |  |
 | `release_sanity_checks.py` grün |  |  |
-| Shadow-Burn-In-Report (Skript) archiviert |  |  |
+| Shadow-Burn-In-Report (Skript) mit JSON-`report_sha256` + `PASS` archiviert |  |  |
+| Postgres-DR-Restore-Drill (Staging, `PASS`, RTO/RPO) archiviert |  |  |
 | Externe Abhängigkeiten (API/Webhooks/Secrets) laut Doku geprüft |  |  |

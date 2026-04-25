@@ -39,8 +39,7 @@ Wichtig:
 Optionaler zweiter Lauf: **`infra/migrations/postgres_demo/*.sql`** — dieselbe Tabelle `app.schema_migrations`,
 eindeutige Dateinamen (z. B. `910_demo_...`). Aktivierung nur mit **`BITGET_ALLOW_DEMO_SCHEMA_SEEDS=true`**;
 `python infra/migrate.py --demo-seeds` (Compose-Image: Entrypoint nach Hauptmigration). In Shadow/Production
-verboten (`validate_env_profile`). Die frueheren Dateinamen `596`/`597`/`603` unter `postgres/` sind **No-Op-Platzhalter**.
-Details: `docs/cursor_execution/11_migrations_and_seed_separation.md`.
+verboten (`validate_env_profile`). Die frueheren Dateinamen `596`/`597`/`603` unter `postgres/` sind **No-Op-Platzhalter** (forward-only, Demo-SQL nur im separaten Lauf).
 
 ## Tracking
 

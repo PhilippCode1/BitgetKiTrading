@@ -1,7 +1,7 @@
 # Finale Scorecard (evidenzbasiert)
 
 **Stand:** 2026-04-24 (P83 Doku-Paritaet)  
-**Regel:** **10** = fuer diese Dimension keine **P0-**Luecke laut Truth-/Gap-Matrix; CI-Gates gruen wie dokumentiert.
+**Regel:** **10** = fuer diese Dimension keine **P0-**Luecke laut Truth-/Gap-Matrix; CI-Gates gruen wie dokumentiert. **Evidenz-Disziplin (Doku/L1–L5) und harte Trennung zu institutionellem Echtgeld-Go-Live:** `docs/production_10_10/`, Werkzeug `../tools/production_readiness_audit.py`.
 
 **Roadmap 1–10 + P83:** `docs/ROADMAP_10_10_CLOSEOUT.md`, `docs/adr/ADR-0010-roadmap-accepted-residual-risks.md`, `docs/SYSTEM_AUDIT_MASTER.md` (Phasen 1–18 COMPLETED). **Gesamt-10/10 Software-Monorepo** = P0 geschlossen; **organisatorischer** 10/10 (Boerse live, Recht) = `docs/LaunchChecklist.md` Management-Signoff.
 
