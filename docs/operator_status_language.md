@@ -4,6 +4,15 @@ Dieses Dokument definiert die **kanonischen Statusbegriffe** fuer Doku,
 Dashboard, Gateway, Telegram und Operator-Prozesse. Ziel ist, dass dieselben
 Begriffe ueber alle Oberflaechen hinweg dieselbe Bedeutung tragen.
 
+## Sprachstandard
+
+- Produktive UI-Sprache ist Deutsch.
+- Englisch darf nur als technischer Fallback fuer Entwicklung/Tests bestehen.
+- Keine Marketing-, Billing-, Customer-, Pricing- oder Sales-Sprache in
+  sichtbaren Kernbereichen der Main Console.
+- Ergaenzende Vorgaben stehen in
+  `docs/production_10_10/german_ui_status_language.md`.
+
 ## Kernstatus
 
 | Begriff                    | Bedeutung                                                                 | Quelle                                                                                         |

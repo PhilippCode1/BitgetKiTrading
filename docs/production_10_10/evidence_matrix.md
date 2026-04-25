@@ -1,31 +1,65 @@
 # Evidence Matrix
 
-Diese Matrix ist konservativ. Wenn ein Nachweis im Repo nicht sicher gefunden
-oder nicht ausgefuehrt wurde, ist der Status `missing`, `partial` oder
-`external_required`. Kein Eintrag darf als Echtgeld-Go-Live-Freigabe gelesen
-werden.
+Diese Markdown-Datei ist die menschenlesbare Sicht auf die maschinenlesbare
+Matrix in `docs/production_10_10/evidence_matrix.yaml`. Die YAML ist die
+kanonische Quelle fuer Checker, Reports und Live-Blocker-Auswertung.
 
-| Bereich                          | Ziel                                                                           | Nachweisdatei oder Test                                                                                                                                                                      | Status              | Blockiert echten Live-Betrieb | Verantwortliche technische Komponente     | Naechster Schritt                                                        |
-| -------------------------------- | ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- | ----------------------------- | ----------------------------------------- | ------------------------------------------------------------------------ |
-| Architektur                      | Service- und Runtime-Grenzen pruefbar                                          | `README.md`, `docs/compose_runtime.md`, `docker-compose.yml`, `python tools/release_sanity_checks.py`                                                                                        | `partial`           | ja                            | Compose, Services, CI                     | Architektur- und Runtime-Diagramme mit Release-Evidence verknuepfen.     |
-| Trading-Kern                     | deterministischer Signal- bis Order-Pfad                                       | `services/signal-engine/`, `services/paper-broker/`, `tests/unit/signal_engine/*`, `tests/unit/paper_broker/*`                                                                               | `partial`           | ja                            | Signal Engine, Paper Broker               | End-to-end Evidence fuer aktuelle Revision erzeugen.                     |
-| Risk-Governance                  | Risk-Gate vor jeder Execution                                                  | `tests/unit/risk_engine/test_risk_rules.py`, `tests/unit/live_broker/test_risk_*`                                                                                                            | `partial`           | ja                            | Risk Engine, Live Broker                  | Risk-Policy-Signoff und tenant-spezifische Limits dokumentieren.         |
-| Live-Broker und Exchange-Control | echte Orders nur nach kompletter Gate-Kette                                    | `services/live-broker/`, `tests/unit/live_broker/*`, `tools/verify_live_mirror_gate.py`                                                                                                      | `partial`           | ja                            | Live Broker                               | Demo-/Staging-Abnahme mit Exchange-Truth archivieren.                    |
-| Paper/Shadow/Live-Trennung       | Live nie Default                                                               | `.env.*.example`, `docs/shadow_burn_in_ramp.md`, `tests/integration/test_shadow_live_divergence_contract.py`                                                                                 | `partial`           | ja                            | Runtime Config, Shadow/Live Gates         | ENV-Profile im Release-Lauf validieren.                                  |
-| Staging-Readiness                | produktionsnaher Release-Candidate-Lauf ohne Echtgeld                         | `.env.staging.example`, `tools/check_staging_profile.py`, `scripts/staging_smoke.py`, `docs/production_10_10/staging_readiness.md`, `tests/tools/test_check_staging_profile.py`              | `implemented`       | ja                            | Staging Platform, Gateway, Dashboard      | Echten Staging-Smoke mit Staging-Infrastruktur erzeugen und signieren.   |
-| Security/Auth/Secrets            | keine Secrets im Repo oder Browser                                             | `docs/SECRETS_MATRIX.md`, `tools/inventory_secret_surfaces.py`, `tools/verify_production_secret_sources.py`                                                                                  | `partial`           | ja                            | Gateway, Dashboard, Secret Sources        | Secret-Scanner und Vault/KMS-Rotation extern nachweisen.                 |
-| secrets_management               | Secret-Klassen, Rotation, Expiry, Owner und Environment-Trennung sind pruefbar | `docs/production_10_10/secrets_rotation_and_credential_hygiene.md`, `scripts/secrets_rotation_drill.py`, `tools/check_secret_lifecycle.py`, `tests/security/test_secret_lifecycle_policy.py` | `implemented`       | ja                            | Secret Lifecycle Policy, SRE, Security    | Echten Vault-/KMS-/Provider-Rotation-Drill mit Revoke-Evidence erzeugen. |
-| CI/CD und Testabdeckung          | Merge und Release nur mit Gates                                                | `.github/workflows/ci.yml`, `docs/ci_release_gates.md`, `tools/check_release_approval_gates.py`                                                                                              | `partial`           | ja                            | CI, Release Scripts                       | Branch-Protection extern pruefen und Report ablegen.                     |
-| Observability und Alerting       | echte Alerts mit Operator-Kontext                                              | `OBSERVABILITY_AND_SLOS.md`, `tools/verify_alert_routing.py`, `docs/production_10_10/05_alert_routing_and_incident_drill.md`                                                                 | `partial`           | ja                            | Monitor Engine, Alert Engine              | Realen Alert-Drill mit Zustellnachweis archivieren.                      |
-| Disaster Recovery                | messbarer Restore mit PASS                                                     | `docs/recovery_runbook.md`, `tools/dr_postgres_restore_drill.py`, `docs/production_10_10/03_postgres_restore_drill.md`                                                                       | `partial`           | ja                            | DB, Restore Tooling                       | Staging-Restore mit RTO/RPO und Git-SHA dokumentieren.                   |
-| Backup/Restore                   | Backups sind wiederherstellbar                                                 | `docs/db-schema.md`, `docs/migrations.md`, `tests/integration/test_db_live_recovery_contracts.py`                                                                                            | `partial`           | ja                            | Postgres, Migrations, Backup Process      | Backup-Retention und Restore aus echtem Backup extern pruefen.           |
-| Shadow-Burn-in                   | realer Shadow-Lauf vor Live                                                    | `scripts/verify_shadow_burn_in.py`, `docs/production_10_10/04_shadow_burn_in_certificate.md`                                                                                                 | `external_required` | ja                            | Shadow Runtime, Verification Script       | 72h+ Shadow-Report mit PASS und SHA256 ablegen.                          |
-| Operator-Approval                | Live nur mit explizitem Operator-Release                                       | `tests/unit/live_broker/test_operator_release_body.py`, `services/alert-engine/telegram/governance.py`                                                                                       | `partial`           | ja                            | Live Broker, Alert Engine, Dashboard      | Vier-Augen- und Release-Prozess extern signieren.                        |
-| Kunden-/Tenant-Isolation         | keine Cross-Tenant-Leaks                                                       | `tests/unit/shared_py/test_portal_access_contract.py`, `tests/unit/shared_py/test_customer_lifecycle.py`                                                                                     | `partial`           | ja                            | Shared Policy, Gateway, Dashboard         | Datenschutz- und Mandantenreview durchfuehren.                           |
-| Billing/Commercial-Gates         | Commercial-Status blockiert Trading                                            | `tests/unit/shared_py/test_billing_subscription_contract.py`, `docs/commercial_contract_workflow.md`                                                                                         | `partial`           | ja                            | Billing Policy, Customer Portal           | Zahlungsanbieter-/Vertragsfluss mit realen Webhooks pruefen.             |
-| Dashboard/Operator-UI            | Safety-State und Gates sichtbar                                                | `apps/dashboard/`, `e2e/tests/trust-surfaces.spec.ts`, Dashboard Jest                                                                                                                        | `partial`           | ja                            | Dashboard, BFF                            | Operator-UAT und Incident-Drill ueber UI archivieren.                    |
-| Endkunden-Webapp                 | Kunde sieht Status, Risiko, Billing ohne Secrets                               | `apps/dashboard/src/app/(customer)/`, `docs/production_10_10/06_customer_webapp_foundation.md`                                                                                               | `partial`           | ja                            | Customer Portal, BFF                      | Legal/Risk-Copy, Consent und Supportpfade abnehmen.                      |
-| Compliance/Legal-Readiness       | rechtliche Freigaben liegen vor                                                | `docs/LaunchChecklist.md`, `docs/EXTERNAL_GO_LIVE_DEPENDENCIES.md`                                                                                                                           | `external_required` | ja                            | Compliance Docs, Audit Ledger             | Legal-, Datenschutz- und Haftungs-Signoff einholen.                      |
-| Release/Rollback                 | Release hat Rollback-Revision                                                  | `docs/LAUNCH_DOSSIER.md`, `docs/release_build.md`, `tools/check_release_approval_gates.py`                                                                                                   | `partial`           | ja                            | Release Engineering                       | Rollback-Drill und Revision pro Release dokumentieren.                   |
-| Provider/Exchange-Failover       | Providerfehler fuehren zu Block oder kontrollierter Degradation                | `tests/integration/test_redis_fault_injection.py`, `tests/unit/live_broker/test_private_rest_error_matrix.py`                                                                                | `partial`           | ja                            | Market Stream, Live Broker, Health Guards | Exchange-/Provider-Outage-Drill extern pruefen.                          |
-| Produktionsfreigabe              | signierter Go/No-Go-Prozess                                                    | `docs/production_10_10/no_go_rules.md`, `docs/LaunchChecklist.md`, `tools/production_readiness_audit.py`                                                                                     | `external_required` | ja                            | Release, Ops, Legal, Security             | Alle No-Go-Regeln mit Evidence schliessen.                               |
+Scope: private deutsche Main-Console-Anwendung fuer Philipp Crljic. Keine
+Billing-/Commercial-Gates als Pflichtkategorie, keine Customer-UI als
+Verkaufsprodukt, keine Tenant-Isolation als Multi-Kunden-Verkaufsarchitektur,
+keine Payment-Provider- oder Customer-Contract-Checks.
+
+## Checker
+
+```bash
+python tools/check_10_10_evidence.py
+python tools/check_10_10_evidence.py --strict
+python tools/check_10_10_evidence.py --json
+python tools/check_10_10_evidence.py --write-report docs/production_10_10/evidence_status_report.md
+```
+
+Ohne `--strict` validiert der Checker Schema, Statuswerte, Pflichtkategorien,
+Evidence-Dateien und Live-Blocker, gibt aber bei valider Matrix Exit-Code 0.
+Mit `--strict` wird jeder nicht verifizierte Live-Blocker zum Exit-Code 1.
+
+## Pflichtkategorien
+
+| ID | Titel | Status | Blockiert Live | Severity | Naechste Aktion |
+| --- | --- | --- | --- | --- | --- |
+| `private_owner_scope` | Private Owner Scope | `verified` | nein | P1 | Scope bei jeder UI- und Trading-Aenderung gegenpruefen. |
+| `main_console_information_architecture` | Main Console Information Architecture | `implemented` | ja | P1 | Dashboard-Routen inventarisieren und Main-Console-Konsolidierungsplan erzeugen. |
+| `german_only_ui` | German-only UI | `partial` | ja | P1 | UI-Textscanner und deutsche Main-Console-Copy-Review ergaenzen. |
+| `bitget_asset_universe` | Bitget Asset Universe | `implemented` | ja | P0 | Asset-Freigabe und Tests pro Asset-Familie mit Evidence verknuepfen. |
+| `instrument_catalog` | Instrument Catalog | `implemented` | ja | P0 | Katalogfrische und Exchange-Abgleich als Release-Evidence ablegen. |
+| `asset_quarantine_and_delisting` | Asset Quarantine and Delisting | `partial` | ja | P0 | Asset-Quarantine-Modell und Fail-closed-Tests ergaenzen. |
+| `market_data_quality_per_asset` | Market Data Quality per Asset | `partial` | ja | P0 | Per-Asset-Datenqualitaetsmatrix und Tests an Live-Broker-Gates koppeln. |
+| `liquidity_spread_slippage_per_asset` | Liquidity, Spread and Slippage per Asset | `partial` | ja | P0 | Liquiditaetsgate pro Asset-Klasse maschinenlesbar machen. |
+| `asset_risk_tiers` | Asset Risk Tiers | `partial` | ja | P0 | Asset-Risk-Tier-Datei und Validator erstellen. |
+| `multi_asset_order_sizing` | Multi-Asset Order Sizing | `partial` | ja | P0 | Multi-Asset-Sizing-Evidence pro Asset-Klasse ergaenzen. |
+| `portfolio_risk` | Portfolio Risk | `partial` | ja | P0 | Owner-Limits und aktuelle Test-Evidence fuer Portfolio-Risk archivieren. |
+| `strategy_validation_per_asset_class` | Strategy Validation per Asset Class | `partial` | ja | P0 | Asset-Klassen-Validierungsberichte erzeugen und verlinken. |
+| `live_broker_fail_closed` | Live Broker Fail-Closed | `implemented` | ja | P0 | Aktuelle Gate-Test-Evidence mit dieser Matrix verknuepfen. |
+| `order_idempotency` | Order Idempotency | `partial` | ja | P0 | Order-Idempotency-Report und Tests explizit referenzieren. |
+| `reconcile_safety` | Reconcile Safety | `partial` | ja | P0 | Reconcile-Divergenz-Evidence und Runbook konsolidieren. |
+| `kill_switch_safety_latch` | Kill Switch and Safety Latch | `partial` | ja | P0 | Drill-Evidence fuer Kill-Switch und Safety-Latch archivieren. |
+| `emergency_flatten` | Emergency Flatten | `external_required` | ja | P0 | Emergency-Flatten-Drill mit Git-SHA, Umgebung und PASS erzeugen. |
+| `bitget_exchange_readiness` | Bitget Exchange Readiness | `external_required` | ja | P0 | Read-only-/Demo-Abnahme und Key-Permission-Evidence extern archivieren. |
+| `env_secrets_profiles` | ENV and Secrets Profiles | `partial` | ja | P0 | Runtime-Secret-Store- und Rotation-Evidence extern nachweisen. |
+| `observability_slos` | Observability and SLOs | `partial` | ja | P1 | SLOs mit Main-Console-Go/No-Go und Alert-Drill verknuepfen. |
+| `alert_routing` | Alert Routing | `partial` | ja | P1 | Realen Alert-Drill ohne Secret-Leak archivieren. |
+| `backup_restore` | Backup and Restore | `partial` | ja | P0 | Staging-Restore mit RTO/RPO und PASS erzeugen. |
+| `shadow_burn_in` | Shadow Burn-in | `external_required` | ja | P0 | Realen Shadow-Burn-in-Bericht mit PASS und SHA256 ablegen. |
+| `disaster_recovery` | Disaster Recovery | `partial` | ja | P0 | End-to-end DR-Drill fuer Live-relevante States dokumentieren. |
+| `audit_forensics` | Audit and Forensics | `partial` | ja | P0 | Audit-/Forensics-Evidence pro Order-Lifecycle verlinken. |
+| `frontend_main_console_security` | Frontend Main Console Security | `partial` | ja | P0 | Main-Console-Security-Testplan ohne Customer-Verkaufsfokus erstellen. |
+| `admin_access_single_owner` | Admin Access Single Owner | `partial` | ja | P0 | Single-Owner-Admin-Policy und Tests aus Legacy-Rollenmodell ableiten. |
+| `deployment_parity` | Deployment Parity | `partial` | ja | P1 | Staging-/Production-Paritaetsreport fuer private Main Console erzeugen. |
+| `supply_chain_security` | Supply Chain Security | `partial` | ja | P1 | Aktuelle Supply-Chain-Audit-Evidence fuer Release ablegen. |
+| `final_go_no_go_scorecard` | Final Go/No-Go Scorecard | `external_required` | ja | P0 | Alle nicht verifizierten Live-Blocker schliessen und Owner-Go/No-Go dokumentieren. |
+
+## Legacy-Scope
+
+Alte Billing-, Customer-, Commercial- oder Tenant-Verkaufsartefakte sind nicht
+Teil dieser Pflichtmatrix. Wenn bestehende Tools oder Codepfade noch davon
+abhaengen, werden sie als Legacy-Risikoflaeche behandelt, bis sie inventarisiert,
+als out-of-scope markiert und sicher konsolidiert oder entfernt sind.

@@ -7,7 +7,18 @@ import {
 } from "@/lib/dashboard-prefs";
 import { isLocale, LOCALE_COOKIE_NAME } from "@/lib/i18n/config";
 import { hasAdminSessionFromDashboardEnv } from "@/lib/operator-jwt";
+import { CONSOLE_BASE } from "@/lib/console-paths";
 import { decideConsoleAccess } from "@/lib/middleware-console-guard";
+
+const LEGACY_SCOPE_BLOCKED_PREFIXES: readonly string[] = [
+  "/portal",
+  "/console/account/billing",
+  "/console/account/payments",
+  "/console/admin/billing",
+  "/console/admin/commerce-payments",
+  "/console/admin/customers",
+  "/console/admin/contracts",
+];
 
 function pathnameIsStaticAsset(pathname: string): boolean {
   return /\.(ico|png|jpg|jpeg|gif|webp|svg|txt|xml|webmanifest)$/i.test(
@@ -28,6 +39,13 @@ export async function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   if (isLocaleBypassPath(pathname)) {
     return NextResponse.next();
+  }
+
+  if (LEGACY_SCOPE_BLOCKED_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/console";
+    url.search = "";
+    return NextResponse.redirect(url);
   }
 
   const raw = request.cookies.get(LOCALE_COOKIE_NAME)?.value;
@@ -66,7 +84,8 @@ export async function middleware(request: NextRequest) {
 
   const url = request.nextUrl.clone();
   url.pathname = "/welcome";
-  const returnTo = `${pathname}${search}`;
+  const returnTo =
+    pathname === "/" ? CONSOLE_BASE : `${pathname}${search}`;
   if (returnTo && returnTo !== "/welcome") {
     url.searchParams.set("returnTo", returnTo);
   }

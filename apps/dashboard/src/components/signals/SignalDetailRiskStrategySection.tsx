@@ -2,6 +2,15 @@ import { ContentPanel } from "@/components/ui/ContentPanel";
 import { RiskWarningsPanel } from "@/components/panels/RiskWarningsPanel";
 import { formatDistancePctField, formatNum, formatPct01 } from "@/lib/format";
 import {
+  signalDetailAssetTierDe,
+  signalDetailDataQualityDe,
+  signalDetailLiquidityDe,
+  signalDetailLiveReleaseDe,
+  signalRiskStatusDe,
+  summarizeBlockReasonsDe,
+  tradeActionLabelDe,
+} from "@/lib/signal-decision-center";
+import {
   summarizeNoTradeReasons,
   summarizeTradeRationale,
 } from "@/lib/signal-rationale";
@@ -75,6 +84,42 @@ export function SignalDetailRiskStrategySection({ detail, explain, t }: Props) {
           <RiskWarningsPanel warnings={explain.risk_warnings_json} />
         </div>
       ) : null}
+      <div className="panel signal-explain-layer" style={{ marginTop: 12 }}>
+        <h3 className="h3-quiet">Governance- und Asset-Kontext</h3>
+        <p className="muted small">
+          Risk-Governor, Asset-Tier, Datenqualitaet und Live-Freigabe in einer Sicht.
+        </p>
+        <ul className="news-list">
+          <li>Trade Action: {tradeActionLabelDe(detail.trade_action)}</li>
+          <li>
+            Risk-Status:{" "}
+            {signalRiskStatusDe({
+              ...detail,
+              signal_id: detail.signal_id,
+              symbol: detail.symbol,
+              timeframe: detail.timeframe,
+              direction: detail.direction,
+              signal_class: detail.signal_class,
+              decision_state: detail.decision_state,
+              signal_strength_0_100: detail.signal_strength_0_100,
+              probability_0_1: detail.probability_0_1,
+              analysis_ts_ms: detail.analysis_ts_ms,
+              created_ts: detail.created_ts,
+              outcome_badge: detail.outcome_badge,
+            })}
+          </li>
+          <li>Asset-Tier: {signalDetailAssetTierDe(detail)}</li>
+          <li>Datenqualitaet: {signalDetailDataQualityDe(detail)}</li>
+          <li>Liquiditaet: {signalDetailLiquidityDe(detail)}</li>
+          <li>Live-Freigabestatus: {signalDetailLiveReleaseDe(detail)}</li>
+        </ul>
+        <p className="muted small" style={{ marginTop: 8 }}>
+          Blockgruende:{" "}
+          {summarizeBlockReasonsDe(detail.live_execution_block_reasons_json)
+            .slice(0, 4)
+            .join(" · ")}
+        </p>
+      </div>
       <div className="grid-2 signal-detail-rationale-grid">
         <div className="panel signal-explain-layer">
           <div className="signal-explain-layer__head">

@@ -25,6 +25,14 @@ import { StatusPillLink } from "@/components/ui/StatusPillLink";
 import { fetchLiveState } from "@/lib/api";
 import type { ExecutionPathViewModel } from "@/lib/execution-path-view-model";
 import { buildLiveDataSurfaceModelFromLiveState } from "@/lib/live-data-surface-model";
+import {
+  buildDataQualityHint,
+  buildLiquiditySpreadHint,
+  buildRiskStatusLabel,
+  chartWorkspaceAlertText,
+  redactChartErrorDetail,
+  resolveChartWorkspaceAlert,
+} from "@/lib/chart-workspace-status";
 import { consolePath } from "@/lib/console-paths";
 import type { LiveStreamConnectionState } from "@/lib/live-event-source";
 import { startManagedLiveEventSource } from "@/lib/live-event-source";
@@ -577,6 +585,20 @@ export function LiveTerminalClient({
     ],
   );
 
+  const workspaceAlert = useMemo(
+    () => resolveChartWorkspaceAlert(state, fetchErr),
+    [state, fetchErr],
+  );
+  const workspaceAlertText = chartWorkspaceAlertText(workspaceAlert);
+  const riskStatus = buildRiskStatusLabel(state);
+  const qualityHint = buildDataQualityHint(state.latest_feature);
+  const liquidityHint = buildLiquiditySpreadHint(state.latest_feature);
+  const instrumentMeta = (state.latest_signal?.instrument_metadata || {}) as Record<
+    string,
+    unknown
+  >;
+  const productType = String(instrumentMeta.product_type || "—");
+
   return (
     <div className="live-terminal-root">
       <DemoDataNoticeBanner notice={state.demo_data_notice} />
@@ -667,6 +689,10 @@ export function LiveTerminalClient({
             {state.latest_signal?.market_family ??
               t("live.terminal.familyDash")}
           </span>
+          <span className="status-pill">Produkttyp: {productType}</span>
+          <span className="status-pill">{riskStatus}</span>
+          <span className="status-pill">{qualityHint}</span>
+          <span className="status-pill">{liquidityHint}</span>
           <span
             className={`status-pill ${streamPillVariant(streamPhase)}`}
             title={
@@ -765,6 +791,16 @@ export function LiveTerminalClient({
             >
               {candleDiag}
               {tickerDiag ? ` · ${tickerDiag}` : ""}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+      {workspaceAlertText ? (
+        <div className="live-terminal-banner live-terminal-banner--critical" role="alert">
+          <strong>{workspaceAlertText}</strong>
+          {fetchErr ? (
+            <span className="muted small" style={{ display: "block", marginTop: 4 }}>
+              {redactChartErrorDetail(fetchErr)}
             </span>
           ) : null}
         </div>

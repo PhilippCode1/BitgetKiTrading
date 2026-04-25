@@ -274,7 +274,7 @@
     },
     "selfHealingPage": {
       "brief": "Diagnose-Hub mit vollständiger Komponentenliste, priorisierten Vorfällen und serverseitiger Neuabfrage.",
-      "detail": "Self Healing fasst Edge-Bootstrap, System-Health, Monitor-Alerts und Outbox zusammen. Automatische Schritte beschränken sich auf sicheres erneutes Messen und UI-Refresh — Worker-Neustarts und Geheimnisse bleiben bei Betrieb und Deploy."
+      "detail": "Selbstheilung fasst Edge-Bootstrap, System-Health, Monitor-Alerts und Outbox zusammen. Automatische Schritte beschränken sich auf sicheres erneutes Messen und UI-Refresh — Worker-Neustarts und Geheimnisse bleiben bei Betrieb und Deploy."
     }
   },
   "tables": {
@@ -326,7 +326,7 @@
       "linkOnboarding": "Erste Schritte (Tour)"
     },
     "signals": {
-      "title": "Signal-Center",
+      "title": "Signalübersicht",
       "subtitle": "Überblick über Einschätzungen, Filter und Transparenz — keine Kaufempfehlung.",
       "chartPanelTitle": "Marktchart (Bitget-Kerzen)",
       "tableSectionTitle": "Signaltabelle (gefiltert)",
@@ -439,7 +439,7 @@
       "instrumentPanelTitle": "Instrument-Metadaten",
       "instrumentSnapshotLabel": "Katalog-Snapshot",
       "instrumentStatusLabel": "Katalog-Status",
-      "instrumentCapCategoriesLabel": "Capability-Kategorien",
+      "instrumentCapCategoriesLabel": "Fähigkeitskategorien",
       "instrumentCatalogTitle": "Katalog",
       "instrumentActiveTitle": "Aktives Instrument",
       "instrumentEmpty": "Keine Instrument-Metadaten im letzten Reconcile.",
@@ -639,6 +639,7 @@
       "aiExplainErrProviderNotConfigured": "Am LLM-Orchestrator ist kein nutzbarer Provider konfiguriert (z. B. fehlender OpenAI-Key bei ausgeschaltetem Fake). Umgebung prüfen oder für lokale Tests Fake-Provider aktivieren.",
       "aiExplainErrLlmRetryExhausted": "Der Modell-Dienst konnte die Anfrage nach mehreren Versuchen nicht abschließen (z. B. Zeitüberschreitung oder Rate-Limit). Später erneut versuchen oder den Betrieb informieren.",
       "aiExplainErrUnknown": "Unerwarteter Fehler.",
+      "aiAssistantDegradedSafe": "KI-Erklärung aktuell nicht verfügbar — keine Auswirkung auf Trading-Freigaben.",
       "safetyDiagTitle": "Sicherheits-Diagnose (read-only)",
       "safetyDiagLead": "Ordnet deine Frage einem aktuellen Snapshot aus System-Health, offenen Monitor-Alerts und der Alert-Outbox zu. Du bekommst strukturierte Ursachenhinweise, betroffene Services und nächste Prüfschritte — als Lesetext, ohne dass die Plattform deswegen etwas „im Hintergrund“ ausführt.",
       "safetyDiagBoundary": "Grenze: Keine stillen Live-Aktionen, keine Änderung von Order-Limits, Broker- oder zahlungsrelevanten Einstellungen. Vorgeschlagene Shell-Befehle sind nur Textvorschläge; vor Ausführung prüfen und an eure Runbooks anpassen.",
@@ -810,7 +811,7 @@
       "errPaperMetrics": "Die Paper-Kennzahlen lassen sich gerade nicht laden.",
       "errMonitorAlerts": "Die Monitor-Meldungen lassen sich gerade nicht laden.",
       "errOnlineDrift": "Der Online-Drift lässt sich gerade nicht laden.",
-      "errLearningDrift": "Die Learning-Drift-Events lassen sich gerade nicht laden.",
+      "errLearningDrift": "Die Lern-Drift-Ereignisse lassen sich gerade nicht laden.",
       "errLiveDecisions": "Die Live-Broker-Entscheidungen lassen sich gerade nicht laden.",
       "errAlertOutbox": "Die Alert-Ausgangswarteschlange lässt sich gerade nicht laden.",
       "errPaperTrades": "Die jüngsten Paper-Trades lassen sich gerade nicht laden.",
@@ -819,9 +820,9 @@
         "body": "Nicht alle Datenquellen haben geantwortet. Die anderen Bereiche auf dieser Seite kannst du weiter nutzen; fehlende Panels aktualisieren sich beim nächsten Laden."
       },
       "labelCatalogSnapshot": "Katalog-Snapshot",
-      "labelCapabilityCategories": "Capability-Kategorien",
+      "labelCapabilityCategories": "Fähigkeitskategorien",
       "focusInstrumentExplainer": "Fokus-Symbol und TF steuern die tiefen Signal-/Live-State-Panels. Approval-, Mirror- und Drift-Queues unten bleiben globale Operator-Sichten und werden nicht auf ein einzelnes Instrument verengt.",
-      "driftRecentTitle": "Letzte Drift-Events (Learning)",
+      "driftRecentTitle": "Letzte Drift-Ereignisse (Lernen)",
       "degradedHeading": "Degradation / Hinweise",
       "executionDetailsSummary": "Ausführungsmodus (Kurzüberblick)",
       "executionExecMode": "Ausführungsmodus",
@@ -872,8 +873,8 @@
           "body": "Der materialisierte Drift-Status war kurz nicht erreichbar. Learning-Seite und Scheduler bleiben die fachliche Quelle."
         },
         "learningDriftApi": {
-          "title": "Learning-Drift-Events",
-          "body": "Die Liste der Drift-Events konnte nicht geladen werden. Sobald die Verbindung steht, erscheinen sie wieder nach einem Reload."
+          "title": "Lern-Drift-Ereignisse",
+          "body": "Die Liste der Drift-Ereignisse konnte nicht geladen werden. Sobald die Verbindung steht, erscheinen sie wieder nach einem Neuladen."
         }
       },
       "riskStripNoSignal": "Für dieses Symbol und Zeitfenster liegt gerade kein Signal vor — prüfe Datenpipeline oder andere Einstellungen.",
@@ -1037,7 +1038,7 @@
       "title": "Kein Trade und bewusste Pausen",
       "subtitle": "Warum das System manchmal nicht handelt — ohne Prognose zur künftigen Performance.",
       "signalsHint": "Einzelne Signale und Erklärungen:",
-      "aggregateTitle": "Überblick (Model-Ops-Report, Zeitraum)",
+      "aggregateTitle": "Überblick (Modellbetriebs-Report, Zeitraum)",
       "aggregateEmpty": "Kein Aggregat geladen oder das Modul liefert diese Sektion nicht.",
       "tableEmptyLimit": "Für die gewählte Zeilenanzahl liegen keine Einträge vor — Limit erhöhen oder später erneut prüfen.",
       "sampleTitle": "Stichprobe: jüngste „do_not_trade“-Signale",
@@ -1088,7 +1089,7 @@
       "labelFeatureScopeTfs": "Feature-Scope TFs",
       "labelLiveFamilies": "Live-Familien",
       "labelLiveProductTypes": "Live-Product-Types",
-      "matrixHeading": "Capability-Matrix",
+      "matrixHeading": "Fähigkeiten-Matrix",
       "registryTitle": "Instrument-Registry",
       "thInstrument": "Instrument",
       "thFamily": "Familie",
@@ -1579,7 +1580,7 @@
       "aiStrategyRiskHeading": "Risiken und Grenzen",
       "aiStrategyKeysHeading": "Genutzte Snapshot-Schlüssel (laut Modell)",
       "aiStrategyErrNeedContextOrFocus": "Ohne Signal-Snapshot brauchen wir eine Fokusfrage mit mindestens 3 Zeichen.",
-      "aiStrategyErrIncompleteResponse": "Der Dienst hat eine unvollständige Antwort geliefert (die Erklärung zum Signal fehlt). Bitte erneut versuchen.",
+      "aiStrategyErrIncompleteResponse": "Der Dienst hat keine gueltige strukturierte Signal-Antwort geliefert. Signalstatus und Risk-Gates bleiben unveraendert.",
       "explanationLayersTitle": "Vertrags-Hinweise zu den Ebenen",
       "explanationLayersLead": "Kurzbeschreibung laut Signal-API — ersetzt nicht die Inhalte darüber.",
       "explanationLayerPersisted": "Persistente Narrativebene (signal_explanations)",
@@ -1746,7 +1747,7 @@
       "btnDownload": "Markdown herunterladen",
       "copyFailed": "Zwischenablage nicht verfügbar — Text manuell markieren oder Download nutzen.",
       "linkSelfHealing": "Self-Healing-Hub",
-      "linkHealth": "Health & Incidents",
+      "linkHealth": "Systemzustand & Vorfälle",
       "linkEdge": "Edge-Status (JSON)",
       "sectionFilters": "Filter",
       "filtersLead": "Mehrere Filter wirken gleichzeitig (UND). Ohne Auswahl siehst du alle Prüfungen.",
@@ -1792,7 +1793,7 @@
       "exportExtraIncidents": "Quer-Vorfälle"
     },
     "selfHealing": {
-      "title": "Self Healing",
+      "title": "Selbstheilung",
       "subtitle": "Zentrale Diagnose- und Reparatursicht: alle Plattform-Schichten, priorisierte Vorfälle, serverseitige Neuabfrage von Health und Edge, klare Grenzen für das, was nur Betrieb oder Konfiguration lösen kann.",
       "loading": "Lade Diagnose-Snapshot …",
       "toolbarLead": "Jeder Lauf kombiniert Gateway-Bootstrap (Edge), GET /v1/system/health, offene Monitor-Alerts und die Alert-Outbox. „Vollständig neu prüfen“ startet dieselben Schritte erneut — ohne Worker-Neustarts im Cluster.",
@@ -2483,7 +2484,7 @@
     "telegramGate": {
       "loading": "Wir prüfen, ob dein Konto mit Telegram verknüpft ist …"
     },
-    "brand": "Ops Console",
+    "brand": "Hauptkonsole",
     "brandSimple": "Übersicht",
     "sidebarNote": "Volle Navigation ist sichtbar. Fehlt eine Seite? Dann bist du vielleicht in der einfachen Ansicht — klicke oben auf „Alle Funktionen (Pro)“.",
     "sidebarNoteSimple": "Einfache Ansicht: wir haben die Einträge gruppiert, die du am häufigsten brauchst. Mit „Alle Funktionen (Pro)“ siehst du das komplette Menü.",
@@ -2493,38 +2494,52 @@
     "pageNoticesGroupAria": "Hinweise zu Verbindung, System-Snapshot und Datenabruf",
     "nav": {
       "overview": "Übersicht",
+      "asset_universe": "Assets",
+      "charts_market": "Charts",
+      "signals_ai": "Signale",
+      "risk_portfolio": "Risk",
+      "readiness_modes": "Freigabestatus",
+      "live_broker_safety": "Broker",
+      "bitget_demo": "Bitget Demo",
+      "system_alerts": "System",
+      "reports_evidence": "Reports",
+      "settings_runtime": "Einstellungen",
       "cockpit": "Cockpit",
-      "ops": "Operator Cockpit",
+      "ops": "Betreiberübersicht",
       "terminal": "Live-Terminal",
       "approvals": "Freigaben (Warteschlange)",
       "market": "Markt & Signale",
       "market_universe": "Marktuniversum",
-      "capabilities": "Capability-Matrix",
-      "signals": "Signal-Center",
-      "no_trade": "No-Trade",
+      "capabilities": "Fähigkeiten-Matrix",
+      "signals": "Signalübersicht",
+      "no_trade": "Kein Handel",
       "execution": "Ausführung",
       "live_broker": "Live-Broker",
-      "shadow_live": "Shadow vs. Live",
-      "paper": "Paper",
-      "model": "Model-Ops",
-      "learning": "Learning & Drift",
+      "safety_center": "Sicherheit",
+      "incidents": "Vorfälle & Warnungen",
+      "system_health_map": "Systemzustand & Datenflüsse",
+      "shadow_live": "Schattenmodus vs. Echtgeldmodus",
+      "paper": "Papiermodus",
+      "model": "Modellbetrieb",
+      "learning": "Lernen & Drift",
       "strategies": "Strategien",
       "operations": "Betrieb",
-      "news": "News",
-      "usage": "Kosten & Plan",
+      "news": "Nachrichten",
+      "usage": "Berichte & Nutzung",
       "accountHub": "Mein Konto",
-      "health": "Health & Incidents",
+      "health": "Systemzustand & Vorfälle",
       "diagnostics": "Zentrale Diagnose",
-      "integrations": "Integrations-Check",
+      "integrations": "Integrationsprüfung",
       "internal": "Intern",
-      "admin": "Admin-Cockpit",
-      "self_healing": "Self Healing"
+      "admin": "Admin-Konsole",
+      "self_healing": "Selbstheilung"
     },
     "navSections": {
+      "mainConsole": "Hauptkonsole",
       "cockpit": "Cockpit, Freigaben & System",
       "market": "Markt & Signale",
       "execution": "Ausführung",
-      "model": "Model & Learning",
+      "model": "Modell & Lernen",
       "operations": "News, Plan & Integrationen",
       "account": "Konto & Verbrauch",
       "internal": "Intern"
@@ -2600,7 +2615,7 @@
       "account": "Mein Konto",
       "aiStatus": "KI & Systemstatus",
       "diagnostics": "Zentrale Diagnose",
-      "selfHealing": "Self-Healing",
+      "selfHealing": "Selbstheilung",
       "help": "Hilfe & Überblick",
       "settings": "Sprache & Einstellungen",
       "onboarding": "Erste Schritte"
@@ -2688,7 +2703,7 @@
         "body": "Wo Analyse, Übung und Live je Kategorie möglich sind."
       },
       "sig": {
-        "title": "Signal-Center",
+        "title": "Signalübersicht",
         "body": "Filtern, nachvollziehen, Details pro Signal."
       },
       "nt": {
@@ -2696,7 +2711,7 @@
         "body": "Warum das System manchmal bewusst nicht handelt."
       },
       "ops": {
-        "title": "Operator Cockpit",
+        "title": "Betreiberübersicht",
         "body": "Risiko, Live-Zustand, Hebel- und Stop-Sicht.",
         "tag": "Hub"
       },
@@ -2892,7 +2907,7 @@
     "kiStep2Title": "2. Datenkette prüfen",
     "kiStep2Body": "Unter „System & Status“ siehst du, ob Marktdaten, Signale und Dienste erreichbar sind. Erst wenn diese Pfadabschnitte in Ordnung sind, sind KI-angereicherte Inhalte zuverlässig nutzbar.",
     "kiStep3Title": "3. KI-Einblicke öffnen",
-    "kiStep3Body": "Signal-Center und News: kontextreiche Darstellung. Learning & Drift: aggregierte Modell- und Drift-Reports von der Plattform. System & Status: optional technischer Kontext plus KI-Assistent für deutschsprachige Fragen (kein dauerhafter Chat, keine Handelsfreigabe).",
+    "kiStep3Body": "Signalübersicht und News: kontextreiche Darstellung. Lernen & Drift: aggregierte Modell- und Drift-Reports von der Plattform. System & Status: optional technischer Kontext plus KI-Assistent für deutschsprachige Fragen (kein dauerhafter Chat, keine Handelsfreigabe).",
     "kiPrimaryCta": "Geführter Einstieg starten",
     "kiSecondaryLearning": "Direkt zu Learning & Drift",
     "footerNavAria": "Schnellzugriff",

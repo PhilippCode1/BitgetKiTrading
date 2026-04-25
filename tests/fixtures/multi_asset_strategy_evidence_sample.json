@@ -1,0 +1,52 @@
+{
+  "items": [
+    {
+      "strategy_id": "strat_major_momentum",
+      "strategy_version": "1.2.0",
+      "asset_symbol": "BTCUSDT",
+      "asset_class": "major_high_liquidity",
+      "market_family": "futures",
+      "regime": "trend_up",
+      "backtest_ok": true,
+      "walk_forward_ok": true,
+      "out_of_sample_ok": true,
+      "paper_ok": true,
+      "shadow_ok": true,
+      "slippage_fees_funding_ok": true,
+      "drawdown_ok": true,
+      "regime_breakdown_ok": true,
+      "asset_class_breakdown_ok": true,
+      "trade_count": 140,
+      "no_trade_quality_ok": true,
+      "data_quality_ok": true,
+      "liquidity_execution_evidence_ok": true,
+      "expectancy_after_costs": 0.14,
+      "max_drawdown_pct": 0.11,
+      "live_requested": true
+    },
+    {
+      "strategy_id": "strat_new_listing_guard",
+      "strategy_version": "0.9.1",
+      "asset_symbol": "NEWCOINUSDT",
+      "asset_class": "new_listing",
+      "market_family": "futures",
+      "regime": "unknown",
+      "backtest_ok": true,
+      "walk_forward_ok": false,
+      "out_of_sample_ok": false,
+      "paper_ok": true,
+      "shadow_ok": false,
+      "slippage_fees_funding_ok": false,
+      "drawdown_ok": false,
+      "regime_breakdown_ok": false,
+      "asset_class_breakdown_ok": false,
+      "trade_count": 8,
+      "no_trade_quality_ok": false,
+      "data_quality_ok": false,
+      "liquidity_execution_evidence_ok": false,
+      "expectancy_after_costs": -0.08,
+      "max_drawdown_pct": 0.33,
+      "live_requested": true
+    }
+  ]
+}

@@ -12,6 +12,7 @@ import {
 } from "@/lib/i18n/config";
 import { mirrorLocalePreferenceToServer } from "@/lib/client/best-effort-fetch";
 import { CONSOLE_BASE } from "@/lib/console-paths";
+import { sanitizeReturnTo } from "@/lib/return-to-safety";
 
 function nextStepLabel(
   returnTo: string,
@@ -36,7 +37,8 @@ export function WelcomeLanguageClient() {
   const router = useRouter();
   const search = useSearchParams();
   const { t } = useI18n();
-  const returnTo = search.get("returnTo")?.trim() || "/";
+  const safeReturnTo = sanitizeReturnTo(search.get("returnTo"), CONSOLE_BASE);
+  const returnTo = safeReturnTo;
   const destLabel = nextStepLabel(returnTo, t);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -60,7 +62,7 @@ export function WelcomeLanguageClient() {
         /* private mode */
       }
       await mirrorLocalePreferenceToServer(locale);
-      router.replace(returnTo.startsWith("/") ? returnTo : "/");
+      router.replace(returnTo);
       router.refresh();
     } catch (e) {
       const code = e instanceof Error ? e.message : "";

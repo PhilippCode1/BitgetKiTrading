@@ -1,4 +1,5 @@
 import { CONSOLE_BASE } from "@/lib/console-paths";
+import { sanitizeReturnTo } from "@/lib/return-to-safety";
 
 /**
  * Ziel nach Abschluss oder Überspringen der ersten Schritte: Konsole-Start mit Kacheln
@@ -7,9 +8,7 @@ import { CONSOLE_BASE } from "@/lib/console-paths";
 export const ONBOARDING_DEFAULT_RETURN = CONSOLE_BASE;
 
 export function onboardingUrlWithReturn(returnTo: string): string {
-  const r = returnTo.trim().startsWith("/")
-    ? returnTo.trim()
-    : ONBOARDING_DEFAULT_RETURN;
+  const r = sanitizeReturnTo(returnTo, ONBOARDING_DEFAULT_RETURN);
   return `/onboarding?returnTo=${encodeURIComponent(r)}`;
 }
 

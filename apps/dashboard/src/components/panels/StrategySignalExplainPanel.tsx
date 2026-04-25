@@ -155,8 +155,19 @@ function StrategySignalExplainPanelInner({ signalContextJson }: Props) {
         setError(t("pages.signalsDetail.aiStrategyErrIncompleteResponse"));
         return;
       }
-      setEnvelope(parsed as Envelope);
       const env = parsed as Envelope;
+      if (
+        env.result &&
+        typeof env.result === "object" &&
+        env.result.execution_authority &&
+        env.result.execution_authority !== "none"
+      ) {
+        setError(
+          "KI-Antwort verweigert: unzulaessige Ausfuehrungsbefugnis im Modell-Output.",
+        );
+        return;
+      }
+      setEnvelope(env);
       const r = env.result;
       if (
         signalLlmChart &&
@@ -212,6 +223,11 @@ function StrategySignalExplainPanelInner({ signalContextJson }: Props) {
     envelope.ok !== false &&
     isStrategySignalExplainSuccessPayload(envelope),
   );
+  const explanationMissing =
+    showResult &&
+    result &&
+    (!result.strategy_explanation_de ||
+      result.strategy_explanation_de.trim().length === 0);
   return (
     <div className="panel operator-explain-panel strategy-signal-explain-panel">
       <h2>{t("pages.signalsDetail.aiStrategyTitle")}</h2>
@@ -293,6 +309,12 @@ function StrategySignalExplainPanelInner({ signalContextJson }: Props) {
       {error ? (
         <p className="msg-err operator-explain-panel__error" role="alert">
           {error}
+        </p>
+      ) : null}
+      {explanationMissing ? (
+        <p className="muted small" role="status">
+          Der LLM-Text fehlt in dieser Antwort. Signalstatus, Risk-Gates und Trade-Action
+          bleiben unveraendert.
         </p>
       ) : null}
       {showResult && result && envelope ? (

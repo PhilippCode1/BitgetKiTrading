@@ -1,0 +1,46 @@
+{
+  "symbol": "ETHUSDT",
+  "market_family": "futures",
+  "product_type": "USDT-FUTURES",
+  "data_source": "fixture_sample",
+  "candles": [
+    {
+      "ts_ms": 1700000000000,
+      "open": 3000,
+      "high": 3010,
+      "low": 2990,
+      "close": 3005,
+      "volume": 1000
+    },
+    {
+      "ts_ms": 1700000060000,
+      "open": 3005,
+      "high": 3020,
+      "low": 3000,
+      "close": 3015,
+      "volume": 1200
+    }
+  ],
+  "expected_candle_interval_ms": 60000,
+  "orderbook_present": true,
+  "last_orderbook_ts_ms": 1700000060000,
+  "now_ts_ms": 1700000070000,
+  "orderbook_max_age_ms": 30000,
+  "best_bid": 3014.9,
+  "best_ask": 3015.1,
+  "max_spread_bps": 20.0,
+  "funding_last_ts_ms": 1700000050000,
+  "funding_max_age_ms": 3600000,
+  "funding_required_for_strategy": false,
+  "delisted": false,
+  "suspended": false,
+  "provider_error_rate": 0.01,
+  "provider_error_rate_max": 0.05,
+  "signal_input_complete": true,
+  "instrument_metadata_fresh": true,
+  "market_family_clear": true,
+  "product_type_clear": true,
+  "redis_fresh": true,
+  "oi_fresh": true,
+  "oi_required": false
+}

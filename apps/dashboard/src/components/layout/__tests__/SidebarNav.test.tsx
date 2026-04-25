@@ -24,41 +24,57 @@ describe("SidebarNav", () => {
   it("blendet Admin-Link ohne Berechtigung aus", () => {
     renderNav(<SidebarNav showAdminNav={false} />);
     expect(screen.queryByRole("link", { name: /Admin cockpit/i })).toBeNull();
-    expect(
-      screen.getByRole("link", { name: /Operator Cockpit/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^Risk$/i })).toBeInTheDocument();
   });
 
-  it("zeigt Admin-Link bei serverseitig freigegebener Admin-Navigation", () => {
+  it("zeigt auch mit Admin-Berechtigung nur Main-Console-Module", () => {
     renderNav(<SidebarNav showAdminNav />);
-    expect(
-      screen.getByRole("link", { name: /Admin cockpit/i }),
-    ).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Admin cockpit/i })).toBeNull();
+    expect(screen.getByRole("link", { name: /^Settings$/i })).toBeInTheDocument();
   });
 
-  it("Pro: Health sitzt beim Cockpit; Integration-Check unter Transparenz", () => {
+  it("Pro: zentrale Main-Console-Navigation ohne Legacy-Integrationslink", () => {
     renderNav(<SidebarNav showAdminNav={false} />);
-    const cockpitHeading = screen.getByText("Cockpit, approvals & system");
-    const cockpitNav = cockpitHeading.nextElementSibling;
-    expect(cockpitNav?.tagName.toLowerCase()).toBe("nav");
+    const mainConsoleHeading = screen.getByText("Main Console");
+    const mainConsoleNav = mainConsoleHeading.nextElementSibling;
+    expect(mainConsoleNav?.tagName.toLowerCase()).toBe("nav");
     expect(
-      within(cockpitNav as HTMLElement).getByRole("link", {
-        name: /Health & incidents/i,
+      within(mainConsoleNav as HTMLElement).getByRole("link", {
+        name: /^System$/i,
       }),
     ).toBeInTheDocument();
-
-    const opsHeading = screen.getByText("News, plan & integrations");
-    const opsNav = opsHeading.nextElementSibling;
     expect(
-      within(opsNav as HTMLElement).getByRole("link", {
+      within(mainConsoleNav as HTMLElement).queryByRole("link", {
         name: /Integration check/i,
       }),
-    ).toBeInTheDocument();
-    expect(
-      within(opsNav as HTMLElement).queryByRole("link", {
-        name: /Health & incidents/i,
-      }),
     ).toBeNull();
+    const expectedModules = [
+      "Overview",
+      "Assets",
+      "Charts",
+      "Signals",
+      "Risk",
+      "Broker",
+      "Safety",
+      "System",
+      "Reports",
+      "Settings",
+    ];
+    for (const moduleName of expectedModules) {
+      expect(
+        within(mainConsoleNav as HTMLElement).getByRole("link", {
+          name: new RegExp(`^${moduleName}$`, "i"),
+        }),
+      ).toBeInTheDocument();
+    }
+    const forbidden = ["Billing", "Customer", "Pricing", "Tenant", "Contract"];
+    for (const word of forbidden) {
+      expect(
+        within(mainConsoleNav as HTMLElement).queryByRole("link", {
+          name: new RegExp(word, "i"),
+        }),
+      ).toBeNull();
+    }
   });
 
   it("Simple-Ansicht: Schnellzugriff mit KI, Paper, Konto; Hilfe prominent; kein Operator Cockpit", () => {

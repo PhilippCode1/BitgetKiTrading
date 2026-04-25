@@ -150,7 +150,7 @@ export function OperatorSituationStrip({ summary, symbol, timeframe }: Props) {
         Vollstaendige Schalter:{" "}
         <Link href={consolePath("health")}>System-Health</Link>, Live-Journal:{" "}
         <Link href={consolePath("live-broker")}>Live-Broker</Link>, Signale:{" "}
-        <Link href={consolePath("signals")}>Signal-Center</Link>.
+        <Link href={consolePath("signals")}>Signalübersicht</Link>.
       </p>
     </section>
   );

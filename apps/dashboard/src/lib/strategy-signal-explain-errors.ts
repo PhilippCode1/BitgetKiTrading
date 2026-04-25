@@ -12,7 +12,7 @@ export {
 export function isStrategySignalExplainSuccessPayload(
   parsed: unknown,
 ): parsed is {
-  result: { strategy_explanation_de?: string };
+  result: { strategy_explanation_de?: string; execution_authority?: string };
   ok?: boolean;
 } {
   if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
@@ -26,6 +26,6 @@ export function isStrategySignalExplainSuccessPayload(
   if (r === null || typeof r !== "object" || Array.isArray(r)) {
     return false;
   }
-  const ex = (r as Record<string, unknown>).strategy_explanation_de;
-  return typeof ex === "string" && ex.trim().length > 0;
+  const authority = (r as Record<string, unknown>).execution_authority;
+  return authority == null || authority === "none";
 }

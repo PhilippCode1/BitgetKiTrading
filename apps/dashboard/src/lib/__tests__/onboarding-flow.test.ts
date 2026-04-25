@@ -25,6 +25,21 @@ describe("onboarding-flow", () => {
     );
   });
 
+  it("blocks external returnTo URLs", () => {
+    expect(onboardingUrlWithReturn("https://evil.example")).toBe(
+      "/onboarding?returnTo=%2Fconsole",
+    );
+    expect(onboardingUrlWithReturn("//evil.example")).toBe(
+      "/onboarding?returnTo=%2Fconsole",
+    );
+  });
+
+  it("maps legacy /ops to internal console route", () => {
+    expect(onboardingUrlWithReturn("/ops")).toBe(
+      "/onboarding?returnTo=%2Fconsole%2Fops",
+    );
+  });
+
   it("chains welcome then onboarding", () => {
     const u = new URL(guidedWelcomeUrl("/console"), "http://localhost");
     expect(u.pathname).toBe("/welcome");

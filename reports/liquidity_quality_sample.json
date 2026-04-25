@@ -1,0 +1,48 @@
+{
+  "assets": [
+    {
+      "asset": "BTCUSDT",
+      "spread_bps": 0.15872889897699224,
+      "slippage_buy_bps": 0.0,
+      "slippage_sell_bps": 0.0,
+      "depth_status": "ok",
+      "liquidity_tier": "TIER_1",
+      "max_recommended_notional": 25000.0,
+      "live_status": "LIVE_BLOCKED",
+      "block_reasons": [
+        "slippage_zu_hoch"
+      ],
+      "block_reasons_de": [
+        "Erwartete VWAP-Slippage ist zu hoch."
+      ]
+    },
+    {
+      "asset": "ALTUSDT",
+      "spread_bps": null,
+      "slippage_buy_bps": null,
+      "slippage_sell_bps": null,
+      "depth_status": "insufficient",
+      "liquidity_tier": "TIER_5",
+      "max_recommended_notional": 0.0,
+      "live_status": "LIVE_BLOCKED",
+      "block_reasons": [
+        "orderbook_fehlt",
+        "orderbook_stale",
+        "spread_unbekannt",
+        "slippage_unbekannt",
+        "depth_unzureichend",
+        "ordergroesse_ueber_liquiditaetsgrenze",
+        "liquiditaetstier_blockiert_live"
+      ],
+      "block_reasons_de": [
+        "Orderbook fehlt; Live-Ausfuehrung ist gesperrt.",
+        "Orderbook ist stale; Live-Ausfuehrung ist gesperrt.",
+        "Spread ist unbekannt; Live-Ausfuehrung ist gesperrt.",
+        "Slippage ist unbekannt; Live-Ausfuehrung ist gesperrt.",
+        "Top-N-Tiefe ist unzureichend fuer die geplante Ordergroesse.",
+        "Geplante Ordergroesse ueberschreitet die empfohlene Liquiditaetsgrenze.",
+        "Liquiditaets-Tier blockiert Live-Opening."
+      ]
+    }
+  ]
+}

@@ -40,6 +40,8 @@ export function extractDetailFields(
 /** Kuerzt und saubert Text fuer die UI (keine Romane, keine Stacktrace-Zeilen). */
 export function sanitizePublicErrorMessage(raw: string, maxLen = 220): string {
   let s = raw.replace(/\s+/g, " ").trim();
+  s = s.replace(/authorization\s*[:=]\s*bearer\s+\S+/gi, "authorization=***");
+  s = s.replace(/\b(bearer|token|secret|api[_-]?key|password)\s*[:=]\s*\S+/gi, "$1=***");
   if (/^\s*at\s+/.test(s) || /\bat\s+\w+\s*\(/.test(s)) {
     return "";
   }
@@ -155,7 +157,7 @@ export function resolveNetworkFailure(
 }
 
 export function isOperatorExplainSuccessPayload(parsed: unknown): parsed is {
-  result: { explanation_de?: string };
+  result: { explanation_de?: string; execution_authority?: string };
   ok?: boolean;
 } {
   if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
@@ -169,6 +171,12 @@ export function isOperatorExplainSuccessPayload(parsed: unknown): parsed is {
   if (r === null || typeof r !== "object" || Array.isArray(r)) {
     return false;
   }
-  const ex = (r as Record<string, unknown>).explanation_de;
-  return typeof ex === "string" && ex.trim().length > 0;
+  const ro = r as Record<string, unknown>;
+  const ex = ro.explanation_de;
+  const authority = ro.execution_authority;
+  return (
+    typeof ex === "string" &&
+    ex.trim().length > 0 &&
+    authority === "none"
+  );
 }

@@ -190,6 +190,35 @@ body {
   margin-left: auto;
 }
 
+.main-console-statusbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  width: 100%;
+}
+
+.main-console-statusbar__project {
+  font-size: 13px;
+  color: #d9e2f2;
+}
+
+.main-console-statusbar__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.main-console-statusbar__badge {
+  border: 1px solid rgba(130, 148, 171, 0.45);
+  background: rgba(18, 26, 41, 0.72);
+  color: #d9e2f2;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
 .console-gateway-heartbeat-stack {
   display: flex;
   flex-direction: column;
@@ -5091,4 +5120,48 @@ code {
 .market-pulse__cell-muted {
   color: var(--muted, #9aa0a6);
   font-size: 0.85rem;
+}
+
+/* Main Console: Vorfälle & Warnungen (P0 niemals neutral) */
+.operator-alert-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 0.75rem;
+  margin-bottom: 0.35rem;
+}
+
+.operator-alert-card__sev {
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+}
+
+.operator-alert-card__sev[data-severity="P0"] {
+  color: var(--danger, #e07070);
+}
+
+.operator-alert-card__title {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.operator-alert-card__dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.5rem 1rem;
+  margin: 0.75rem 0 0;
+}
+
+.operator-alert-card__dl dt {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--fg-muted, #9aa0a6);
+  margin: 0;
+}
+
+.operator-alert-card__dl dd {
+  margin: 0.15rem 0 0;
+  font-size: 0.9rem;
 }

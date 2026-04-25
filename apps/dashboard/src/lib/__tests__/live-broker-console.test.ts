@@ -1,9 +1,14 @@
 import {
+  brokerLastOrderActionSummary,
+  brokerLiveBlockers,
+  brokerLiveTradingStatus,
+  brokerUnknownStates,
   isLiveBrokerGlobalHaltFromHealth,
   isPaperSseForTradeLifecycle,
   orderStatusCountsNonEmpty,
   prettyJsonLine,
   recordHasKeys,
+  sanitizeBrokerErrorDetail,
 } from "@/lib/live-broker-console";
 
 describe("live-broker-console", () => {
@@ -90,5 +95,74 @@ describe("live-broker-console", () => {
         },
       } as import("@/lib/types").SystemHealthResponse),
     ).toBe(true);
+  });
+
+  it("sanitizes sensitive broker error details", () => {
+    const raw = "authorization=bearer abc token=xyz";
+    const sanitized = sanitizeBrokerErrorDetail(raw);
+    expect(sanitized).toContain("token=***");
+    expect(sanitized).not.toContain("abc");
+    expect(sanitized).not.toContain("xyz");
+  });
+
+  it("reports blockers for kill switch, safety latch and reconcile fail", () => {
+    const blockers = brokerLiveBlockers({
+      runtime: {
+        safety_latch_active: true,
+        active_kill_switches: [{ id: "1" }],
+        upstream_ok: false,
+      } as unknown as import("@/lib/types").LiveBrokerRuntimeItem,
+      health: {
+        ops: { live_broker: { latest_reconcile_status: "fail" } },
+      } as unknown as import("@/lib/types").SystemHealthResponse,
+      orderCount: 0,
+    });
+    expect(blockers).toEqual(
+      expect.arrayContaining([
+        "Safety-Latch aktiv",
+        "Kill-Switch aktiv",
+        "Reconcile nicht ok",
+      ]),
+    );
+  });
+
+  it("marks live status as blockiert when blockers exist", () => {
+    expect(
+      brokerLiveTradingStatus({
+        runtime: {
+          live_trade_enable: true,
+          live_order_submission_enabled: true,
+          safety_latch_active: true,
+        } as unknown as import("@/lib/types").LiveBrokerRuntimeItem,
+        health: {
+          ops: { live_broker: { latest_reconcile_status: "ok" } },
+        } as unknown as import("@/lib/types").SystemHealthResponse,
+      }),
+    ).toBe("blockiert");
+  });
+
+  it("provides unknown states and last action summary", () => {
+    const unknown = brokerUnknownStates({
+      runtime: {} as import("@/lib/types").LiveBrokerRuntimeItem,
+      health: {} as import("@/lib/types").SystemHealthResponse,
+    });
+    expect(unknown.length).toBeGreaterThan(0);
+    expect(
+      brokerLastOrderActionSummary({
+        orders: [
+          {
+            symbol: "BTCUSDT",
+            status: "open",
+            last_action: "place",
+          } as import("@/lib/types").LiveBrokerOrderItem,
+        ],
+        orderActions: [
+          {
+            action: "cancel_all",
+            http_status: 200,
+          } as import("@/lib/types").LiveBrokerOrderActionItem,
+        ],
+      }),
+    ).toContain("BTCUSDT");
   });
 });

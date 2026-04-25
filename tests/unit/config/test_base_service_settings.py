@@ -356,7 +356,7 @@ def test_gateway_live_strict_prerequisites_enforced(
             LIVE_TRADE_ENABLE="true",
             LIVE_BROKER_ENABLED="true",
             EXECUTION_LIVE_STRICT_PREREQUISITES="true",
-            COMMERCIAL_ENABLED="false",
+            LIVE_REQUIRE_OPERATOR_RELEASE_FOR_LIVE_OPEN="false",
             RISK_ELEVATED_LEVERAGE_LIVE_ACK="true",
         )
         with pytest.raises(ValueError, match="EXECUTION_LIVE_STRICT_PREREQUISITES"):
@@ -370,7 +370,6 @@ def test_gateway_live_strict_prerequisites_ok_when_configured(
 ) -> None:
     get_gateway_settings.cache_clear()
     try:
-        meter = "commercial-meter-secret-32chars-minimum!!"
         _set_production_env(
             monkeypatch,
             EXECUTION_MODE="live",
@@ -378,11 +377,10 @@ def test_gateway_live_strict_prerequisites_ok_when_configured(
             LIVE_TRADE_ENABLE="true",
             LIVE_BROKER_ENABLED="true",
             EXECUTION_LIVE_STRICT_PREREQUISITES="true",
-            COMMERCIAL_ENABLED="true",
-            COMMERCIAL_TELEGRAM_REQUIRED_FOR_CONSOLE="true",
-            TELEGRAM_BOT_USERNAME="example_ops_bot",
-            COMMERCIAL_METER_SECRET=meter,
             LIVE_REQUIRE_OPERATOR_RELEASE_FOR_LIVE_OPEN="true",
+            LIVE_REQUIRE_EXCHANGE_HEALTH="true",
+            RISK_HARD_GATING_ENABLED="true",
+            LIVE_KILL_SWITCH_ENABLED="true",
             RISK_ELEVATED_LEVERAGE_LIVE_ACK="true",
         )
         g = GatewaySettings()

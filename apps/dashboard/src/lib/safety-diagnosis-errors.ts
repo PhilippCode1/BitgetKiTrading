@@ -9,6 +9,7 @@ export function isSafetyDiagnosisSuccessPayload(parsed: unknown): boolean {
   const o = r as Record<string, unknown>;
   return (
     typeof o.incident_summary_de === "string" &&
-    o.incident_summary_de.trim().length > 0
+    o.incident_summary_de.trim().length > 0 &&
+    o.execution_authority === "none"
   );
 }

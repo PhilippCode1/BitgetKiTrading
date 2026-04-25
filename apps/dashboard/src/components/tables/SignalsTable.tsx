@@ -13,6 +13,12 @@ import {
   formatPct01,
   formatTsMs,
 } from "@/lib/format";
+import {
+  signalDataAgeDe,
+  signalRiskStatusDe,
+  summarizeBlockReasonsDe,
+  tradeActionLabelDe,
+} from "@/lib/signal-decision-center";
 import type { SignalRecentItem } from "@/lib/types";
 
 type Props = Readonly<{
@@ -200,7 +206,7 @@ export function SignalsTable({ items, isLoading = false }: Props) {
                     {t("signalsTable.thDecision")}
                   </span>
                   <span className="console-stack-card__v mono-small">
-                    {s.trade_action ?? "—"}
+                    {tradeActionLabelDe(s.trade_action)}
                   </span>
                 </div>
                 <div>
@@ -208,7 +214,7 @@ export function SignalsTable({ items, isLoading = false }: Props) {
                     {t("signalsTable.thRiskGov")}
                   </span>
                   <span className={`console-stack-card__v ${g.cls}`}>
-                    {g.text}
+                    {signalRiskStatusDe(s)}
                   </span>
                 </div>
                 <div>
@@ -217,6 +223,20 @@ export function SignalsTable({ items, isLoading = false }: Props) {
                   </span>
                   <span className={`console-stack-card__v ${e.cls}`}>
                     {e.text}
+                  </span>
+                </div>
+                <div>
+                  <span className="console-stack-card__k">Datenalter</span>
+                  <span className="console-stack-card__v mono-small">
+                    {signalDataAgeDe(s.analysis_ts_ms)}
+                  </span>
+                </div>
+                <div>
+                  <span className="console-stack-card__k">Blockgruende</span>
+                  <span className="console-stack-card__v muted small">
+                    {summarizeBlockReasonsDe(s.live_execution_block_reasons_json)
+                      .slice(0, 2)
+                      .join(" · ")}
                   </span>
                 </div>
               </div>
@@ -307,7 +327,7 @@ export function SignalsTable({ items, isLoading = false }: Props) {
                   <td>
                     <div className="stacked-cell">
                       <span className="mono-small">
-                        {s.trade_action ?? "—"}
+                        {tradeActionLabelDe(s.trade_action)}
                       </span>
                       <span
                         className="stacked-muted"
@@ -329,6 +349,9 @@ export function SignalsTable({ items, isLoading = false }: Props) {
                         {formatNum(s.signal_strength_0_100, 1)} /{" "}
                         {t("signalsTable.policy")}{" "}
                         {formatPct01(s.decision_confidence_0_1 ?? null)}
+                      </span>
+                      <span className="stacked-muted">
+                        Datenalter: {signalDataAgeDe(s.analysis_ts_ms)}
                       </span>
                     </div>
                   </td>
@@ -395,6 +418,9 @@ export function SignalsTable({ items, isLoading = false }: Props) {
                     <div className="stacked-cell">
                       <span className={g.cls}>{g.text}</span>
                       <span className="stacked-muted">
+                        {signalRiskStatusDe(s)}
+                      </span>
+                      <span className="stacked-muted">
                         {t("signalsTable.universal")} {uniN} /{" "}
                         {t("signalsTable.cash")}{" "}
                         {cashYesNo(s.live_execution_clear_for_real_money, t)}
@@ -416,6 +442,11 @@ export function SignalsTable({ items, isLoading = false }: Props) {
                         {s.expected_return_bps == null
                           ? "—"
                           : `${formatNum(s.expected_return_bps, 1)} ${t("signalsTable.bpsSuffix")}`}
+                      </span>
+                      <span className="stacked-muted">
+                        {summarizeBlockReasonsDe(s.live_execution_block_reasons_json)
+                          .slice(0, 2)
+                          .join(" · ")}
                       </span>
                     </div>
                   </td>

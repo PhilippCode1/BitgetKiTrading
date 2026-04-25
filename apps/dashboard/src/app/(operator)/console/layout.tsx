@@ -6,6 +6,7 @@ import { DashboardQueryProvider } from "@/components/providers/DashboardQueryPro
 import { ConsoleExecutionModeRibbon } from "@/components/layout/ConsoleExecutionModeRibbon";
 import { ConsoleGatewayBootstrapBanner } from "@/components/layout/ConsoleGatewayBootstrapBanner";
 import { ConsoleGatewayHeartbeat } from "@/components/layout/ConsoleGatewayHeartbeat";
+import { MainConsoleStatusBar } from "@/components/layout/MainConsoleStatusBar";
 import { ConsoleTelegramGate } from "@/components/layout/ConsoleTelegramGate";
 import { ConsoleTrustBanner } from "@/components/layout/ConsoleTrustBanner";
 import { DashboardShell } from "@/components/layout/DashboardShell";
@@ -33,11 +34,14 @@ export default async function OperatorConsoleLayout({ children }: Props) {
   const uiMode = await getRequestUiMode();
   const probe = await getGatewayBootstrapProbeForRequest();
   const t = await getServerTranslator();
+  let systemHealth: Awaited<ReturnType<typeof fetchSystemHealthBestEffort>>["health"] =
+    null;
   let executionTier: ExecutionTierSnapshot | null = null;
   let healthLoadHint: string | null = null;
   const probeBlocks = probe.rootCause !== "ok";
   if (!probeBlocks) {
     const { health, error } = await fetchSystemHealthBestEffort();
+    systemHealth = health;
     if (error) {
       const hint = t(`ui.fetchError.${error.kind}.body`);
       healthLoadHint = hint;
@@ -58,18 +62,25 @@ export default async function OperatorConsoleLayout({ children }: Props) {
       showAdminNav={showAdminNav}
       uiMode={uiMode}
       topBarExtra={
-        <ConsoleGatewayHeartbeat
-          labelOk={t("ui.incident.heartbeatOk")}
-          labelDegraded={t("ui.incident.heartbeatDegraded")}
-          labelChecking={t("ui.incident.heartbeatChecking")}
-          liveSseLabels={{
-            CONNECTING: t("ui.incident.liveSseCONNECTING"),
-            CONNECTED: t("ui.incident.liveSseCONNECTED"),
-            DISCONNECTED: t("ui.incident.liveSseDISCONNECTED"),
-            RECONNECTING: t("ui.incident.liveSseRECONNECTING"),
-            GAVE_UP: t("ui.incident.liveSseGAVE_UP"),
-          }}
-        />
+        <>
+          <MainConsoleStatusBar
+            health={systemHealth}
+            tier={executionTier}
+            healthError={healthErr}
+          />
+          <ConsoleGatewayHeartbeat
+            labelOk={t("ui.incident.heartbeatOk")}
+            labelDegraded={t("ui.incident.heartbeatDegraded")}
+            labelChecking={t("ui.incident.heartbeatChecking")}
+            liveSseLabels={{
+              CONNECTING: t("ui.incident.liveSseCONNECTING"),
+              CONNECTED: t("ui.incident.liveSseCONNECTED"),
+              DISCONNECTED: t("ui.incident.liveSseDISCONNECTED"),
+              RECONNECTING: t("ui.incident.liveSseRECONNECTING"),
+              GAVE_UP: t("ui.incident.liveSseGAVE_UP"),
+            }}
+          />
+        </>
       }
     >
       <ConsoleGatewayBootstrapBanner probe={probe} />

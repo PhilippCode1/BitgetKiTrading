@@ -1,0 +1,47 @@
+{
+  "generated_at": "2026-04-25T17:00:00Z",
+  "items": [
+    {
+      "strategy_id": "trend_follow_v2",
+      "strategy_version": "2.3.1",
+      "playbook_id": "playbook_trend_primary",
+      "asset_symbol": "BTCUSDT",
+      "asset_class": "top_liquid_futures",
+      "market_family": "futures",
+      "risk_tier": "RISK_TIER_1_MAJOR_LIQUID",
+      "data_quality_status": "data_ok",
+      "evidence_status": "shadow_passed",
+      "backtest_available": true,
+      "walk_forward_available": true,
+      "paper_available": true,
+      "shadow_available": true,
+      "shadow_passed": true,
+      "expires_at": "2027-01-01T00:00:00Z",
+      "scope_asset_symbols": ["BTCUSDT"],
+      "scope_asset_classes": ["top_liquid_futures"],
+      "allowed_market_families": ["futures"],
+      "allowed_risk_tiers": ["RISK_TIER_1_MAJOR_LIQUID", "RISK_TIER_2_LIQUID"]
+    },
+    {
+      "strategy_id": "trend_follow_v2",
+      "strategy_version": "2.3.1",
+      "playbook_id": "playbook_trend_primary",
+      "asset_symbol": "ALTUSDT",
+      "asset_class": "unknown",
+      "market_family": "futures",
+      "risk_tier": "RISK_TIER_3_ELEVATED_RISK",
+      "data_quality_status": "data_warn",
+      "evidence_status": "backtest_available",
+      "backtest_available": true,
+      "walk_forward_available": false,
+      "paper_available": false,
+      "shadow_available": false,
+      "shadow_passed": false,
+      "expires_at": "2024-01-01T00:00:00Z",
+      "scope_asset_symbols": [],
+      "scope_asset_classes": ["mid_liquidity"],
+      "allowed_market_families": ["futures"],
+      "allowed_risk_tiers": ["RISK_TIER_1_MAJOR_LIQUID"]
+    }
+  ]
+}

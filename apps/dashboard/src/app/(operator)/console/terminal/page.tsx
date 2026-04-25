@@ -3,7 +3,11 @@ import { Suspense } from "react";
 import { HealthSnapshotLoadNotice } from "@/components/console/HealthSnapshotLoadNotice";
 import { PlatformExecutionStreamsGrid } from "@/components/console/PlatformExecutionStreamsGrid";
 import { LiveTerminalClient } from "@/components/live/LiveTerminalClient";
-import { fetchLiveState, fetchSystemHealthBestEffort } from "@/lib/api";
+import {
+  fetchLiveState,
+  fetchMarketUniverseStatus,
+  fetchSystemHealthBestEffort,
+} from "@/lib/api";
 import { diagnosticFromSearchParams } from "@/lib/console-params";
 import { executionPathFromSystemHealth } from "@/lib/execution-path-view-model";
 import { publicEnv } from "@/lib/env";
@@ -42,6 +46,16 @@ export default async function TerminalPage({
   )
     .map((item) => item.trim())
     .filter((item) => item.length > 0);
+  let universeSymbols: string[] = [];
+  try {
+    const universe = await fetchMarketUniverseStatus();
+    universeSymbols = universe.configuration.universe_symbols.slice(0, 80);
+  } catch {
+    universeSymbols = [];
+  }
+  const mergedSymbolOptions = Array.from(
+    new Set([...symbolOptions, ...universeSymbols.map((s) => s.trim()).filter(Boolean)]),
+  );
   let initialLoadError: string | null = null;
   let initial: LiveStateResponse;
   const liveTerminalMeta = await fetchLiveTerminalServerMeta();
@@ -79,7 +93,7 @@ export default async function TerminalPage({
       <LiveTerminalClient
         initial={initial}
         initialLoadError={initialLoadError}
-        symbolOptions={symbolOptions}
+        symbolOptions={mergedSymbolOptions}
         liveTerminalMeta={liveTerminalMeta}
         executionVm={executionVm}
       />

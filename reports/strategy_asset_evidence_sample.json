@@ -1,0 +1,45 @@
+{
+  "generated_at": "2026-04-25T17:38:03Z",
+  "items": [
+    {
+      "asset_class": "top_liquid_futures",
+      "asset_symbol": "BTCUSDT",
+      "backtest_available": true,
+      "evidence_status": "shadow_passed",
+      "live_block_reasons": [],
+      "missing_evidence": [],
+      "paper_available": true,
+      "shadow_available": true,
+      "strategy": "trend_follow_v2",
+      "summary_de": "Strategie trend_follow_v2 v2.3.1 fuer BTCUSDT/top_liquid_futures hat Evidence-Status shadow_passed und darf nur den naechsten Gate-Schritt erreichen.",
+      "version": "2.3.1",
+      "walk_forward_available": true
+    },
+    {
+      "asset_class": "unknown",
+      "asset_symbol": "ALTUSDT",
+      "backtest_available": true,
+      "evidence_status": "backtest_available",
+      "live_block_reasons": [
+        "asset_class_unknown",
+        "strategy_evidence_expired",
+        "risk_tier_mismatch",
+        "data_quality_mismatch",
+        "strategy_scope_mismatch"
+      ],
+      "missing_evidence": [
+        "asset_class_unknown",
+        "strategy_evidence_expired",
+        "risk_tier_mismatch",
+        "data_quality_mismatch",
+        "strategy_scope_mismatch"
+      ],
+      "paper_available": false,
+      "shadow_available": false,
+      "strategy": "trend_follow_v2",
+      "summary_de": "Strategie trend_follow_v2 v2.3.1 fuer ALTUSDT/unknown blockiert: asset_class_unknown, strategy_evidence_expired, risk_tier_mismatch, data_quality_mismatch, strategy_scope_mismatch.",
+      "version": "2.3.1",
+      "walk_forward_available": false
+    }
+  ]
+}

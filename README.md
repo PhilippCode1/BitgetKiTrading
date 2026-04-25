@@ -1,10 +1,21 @@
-# Bitget Marktuniversum KI
+# bitget-btc-ai
+
+Private deutsche Bitget-Multi-Asset-KI-Trading-Anwendung fuer Philipp Crljic mit
+zentraler Main Console. Das Projekt wird nicht verkauft, hat kein Billing, keine
+Kundenrollen, keine Subscription- oder Payment-Flows und keine oeffentliche
+Customer Journey als Produktziel.
 
 Monorepo fuer eine **produktionsfaehige** Pipeline: Marktdaten → Features → Struktur/Drawings → **deterministischer Signal-Kern** (Risk, Uncertainty, Gating) → Paper / **Shadow** / **Live** ueber den **Live-Broker** als Control-Plane. Das Repo ist nicht mehr nur auf `BTCUSDT`/`USDT-FUTURES` konzipiert, sondern auf ein **Bitget-Marktuniversum** mit expliziten Marktfamilien (`spot`, `margin`, `futures`), family-aware Instrumentidentitaet (u. a. `MarketInstrumentFactory` / `BitgetInstrumentIdentity` in `shared/python/src/shared_py/bitget/instruments.py`) und spezialisierten Entscheidungsstapeln. **LLM** ist unterstuetzend (z. B. News), **nicht** der alleinige Trading-Kern.
 
 ## Produktreife 10/10 (Software-Repo) und „Production Launch“
 
-**Stand (P83 — Doku-Paritaet & Audit-Master):** Im **Umfang dieses Repos** gilt **10/10** fuer gelieferte Technik, CI, geschlossene P0-Gap-Matrix, harte Multi-Asset-Pfade, Gate-Dokument `docs/SYSTEM_AUDIT_MASTER.md` (Phasen 1–18 **COMPLETED**), technisch abgehakte `docs/LaunchChecklist.md` und vollstaendig dokumentierte Trennung **Kunden- vs. Operator-** UI (BFF, Proxy, `server-env.ts` / `API_GATEWAY_URL`). Echte Boersen-Keys, Recht und Management-Unterschriften sind **kein** Git-Commit — siehe `docs/LAUNCH_DOSSIER.md` und die Signoff-Tabelle in `docs/LaunchChecklist.md`. **Diese „Software-Repo 10/10“ ist nicht** dasselbe wie ein institutioneller **Echtgeld-Go-Live-10/10** (L4–L5-Evidenz, externe Beweise) — trennende Map und Audit: `docs/production_10_10/README.md`, Befehl `python tools/production_readiness_audit.py` (ohne Doku-Claims fiktiv gruen zu stellen).
+**Stand:** `10/10 erreicht` darf nicht behauptet werden, solange Evidence fehlt.
+Das Repo enthaelt viele technische Grundlagen, aber echte Produktionsfreigabe,
+Bitget-Keys, Recht, Security-/Restore-/Shadow-Evidence und Owner-Signoffs sind
+nicht durch einen Git-Commit ersetzt. Die verbindliche Truth-Schicht steht unter
+`docs/production_10_10/README.md`; die private Owner-Ausrichtung unter
+`docs/production_10_10/private_owner_scope.md` und die Main-Console-Richtung
+unter `docs/production_10_10/main_console_product_direction.md`.
 
 **Empfohlener erste Live-Stufe — Manual Mirror R1 (operativ, Kurzfassung):**
 
@@ -16,7 +27,7 @@ Monorepo fuer eine **produktionsfaehige** Pipeline: Marktdaten → Features → 
 ## Kernregeln (Betrieb)
 
 - **Ausfuehrung:** drei Modi — **paper** (Referenz), **shadow** (produktionsnaehe ohne echte Orders), **live** (echte Orders nur mit expliziten ENV-Freigaben). Details: `docs/Deploy.md`, `docs/prod_runbook.md`.
-- **Modul-Mate-Gates (optional):** Live-Broker kann `MODUL_MATE_GATE_ENFORCEMENT=true` nutzen, um Order-Submits an Zeilen in `app.tenant_modul_mate_gates` zu koppeln (siehe `docs/live_broker.md`, `python tools/modul_mate_selfcheck.py`).
+- **Owner-Safety-Gates (optional):** Live-Broker kann `MODUL_MATE_GATE_ENFORCEMENT=true` nutzen, um Order-Submits an private Gate-Zeilen in `app.tenant_modul_mate_gates` zu koppeln (historischer Tabellenname; siehe `docs/live_broker.md`, `python tools/modul_mate_selfcheck.py`).
 - **Leverage:** nur **Integer 7..75** (konfiguriert als `RISK_ALLOWED_LEVERAGE_MIN` / `RISK_ALLOWED_LEVERAGE_MAX`); mit `RISK_REQUIRE_7X_APPROVAL=true` ohne saubere 7x-Freigabe → **`do_not_trade`**. **Erst-Burn-in:** `RISK_ALLOWED_LEVERAGE_MAX=7` bis Evidenz fuer hoehere Obergrenze (siehe `docs/LaunchChecklist.md`).
 - **Stop-Budget:** enge Stops bleiben Kern der Strategie, aber nur innerhalb einer leverage-indexierten Ausfuehrbarkeitskurve. `shared_py.exit_engine.validate_exit_plan(...)` blockiert unhaltbare Kombinationen aus Hebel, Spread, Ticksize, Tiefe und Liquidationspuffer.
 - **Produktionsprofil:** keine Fake-/Fixture-Provider-Defaults, kein `pnpm dev` im Produktionscontainer; Secrets nur zur Laufzeit (Vault/KMS/Secret Manager).
@@ -95,7 +106,11 @@ Die Profile nutzen dieselbe Kernlogik; Unterschiede liegen in Gates, Secrets und
 | **Launch-Paket (Produktbetrieb, Index)**                  | **`docs/LAUNCH_PACKAGE.md`**                                     |
 | Betreiberhandbuch (Single-Host, TLS, Health)              | `docs/OPERATOR_HANDBOOK.md`                                      |
 | Externe Go-Live-Abhaengigkeiten                           | `docs/EXTERNAL_GO_LIVE_DEPENDENCIES.md`                          |
-| Plaene & Nutzungslogik                                    | `docs/PRODUCT_PLANS_AND_USAGE.md`                                |
+| Private Owner Scope                                       | `docs/production_10_10/private_owner_scope.md`                    |
+| Main-Console-Produktdirection                             | `docs/production_10_10/main_console_product_direction.md`         |
+| Main-Console-Architektur (Masterplan)                     | `docs/production_10_10/main_console_architecture.md`              |
+| Cursor-Arbeitsprotokoll                                   | `docs/production_10_10/cursor_work_protocol.md`                   |
+| Legacy-Plaene & Nutzungslogik                             | `docs/PRODUCT_PLANS_AND_USAGE.md`                                |
 | CI- & Release-Gates (Merge, Rollback, wöchentlicher Lauf) | `docs/ci_release_gates.md`                                       |
 | Deploy & Pflicht-Keys                                     | `docs/Deploy.md`                                                 |
 | Bitget-Marktfamilien & Instrumentvertrag                  | `docs/bitget-config.md`                                          |
@@ -133,6 +148,25 @@ Die Profile nutzen dieselbe Kernlogik; Unterschiede liegen in Gates, Secrets und
 6. **Smoke:** `bash scripts/healthcheck.sh` (alle `*_URL` wie im Skript).
 
 **PYTHONPATH (ohne Docker):** Repo-Root + `shared/python/src` fuer `config/` und Shared-Pakete.
+
+## Bitget Demo-Modus mit Demogeld starten
+
+1. Zweck: Demo-Geld-Betrieb nahe an Live, aber ohne Echtgeld.
+2. Voraussetzungen: Docker, Docker Compose, lokale Demo-Bitget-Keys, `.env.demo`.
+3. Demo-ENV anlegen: `cp .env.demo.example .env.demo`
+4. Demo-Readiness pruefen:
+   `python scripts/bitget_demo_readiness.py --env-file .env.demo --mode readonly --output-md reports/bitget_demo_readiness.md`
+5. Demo-Stack starten: `docker compose --env-file .env.demo up --build`
+6. Im Hintergrund starten: `docker compose --env-file .env.demo up --build -d`
+7. Main Console: `http://localhost:3000`
+8. API-Gateway: `http://localhost:8000`
+9. Demo-Healthcheck:
+   `python scripts/demo_stack_healthcheck.py --env-file .env.demo --dashboard-url http://localhost:3000 --base-url http://localhost:8000 --output-md reports/demo_stack_healthcheck.md`
+10. Demo-Stress-Smoke:
+    `python scripts/demo_stress_smoke.py --base-url http://localhost:8000 --dashboard-url http://localhost:3000 --duration-sec 60 --output-md reports/demo_stress_smoke.md`
+11. Logs: `docker compose logs -f`
+12. Stoppen: `docker compose down`
+13. Sicherheitswarnung: Demo nutzt Demogeld; echtes Live-Trading bleibt aus. Demo-Erfolg ist keine Echtgeld-Freigabe.
 
 ## Tests & CI
 

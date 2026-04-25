@@ -22,6 +22,7 @@ import {
 } from "@/lib/console-params";
 import { publicEnv } from "@/lib/env";
 import { getServerTranslator } from "@/lib/i18n/server-translate";
+import { buildAssetUniverseConsoleRows } from "@/lib/asset-universe-console";
 import { resolveTradeSymbol } from "@/lib/resolve-trade-symbol";
 
 export const dynamic = "force-dynamic";
@@ -151,6 +152,10 @@ export default async function MarketUniversePage({
         <div className="panel" role="status">
           <h2>{t("pages.marketUniverse.unavailableTitle")}</h2>
           <p className="muted">{t("pages.marketUniverse.unavailableBody")}</p>
+          <p className="operator-warn">
+            Asset-Discovery-Daten fehlen. Aus Sicherheitsgruenden bleibt jeder
+            Live-Status blockiert, bis echte Bitget-Metadaten vorliegen.
+          </p>
           <p className="muted small">
             <Link href={consolePath("health")}>{t("console.nav.health")}</Link>
             {" · "}
@@ -166,6 +171,77 @@ export default async function MarketUniversePage({
       ) : null}
       {!data ? null : (
         <>
+          <div className="panel">
+            <h2>Asset-Universum: Discovery, Quarantaene und Live-Gates</h2>
+            <p className="muted small">
+              Diese Tabelle ist fail-closed: Ohne valide Discovery-, Daten- und
+              Evidence-Lage bleibt Live blockiert.
+            </p>
+            {(() => {
+              const rows = buildAssetUniverseConsoleRows(data.instruments);
+              return (
+                <div className="table-wrap">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Symbol</th>
+                        <th>Instrument-ID</th>
+                        <th>Market Family</th>
+                        <th>ProductType</th>
+                        <th>MarginCoin</th>
+                        <th>Status</th>
+                        <th>Datenqualitaet</th>
+                        <th>Liquiditaet</th>
+                        <th>Spread</th>
+                        <th>Funding/OI</th>
+                        <th>Risk Tier</th>
+                        <th>Asset-Tier</th>
+                        <th>Modus erlaubt</th>
+                        <th>Blockgruende</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map((row) => (
+                        <tr key={`${row.symbol}:${row.instrumentId}`}>
+                          <td>{row.symbol}</td>
+                          <td className="mono-small">{row.instrumentId}</td>
+                          <td>{row.marketFamily}</td>
+                          <td>{row.productType}</td>
+                          <td>{row.marginCoin}</td>
+                          <td>{row.status}</td>
+                          <td>{row.dataQuality}</td>
+                          <td>{row.liquidity}</td>
+                          <td>{row.spread}</td>
+                          <td>{row.fundingOi}</td>
+                          <td>{row.riskTier}</td>
+                          <td>{row.assetTier}</td>
+                          <td>
+                            {row.liveReady ? (
+                              <strong>{row.modeAllowed}</strong>
+                            ) : (
+                              row.modeAllowed
+                            )}
+                          </td>
+                          <td>
+                            {row.blockReasons.length === 0 ? (
+                              <span className="muted">Keine</span>
+                            ) : (
+                              <ul className="news-list">
+                                {row.blockReasons.map((reason) => (
+                                  <li key={reason}>{reason}</li>
+                                ))}
+                              </ul>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()}
+          </div>
+
           <div className="panel">
             <h2>{t("pages.marketUniverse.snapshotTitle")}</h2>
             <div className="signal-grid">

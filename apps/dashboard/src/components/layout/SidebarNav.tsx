@@ -4,6 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { useI18n } from "@/components/i18n/I18nProvider";
+import {
+  MAIN_CONSOLE_PRIMARY_SECTIONS,
+  type MainConsoleNavSection,
+} from "@/lib/main-console/navigation";
 import { ONBOARDING_NAV_HREF } from "@/lib/onboarding-flow";
 import { CONSOLE_BASE } from "@/lib/console-paths";
 import type { UiMode } from "@/lib/dashboard-prefs";
@@ -15,96 +19,7 @@ type NavSection = Readonly<{
   links: readonly NavLink[];
 }>;
 
-/**
- * Profi-Konsole: weniger Sektionen, Health beim Cockpit (Lage + System nahe beieinander).
- */
-const SECTIONS: readonly NavSection[] = [
-  {
-    sectionKey: null,
-    links: [{ href: CONSOLE_BASE, messageKey: "console.nav.overview" }],
-  },
-  {
-    sectionKey: "console.navSections.cockpit",
-    links: [
-      { href: `${CONSOLE_BASE}/ops`, messageKey: "console.nav.ops" },
-      { href: `${CONSOLE_BASE}/terminal`, messageKey: "console.nav.terminal" },
-      {
-        href: `${CONSOLE_BASE}/approvals`,
-        messageKey: "console.nav.approvals",
-      },
-      { href: `${CONSOLE_BASE}/health`, messageKey: "console.nav.health" },
-      {
-        href: `${CONSOLE_BASE}/diagnostics`,
-        messageKey: "console.nav.diagnostics",
-      },
-      {
-        href: `${CONSOLE_BASE}/self-healing`,
-        messageKey: "console.nav.self_healing",
-      },
-    ],
-  },
-  {
-    sectionKey: "console.navSections.market",
-    links: [
-      {
-        href: `${CONSOLE_BASE}/market-universe`,
-        messageKey: "console.nav.market_universe",
-      },
-      {
-        href: `${CONSOLE_BASE}/capabilities`,
-        messageKey: "console.nav.capabilities",
-      },
-      { href: `${CONSOLE_BASE}/signals`, messageKey: "console.nav.signals" },
-      { href: `${CONSOLE_BASE}/no-trade`, messageKey: "console.nav.no_trade" },
-    ],
-  },
-  {
-    sectionKey: "console.navSections.execution",
-    links: [
-      {
-        href: `${CONSOLE_BASE}/live-broker`,
-        messageKey: "console.nav.live_broker",
-      },
-      {
-        href: `${CONSOLE_BASE}/shadow-live`,
-        messageKey: "console.nav.shadow_live",
-      },
-      { href: `${CONSOLE_BASE}/paper`, messageKey: "console.nav.paper" },
-    ],
-  },
-  {
-    sectionKey: "console.navSections.model",
-    links: [
-      { href: `${CONSOLE_BASE}/learning`, messageKey: "console.nav.learning" },
-      {
-        href: `${CONSOLE_BASE}/strategies`,
-        messageKey: "console.nav.strategies",
-      },
-    ],
-  },
-  {
-    sectionKey: "console.navSections.operations",
-    links: [
-      { href: `${CONSOLE_BASE}/news`, messageKey: "console.nav.news" },
-      { href: `${CONSOLE_BASE}/usage`, messageKey: "console.nav.usage" },
-      {
-        href: `${CONSOLE_BASE}/integrations`,
-        messageKey: "console.nav.integrations",
-      },
-    ],
-  },
-  {
-    sectionKey: "console.navSections.account",
-    links: [
-      { href: `${CONSOLE_BASE}/account`, messageKey: "console.nav.accountHub" },
-    ],
-  },
-];
-
-const ADMIN_LINK: NavLink = {
-  href: `${CONSOLE_BASE}/admin`,
-  messageKey: "console.nav.admin",
-};
+const SECTIONS: readonly NavSection[] = MAIN_CONSOLE_PRIMARY_SECTIONS;
 
 /**
  * Einfache Ansicht: Health, Paper, Konto und Hilfe zuerst; Chart/Signale danach;
@@ -161,15 +76,14 @@ export function SidebarNav({ showAdminNav, uiMode = "pro" }: Props) {
   const pathname = usePathname();
   const { t } = useI18n();
   const base = uiMode === "simple" ? SIMPLE_SECTIONS : SECTIONS;
-  const sections = showAdminNav
-    ? [
-        ...base,
-        {
-          sectionKey: "console.navSections.internal",
-          links: [ADMIN_LINK] as const,
-        },
-      ]
-    : base;
+  const sections = (
+    showAdminNav
+      ? base
+      : base.map((section) => ({
+          ...section,
+          links: section.links.filter((link) => link.href !== `${CONSOLE_BASE}/admin`),
+        }))
+  ).filter((section) => section.links.length > 0) as readonly MainConsoleNavSection[];
 
   return (
     <aside className="dash-sidebar" data-e2e="operator-sidebar">

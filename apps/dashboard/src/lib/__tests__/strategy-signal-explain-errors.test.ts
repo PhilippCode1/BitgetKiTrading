@@ -6,20 +6,20 @@ import {
 const t = (key: string) => key;
 
 describe("strategy-signal-explain-errors", () => {
-  it("isStrategySignalExplainSuccessPayload accepts non-empty strategy_explanation_de", () => {
+  it("isStrategySignalExplainSuccessPayload akzeptiert fehlende Text-Erklaerung bei execution_authority=none", () => {
     expect(
       isStrategySignalExplainSuccessPayload({
         ok: true,
-        result: { strategy_explanation_de: "Hallo" },
+        result: { execution_authority: "none" },
       }),
     ).toBe(true);
   });
 
-  it("rejects empty explanation and ok false", () => {
+  it("lehnt ok=false und unzulaessige execution_authority ab", () => {
     expect(
       isStrategySignalExplainSuccessPayload({
         ok: true,
-        result: { strategy_explanation_de: "  " },
+        result: { strategy_explanation_de: "x", execution_authority: "operator" },
       }),
     ).toBe(false);
     expect(

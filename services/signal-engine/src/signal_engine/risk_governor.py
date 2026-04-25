@@ -28,6 +28,11 @@ from shared_py.observability.vpin_redis import (
     VPIN_HARD_HALT_THRESHOLD_0_1,
     VPIN_ORDER_SIZE_REDUCE_THRESHOLD_0_1,
 )
+from shared_py.asset_risk_tiers import (
+    asset_live_eligibility_reasons,
+    classify_asset_risk_tier,
+    validate_multi_asset_order_sizing,
+)
 from shared_py.resilience.survival_kernel import (
     RISK_VOLATILITY_CLAMP_ACTIVE,
     adaptive_leverage_cap_from_atr_percent,
@@ -224,6 +229,85 @@ def assess_risk_governor(
     d = direction.strip().lower()
     sides = acct.get("allowed_entry_sides")
 
+    execution_mode = _execution_mode_str(settings)
+    if execution_mode not in {"paper", "shadow", "live"}:
+        execution_mode = "paper"
+
+    asset_symbol = str(
+        signal_row.get("symbol")
+        or signal_row.get("asset")
+        or signal_row.get("instrument_symbol")
+        or "UNKNOWN"
+    ).strip() or "UNKNOWN"
+    requested_asset_tier = signal_row.get("asset_risk_tier") or signal_row.get("asset_tier")
+    volatility_0_1 = _f(signal_row.get("asset_volatility_0_1"))
+    if volatility_0_1 is None:
+        volatility_0_1 = _f(signal_row.get("volatility_0_1"))
+    asset_tier = classify_asset_risk_tier(
+        requested_tier=str(requested_asset_tier) if requested_asset_tier is not None else None,
+        volatility_0_1=volatility_0_1,
+        spread_bps=_f(primary_tf.get("spread_bps")),
+        delisted=bool(signal_row.get("asset_delisted")),
+        suspended=bool(signal_row.get("asset_suspended")),
+    )
+    asset_liquidity_status = str(
+        signal_row.get("asset_liquidity_status")
+        or signal_row.get("liquidity_status")
+        or "unknown"
+    ).strip().lower()
+    asset_data_quality_status = str(
+        signal_row.get("asset_data_quality_status")
+        or signal_row.get("data_quality_status")
+        or "data_unknown"
+    ).strip().lower()
+    strategy_evidence_ready = bool(
+        signal_row.get("asset_strategy_evidence_ready")
+        or signal_row.get("strategy_evidence_ready")
+    )
+    owner_approved = bool(
+        signal_row.get("owner_approved")
+        or signal_row.get("asset_owner_approved")
+        or acct.get("owner_approved")
+        or acct.get("phillip_owner_approved")
+    )
+    account_context_fresh = bool(acct) and bool(
+        acct.get("account_context_fresh")
+        or acct.get("portfolio_context_fresh")
+        or acct.get("risk_snapshot_fresh")
+    )
+
+    asset_live_block_reasons = asset_live_eligibility_reasons(
+        tier=asset_tier,
+        data_quality_status=asset_data_quality_status,
+        liquidity_status=asset_liquidity_status,
+        strategy_evidence_ready=strategy_evidence_ready,
+        owner_approved=owner_approved,
+        account_context_fresh=account_context_fresh,
+        spread_bps=_f(primary_tf.get("spread_bps")),
+    )
+    asset_live_block_reasons = [f"asset_risk:{reason}" for reason in asset_live_block_reasons]
+
+    proposed_notional_usdt = _f(
+        signal_row.get("proposed_notional_usdt")
+        or signal_row.get("position_notional_usdt")
+        or signal_row.get("notional_usdt")
+        or 0.0
+    ) or 0.0
+    requested_leverage = _i(
+        signal_row.get("allowed_leverage")
+        or signal_row.get("recommended_leverage")
+        or signal_row.get("leverage")
+        or 1
+    ) or 1
+    asset_sizing = validate_multi_asset_order_sizing(
+        symbol=asset_symbol,
+        tier=asset_tier,
+        mode=execution_mode,  # type: ignore[arg-type]
+        requested_leverage=requested_leverage,
+        requested_notional_usdt=proposed_notional_usdt,
+    )
+    asset_sizing_reasons = [f"asset_risk:{reason}" for reason in asset_sizing.get("reasons", [])]
+
     # --- Phase 1a: Konto-/Portfolio-Stress (nur Live, wenn live_only) ---
     live_stress: list[str] = []
 
@@ -337,6 +421,14 @@ def assess_risk_governor(
         for tag in bucket:
             if tag not in live_execution:
                 live_execution.append(tag)
+
+    if execution_mode == "live":
+        for reason in asset_live_block_reasons:
+            if reason not in universal:
+                universal.append(reason)
+    for reason in asset_sizing_reasons:
+        if reason not in universal:
+            universal.append(reason)
 
     if live_only:
         hard = list(universal)
@@ -506,6 +598,9 @@ def assess_risk_governor(
         "max_exposure_fraction_0_1": max_exposure_fraction,
         "quality_tier": tier,
         "quality_tier_notes_json": tier_notes,
+        "asset_risk_tier": asset_tier,
+        "asset_live_block_reasons_json": asset_live_block_reasons,
+        "asset_order_sizing_json": asset_sizing,
         "max_leverage_cap": cap,
         "risk_volatility_clamp_active": risk_volatility_clamp_active,
         "governor_bff_risk_flags_json": governor_bff_risk_flags_json,

@@ -61,6 +61,8 @@ export type PublicEnv = Readonly<{
   enableAdmin: boolean;
   /** Spiegelt Gateway COMMERCIAL_TELEGRAM_REQUIRED_FOR_CONSOLE (nur UI-Gate). */
   commercialTelegramRequiredForConsole: boolean;
+  /** Deployment-Hinweis fuer Main Console (kein Secret). */
+  deploymentProfile: string;
 }>;
 
 export const publicEnv: PublicEnv = Object.freeze({
@@ -94,4 +96,7 @@ export const publicEnv: PublicEnv = Object.freeze({
     process.env.NEXT_PUBLIC_COMMERCIAL_TELEGRAM_REQUIRED_FOR_CONSOLE,
     false,
   ),
+  deploymentProfile: (
+    process.env.NEXT_PUBLIC_DEPLOYMENT_PROFILE ?? "local_private"
+  ).trim(),
 });

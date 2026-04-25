@@ -26,18 +26,6 @@ export async function FlowNavBar() {
         <Link href="/#top" className="public-nav-link-secondary">
           {t("public.navStart")}
         </Link>
-        <Link href="/#ki" className="public-nav-link-secondary">
-          {t("public.navKi")}
-        </Link>
-        <Link href="/#leistungen" className="public-nav-link-secondary">
-          {t("public.navServices")}
-        </Link>
-        <Link href="/#kosten" className="public-nav-link-secondary">
-          {t("public.navCost")}
-        </Link>
-        <Link href="/#transparenz" className="public-nav-link-secondary">
-          {t("public.navTransparency")}
-        </Link>
         <Link href="/#betrieb" className="public-nav-link-secondary">
           {t("public.navOps")}
         </Link>

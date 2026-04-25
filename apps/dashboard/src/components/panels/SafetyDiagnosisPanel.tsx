@@ -344,6 +344,11 @@ function SafetyDiagnosisPanelInner({
               {t("pages.health.aiExplainErrPrefix")} {error}
             </p>
           ) : null}
+          {error ? (
+            <p className="muted small" role="status">
+              {t("pages.health.aiAssistantDegradedSafe")}
+            </p>
+          ) : null}
         </div>
       </section>
       {showResult && result ? (

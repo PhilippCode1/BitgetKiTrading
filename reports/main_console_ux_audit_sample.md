@@ -1,0 +1,174 @@
+# Main Console UX Audit
+
+## Zusammenfassung
+- Routen gesamt: `51`
+- Navigationseinträge: `12`
+- P0-UX-Blocker: `0`
+
+## Routeninventar
+- `/console`
+- `/console/account`
+- `/console/account/balance`
+- `/console/account/billing`
+- `/console/account/broker`
+- `/console/account/contract`
+- `/console/account/deposit`
+- `/console/account/history`
+- `/console/account/language`
+- `/console/account/payments`
+- `/console/account/performance`
+- `/console/account/profile`
+- `/console/account/telegram`
+- `/console/account/usage`
+- `/console/admin`
+- `/console/admin/ai-governance`
+- `/console/admin/billing`
+- `/console/admin/commerce-payments`
+- `/console/admin/contracts`
+- `/console/admin/customers`
+- `/console/admin/customers/[tenantId]`
+- `/console/admin/performance`
+- `/console/admin/profit-fees`
+- `/console/admin/rules`
+- `/console/admin/telegram`
+- `/console/approvals`
+- `/console/capabilities`
+- `/console/diagnostics`
+- `/console/health`
+- `/console/help`
+- `/console/incidents`
+- `/console/integrations`
+- `/console/learning`
+- `/console/live-broker`
+- `/console/live-broker/forensic/[id]`
+- `/console/market-universe`
+- `/console/news`
+- `/console/news/[id]`
+- `/console/no-trade`
+- `/console/ops`
+- `/console/paper`
+- `/console/safety-center`
+- `/console/self-healing`
+- `/console/shadow-live`
+- `/console/signals`
+- `/console/signals/[id]`
+- `/console/strategies`
+- `/console/strategies/[id]`
+- `/console/system-health-map`
+- `/console/terminal`
+- `/console/usage`
+
+## Navigation & Labels
+- Navigationseinträge: `12`
+- `${CONSOLE_BASE}/account/language`
+- `${CONSOLE_BASE}/admin`
+- `${CONSOLE_BASE}/health`
+- `${CONSOLE_BASE}/incidents`
+- `${CONSOLE_BASE}/live-broker`
+- `${CONSOLE_BASE}/market-universe`
+- `${CONSOLE_BASE}/ops`
+- `${CONSOLE_BASE}/safety-center`
+- `${CONSOLE_BASE}/shadow-live`
+- `${CONSOLE_BASE}/signals`
+- `${CONSOLE_BASE}/system-health-map`
+- `${CONSOLE_BASE}/usage`
+
+## Tote oder unklare Seiten
+- `/console/account`
+- `/console/account/balance`
+- `/console/account/billing`
+- `/console/account/broker`
+- `/console/account/contract`
+- `/console/account/deposit`
+- `/console/account/history`
+- `/console/account/language`
+- `/console/account/payments`
+- `/console/account/performance`
+- `/console/account/profile`
+- `/console/account/telegram`
+- `/console/account/usage`
+- `/console/admin`
+- `/console/admin/ai-governance`
+- `/console/admin/billing`
+- `/console/admin/commerce-payments`
+- `/console/admin/contracts`
+- `/console/admin/customers`
+- `/console/admin/customers/[tenantId]`
+- `/console/admin/performance`
+- `/console/admin/profit-fees`
+- `/console/admin/rules`
+- `/console/admin/telegram`
+- `/console/approvals`
+- `/console/capabilities`
+- `/console/diagnostics`
+- `/console/health`
+- `/console/help`
+- `/console/incidents`
+- `/console/integrations`
+- `/console/learning`
+- `/console/live-broker`
+- `/console/live-broker/forensic/[id]`
+- `/console/market-universe`
+- `/console/news`
+- `/console/news/[id]`
+- `/console/no-trade`
+- `/console/ops`
+- `/console/paper`
+- `/console/safety-center`
+- `/console/self-healing`
+- `/console/shadow-live`
+- `/console/signals`
+- `/console/signals/[id]`
+- `/console/strategies`
+- `/console/strategies/[id]`
+- `/console/system-health-map`
+- `/console/terminal`
+- `/console/usage`
+
+## Empty-State Pflicht
+- `apps\dashboard\src\app\(operator)\console\page.tsx`
+- `apps\dashboard\src\app\(operator)\console\account\page.tsx`
+- `apps\dashboard\src\app\(operator)\console\account\balance\page.tsx`
+- `apps\dashboard\src\app\(operator)\console\account\broker\page.tsx`
+- `apps\dashboard\src\app\(operator)\console\account\contract\page.tsx`
+- `apps\dashboard\src\app\(operator)\console\account\deposit\page.tsx`
+- `apps\dashboard\src\app\(operator)\console\account\language\page.tsx`
+- `apps\dashboard\src\app\(operator)\console\account\profile\page.tsx`
+- `apps\dashboard\src\app\(operator)\console\account\telegram\page.tsx`
+- `apps\dashboard\src\app\(operator)\console\account\usage\page.tsx`
+- `apps\dashboard\src\app\(operator)\console\admin\page.tsx`
+- `apps\dashboard\src\app\(operator)\console\admin\ai-governance\page.tsx`
+- `apps\dashboard\src\app\(operator)\console\admin\customers\page.tsx`
+- `apps\dashboard\src\app\(operator)\console\admin\customers\[tenantId]\page.tsx`
+- `apps\dashboard\src\app\(operator)\console\admin\performance\page.tsx`
+- `apps\dashboard\src\app\(operator)\console\admin\rules\page.tsx`
+- `apps\dashboard\src\app\(operator)\console\capabilities\page.tsx`
+- `apps\dashboard\src\app\(operator)\console\diagnostics\page.tsx`
+- `apps\dashboard\src\app\(operator)\console\help\page.tsx`
+- `apps\dashboard\src\app\(operator)\console\incidents\page.tsx`
+- `apps\dashboard\src\app\(operator)\console\integrations\page.tsx`
+- `apps\dashboard\src\app\(operator)\console\market-universe\page.tsx`
+- `apps\dashboard\src\app\(operator)\console\news\[id]\page.tsx`
+- `apps\dashboard\src\app\(operator)\console\ops\page.tsx`
+- `apps\dashboard\src\app\(operator)\console\safety-center\page.tsx`
+- `apps\dashboard\src\app\(operator)\console\self-healing\page.tsx`
+- `apps\dashboard\src\app\(operator)\console\signals\[id]\page.tsx`
+- `apps\dashboard\src\app\(operator)\console\system-health-map\page.tsx`
+
+## Error-State Pflicht
+- `apps\dashboard\src\app\(operator)\console\account\deposit\page.tsx`
+- `apps\dashboard\src\app\(operator)\console\account\language\page.tsx`
+- `apps\dashboard\src\app\(operator)\console\account\telegram\page.tsx`
+- `apps\dashboard\src\app\(operator)\console\diagnostics\page.tsx`
+- `apps\dashboard\src\app\(operator)\console\help\page.tsx`
+- `apps\dashboard\src\app\(operator)\console\incidents\page.tsx`
+- `apps\dashboard\src\app\(operator)\console\safety-center\page.tsx`
+- `apps\dashboard\src\app\(operator)\console\self-healing\page.tsx`
+- `apps\dashboard\src\app\(operator)\console\system-health-map\page.tsx`
+
+## Main-Console-Bereiche
+- Sicherheitszentrale: `vorhanden`
+- Asset-Universum: `vorhanden`
+
+## P0-UX-Blocker
+- Keine P0-UX-Blocker erkannt.

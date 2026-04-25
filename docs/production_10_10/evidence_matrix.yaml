@@ -1,0 +1,718 @@
+version: 1
+project: bitget-btc-ai
+scope: private_owner_main_console
+owner: Philipp Crljic
+status_values:
+  - missing
+  - partial
+  - implemented
+  - verified
+  - external_required
+severity_values:
+  - P0
+  - P1
+  - P2
+  - P3
+categories:
+  - id: private_owner_scope
+    title: Private Owner Scope
+    description: Philipp Crljic ist einziger Admin, Operator und Owner; Verkauf, Kunden, Mandanten, Billing und Payment sind nicht Produktziel.
+    target_10_10: Der private Scope ist dokumentiert, maschinenlesbar referenziert und in weiteren Arbeiten verbindlich.
+    required_evidence:
+      - Private-Owner-Entscheidung im Root- und Production-Scope dokumentiert.
+      - Billing-, Customer-, Sales- und Tenant-Verkaufsziele sind ausgeschlossen.
+    evidence_files:
+      - AGENTS.md
+      - docs/production_10_10/private_owner_scope.md
+      - docs/production_10_10/README.md
+    required_commands:
+      - python tools/check_10_10_evidence.py
+    status: verified
+    blocks_live_trading: false
+    severity: P1
+    owner_role: Owner / Product Architecture
+    next_action: Scope bei jeder UI- und Trading-Aenderung gegenpruefen.
+    notes: Reduziert keine Live-Sicherheitsanforderung.
+
+  - id: main_console_information_architecture
+    title: Main Console Information Architecture
+    description: Die deutsche Main Console ist die zentrale Arbeitsoberflaeche fuer Status, Assets, Signale, Risk, Live-Broker, Reports, Alerts und Go/No-Go.
+    target_10_10: Alle relevanten Funktionen sind logisch erreichbar, doppelte Seiten sind inventarisiert und Live-Zustaende sind eindeutig sichtbar.
+    required_evidence:
+      - Main-Console-Zielbild dokumentiert.
+      - Dashboard-Routen inventarisiert.
+      - BFF/API-Verdrahtung der Pflichtkarten inklusive Loading/Error/Empty dokumentiert.
+      - Konsolidierungsplan mit Tests vorhanden.
+    evidence_files:
+      - docs/production_10_10/main_console_product_direction.md
+      - docs/production_10_10/main_console_bff_api_wiring.md
+      - docs/dashboard_pages.md
+      - docs/dashboard_operator.md
+      - tools/check_main_console_wiring.py
+      - tests/tools/test_check_main_console_wiring.py
+    required_commands:
+      - python tools/check_main_console_wiring.py --strict
+      - pnpm --dir apps/dashboard test
+      - pnpm e2e
+    status: implemented
+    blocks_live_trading: true
+    severity: P1
+    owner_role: Product Architecture / UI Engineering
+    next_action: Dashboard-Routen inventarisieren und Main-Console-Konsolidierungsplan erzeugen.
+    notes: Ohne eindeutige Operator-Sicht bleibt Live-Go/No-Go blockiert.
+
+  - id: german_only_ui
+    title: German-only UI
+    description: Die finale Anwendung fuehrt Philipp auf Deutsch; neue UI-Texte duerfen keine englische Produktfuehrung einfuehren.
+    target_10_10: Alle sichtbaren Main-Console-Texte, Warnungen und Freigaben sind deutsch oder bewusst als technische Fachbegriffe dokumentiert.
+    required_evidence:
+      - UI-Textinventar.
+      - Test oder Scanner fuer neue englische UI-Texte.
+      - Owner-UAT der deutschen Main Console.
+    evidence_files:
+      - docs/production_10_10/main_console_product_direction.md
+      - docs/dashboard_operator.md
+    required_commands:
+      - pnpm --dir apps/dashboard test
+    status: partial
+    blocks_live_trading: true
+    severity: P1
+    owner_role: UI/UX / Owner UAT
+    next_action: UI-Textscanner und deutsche Main-Console-Copy-Review ergaenzen.
+    notes: Englische Legacy-Texte sind als Konsolidierungsrisiko zu behandeln.
+
+  - id: bitget_asset_universe
+    title: Bitget Asset Universe
+    description: Das System ist nicht BTC-only, sondern arbeitet mit einem kontrollierten Bitget-Marktuniversum.
+    target_10_10: Spot, Margin und Futures werden family-aware modelliert und unbekannte Assets fallen auf no-trade/no-subscribe.
+    required_evidence:
+      - Bitget-Marktuniversum dokumentiert.
+      - Asset-Familien technisch abgebildet.
+      - Live-Gates pro Asset-Familie getestet.
+    evidence_files:
+      - README.md
+      - docs/bitget-config.md
+      - docs/production_10_10/bitget_asset_universe.md
+      - docs/production_10_10/instrument_catalog_contract.md
+      - shared/python/src/shared_py/bitget/asset_universe.py
+      - shared/python/src/shared_py/bitget/instruments.py
+      - scripts/refresh_bitget_asset_universe.py
+      - tools/check_bitget_asset_universe.py
+      - tests/shared/test_bitget_asset_universe.py
+      - tests/tools/test_check_bitget_asset_universe.py
+      - tests/security/test_bitget_asset_universe_contracts.py
+    required_commands:
+      - python scripts/refresh_bitget_asset_universe.py --dry-run
+      - python scripts/refresh_bitget_asset_universe.py --input-json tests/fixtures/bitget_asset_universe_sample.json --output-json reports/bitget_asset_universe_sample.json --output-md reports/bitget_asset_universe_sample.md
+      - python tools/check_bitget_asset_universe.py --strict
+      - pytest tests/shared/test_bitget_asset_universe.py -q
+      - pytest tests/tools/test_check_bitget_asset_universe.py -q
+      - pytest tests/security/test_bitget_asset_universe_contracts.py -q
+    status: implemented
+    blocks_live_trading: true
+    severity: P0
+    owner_role: Trading Architecture
+    next_action: Asset-Freigabe und Tests pro Asset-Familie mit Evidence verknuepfen.
+    notes: Multi-Asset erweitert den Risk-Scope und darf Live nicht erleichtern.
+
+  - id: instrument_catalog
+    title: Instrument Catalog
+    description: Instrumente brauchen eindeutige Identitaet, Precision, Marktfamilie, Session- und Exchange-Metadaten.
+    target_10_10: Der Katalog ist aktuell, pruefbar, cached und blockiert unbekannte oder unvollstaendige Instrumente.
+    required_evidence:
+      - Katalogvertrag dokumentiert.
+      - Tests fuer unbekannte Instrumente und Precision.
+      - Runtime-Health fuer Katalogfrische.
+    evidence_files:
+      - docs/bitget-config.md
+      - shared/python/src/shared_py/bitget/instruments.py
+    required_commands:
+      - pytest shared/python/tests -q
+    status: implemented
+    blocks_live_trading: true
+    severity: P0
+    owner_role: Market Data / Trading Architecture
+    next_action: Katalogfrische und Exchange-Abgleich als Release-Evidence ablegen.
+    notes: Fehlender Katalog ist ein harter Fail-closed-Grund.
+
+  - id: asset_quarantine_and_delisting
+    title: Asset Quarantine and Delisting
+    description: Assets muessen bei Delisting, unklarer Exchange-Truth, schlechter Datenqualitaet oder Risk-Auffaelligkeit quarantined werden.
+    target_10_10: Quarantine verhindert Subscribe, Signal und Live-Order pro Asset, bis Evidence wieder gruen ist.
+    required_evidence:
+      - Quarantine-Policy pro Asset.
+      - Tests fuer Delisting und no-trade.
+      - Audit-Trail fuer Quarantine-Entscheidungen.
+    evidence_files:
+      - docs/bitget-config.md
+      - docs/production_10_10/no_go_rules.md
+    required_commands:
+      - pytest tests/unit -q
+    status: partial
+    blocks_live_trading: true
+    severity: P0
+    owner_role: Risk Governance / Market Data
+    next_action: Asset-Quarantine-Modell und Fail-closed-Tests ergaenzen.
+    notes: Delisting darf niemals still zu Fallback-Trading fuehren.
+
+  - id: market_data_quality_per_asset
+    title: Market Data Quality per Asset
+    description: Pro Asset muessen Frische, Luecken, Providerfehler, Timestamps und Exchange-Truth bewertet werden.
+    target_10_10: Stale oder inkonsistente Daten blockieren Signal, Sizing und Live-Order asset-spezifisch.
+    required_evidence:
+      - Datenqualitaetsregeln pro Asset.
+      - Fault-Injection-Tests.
+      - Monitor- und Alert-Evidence fuer stale data.
+    evidence_files:
+      - docs/production_10_10/market_data_quality_per_asset.md
+      - shared/python/src/shared_py/market_data_quality.py
+      - scripts/asset_data_quality_report.py
+      - tools/check_market_data_quality.py
+      - tests/data/test_market_data_quality_contracts.py
+      - tests/security/test_market_data_quality_live_blocking.py
+      - tests/scripts/test_asset_data_quality_report.py
+      - tests/tools/test_check_market_data_quality.py
+    required_commands:
+      - python tools/check_market_data_quality.py --strict
+      - pytest tests/data/test_market_data_quality_contracts.py -q
+      - pytest tests/security/test_market_data_quality_live_blocking.py -q
+    status: partial
+    blocks_live_trading: true
+    severity: P0
+    owner_role: Market Data / SRE
+    next_action: Per-Asset-Datenqualitaetsmatrix und Tests an Live-Broker-Gates koppeln.
+    notes: Datenqualitaet ist ein Live-Gate, kein Dashboard-Hinweis.
+
+  - id: liquidity_spread_slippage_per_asset
+    title: Liquidity, Spread and Slippage per Asset
+    description: Spread, Tiefe, Ticksize, erwartete Slippage und Ausfuehrbarkeit muessen pro Asset bewertet werden.
+    target_10_10: Illiquide oder zu teure Assets werden vor Sizing und Order-Submit blockiert.
+    required_evidence:
+      - Liquiditaets- und Spread-Regeln.
+      - Exit-/Sizing-Tests mit Ticksize und Tiefe.
+      - Slippage-Report pro Asset-Klasse.
+    evidence_files:
+      - README.md
+      - docs/risk_governor.md
+      - docs/portfolio_risk_governor.md
+    required_commands:
+      - pytest tests/unit/risk_engine -q
+    status: partial
+    blocks_live_trading: true
+    severity: P0
+    owner_role: Risk Governance / Trading
+    next_action: Liquiditaetsgate pro Asset-Klasse maschinenlesbar machen.
+    notes: Enge Stops sind nur mit Ausfuehrbarkeit valide.
+
+  - id: asset_risk_tiers
+    title: Asset Risk Tiers
+    description: Assets brauchen Risk-Tiers fuer Leverage, Max-Exposure, Volatilitaet, Liquiditaet und News-/Regime-Risiko.
+    target_10_10: Jedes handelbare Asset hat einen freigegebenen Risk-Tier; unbekannte Tiers blockieren Live.
+    required_evidence:
+      - Risk-Tier-Definitionen.
+      - Tests fuer unknown-tier no-trade.
+      - Owner-Freigabe fuer Tier-Aenderungen.
+    evidence_files:
+      - docs/production_10_10/asset_risk_tiers_and_order_sizing.md
+      - docs/risk_governor.md
+      - docs/portfolio_risk_governor.md
+      - shared/python/src/shared_py/asset_risk_tiers.py
+      - tools/check_asset_risk_tiers.py
+      - tests/tools/test_check_asset_risk_tiers.py
+      - tests/risk/test_asset_risk_tiers.py
+      - tests/security/test_multi_asset_order_sizing_live_blocking.py
+    required_commands:
+      - python tools/check_asset_risk_tiers.py --strict
+      - pytest tests/tools/test_check_asset_risk_tiers.py -q
+      - pytest tests/risk/test_asset_risk_tiers.py -q
+      - pytest tests/security/test_multi_asset_order_sizing_live_blocking.py -q
+    status: partial
+    blocks_live_trading: true
+    severity: P0
+    owner_role: Risk Governance
+    next_action: Asset-Risk-Tier-Datei und Validator erstellen.
+    notes: BTC-Regeln duerfen nicht still auf alle Assets kopiert werden.
+
+  - id: multi_asset_order_sizing
+    title: Multi-Asset Order Sizing
+    description: Ordergroessen muessen pro Asset Precision, Mindestgroesse, Hebel, Liquidation, Exposure und Portfolio-Kontext beachten.
+    target_10_10: Sizing ist deterministisch, testbar und blockiert ungueltige Precision, Ueberhebelung oder Exposure.
+    required_evidence:
+      - Sizing-Vertrag.
+      - Tests fuer Precision, Min-Notional und Exposure.
+      - Auditierbare Sizing-Entscheidung.
+    evidence_files:
+      - docs/risk_governor.md
+      - docs/live_broker.md
+    required_commands:
+      - pytest tests/unit/live_broker -q
+    status: partial
+    blocks_live_trading: true
+    severity: P0
+    owner_role: Trading / Risk Governance
+    next_action: Multi-Asset-Sizing-Evidence pro Asset-Klasse ergaenzen.
+    notes: Sizing darf nicht nur global oder BTC-zentriert sein.
+
+  - id: portfolio_risk
+    title: Portfolio Risk
+    description: Gesamtportfolio, Korrelation, Exposure, Drawdown und offene Orders muessen vor jeder Live-Order beruecksichtigt werden.
+    target_10_10: Portfolio-Risk blockiert jede Order, die Limits, Korrelation oder Drawdown-Regeln verletzt.
+    required_evidence:
+      - Portfolio-Risk-Governor dokumentiert.
+      - Exposure- und Drawdown-Tests.
+      - Owner-freigegebene Limits.
+    evidence_files:
+      - docs/portfolio_risk_governor.md
+      - docs/risk_governor.md
+    required_commands:
+      - pytest tests/integration/test_portfolio_exposure_guard.py -q
+    status: partial
+    blocks_live_trading: true
+    severity: P0
+    owner_role: Risk Governance
+    next_action: Owner-Limits und aktuelle Test-Evidence fuer Portfolio-Risk archivieren.
+    notes: Einzelasset-Freigabe reicht ohne Portfolio-Kontext nicht.
+
+  - id: strategy_validation_per_asset_class
+    title: Strategy Validation per Asset Class
+    description: Strategien muessen pro Marktfamilie und Asset-Klasse validiert werden, nicht pauschal aus BTC abgeleitet.
+    target_10_10: Jede Asset-Klasse hat Backtest-, Shadow- und Drift-Evidence vor Live-Freigabe.
+    required_evidence:
+      - Backtest-/Replay-Berichte pro Asset-Klasse.
+      - Shadow-Evidence pro Asset-Klasse.
+      - Modell-/Strategie-Lineage.
+    evidence_files:
+      - docs/model_stack_v2.md
+      - docs/shadow_burn_in_ramp.md
+    required_commands:
+      - python tools/backtest/run_backtest.py --help
+      - pytest tests/unit/signal_engine -q
+    status: partial
+    blocks_live_trading: true
+    severity: P0
+    owner_role: Quant / Trading
+    next_action: Asset-Klassen-Validierungsberichte erzeugen und verlinken.
+    notes: LLM erklaert nur unterstuetzend und ist nicht alleiniger Trading-Kern.
+
+  - id: live_broker_fail_closed
+    title: Live Broker Fail-Closed
+    description: Der Live-Broker darf echte Orders nur nach vollstaendiger Gate-Kette senden.
+    target_10_10: Providerfehler, fehlende Gates, Timeout, Redis/DB-Ausfall und unklare Exchange-Truth blockieren.
+    required_evidence:
+      - Live-Broker-Gate-Doku.
+      - Unit- und Integrationstests fuer Fail-closed.
+      - Live-Mirror-Gate-Matrix.
+    evidence_files:
+      - docs/live_broker.md
+      - docs/production_10_10/09_live_mirror_gate_matrix.md
+      - docs/production_10_10/no_go_rules.md
+    required_commands:
+      - pytest tests/unit/live_broker -q
+    status: implemented
+    blocks_live_trading: true
+    severity: P0
+    owner_role: Live Broker / Risk Governance
+    next_action: Aktuelle Gate-Test-Evidence mit dieser Matrix verknuepfen.
+    notes: Implementiert bedeutet nicht live-freigegeben.
+
+  - id: order_idempotency
+    title: Order Idempotency
+    description: Order-Submit, Replace und Cancel brauchen Idempotency, Duplicate-Protection und nachvollziehbare Client-IDs.
+    target_10_10: Doppelte oder wiederholte Requests erzeugen keine mehrfachen echten Orders.
+    required_evidence:
+      - Idempotency-Vertrag.
+      - Duplicate-Recovery-Tests.
+      - Audit-Trail fuer Order-IDs.
+    evidence_files:
+      - docs/live_broker.md
+      - docs/production_10_10/no_go_rules.md
+      - docs/production_10_10/live_safety_drill.md
+      - scripts/live_safety_drill.py
+      - tests/scripts/test_live_safety_drill.py
+    required_commands:
+      - python scripts/live_safety_drill.py --dry-run
+      - pytest tests/unit/live_broker -q
+    status: partial
+    blocks_live_trading: true
+    severity: P0
+    owner_role: Live Broker
+    next_action: Order-Idempotency-Report und Tests explizit referenzieren.
+    notes: Idempotency-Unsicherheit ist ein Echtgeld-Blocker.
+
+  - id: reconcile_safety
+    title: Reconcile Safety
+    description: Reconcile muss lokale Orders, Broker-State und Exchange-Truth abgleichen und Divergenzen blockieren.
+    target_10_10: Jede offene Divergenz fuehrt zu Safety-Latch oder No-Trade, bis sie geloest ist.
+    required_evidence:
+      - Reconcile-Runbook.
+      - Divergenz-Tests.
+      - Exchange-Truth-Drill.
+    evidence_files:
+      - docs/live_broker.md
+      - docs/production_10_10/no_go_rules.md
+    required_commands:
+      - pytest tests/unit/live_broker -q
+    status: partial
+    blocks_live_trading: true
+    severity: P0
+    owner_role: Live Broker / Operations
+    next_action: Reconcile-Divergenz-Evidence und Runbook konsolidieren.
+    notes: Ungeklaerte Exchange-Order-States blockieren Live.
+
+  - id: kill_switch_safety_latch
+    title: Kill Switch and Safety Latch
+    description: Kill-Switch und Safety-Latch muessen jede Live-Aktion verhindern, wenn aktiv oder ungeklaert.
+    target_10_10: Aktivierte oder stale Safety-Zustaende blockieren Order-Submit, Replace und Cancel gemaess Policy.
+    required_evidence:
+      - Kill-Switch-Tests.
+      - Safety-Latch-Tests.
+      - Drill-Report.
+    evidence_files:
+      - docs/live_broker.md
+      - docs/production_10_10/no_go_rules.md
+    required_commands:
+      - pytest tests/unit/live_broker -q
+    status: partial
+    blocks_live_trading: true
+    severity: P0
+    owner_role: Operations / Risk Governance
+    next_action: Drill-Evidence fuer Kill-Switch und Safety-Latch archivieren.
+    notes: Safety-Zustaende duerfen nie als Warnung ohne Block enden.
+
+  - id: emergency_flatten
+    title: Emergency Flatten
+    description: Notfall-Glattstellung braucht klare Operator-/Owner-Freigabe, Exchange-Truth und Audit-Trail.
+    target_10_10: Emergency Flatten ist getestet, fail-closed und als Runbook mit Drill-Evidence vorhanden.
+    required_evidence:
+      - Emergency-Flatten-Runbook.
+      - Drill-Report.
+      - Tests fuer Freigabe und Audit.
+    evidence_files:
+      - docs/production_10_10/no_go_rules.md
+      - docs/LaunchChecklist.md
+      - docs/production_10_10/live_safety_drill.md
+      - scripts/live_safety_drill.py
+      - tests/scripts/test_live_safety_drill.py
+    required_commands:
+      - python scripts/live_safety_drill.py --dry-run
+      - pytest tests/unit/live_broker -q
+    status: external_required
+    blocks_live_trading: true
+    severity: P0
+    owner_role: Operations / Owner
+    next_action: Emergency-Flatten-Drill mit Git-SHA, Umgebung und PASS erzeugen.
+    notes: Externe Drill-Evidence fehlt.
+
+  - id: bitget_exchange_readiness
+    title: Bitget Exchange Readiness
+    description: Bitget-Keys, Permissions, IP-Allowlist, Demo-/Read-only-Abnahme, API-Status und Exchange-Health muessen belegt sein.
+    target_10_10: Reale Bitget-Readiness liegt extern vor und wird im System fail-closed ausgewertet.
+    required_evidence:
+      - Bitget-Readiness-Check.
+      - Key-Permission-Review.
+      - Exchange-Health-Tests.
+    evidence_files:
+      - docs/bitget-config.md
+      - docs/production_10_10/bitget_exchange_readiness.md
+      - scripts/bitget_readiness_check.py
+      - tools/check_bitget_exchange_readiness.py
+      - tools/verify_bitget_rest.py
+      - tests/scripts/test_bitget_readiness_check.py
+      - tests/security/test_bitget_exchange_readiness_contracts.py
+      - tests/tools/test_check_bitget_exchange_readiness.py
+    required_commands:
+      - python scripts/bitget_readiness_check.py --env-file .env.production.example --mode dry-run
+      - python tools/check_bitget_exchange_readiness.py --strict
+      - python tools/verify_bitget_rest.py --help
+    status: external_required
+    blocks_live_trading: true
+    severity: P0
+    owner_role: Exchange Operations / Security
+    next_action: Read-only-/Demo-Abnahme und Key-Permission-Evidence extern archivieren.
+    notes: Echte Secrets duerfen nicht im Repo erscheinen.
+
+  - id: env_secrets_profiles
+    title: ENV and Secrets Profiles
+    description: ENV-Profile und Secrets muessen getrennt, validiert und browser-safe sein.
+    target_10_10: Production nutzt Secret Store; Templates enthalten nur Platzhalter; Browser sieht keine Secrets.
+    required_evidence:
+      - Secret-Matrix.
+      - ENV-Validatoren.
+      - Secret-Surface-Inventar.
+    evidence_files:
+      - docs/SECRETS_MATRIX.md
+      - docs/production_10_10/env_secrets_single_owner_safety.md
+      - docs/env_profiles.md
+      - tools/check_env_single_owner_safety.py
+      - tools/validate_env_profile.py
+      - tools/inventory_secret_surfaces.py
+      - tests/tools/test_check_env_single_owner_safety.py
+      - tests/security/test_env_single_owner_safety.py
+    required_commands:
+      - python tools/check_env_single_owner_safety.py --env-file .env.production.example --profile production --template
+      - python tools/validate_env_profile.py --env-file .env.production --profile production
+      - python tools/inventory_secret_surfaces.py
+    status: partial
+    blocks_live_trading: true
+    severity: P0
+    owner_role: Security / DevOps
+    next_action: Runtime-Secret-Store- und Rotation-Evidence extern nachweisen.
+    notes: Keine echten Secrets erzeugen oder anzeigen.
+
+  - id: observability_slos
+    title: Observability and SLOs
+    description: Health, Metrics, Logs, SLOs und Operator-Kontext muessen echte Betriebsentscheidungen ermoeglichen.
+    target_10_10: Main Console und Monitoring zeigen Readiness, Latency, Fehler, Gate-Status und Risk-Zustaende.
+    required_evidence:
+      - Observability-Doku.
+      - Monitor-Tests.
+      - SLO-/Alert-Evidence.
+    evidence_files:
+      - docs/observability.md
+      - OBSERVABILITY_AND_SLOS.md
+    required_commands:
+      - pytest tests/unit/monitor_engine -q
+    status: partial
+    blocks_live_trading: true
+    severity: P1
+    owner_role: SRE / Operations
+    next_action: SLOs mit Main-Console-Go/No-Go und Alert-Drill verknuepfen.
+    notes: Ohne echte Sichtbarkeit kein Live-Betrieb.
+
+  - id: alert_routing
+    title: Alert Routing
+    description: Alerts muessen zu einem echten Kanal fuer Philipp oder den definierten Betreiberpfad fuehren.
+    target_10_10: Alert-Routing ist getestet, secret-safe und mit Zustellnachweis archiviert.
+    required_evidence:
+      - Alert-Routing-Verifier.
+      - Incident-Drill-Report.
+      - Echter Zustellnachweis.
+    evidence_files:
+      - docs/production_10_10/05_alert_routing_and_incident_drill.md
+      - tools/verify_alert_routing.py
+    required_commands:
+      - python tools/verify_alert_routing.py
+    status: partial
+    blocks_live_trading: true
+    severity: P1
+    owner_role: SRE / Operations
+    next_action: Realen Alert-Drill ohne Secret-Leak archivieren.
+    notes: Dummy-Kanaele reichen fuer Live nicht.
+
+  - id: backup_restore
+    title: Backup and Restore
+    description: Backups muessen verschluesselt, auffindbar, wiederherstellbar und getestet sein.
+    target_10_10: Restore aus realem Backup hat PASS, RTO/RPO und Git-SHA.
+    required_evidence:
+      - Backup-Policy.
+      - Restore-Report.
+      - DB-/Migration-Smokes.
+    evidence_files:
+      - docs/recovery_runbook.md
+      - docs/production_10_10/03_postgres_restore_drill.md
+      - docs/production_10_10/disaster_recovery_restore_test.md
+      - scripts/dr_postgres_restore_test.py
+      - tools/dr_postgres_restore_drill.py
+      - tests/scripts/test_dr_postgres_restore_test.py
+    required_commands:
+      - python scripts/dr_postgres_restore_test.py --dry-run
+      - python tools/dr_postgres_restore_drill.py --help
+    status: partial
+    blocks_live_trading: true
+    severity: P0
+    owner_role: SRE / Database Operations
+    next_action: Staging-Restore mit RTO/RPO und PASS erzeugen.
+    notes: Backup ohne Restore-Nachweis ist nicht ausreichend.
+
+  - id: shadow_burn_in
+    title: Shadow Burn-in
+    description: Shadow muss vor Live gegen reale Marktbedingungen laufen, ohne echte Orders.
+    target_10_10: 72h+ Shadow-Report oder signierte Ausnahme mit PASS, SHA256, Git-SHA und Umgebung liegt vor.
+    required_evidence:
+      - Shadow-Burn-in-Report.
+      - Divergenz-Auswertung.
+      - Risk- und Signal-Evidence.
+    evidence_files:
+      - docs/shadow_burn_in_ramp.md
+      - docs/production_10_10/04_shadow_burn_in_certificate.md
+      - docs/production_10_10/shadow_burn_in_certificate.md
+      - scripts/verify_shadow_burn_in.py
+      - tests/fixtures/shadow_burn_in_sample.json
+      - tests/scripts/test_verify_shadow_burn_in.py
+    required_commands:
+      - python scripts/verify_shadow_burn_in.py --dry-run
+      - python scripts/verify_shadow_burn_in.py --help
+    status: external_required
+    blocks_live_trading: true
+    severity: P0
+    owner_role: Trading Operations / Owner
+    next_action: Realen Shadow-Burn-in-Bericht mit PASS und SHA256 ablegen.
+    notes: Ohne Burn-in keine echte Produktionsfreigabe.
+
+  - id: disaster_recovery
+    title: Disaster Recovery
+    description: Recovery fuer DB, Redis/Event-State, Broker-State und Audit-Trails muss messbar funktionieren.
+    target_10_10: DR-Runbook, Restore-Drill, Reconcile-Verhalten und Alert-Pfade sind getestet.
+    required_evidence:
+      - DR-Runbook.
+      - Restore-/Recovery-Drill.
+      - RTO/RPO-Evidence.
+    evidence_files:
+      - docs/recovery_runbook.md
+      - docs/production_10_10/03_postgres_restore_drill.md
+      - docs/production_10_10/disaster_recovery_restore_test.md
+      - docs/production_10_10/live_safety_drill.md
+      - scripts/live_safety_drill.py
+      - tests/scripts/test_live_safety_drill.py
+    required_commands:
+      - python scripts/live_safety_drill.py --dry-run
+      - python tools/dr_postgres_restore_drill.py --help
+    status: partial
+    blocks_live_trading: true
+    severity: P0
+    owner_role: SRE / Operations
+    next_action: End-to-end DR-Drill fuer Live-relevante States dokumentieren.
+    notes: Recovery muss Exchange-Truth und Safety-Latch einbeziehen.
+
+  - id: audit_forensics
+    title: Audit and Forensics
+    description: Signale, Risk-Entscheidungen, Owner-Freigaben, Orders, Reconcile und Alerts muessen forensisch nachvollziehbar sein.
+    target_10_10: Audit-Trail ist manipulationsarm, durchsuchbar, secret-safe und pro Release beweisbar.
+    required_evidence:
+      - Audit-Ledger-Doku.
+      - Tests fuer Order-/Release-/Risk-Audit.
+      - Forensics-Runbook.
+    evidence_files:
+      - docs/production_10_10/audit_forensics_replay_private_console.md
+      - docs/dashboard_operator_console.md
+      - shared/python/src/shared_py/audit_contracts.py
+      - shared/python/src/shared_py/replay_summary.py
+      - tools/check_private_audit_forensics.py
+      - tests/tools/test_check_private_audit_forensics.py
+      - tests/security/test_private_audit_forensics_contracts.py
+    required_commands:
+      - python tools/check_private_audit_forensics.py --strict
+      - pytest tests/tools/test_check_private_audit_forensics.py -q
+      - pytest tests/security/test_private_audit_forensics_contracts.py -q
+    status: partial
+    blocks_live_trading: true
+    severity: P0
+    owner_role: Security / Operations
+    next_action: Audit-/Forensics-Evidence pro Order-Lifecycle verlinken.
+    notes: Fehlender Audit-Trail blockiert Live.
+
+  - id: frontend_main_console_security
+    title: Frontend Main Console Security
+    description: Die Main Console darf keine Secrets exponieren und muss Live-Risiken, Auth und Go/No-Go korrekt darstellen.
+    target_10_10: Browser sieht nur erlaubte Public-Werte; sensitive Aktionen sind auth- und gate-geschuetzt.
+    required_evidence:
+      - Dashboard-Security-Tests.
+      - Auth-/BFF-Vertrag.
+      - Secret-Exposure-Tests.
+    evidence_files:
+      - docs/api_gateway_security.md
+      - docs/dashboard_operator.md
+      - docs/production_10_10/main_console_product_direction.md
+    required_commands:
+      - pnpm --dir apps/dashboard test
+      - pnpm --dir apps/dashboard run lint
+    status: partial
+    blocks_live_trading: true
+    severity: P0
+    owner_role: Frontend / Security
+    next_action: Main-Console-Security-Testplan ohne Customer-Verkaufsfokus erstellen.
+    notes: Settings duerfen keine echten Secrets im Browser fuehren.
+
+  - id: admin_access_single_owner
+    title: Admin Access Single Owner
+    description: Philipp ist alleiniger Admin, Operator und Owner; Rollenmodell darf keine Kunden- oder Verkaufsrollen als Ziel erfordern.
+    target_10_10: Adminzugriff ist stark authentifiziert, auditiert, widerrufbar und auf den privaten Owner-Scope begrenzt.
+    required_evidence:
+      - Admin-/Operator-Access-Doku.
+      - Auth/RBAC-Tests.
+      - Owner-Freigabeprozess.
+    evidence_files:
+      - docs/operator_urls_and_secrets.md
+      - docs/api_gateway_security.md
+      - docs/production_10_10/private_owner_scope.md
+    required_commands:
+      - pytest tests/unit/api_gateway -q
+    status: partial
+    blocks_live_trading: true
+    severity: P0
+    owner_role: Security / Owner
+    next_action: Single-Owner-Admin-Policy und Tests aus Legacy-Rollenmodell ableiten.
+    notes: Customer-Rollen sind kein Produktziel.
+
+  - id: deployment_parity
+    title: Deployment Parity
+    description: Local, Shadow, Staging und Production muessen reproduzierbar, profile-getrennt und ohne Live-Defaults laufen.
+    target_10_10: Deploy-Paritaet ist dokumentiert, validiert und mit Release-Gates abgesichert.
+    required_evidence:
+      - Deployment-Doku.
+      - ENV-Profile-Checks.
+      - Release-/Smoke-Reports.
+    evidence_files:
+      - docs/Deploy.md
+      - docs/compose_runtime.md
+      - docs/ci_release_gates.md
+    required_commands:
+      - python tools/release_sanity_checks.py
+      - python tools/check_release_approval_gates.py
+    status: partial
+    blocks_live_trading: true
+    severity: P1
+    owner_role: DevOps / Release Engineering
+    next_action: Staging-/Production-Paritaetsreport fuer private Main Console erzeugen.
+    notes: Kein Profil darf echte Live-Orders per Default beguenstigen.
+
+  - id: supply_chain_security
+    title: Supply Chain Security
+    description: Dependencies, Lockfiles, SBOM, Audit-Gates und CI muessen Lieferkettenrisiken sichtbar machen.
+    target_10_10: Supply-Chain-Gates sind automatisiert, dokumentiert und fuer Releases bestanden.
+    required_evidence:
+      - SBOM-/Lockfile-Doku.
+      - Dependency-Audit.
+      - CI-Gate-Evidence.
+    evidence_files:
+      - docs/REPO_SBOM_AND_RELEASE_METADATA.md
+      - tools/pip_audit_supply_chain_gate.py
+      - docs/ci_release_gates.md
+    required_commands:
+      - python tools/pip_audit_supply_chain_gate.py
+      - pnpm audit
+    status: partial
+    blocks_live_trading: true
+    severity: P1
+    owner_role: Security / Release Engineering
+    next_action: Aktuelle Supply-Chain-Audit-Evidence fuer Release ablegen.
+    notes: Offene kritische Supply-Chain-Funde blockieren Live.
+
+  - id: final_go_no_go_scorecard
+    title: Final Go/No-Go Scorecard
+    description: Finale Freigabe buendelt alle Evidence-Kategorien und No-Go-Regeln fuer eine explizite Owner-Entscheidung.
+    target_10_10: Alle Live-Blocker sind verified oder externe Evidence liegt mit PASS vor; Philipp gibt bewusst frei.
+    required_evidence:
+      - Vollstaendige Evidence-Matrix.
+      - No-Go-Regeln ohne rote Treffer.
+      - Owner-Signoff und Release-Dossier.
+    evidence_files:
+      - docs/production_10_10/evidence_matrix.yaml
+      - docs/production_10_10/no_go_rules.md
+      - docs/production_10_10/production_readiness_scorecard.md
+      - docs/production_10_10/production_readiness_scorecard_template.md
+      - shared/python/src/shared_py/readiness_scorecard.py
+      - scripts/production_readiness_scorecard.py
+      - tests/scripts/test_production_readiness_scorecard.py
+      - tests/security/test_readiness_scorecard_decisions.py
+      - tools/check_10_10_evidence.py
+    required_commands:
+      - python scripts/production_readiness_scorecard.py --strict-live
+      - python tools/check_10_10_evidence.py --strict
+      - python tools/release_sanity_checks.py
+    status: external_required
+    blocks_live_trading: true
+    severity: P0
+    owner_role: Owner / Release Engineering
+    next_action: Alle nicht verifizierten Live-Blocker schliessen und Owner-Go/No-Go dokumentieren.
+    notes: Diese Scorecard darf keine 10/10-Freigabe ohne Evidence behaupten.

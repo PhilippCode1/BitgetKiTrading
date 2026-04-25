@@ -84,15 +84,24 @@ RAW_WILDCARD_PORT = re.compile(r"^\s*-\s*[\"']?0\.0\.0\.0:\d+:\d+")
 
 def _iter_files() -> list[Path]:
     out: list[Path] = []
-    for p in ROOT.rglob("*"):
-        if not p.is_file():
-            continue
-        rel = p.relative_to(ROOT)
-        if any(part in SKIP_DIRS for part in rel.parts):
-            continue
-        if rel.name in {"coverage.json", ".coverage", "pnpm-lock.yaml"}:
-            continue
-        out.append(p)
+    for dirpath, dirnames, filenames in os.walk(
+        ROOT,
+        topdown=True,
+        onerror=lambda _err: None,
+    ):
+        dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS]
+        base = Path(dirpath)
+        for name in filenames:
+            p = base / name
+            try:
+                rel = p.relative_to(ROOT)
+            except ValueError:
+                continue
+            if any(part in SKIP_DIRS for part in rel.parts):
+                continue
+            if rel.name in {"coverage.json", ".coverage", "pnpm-lock.yaml"}:
+                continue
+            out.append(p)
     return out
 
 

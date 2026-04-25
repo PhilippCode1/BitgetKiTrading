@@ -10,7 +10,13 @@ import {
   fetchLiveState,
   fetchPaperOpen,
 } from "@/lib/api";
-import type { LiveStateResponse, SystemHealthResponse } from "@/lib/types";
+import type {
+  LiveBrokerOrderActionItem,
+  LiveBrokerOrderItem,
+  LiveBrokerRuntimeItem,
+  LiveStateResponse,
+  SystemHealthResponse,
+} from "@/lib/types";
 
 export const SYSTEM_HEALTH_QUERY_KEY = ["system", "health"] as const;
 
@@ -110,4 +116,75 @@ export function recordHasKeys(value: unknown): boolean {
   if (typeof value === "object")
     return Object.keys(value as Record<string, unknown>).length > 0;
   return true;
+}
+
+const SECRET_RX =
+  /\bauthorization\b\s*[:=]\s*bearer\s+\S+|\b(authorization|bearer|token|secret|api[_-]?key|password)\b\s*[:=]\s*\S+/gi;
+
+export function sanitizeBrokerErrorDetail(raw: string | null | undefined): string {
+  if (!raw) return "";
+  return raw.slice(0, 220).replace(SECRET_RX, "$1=***");
+}
+
+export function brokerLiveBlockers(params: {
+  runtime: LiveBrokerRuntimeItem | null | undefined;
+  health: SystemHealthResponse | null | undefined;
+  orderCount: number;
+}): string[] {
+  const blockers: string[] = [];
+  const { runtime, health } = params;
+  if (!runtime) blockers.push("Live-Runtime fehlt");
+  if (runtime?.safety_latch_active) blockers.push("Safety-Latch aktiv");
+  if ((runtime?.active_kill_switches?.length ?? 0) > 0) blockers.push("Kill-Switch aktiv");
+  const reconcile = health?.ops?.live_broker?.latest_reconcile_status ?? null;
+  if (!reconcile || reconcile !== "ok") blockers.push("Reconcile nicht ok");
+  if (runtime?.upstream_ok === false) blockers.push("Bitget Private Readiness gestört");
+  return Array.from(new Set(blockers));
+}
+
+export function brokerLiveTradingStatus(params: {
+  runtime: LiveBrokerRuntimeItem | null | undefined;
+  health: SystemHealthResponse | null | undefined;
+}): "ja" | "nein" | "blockiert" {
+  const blockers = brokerLiveBlockers({
+    runtime: params.runtime,
+    health: params.health,
+    orderCount: 0,
+  });
+  if (blockers.length > 0) return "blockiert";
+  if (params.runtime?.live_trade_enable && params.runtime?.live_order_submission_enabled) {
+    return "ja";
+  }
+  return "nein";
+}
+
+export function brokerUnknownStates(params: {
+  runtime: LiveBrokerRuntimeItem | null | undefined;
+  health: SystemHealthResponse | null | undefined;
+}): string[] {
+  const out: string[] = [];
+  if (!params.runtime?.bitget_private_status) out.push("Bitget-Private-Status unbekannt");
+  if (!params.health?.ops?.live_broker?.latest_reconcile_created_ts) {
+    out.push("Reconcile-Zeitpunkt unbekannt");
+  }
+  if (params.runtime?.strategy_execution_mode == null) {
+    out.push("Strategy-Execution-Modus unbekannt");
+  }
+  return out;
+}
+
+export function brokerLastOrderActionSummary(params: {
+  orders: readonly LiveBrokerOrderItem[];
+  orderActions: readonly LiveBrokerOrderActionItem[];
+}): string {
+  const lastOrder = params.orders[0];
+  const lastAction = params.orderActions[0];
+  if (!lastOrder && !lastAction) return "Keine Order/Action vorhanden";
+  const orderPart = lastOrder
+    ? `${lastOrder.symbol} ${lastOrder.status} (${lastOrder.last_action})`
+    : "keine Order";
+  const actionPart = lastAction
+    ? `${lastAction.action} ${lastAction.http_status ?? "?"}`
+    : "keine Action";
+  return `${orderPart} · ${actionPart}`;
 }

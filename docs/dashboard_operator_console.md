@@ -16,6 +16,17 @@ Kanonische Statussprache: `docs/operator_status_language.md`.
 | `/health`                    | Gateway-Health: Execution-Gates, Ops-Summary (DB, Alerts, Outbox, Live-Broker-Kennzahlen), Services, Streams.                                                                                                                                   |
 | `/learning`                  | Online-Drift-Gate, Registry v2 (Champion/Challenger), Drift-Events; Backtests eingeklappt.                                                                                                                                                      |
 
+## Private Forensik-Ansicht
+
+Die Hauptkonsole muss fuer Philipp eine Owner-Only-Forensikansicht enthalten.
+Sie zeigt letzte blockierte Live-Entscheidungen, letzte `do_not_trade`-
+Entscheidungen, letzte Asset-Quarantaenegruende, letzte Reconcile-Drifts,
+letzte Safety-Latch-/Kill-Switch-Ereignisse, letzte Bitget-Readiness-
+Pruefungen und eine deutsche Zusammenfassung pro Ereignis.
+
+Die Audit-Wahrheit kommt aus Backend-Contracts und Audit-/Replay-Daten, nicht
+aus LLM-Erklaerungen oder Browser-only Logs.
+
 ## Datenflüsse
 
 - Server Components rufen `fetch*` aus `@/lib/api` auf (Gateway-HTTP). Fehler werden als Banner/Meldungen angezeigt, nicht als stilles Leeren.

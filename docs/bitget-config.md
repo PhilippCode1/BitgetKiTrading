@@ -98,6 +98,38 @@ Weitere fail-closed Regeln:
 - Delivery- oder close-only Fenster → keine neuen Eroeffnungen
 - unvollstaendige Pflichtmetadaten → degradierter Health-Zustand und Preflight-Block
 
+## Asset Universe Governance (Multi-Asset)
+
+Das Repo nutzt eine explizite Governance-Schicht fuer Asset-Livefaehigkeit:
+`shared_py.bitget.instruments.BitgetAssetUniverseInstrument`.
+
+Erlaubte Statuswerte:
+
+- `unknown`, `discovered`, `active`, `watchlist`
+- `shadow_allowed`, `live_candidate`, `live_allowed`
+- `quarantined`, `delisted`, `suspended`, `blocked`
+
+Tier-Grundlage:
+
+- Tier 0 = blockiert
+- Tier 1 = hochliquide Kernassets
+- Tier 2/3 = abgestufte Risiko-/Liquiditaetsprofile
+- Tier 4 = shadow/research-only
+- Tier 5 = delisted/suspended/banned
+
+Harte Live-Blocker (fail-closed):
+
+- unknown / delisted / suspended / quarantined / blocked
+- futures ohne `product_type` oder ohne `margin_coin`
+- fehlende Precision (`price_precision` oder `quantity_precision`)
+- fehlende Mindestwerte (`min_qty`, `min_notional`)
+- fehlende Datenqualitaets-, Liquiditaets-, Risk-Tier-, Strategie- oder Owner-Gates
+- nicht-leere `block_reasons`
+
+Die Evaluierung laeuft ueber
+`evaluate_asset_universe_live_eligibility(...)` und setzt `is_live_allowed`
+nur dann auf true, wenn keine Blockgruende verbleiben.
+
 ## Private REST Auth
 
 Fuer private REST-Aufrufe orientiert sich der Repo-Client an der offiziellen Bitget-

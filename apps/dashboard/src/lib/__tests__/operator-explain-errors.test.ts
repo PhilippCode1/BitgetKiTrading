@@ -18,6 +18,12 @@ describe("sanitizePublicErrorMessage", () => {
   it("collapses whitespace", () => {
     expect(sanitizePublicErrorMessage("a  \n  b")).toBe("a b");
   });
+
+  it("redacts secret markers", () => {
+    expect(
+      sanitizePublicErrorMessage("Authorization=Bearer abc token=123 api_key=xyz"),
+    ).toContain("authorization=***");
+  });
 });
 
 describe("extractDetailFields", () => {
@@ -157,7 +163,7 @@ describe("isOperatorExplainSuccessPayload", () => {
     expect(
       isOperatorExplainSuccessPayload({
         ok: true,
-        result: { explanation_de: "Hallo" },
+        result: { explanation_de: "Hallo", execution_authority: "none" },
       }),
     ).toBe(true);
   });
@@ -173,5 +179,14 @@ describe("isOperatorExplainSuccessPayload", () => {
 
   it("rejects missing result", () => {
     expect(isOperatorExplainSuccessPayload({ ok: true })).toBe(false);
+  });
+
+  it("rejects non-none execution authority", () => {
+    expect(
+      isOperatorExplainSuccessPayload({
+        ok: true,
+        result: { explanation_de: "Hallo", execution_authority: "operator" },
+      }),
+    ).toBe(false);
   });
 });

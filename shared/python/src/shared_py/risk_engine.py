@@ -4,6 +4,11 @@ from dataclasses import asdict, dataclass
 from decimal import Decimal, InvalidOperation
 from typing import Any, Mapping, Sequence
 
+from shared_py.asset_risk_tiers import (
+    asset_live_eligibility_reasons,
+    classify_asset_risk_tier,
+    validate_multi_asset_order_sizing,
+)
 from shared_py.signal_contracts import DecisionState, TradeAction
 
 RISK_ENGINE_POLICY_VERSION = "shared-risk-v1"
@@ -19,6 +24,62 @@ _UNCERTAINTY_REASON_CODES = {
     "missing_take_trade_prediction",
     "missing_target_projection_output",
 }
+
+
+def evaluate_asset_tier_risk_gate(
+    *,
+    symbol: str,
+    mode: str,
+    requested_tier: str | None,
+    volatility_0_1: float | None,
+    spread_bps: float | None,
+    data_quality_status: str,
+    liquidity_status: str,
+    strategy_evidence_ready: bool,
+    owner_approved: bool,
+    account_context_fresh: bool,
+    requested_leverage: int,
+    requested_notional_usdt: float,
+    delisted: bool = False,
+    suspended: bool = False,
+) -> dict[str, Any]:
+    normalized_mode = str(mode or "paper").strip().lower()
+    if normalized_mode not in {"paper", "shadow", "live"}:
+        normalized_mode = "paper"
+    resolved_tier = classify_asset_risk_tier(
+        requested_tier=requested_tier,
+        volatility_0_1=volatility_0_1,
+        spread_bps=spread_bps,
+        delisted=delisted,
+        suspended=suspended,
+    )
+    live_reasons = asset_live_eligibility_reasons(
+        tier=resolved_tier,
+        data_quality_status=data_quality_status,
+        liquidity_status=liquidity_status,
+        strategy_evidence_ready=strategy_evidence_ready,
+        owner_approved=owner_approved,
+        account_context_fresh=account_context_fresh,
+        spread_bps=spread_bps,
+    )
+    sizing = validate_multi_asset_order_sizing(
+        symbol=symbol,
+        tier=resolved_tier,
+        mode=normalized_mode,  # type: ignore[arg-type]
+        requested_leverage=requested_leverage,
+        requested_notional_usdt=requested_notional_usdt,
+    )
+    all_reasons = list(dict.fromkeys(list(live_reasons) + list(sizing.get("reasons", []))))
+    blocked = (normalized_mode == "live" and len(live_reasons) > 0) or (not bool(sizing.get("valid", False)))
+    return {
+        "symbol": symbol,
+        "mode": normalized_mode,
+        "asset_risk_tier": resolved_tier,
+        "blocked": blocked,
+        "reasons_json": all_reasons,
+        "live_reasons_json": list(live_reasons),
+        "sizing": sizing,
+    }
 
 
 @dataclass(frozen=True)

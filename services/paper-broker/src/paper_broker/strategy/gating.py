@@ -3,7 +3,25 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from shared_py.risk_engine import TradeRiskLimits, evaluate_trade_risk
+from shared_py.risk_engine import (
+    TradeRiskLimits,
+    evaluate_asset_tier_risk_gate,
+    evaluate_trade_risk,
+)
+
+
+def _to_float(value: Any, default: float = 0.0) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _to_int(value: Any, default: int = 1) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
 
 
 @dataclass(frozen=True)
@@ -38,6 +56,29 @@ def should_auto_trade(signal: dict[str, Any], cfg: GateConfig) -> tuple[bool, li
         ),
     )
     reasons = list(decision["reasons_json"])
+    asset_gate = evaluate_asset_tier_risk_gate(
+        symbol=str(signal.get("symbol") or signal.get("asset") or "UNKNOWN"),
+        mode="paper",
+        requested_tier=(
+            str(signal.get("asset_risk_tier") or signal.get("asset_tier"))
+            if signal.get("asset_risk_tier") is not None or signal.get("asset_tier") is not None
+            else None
+        ),
+        volatility_0_1=_to_float(signal.get("asset_volatility_0_1") or signal.get("volatility_0_1"), 0.0),
+        spread_bps=_to_float(signal.get("spread_bps"), 0.0),
+        data_quality_status=str(signal.get("asset_data_quality_status") or "data_unknown"),
+        liquidity_status=str(signal.get("asset_liquidity_status") or "unknown"),
+        strategy_evidence_ready=bool(signal.get("strategy_evidence_ready")),
+        owner_approved=bool(signal.get("owner_approved")),
+        account_context_fresh=bool(signal.get("account_context_fresh")),
+        requested_leverage=_to_int(signal.get("recommended_leverage") or signal.get("allowed_leverage"), 1),
+        requested_notional_usdt=_to_float(signal.get("proposed_notional_usdt"), 0.0),
+        delisted=bool(signal.get("asset_delisted")),
+        suspended=bool(signal.get("asset_suspended")),
+    )
+    if asset_gate.get("blocked"):
+        reasons.extend(f"asset_risk:{reason}" for reason in asset_gate.get("reasons_json", []))
+        reasons = list(dict.fromkeys(reasons))
     return (len(reasons) == 0, reasons)
 
 

@@ -326,6 +326,11 @@ function OperatorExplainPanelInner() {
           {error}
         </p>
       ) : null}
+      {error ? (
+        <p className="muted small" role="status">
+          {t("pages.health.aiAssistantDegradedSafe")}
+        </p>
+      ) : null}
       {error && !loading ? (
         <SurfaceDiagnosticCard
           model={resolveOperatorExplainLlmSurfaceDiagnostic(error)}

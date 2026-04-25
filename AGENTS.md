@@ -1,34 +1,63 @@
 # AGENTS.md - verbindliche Codex-Arbeitsgrundlage
 
-Dieses Repository heisst verbindlich `bitget-btc-ai`. Es bereitet ein
-institutionell reifes Bitget-KI-Trading-System vor. Es darf niemals ohne
-gepruefte Gates echtes Geld handeln.
+Dieses Repository heisst verbindlich `bitget-btc-ai`. Cursor arbeitet immer auf
+diesem Projektnamen, auch wenn Remote- oder Altbezeichnungen abweichen. Es
+bereitet eine private, deutsche, institutionell kontrollierte Bitget-Multi-Asset
+KI-Trading-Anwendung fuer Philipp Crljic vor. Es darf niemals ohne gepruefte
+Gates echtes Geld handeln.
 
 Echte Produktionsreife bedeutet: Code, Tests, Betrieb, Security, Recovery,
-Compliance, Monitoring, UI, Kundenverwaltung und Signoff sind nachweislich
-vorhanden. Eine Behauptung ohne Evidence ist kein Produktionsnachweis.
+Compliance, Monitoring, deutsche Main Console, Owner-Freigaben und Signoff sind
+nachweislich vorhanden. Eine Behauptung ohne Evidence ist kein
+Produktionsnachweis.
 
 ## Projektziel
 
-`bitget-btc-ai` soll ein institutionell reifes Bitget-KI-Trading-System werden:
+`bitget-btc-ai` soll eine private Main-Console-Plattform fuer Philipp Crljic
+werden:
 
 - Paper-, Shadow- und Live-Modi sind hart getrennt.
 - Live-Trading ist immer explizit, operatorisch freigegeben und fail-closed.
-- Risk-Governor, Live-Broker, Exchange-Control, Tenant-/Commercial-Gates,
-  Kill-Switch, Safety-Latch, Reconcile und Audit-Trail duerfen nicht umgangen
-  werden.
-- Kundendaten, API-Keys, Secrets und Operator-Freigaben sind geschuetzt.
+- Risk-Governor, Live-Broker, Exchange-Control, Asset-/Datenqualitaets-/
+  Liquiditaets-/Owner-Gates, Kill-Switch, Safety-Latch, Reconcile und
+  Audit-Trail duerfen nicht umgangen werden.
+- API-Keys, Secrets, private Betriebsdaten und Owner-Freigaben sind geschuetzt.
+- Die Benutzeroberflaeche ist deutsch und wird auf eine zentrale Main Console
+  ausgerichtet.
+- Multi-Asset-Bitget-Faehigkeit wird aufgebaut; Live-Trading bleibt auch fuer
+  jedes neue Asset fail-closed.
 - Production-Readiness wird ueber Tests, Doku, Runbooks, Evidence und externe
   Signoffs bewiesen.
 
-## Codex-Arbeitsmodus
+## Verbindliche private Produktausrichtung
 
-Codex muss immer in dieser Reihenfolge arbeiten:
+- Es gibt nur einen Hauptnutzer: Philipp Crljic.
+- Philipp ist alleiniger Admin, Operator und Owner.
+- Die Anwendung wird nicht verkauft.
+- Billing, Customer-Flows, Subscriptions, Tarife, Vertragsverwaltung,
+  Payment-Flows, oeffentliche Marketing-Strecken und Multi-Tenant-Ziele sind
+  nicht mehr Produktziel.
+- Bestehende Billing-, Customer-, Commercial- oder Tenant-Artefakte duerfen nur
+  als Legacy-/Out-of-scope-Abhaengigkeiten erhalten, abgesichert oder geordnet
+  entfernt werden. Cursor darf sie nicht als neue Zielrichtung ausbauen.
+- Alle UI-Texte der finalen Anwendung muessen deutsch sein.
+- Die Main Console ist die zentrale Oberflaeche fuer Status, Assets, Signale,
+  Risk, Live-Broker, KI-Erklaerung, Reports, Alerts, Settings und Go/No-Go.
+- Cursor darf keine echten Secrets erzeugen, anzeigen, loggen oder speichern.
+- Cursor darf keine echten Bitget-Orders ausloesen.
+- Cursor darf niemals behaupten, `10/10` sei erreicht, wenn Evidence fehlt.
 
-1. Repository lesen und relevante Dateien finden.
+## Cursor-Arbeitsmodus
+
+Die folgenden Regeln gelten fuer Cursor verbindlich. "Codex" und "Cursor" sind
+im Repo-Kontext gleichbedeutend, wobei die operative Verantwortung bei Cursor
+liegt.
+
+Cursor muss immer in dieser Reihenfolge arbeiten:
+
+1. Repository lesen und relevante Dateien finden, bevor Aenderungen gemacht werden.
 2. Problem verstehen.
-3. Trading-, Risk-, Security-, Tenant-, Compliance- und Betriebsrisiken
-   erkennen.
+3. Trading-, Risk-, Security-, Owner-, Compliance- und Betriebsrisiken erkennen.
 4. Plan erstellen, sofern die Aufgabe nicht trivial ist.
 5. Minimal-invasive Aenderungen machen.
 6. Passende Tests ergaenzen oder aktualisieren.
@@ -48,7 +77,7 @@ Codex darf eine Aufgabe nicht als fertig melden, wenn:
 - Relevante Tests fehlschlagen.
 - Doku nicht aktualisiert wurde.
 - ENV-Aenderungen nicht dokumentiert wurden.
-- Risk-, Trading-, Live-Broker-, Tenant- oder Billing-Auswirkungen nicht
+- Risk-, Trading-, Live-Broker-, Owner- oder Legacy-Billing-/Tenant-Auswirkungen nicht
   bewertet wurden.
 - Eine neue Live-Gefahr entstanden ist.
 - Secrets versehentlich exponiert werden koennten.
@@ -81,7 +110,7 @@ ermoeglicht. Live-Trading muss immer an harte Gates gebunden sein:
 - Shadow-Match
 - Exchange-Health
 - Risk-Governor-Freigabe
-- Commercial-/Tenant-Gates
+- Asset-, Datenqualitaets-, Liquiditaets- und Owner-Gates
 - Kill-Switch nicht aktiv
 - Safety-Latch nicht aktiv
 - keine ungeklaerte Reconcile-Lage
@@ -100,14 +129,14 @@ Bei jedem Zweifel muss das System blockieren. Fail-closed gilt besonders bei:
 - fehlendem Shadow-Match
 - fehlendem Instrumentenkatalog
 - fehlendem Risk-Kontext
-- fehlender Tenant-Freigabe
+- fehlender Owner-/Operator-Freigabe durch Philipp
 - Provider-Fehlern
 - Stale-Daten
 - Reconcile-Divergenz
 - Kill-Switch
 - Safety-Latch
 - unklarer Auth-/RBAC-Lage
-- fehlender Billing- oder Commercial-Freigabe
+- unklaren Legacy-Billing-, Customer- oder Tenant-Abhaengigkeiten
 
 Unsichere Defaults sind Fehler. Fallbacks duerfen niemals echte Orders
 beguenstigen.
@@ -123,11 +152,11 @@ Jede Aenderung an diesen Bereichen muss passende Doku aktualisieren:
 - Risk
 - Trading
 - Live-Broker
-- Billing
-- Tenant-Isolation
+- Legacy-Billing-/Customer-/Tenant-Abhaengigkeiten
 - Dashboard
 - Operator-UI
-- Kunden-UI
+- Main Console
+- Legacy-Kunden-UI
 - Security
 - CI
 - Deployment
@@ -153,8 +182,8 @@ Je nach Aenderung sind mindestens relevant:
 - Dashboard/Jest/E2E-Tests unter `apps/dashboard` und `e2e`.
 - Release-/Security-Gates unter `tools/`.
 - ENV-Validatoren fuer geaenderte Profile.
-- Fail-closed-Tests fuer Live-Broker, Risk, Redis, DB, Reconcile, Tenant und
-  Commercial-Gates.
+- Fail-closed-Tests fuer Live-Broker, Risk, Redis, DB, Reconcile, Asset-,
+  Datenqualitaets-, Liquiditaets- und Owner-Gates.
 - Doku-/Format-Checks, wenn Markdown, YAML, JSON oder UI-Texte geaendert
   wurden.
 
@@ -196,6 +225,9 @@ trennen.
 Vor riskanten Aenderungen muessen diese Dateien beachtet werden:
 
 - `docs/production_10_10/README.md`
+- `docs/production_10_10/private_owner_scope.md`
+- `docs/production_10_10/main_console_product_direction.md`
+- `docs/production_10_10/cursor_work_protocol.md`
 - `docs/production_10_10/10_10_definition.md`
 - `docs/production_10_10/evidence_matrix.md`
 - `docs/production_10_10/codex_work_protocol.md`

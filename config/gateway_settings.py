@@ -349,8 +349,8 @@ class GatewaySettings(BaseServiceSettings):
         default=False,
         alias="EXECUTION_LIVE_STRICT_PREREQUISITES",
         description=(
-            "Prod + Live-Handel: COMMERCIAL_*, TELEGRAM_BOT_USERNAME, "
-            "COMMERCIAL_METER_SECRET, LIVE_REQUIRE_OPERATOR_RELEASE erzwingen."
+            "Private Prod + Live-Handel: Owner-/Operator-Release, Exchange-Health, "
+            "Risk-Hard-Gates und Kill-Switch erzwingen. Keine Billing-/Customer-Pflicht."
         ),
     )
 
@@ -707,33 +707,26 @@ class GatewaySettings(BaseServiceSettings):
             and self.live_broker_enabled
         )
         if live_handoff:
-            if not self.commercial_enabled:
-                raise ValueError(
-                    "EXECUTION_LIVE_STRICT_PREREQUISITES: Production-Live-Handel "
-                    "verlangt COMMERCIAL_ENABLED=true"
-                )
-            if not self.commercial_telegram_required_for_console:
-                raise ValueError(
-                    "EXECUTION_LIVE_STRICT_PREREQUISITES: Production-Live-Handel "
-                    "verlangt COMMERCIAL_TELEGRAM_REQUIRED_FOR_CONSOLE=true"
-                )
-            if not self.telegram_bot_username.strip():
-                raise ValueError(
-                    "EXECUTION_LIVE_STRICT_PREREQUISITES: Production-Live-Handel "
-                    "verlangt TELEGRAM_BOT_USERNAME (Kunden-/Ops-Verknuepfung)"
-                )
-            cms = self.commercial_meter_secret.strip()
-            if not cms or len(cms) < MIN_PRODUCTION_SECRET_LEN:
-                raise ValueError(
-                    "EXECUTION_LIVE_STRICT_PREREQUISITES: Production-Live-Handel "
-                    "verlangt COMMERCIAL_METER_SECRET (min "
-                    f"{MIN_PRODUCTION_SECRET_LEN} Zeichen)"
-                )
             if not self.live_require_operator_release_for_live_open:
                 raise ValueError(
                     "EXECUTION_LIVE_STRICT_PREREQUISITES: Production-Live-Handel "
                     "verlangt LIVE_REQUIRE_OPERATOR_RELEASE_FOR_LIVE_OPEN=true "
-                    "(Operator-Freigabe fuer Live-Opens)"
+                    "(Owner-/Operator-Freigabe durch Philipp fuer Live-Opens)"
+                )
+            if not self.live_require_exchange_health:
+                raise ValueError(
+                    "EXECUTION_LIVE_STRICT_PREREQUISITES: Production-Live-Handel "
+                    "verlangt LIVE_REQUIRE_EXCHANGE_HEALTH=true"
+                )
+            if not self.risk_hard_gating_enabled:
+                raise ValueError(
+                    "EXECUTION_LIVE_STRICT_PREREQUISITES: Production-Live-Handel "
+                    "verlangt RISK_HARD_GATING_ENABLED=true"
+                )
+            if not self.live_kill_switch_enabled:
+                raise ValueError(
+                    "EXECUTION_LIVE_STRICT_PREREQUISITES: Production-Live-Handel "
+                    "verlangt LIVE_KILL_SWITCH_ENABLED=true"
                 )
 
         if self.use_docker_datastore_dsn:

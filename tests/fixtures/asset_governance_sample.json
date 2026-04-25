@@ -1,0 +1,40 @@
+{
+  "assets": [
+    {
+      "asset_id": "ASSET-BTCUSDT",
+      "symbol": "BTCUSDT",
+      "market_family": "futures",
+      "product_type": "USDT-FUTURES",
+      "state": "live_candidate",
+      "actor": "system",
+      "reason_de": "Wartet auf Owner-Freigabe",
+      "evidence_refs": [
+        "docs/production_10_10/bitget_asset_universe.md"
+      ],
+      "created_at": "2026-04-25T16:10:00+00:00",
+      "risk_tier": "RISK_TIER_1_MAJOR_LIQUID",
+      "liquidity_tier": "LIQUIDITY_TIER_1",
+      "data_quality_status": "data_ok",
+      "liquidity_ok": true,
+      "strategy_evidence_ready": true,
+      "bitget_status_clear": true
+    },
+    {
+      "asset_id": "ASSET-ALTUSDT",
+      "symbol": "ALTUSDT",
+      "market_family": "futures",
+      "product_type": "USDT-FUTURES",
+      "state": "quarantine",
+      "actor": "system",
+      "reason_de": "Neue Listung in Quarantaene",
+      "evidence_refs": [],
+      "created_at": "2026-04-25T16:15:00+00:00",
+      "risk_tier": "RISK_TIER_UNKNOWN",
+      "liquidity_tier": "LIQUIDITY_UNKNOWN",
+      "data_quality_status": "data_unknown",
+      "liquidity_ok": false,
+      "strategy_evidence_ready": false,
+      "bitget_status_clear": false
+    }
+  ]
+}

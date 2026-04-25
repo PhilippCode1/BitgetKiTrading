@@ -757,6 +757,18 @@ export async function fetchLiveBrokerForensicTimeline(
   );
 }
 
+export async function fetchDemoStatus(): Promise<Record<string, unknown>> {
+  return getJson<Record<string, unknown>>("/api/demo/status");
+}
+
+export async function fetchDemoReadiness(): Promise<Record<string, unknown>> {
+  return getJson<Record<string, unknown>>("/api/demo/readiness");
+}
+
+export async function fetchDemoAssets(): Promise<Record<string, unknown>> {
+  return getJson<Record<string, unknown>>("/api/demo/assets");
+}
+
 export type CommerceUsageSummary = Record<string, unknown>;
 
 export async function fetchCommerceUsageSummary(params?: {

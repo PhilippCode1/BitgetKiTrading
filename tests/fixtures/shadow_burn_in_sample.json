@@ -1,0 +1,9 @@
+{
+  "hours_observed": 72,
+  "multi_asset_data_quality_status": "ok",
+  "multi_asset_data_quality_failures": 0,
+  "reconcile_failures": 0,
+  "p0_incidents": 0,
+  "no_trade_reason_count": 12,
+  "unexplained_no_trade_reasons": 0
+}

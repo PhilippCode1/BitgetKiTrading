@@ -20,7 +20,7 @@ from config.paths import resolve_standard_env_files
 LogFormat = Literal["json", "plain"]
 VaultMode = Literal["false", "none", "hashicorp", "aws"]
 AppEnv = Literal["local", "development", "shadow", "production", "test"]
-ExecutionMode = Literal["paper", "shadow", "live"]
+ExecutionMode = Literal["paper", "bitget_demo", "shadow", "live"]
 TradingRuntimeMode = ExecutionMode
 StrategyExecutionMode = Literal["manual", "auto"]
 ApiAuthMode = Literal["none", "api_key", "oauth2", "mtls"]

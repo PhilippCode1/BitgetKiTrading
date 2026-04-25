@@ -9,6 +9,19 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 MarketFamily = Literal["spot", "margin", "futures"]
 MarginAccountMode = Literal["cash", "isolated", "crossed"]
 CatalogSnapshotStatus = Literal["ok", "partial", "error"]
+AssetUniverseStatus = Literal[
+    "unknown",
+    "discovered",
+    "active",
+    "watchlist",
+    "shadow_allowed",
+    "live_candidate",
+    "live_allowed",
+    "quarantined",
+    "delisted",
+    "suspended",
+    "blocked",
+]
 MARKET_UNIVERSE_SCHEMA_VERSION = "bitget-market-universe-v1"
 
 _SPOT_GRANULARITY_MAP = {
@@ -1110,3 +1123,179 @@ class MarketInstrumentFactory:
             refresh_ts_ms=rts,
             raw_metadata=spot_row,
         )
+
+
+class BitgetAssetUniverseInstrument(BaseModel):
+    """Governance-Sicht fuer Multi-Asset-Eligibility und Live-Blocker."""
+
+    symbol: str
+    base_coin: str | None = None
+    quote_coin: str | None = None
+    market_family: MarketFamily
+    product_type: str | None = None
+    margin_coin: str | None = None
+    margin_mode: MarginAccountMode | None = None
+    tick_size: str | None = None
+    lot_size: str | None = None
+    min_qty: str | None = None
+    min_notional: str | None = None
+    price_precision: int | None = None
+    quantity_precision: int | None = None
+    status: AssetUniverseStatus = "unknown"
+    is_tradable: bool = False
+    is_chart_visible: bool = False
+    is_live_allowed: bool = False
+    block_reasons: list[str] = Field(default_factory=list)
+    discovered_at: int | None = None
+    last_verified_at: int | None = None
+    source: str = "runtime_catalog"
+    asset_tier: int = 0
+    data_quality_ok: bool = False
+    liquidity_ok: bool = False
+    risk_tier_assigned: bool = False
+    strategy_evidence_ready: bool = False
+    owner_approved: bool = False
+
+    @field_validator(
+        "symbol",
+        "base_coin",
+        "quote_coin",
+        "product_type",
+        "margin_coin",
+        "tick_size",
+        "lot_size",
+        "min_qty",
+        "min_notional",
+        "source",
+        mode="before",
+    )
+    @classmethod
+    def _normalize_governance_text(cls, value: object, info) -> object:
+        if value is None:
+            return None
+        normalized = str(value).strip()
+        if not normalized:
+            return None if info.field_name != "source" else "runtime_catalog"
+        if info.field_name in {"symbol", "base_coin", "quote_coin", "product_type", "margin_coin"}:
+            return normalized.upper()
+        return normalized
+
+    @field_validator("status", mode="before")
+    @classmethod
+    def _normalize_status(cls, value: object) -> object:
+        if value is None:
+            return "unknown"
+        normalized = str(value).strip().lower()
+        return normalized or "unknown"
+
+    @field_validator("asset_tier")
+    @classmethod
+    def _validate_asset_tier(cls, value: int) -> int:
+        if value < 0 or value > 5:
+            raise ValueError("asset_tier muss im Bereich 0..5 liegen")
+        return value
+
+    @field_validator("block_reasons", mode="before")
+    @classmethod
+    def _normalize_block_reasons(cls, value: object) -> object:
+        if value is None:
+            return []
+        if not isinstance(value, list):
+            value = [value]
+        out: list[str] = []
+        for item in value:
+            reason = str(item).strip()
+            if reason and reason not in out:
+                out.append(reason)
+        return out
+
+    @classmethod
+    def from_catalog_entry(
+        cls,
+        entry: BitgetInstrumentCatalogEntry,
+        *,
+        status: AssetUniverseStatus = "discovered",
+        asset_tier: int = 0,
+        data_quality_ok: bool = False,
+        liquidity_ok: bool = False,
+        risk_tier_assigned: bool = False,
+        strategy_evidence_ready: bool = False,
+        owner_approved: bool = False,
+    ) -> "BitgetAssetUniverseInstrument":
+        refresh_ts = entry.refresh_ts_ms
+        return cls(
+            symbol=entry.symbol,
+            base_coin=entry.base_coin,
+            quote_coin=entry.quote_coin,
+            market_family=entry.market_family,
+            product_type=entry.product_type,
+            margin_coin=entry.margin_coin,
+            margin_mode=entry.margin_account_mode,
+            tick_size=entry.price_tick_size,
+            lot_size=entry.quantity_step,
+            min_qty=entry.quantity_min,
+            min_notional=entry.min_notional_quote,
+            price_precision=entry.price_precision,
+            quantity_precision=entry.quantity_precision,
+            status=status,
+            is_tradable=entry.trading_enabled,
+            is_chart_visible=entry.subscribe_enabled,
+            discovered_at=refresh_ts,
+            last_verified_at=refresh_ts,
+            source=entry.metadata_source or "runtime_catalog",
+            asset_tier=asset_tier,
+            data_quality_ok=data_quality_ok,
+            liquidity_ok=liquidity_ok,
+            risk_tier_assigned=risk_tier_assigned,
+            strategy_evidence_ready=strategy_evidence_ready,
+            owner_approved=owner_approved,
+        )
+
+    def evaluate_live_eligibility(self) -> tuple[bool, list[str]]:
+        reasons = list(self.block_reasons)
+        status = self.status
+        if status == "unknown":
+            reasons.append("status_unknown")
+        if status in {"delisted", "suspended", "blocked", "quarantined"}:
+            reasons.append(f"status_{status}")
+        if self.market_family == "futures" and not self.product_type:
+            reasons.append("missing_product_type_for_futures")
+        if self.market_family == "futures" and not self.margin_coin:
+            reasons.append("missing_margin_coin_for_futures")
+        if self.price_precision is None or self.quantity_precision is None:
+            reasons.append("missing_precision")
+        if not self.min_qty:
+            reasons.append("missing_min_qty")
+        if not self.min_notional:
+            reasons.append("missing_min_notional")
+        if not self.data_quality_ok:
+            reasons.append("missing_data_quality_gate")
+        if not self.liquidity_ok:
+            reasons.append("missing_liquidity_gate")
+        if not self.risk_tier_assigned:
+            reasons.append("missing_risk_tier_gate")
+        if not self.strategy_evidence_ready:
+            reasons.append("missing_strategy_evidence_gate")
+        if not self.owner_approved:
+            reasons.append("missing_owner_approval")
+        if self.asset_tier == 0:
+            reasons.append("tier_0_blocked")
+        if self.asset_tier == 5:
+            reasons.append("tier_5_blocked")
+        if self.asset_tier == 4:
+            reasons.append("tier_4_shadow_only")
+        if self.asset_tier == 1 and status not in {"live_candidate", "live_allowed"}:
+            reasons.append("tier_1_requires_live_candidate_status")
+        deduped = list(dict.fromkeys(reasons))
+        live_allowed = len(deduped) == 0
+        return live_allowed, deduped
+
+
+def evaluate_asset_universe_live_eligibility(
+    instrument: BitgetAssetUniverseInstrument,
+) -> BitgetAssetUniverseInstrument:
+    live_allowed, reasons = instrument.evaluate_live_eligibility()
+    payload = instrument.model_dump(mode="json")
+    payload["is_live_allowed"] = live_allowed
+    payload["block_reasons"] = reasons
+    return BitgetAssetUniverseInstrument.model_validate(payload)

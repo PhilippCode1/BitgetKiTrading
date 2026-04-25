@@ -1,12 +1,21 @@
 # Dashboard: Operator-Betrieb
 
+> Architektur-Stand: Die sichtbare Produktoberflaeche wird auf eine zentrale
+> deutsche Main Console ausgerichtet. Siehe
+> `docs/production_10_10/main_console_architecture.md`.
+
 ## Einstieg
 
-- **`/console/health` (Health & incidents):** Systemstatus, PDF-Diagnose, Integrationsmatrix; **Operator-Assistent (LLM):** gebaute End-to-End-Strecke (Frage auf Deutsch → API-Gateway → LLM-Orchestrator). Details: `ai-architecture.md`, `release-readiness.md`.
-- Standard-Route: **`/ops`** (Operator Cockpit) — aggregiert Execution-Modus, Champion-Modelle, letztes Signal (Konfidenz, Unsicherheit, Edge, Hebel), Kill-Switches, Reconcile-/Shadow-vs.-Live-Drift, Exchange-Account-Rohfelder aus dem letzten Snapshot, Paper-Margin-Hinweise, kurze Order-/Fill-Listen.
-- **`/ops`** fuehrt zusaetzlich einen **Fokus-Instrument-Block** (Symbol, TF, Family) fuer das Marktuniversum und trennt ihn von globalen Operator-Queues wie Approval, Mirror, Divergenz und Drift.
-- **`/terminal`**: Chart + SSE; Fehler beim Datenabruf werden als Banner angezeigt (keine stille Leerflaeche mehr). Watchlist-/Fokus-Symbole koennen in der UI gewechselt werden; der Produktionspfad bleibt read-only.
-- **`/live-broker/forensic/[id]`**: End-to-End-Timeline fuer eine `execution_id` inkl. Signal-Kontext, Spezialistenroute, Release, Orders/Fills, Exit-Plaenen, Telegram-/Gateway-Audit und Learning-/Review-Kontext.
+- **`/console/incidents` / `/console/system-health-map`:** Systemstatus,
+  Prioritaeten, Datenfluesse und Alerts.
+- Standard-Route: **`/console`** (Uebersicht) mit klarer Weiterfuehrung in
+  Kernmodule.
+- **`/console/ops`**: Risk/Portfolio-Lage mit Fokus auf Live-Blocker und
+  sichere naechste Schritte.
+- **`/console/terminal`**: Chart + SSE; Fehler als Banner statt stillem
+  Leerlauf.
+- **`/console/live-broker/forensic/[id]`**: End-to-End-Timeline fuer
+  `execution_id` inkl. Signal-, Risk-, Reconcile- und Auditkontext.
 
 Im Zielbild ist das Dashboard **Operator-Sicht**, nicht Strategiekonfigurationskanal.
 Es arbeitet gegen den Marktinventar-/Broker-/Learning-Zustand des Backends und darf
@@ -14,6 +23,22 @@ keine Exchange- oder Modell-Secrets im Browser fuehren.
 
 **Architektur-Referenz:** `docs/adr/ADR-0001-bitget-market-universe-platform.md`
 **Kanonische Statussprache:** `docs/operator_status_language.md`
+
+## Main-Console-Kernmodule
+
+- Uebersicht
+- Asset-Universum
+- Charts
+- Signale & KI-Erklaerung
+- Risk & Portfolio
+- Paper/Shadow/Live-Readiness
+- Live-Broker & Execution-Safety
+- Systemstatus & Alerts
+- Reports & Evidence
+- Einstellungen & Runtime-Checks
+
+Legacy-/Customer-/Billing-/Sales-Bereiche sind nicht Teil dieser aktiven
+Kernnavigation und bleiben, falls technisch noetig, internal/deprecated.
 
 ## Admin & Lifecycle
 

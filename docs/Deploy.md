@@ -55,9 +55,24 @@ Vollstaendige Liste: `.env.example` (deduplizierter Key-Katalog, nur Platzhalter
 ## Profilvorlagen
 
 - `.env.local.example`: lokale Demo-/Paper-Entwicklung; Demo-, Fixture- und Fake-Pfade sind hier erlaubt.
+- `.env.demo.example`: lokaler Bitget-Demo-Modus (`EXECUTION_MODE=bitget_demo`, Demogeld, kein Echtgeld).
 - `.env.shadow.example`: produktionsnahes Shadow-Profil; reale Hosts, keine Demo-/Fixture-/Fake-Defaults, keine Live-Orderfreigabe.
 - `.env.production.example`: Produktionsprofil; reale Hosts, keine Demo-/Fixture-/Fake-Defaults, `EXECUTION_MODE=shadow` als sicherer Default.
 - `.env.test.example`: deterministische Tests; isolierte Test-DSNs, Fake-/Fixture-Pfade nur fuer Testzwecke.
+
+## Bitget Demo-Modus mit Demogeld
+
+1. `cp .env.demo.example .env.demo`
+2. `python scripts/bitget_demo_readiness.py --env-file .env.demo --mode readonly --output-md reports/bitget_demo_readiness.md`
+3. `docker compose --env-file .env.demo up --build`
+4. Main Console: `http://localhost:3000`
+5. API-Gateway: `http://localhost:8000`
+6. Demo-Stack-Pruefung:
+   `python scripts/demo_stack_healthcheck.py --env-file .env.demo --dashboard-url http://localhost:3000 --base-url http://localhost:8000 --output-md reports/demo_stack_healthcheck.md`
+7. Demo-Stress-Smoke:
+   `python scripts/demo_stress_smoke.py --base-url http://localhost:8000 --dashboard-url http://localhost:3000 --duration-sec 60 --output-md reports/demo_stress_smoke.md`
+
+Sicherheitsregel: Demo-Modus bleibt strikt ohne Echtgeld. `LIVE_TRADE_ENABLE` muss `false` bleiben.
 
 Die Profilauflösung folgt repo-weit derselben Priorität: `CONFIG_ENV_FILE` → `COMPOSE_ENV_FILE` → `ENV_PROFILE_FILE` → `STACK_PROFILE` / `APP_ENV` → `.env.local`.
 

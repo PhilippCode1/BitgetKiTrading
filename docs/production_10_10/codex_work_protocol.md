@@ -1,8 +1,10 @@
 # Codex Work Protocol
 
-Dieses Protokoll ist fuer alle Codex- und KI-Agenten im Repository
+Dieses Protokoll ist fuer alle Codex-, Cursor- und KI-Agenten im Repository
 `bitget-btc-ai` verbindlich. Es konkretisiert `AGENTS.md` fuer taegliche
-Arbeit.
+Arbeit und wird durch `cursor_work_protocol.md`, `private_owner_scope.md` und
+`main_console_product_direction.md` fuer die private Main-Console-Ausrichtung
+ergaenzt.
 
 ## 1. Vor jeder Aenderung
 
@@ -13,9 +15,10 @@ Arbeit.
 4. Klassifiziere die Aenderung:
    - Trading/Risk/Live-Broker
    - Security/Auth/Secrets
-   - Tenant/Billing/Customer
+   - Private Owner/Main Console
+   - Legacy-Tenant/Billing/Customer
    - Runtime/ENV/Deployment
-   - UI/Operator/Customer
+   - UI/Main Console/Operator
    - CI/Release/Recovery/Monitoring
 5. Benenne Live-Geld-Auswirkungen. Wenn unklar: blockierend behandeln.
 
@@ -43,8 +46,8 @@ Der Plan darf nicht als Ersatz fuer Umsetzung oder Verifikation dienen.
 
 ## 4. Risk- und Live-Checkliste
 
-Bei jeder Aenderung an Trading, Risk, Broker, Gateway, ENV, Dashboard, Tenant
-oder Billing muss Codex pruefen:
+Bei jeder Aenderung an Trading, Risk, Broker, Gateway, ENV, Dashboard, Main
+Console oder Legacy-Tenant-/Billing-/Customer-Pfaden muss Codex pruefen:
 
 - Kann diese Aenderung echte Orders erleichtern?
 - Bleibt Paper/Shadow der sichere Default?
@@ -52,10 +55,14 @@ oder Billing muss Codex pruefen:
   `LIVE_BROKER_ENABLED=true` weiterhin nur Teil einer vollstaendigen Gate-Kette?
 - Blockiert das System bei Redis-/DB-/Provider-/Exchange-Fehlern?
 - Sind Kill-Switch, Safety-Latch und Reconcile-Divergenz weiterhin bindend?
-- Sind Operator-Release, Shadow-Match, Risk-Governor und Tenant-/Commercial-Gate
-  weiterhin erforderlich?
+- Sind Operator-/Owner-Release durch Philipp, Shadow-Match, Risk-Governor,
+  Asset-Freigabe, Datenqualitaet und Liquiditaet weiterhin erforderlich?
 - Koennen Secrets, Kundendaten oder API-Keys in Logs, Browser oder Tests
   erscheinen?
+- Wird Billing, Customer, Sales, Payment oder Subscription versehentlich als
+  Produktziel ausgebaut?
+- Bleiben neue und geaenderte UI-Texte deutsch und auf die Main Console
+  ausgerichtet?
 
 Wenn eine Antwort unsicher ist, gilt die Aenderung als nicht fertig.
 
@@ -88,7 +95,7 @@ Doku muss angepasst werden, wenn sich eines davon aendert:
 - API-/BFF-Vertrag
 - Trading- oder Risk-Verhalten
 - Live-Broker-Gate
-- Tenant-, Billing- oder Customer-Policy
+- Private-Owner-, Main-Console- oder Legacy-Tenant-/Billing-/Customer-Policy
 - Dashboard-/Operator-Workflow
 - Recovery-, Monitoring- oder Release-Prozess
 - CI-/Deployment-Verhalten

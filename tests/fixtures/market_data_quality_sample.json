@@ -1,0 +1,51 @@
+{
+  "assets": [
+    {
+      "symbol": "BTCUSDT",
+      "market_family": "futures",
+      "product_type": "USDT-FUTURES",
+      "data_source": "fixture",
+      "expected_interval_ms": 60000,
+      "now_ts_ms": 1714060000000,
+      "candles": [
+        {"ts_ms": 1714059820000, "open": 63000, "high": 63100, "low": 62950, "close": 63050, "volume": 120},
+        {"ts_ms": 1714059880000, "open": 63050, "high": 63120, "low": 63010, "close": 63090, "volume": 115},
+        {"ts_ms": 1714059940000, "open": 63090, "high": 63150, "low": 63070, "close": 63110, "volume": 130}
+      ],
+      "orderbook_present": true,
+      "last_orderbook_ts_ms": 1714059999000,
+      "orderbook_max_age_ms": 15000,
+      "bid": 63109.5,
+      "ask": 63110.0,
+      "max_spread_bps": 30,
+      "funding_last_ts_ms": 1714059800000,
+      "funding_max_age_ms": 3600000,
+      "funding_required_for_strategy": true,
+      "oi_last_ts_ms": 1714059800000,
+      "oi_max_age_ms": 3600000,
+      "oi_required_for_strategy": true
+    },
+    {
+      "symbol": "ALTUSDT",
+      "market_family": "futures",
+      "product_type": "USDT-FUTURES",
+      "data_source": "fixture",
+      "expected_interval_ms": 60000,
+      "now_ts_ms": 1714060000000,
+      "candles": [
+        {"ts_ms": 1714059700000, "open": 1.0, "high": 1.2, "low": 0.8, "close": 1.1, "volume": 5},
+        {"ts_ms": 1714059880000, "open": 1.1, "high": 1.3, "low": 1.0, "close": 1.2, "volume": 5}
+      ],
+      "orderbook_present": true,
+      "last_orderbook_ts_ms": 1714059000000,
+      "orderbook_max_age_ms": 10000,
+      "bid": null,
+      "ask": null,
+      "max_spread_bps": 30,
+      "funding_last_ts_ms": null,
+      "funding_required_for_strategy": true,
+      "oi_last_ts_ms": null,
+      "oi_required_for_strategy": true
+    }
+  ]
+}

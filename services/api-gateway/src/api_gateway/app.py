@@ -78,6 +78,7 @@ from api_gateway.routes_live import router as live_router
 from api_gateway.routes_live_broker_operator import router as live_broker_operator_router
 from api_gateway.routes_live_broker_proxy import router as live_broker_proxy_router
 from api_gateway.routes_live_broker_safety import router as live_broker_safety_router
+from api_gateway.routes_demo import router as demo_router
 from api_gateway.routes_market_universe import router as market_universe_router
 from api_gateway.routes_monitor_proxy import router as monitor_proxy_router
 from api_gateway.routes_news_proxy import router as news_proxy_router
@@ -332,6 +333,7 @@ def create_app() -> FastAPI:
     # Live-SSE: bei erzwungenem Auth JWT/Internal-Key oder SSE-Cookie; Dashboard-BFF empfohlen.
     app.include_router(live_router)
     app.include_router(live_broker_proxy_router)
+    app.include_router(demo_router)
     app.include_router(live_broker_operator_router)
     app.include_router(live_broker_safety_router)
     app.include_router(
