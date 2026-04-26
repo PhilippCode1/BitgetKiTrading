@@ -28,6 +28,8 @@ class SmokeReport:
     checks_failed: int
     submit_tested: bool
     preview_tested: bool
+    submit_allowed: bool
+    demo_money_used: bool
     blockers: list[str]
 
 
@@ -37,11 +39,14 @@ def run(
     duration_sec: int,
     include_preview: bool,
     include_submit: bool,
+    allow_demo_money: bool,
 ) -> SmokeReport:
     start = time.time()
     total = 0
     failed = 0
     blockers: list[str] = []
+    submit_allowed = False
+    demo_money_used = False
     with httpx.Client(timeout=6.0) as client:
         while time.time() - start < max(1, duration_sec):
             for path in SAFE_PATHS:
@@ -70,14 +75,23 @@ def run(
                 blockers.append("Demo-Preview antwortet mit 5xx.")
         if include_submit:
             total += 1
-            r = client.post(f"{base_url.rstrip('/')}/api/demo/order/submit")
-            if r.status_code >= 500:
-                failed += 1
-                blockers.append("Demo-Submit antwortet mit 5xx.")
+            if not allow_demo_money:
+                blockers.append(
+                    "Demo-Submit wurde angefordert, aber Sicherheitsflag --i-understand-this-uses-demo-money fehlt."
+                )
             else:
-                body = r.json() if r.content else {}
-                if bool(body.get("allowed")):
-                    blockers.append("Demo-Submit wurde unerwartet erlaubt.")
+                demo_money_used = True
+                r = client.post(f"{base_url.rstrip('/')}/api/demo/order/submit")
+                if r.status_code >= 500:
+                    failed += 1
+                    blockers.append("Demo-Submit antwortet mit 5xx.")
+                else:
+                    body = r.json() if r.content else {}
+                    submit_allowed = bool(body.get("allowed"))
+                    # Erlaubt ist beides: blockiert = Safety-First; erlaubt = bewusstes Demo-Geld.
+                    # Fail nur, wenn die Route widerspruechlich antwortet.
+                    if submit_allowed and not allow_demo_money:
+                        blockers.append("Demo-Submit wurde ohne Sicherheitsflag erlaubt.")
 
     if failed > 0 or blockers:
         result = "FAIL"
@@ -90,6 +104,8 @@ def run(
         checks_failed=failed,
         submit_tested=include_submit,
         preview_tested=include_preview,
+        submit_allowed=submit_allowed,
+        demo_money_used=demo_money_used and submit_allowed,
         blockers=blockers,
     )
 
@@ -105,6 +121,9 @@ def to_md(rep: SmokeReport) -> str:
             f"- Fehlgeschlagen: `{rep.checks_failed}`",
             f"- Preview getestet: `{str(rep.preview_tested).lower()}`",
             f"- Submit getestet: `{str(rep.submit_tested).lower()}`",
+            f"- Submit erlaubt: `{str(rep.submit_allowed).lower()}`",
+            f"- Demo-Geld genutzt: `{str(rep.demo_money_used).lower()}`",
+            "- Echtes Live-Trading: `false`",
             "",
             "## Blocker",
             *([f"- {x}" for x in rep.blockers] or ["- keine"]),
@@ -122,6 +141,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--json", action="store_true")
     p.add_argument("--include-demo-order-preview", action="store_true")
     p.add_argument("--include-demo-order-submit", action="store_true")
+    p.add_argument("--i-understand-this-uses-demo-money", action="store_true")
     args = p.parse_args(argv)
     rep = run(
         base_url=args.base_url,
@@ -129,6 +149,7 @@ def main(argv: list[str] | None = None) -> int:
         duration_sec=args.duration_sec,
         include_preview=args.include_demo_order_preview,
         include_submit=args.include_demo_order_submit,
+        allow_demo_money=bool(args.i_understand_this_uses_demo_money),
     )
     if args.output_md:
         from pathlib import Path
