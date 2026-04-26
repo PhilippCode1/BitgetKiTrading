@@ -135,6 +135,110 @@ python scripts/demo_trading_evidence_report.py \
 
 Erwartung: `DEMO_VERIFIED`, wenn private Demo-Read-only und die bewusste Demo-Order erfolgreich waren.
 
+## Fehler 40774 loesen
+
+Wenn Bitget bei Demo-Order `code=40774` meldet, passen Position-Mode im Konto und Order-Payload nicht zusammen.
+
+Pruefe im Bitget-Demo-Futures-Fenster, ob das Konto im One-way- oder Hedge-Modus steht.
+
+Wenn One-way:
+
+```env
+DEMO_POSITION_MODE=one_way
+DEMO_TRADE_SIDE=
+DEMO_POSITION_SIDE=
+```
+
+Wenn Hedge:
+
+```env
+DEMO_POSITION_MODE=hedge
+DEMO_TRADE_SIDE=open
+DEMO_POSITION_SIDE=long
+```
+
+`DEMO_POSITION_SIDE` kann je nach API-Pfad auch leer bleiben.
+
+Danach immer zuerst `demo-order-dry-run` ausfuehren und erst dann den echten Demo-Order-Smoke.
+
+## Demo-Position pruefen und schliessen
+
+Nach erfolgreichem Demo-Smoke kann eine kleine Demo-Position offen bleiben. Das ist normal und muss sauber reconciled werden.
+
+1) Zuerst readonly laufen lassen (liest nur, sendet keine Order):
+
+```bash
+python scripts/demo_reconcile_evidence_report.py \
+  --env-file .env.demo \
+  --mode readonly \
+  --output-md reports/demo_reconcile_evidence.md \
+  --output-json reports/demo_reconcile_evidence.json \
+  --json
+```
+
+2) Danach close-dry-run laufen lassen (bereitet Close nur vor, sendet keine Order):
+
+```bash
+python scripts/demo_reconcile_evidence_report.py \
+  --env-file .env.demo \
+  --mode close-dry-run \
+  --output-md reports/demo_reconcile_evidence.md \
+  --output-json reports/demo_reconcile_evidence.json \
+  --json
+```
+
+3) Erst dann close-smoke mit Sicherheitsflag nutzen:
+
+```bash
+python scripts/demo_reconcile_evidence_report.py \
+  --env-file .env.demo \
+  --mode close-smoke \
+  --i-understand-this-closes-demo-position \
+  --output-md reports/demo_reconcile_evidence.md \
+  --output-json reports/demo_reconcile_evidence.json \
+  --json
+```
+
+4) Danach readonly erneut starten und pruefen, ob Position/Orders wirklich weg sind.
+
+Wichtig: Das schaltet kein echtes Live frei. `live_trading_allowed=false` und `private_live_allowed=false` bleiben bestehen.
+
+## Fehler 22002 beim Schliessen
+
+Wenn Bitget beim Schliessen `22002` meldet (`No position to close`), passt die Close-Seite oft nicht zur offenen Hedge-Position oder die Position ist schon zu.
+
+Regel in Hedge Mode:
+
+- Long schliessen: `side=buy`, `tradeSide=close`
+- Short schliessen: `side=sell`, `tradeSide=close`
+
+Wenn `side` falsch ist, meldet Bitget haeufig `No position to close`.
+
+Nach einem Fix immer erst `close-dry-run` ausfuehren und erst danach `close-smoke`.
+
+## Demo-Lifecycle verifiziert
+
+Der Demo-Lifecycle ist geschafft, wenn alle Schritte in Reihenfolge nachweisbar sind:
+
+- Demo-Order wurde geoeffnet (`DEMO_VERIFIED`)
+- Position wurde im Reconcile erkannt
+- Position wurde erfolgreich geschlossen (`CLOSE_VERIFIED`)
+- Finaler Reconcile ist `CLEAN`
+
+Das ist ein echter Fortschritt, weil der komplette Demo-Kreislauf inkl. kontrolliertem Exit bewiesen ist.
+
+Trotzdem ist das keine Echtgeld-Freigabe:
+
+- `private_live_allowed` bleibt `false`
+- `full_autonomous_live` bleibt `false`
+- `live_verified` bleibt `false`
+
+Naechste Schritte Richtung Shadow/Staging:
+
+- Demo-Lifecycle-Report archivieren
+- Shadow-Burn-in mit stabilen Daten und Alerts weiterfuehren
+- Staging-Reconcile-/Safety-Drills mit externer Evidence aufbauen
+
 ## Schritt 8: Stack starten
 
 ```bash
@@ -195,3 +299,24 @@ Zur Bewertung niemals Secrets posten. Nur diese redacted Reports teilen:
 - Kein Owner-Signoff durch Demo.
 - Kein `private_live_allowed` durch Demo.
 - Demo ist ein wichtiger Beweis, aber nicht die Echtgeld-Freigabe.
+
+## CI-geschuetzte Demo-ENV-Hygiene
+
+Demo-ENV/Compose-Hygiene ist zusaetzlich als CI-Gate abgesichert:
+
+- Job: `demo-env-compose-safety` in `.github/workflows/ci.yml`
+- Script: `scripts/ci_demo_env_compose_gate.py`
+- Reports: `reports/ci_demo_env_compose_gate.md` und `.json`
+
+Der Gate-Job prueft mindestens:
+
+- `.env.demo.example` existiert und ist vollstaendig fuer Compose-Basisvariablen.
+- `.env.demo` ist nicht im Git-Index (darf nie committed werden).
+- Demo-Safety-Flags bleiben fail-closed:
+  - `LIVE_TRADE_ENABLE=false`
+  - `DEMO_ORDER_SUBMIT_ENABLE=false`
+  - `DEMO_CLOSE_POSITION_ENABLE=false`
+- Demo-Profil enthaelt keine Live-Key-Werte.
+- `docker compose --env-file .env.demo.example config --services` laeuft ohne fehlende Variablen.
+
+Wichtig: Demo-Evidence (auch `demo_lifecycle_verified`) ist weiterhin kein Live-Go. `private_live_allowed` und `full_autonomous_live` bleiben blockiert.

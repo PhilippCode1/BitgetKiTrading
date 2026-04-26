@@ -147,3 +147,28 @@ Status: automatisch aus `docs/production_10_10/evidence_matrix.yaml` und der Pro
 
 - `private_live_allowed`: `NO_GO`, weil P0/P1-Live-Blocker und externe Evidence fehlen.
 - `full_autonomous_live`: `NO_GO`, weil keine lange echte Live-Historie, kein vollstaendiger Owner-Signoff und keine vollstaendig verified Evidence vorliegen.
+
+## Demo-Lifecycle-Status
+
+- Neue Evidence-Stufe: `demo_lifecycle_verified`
+- Relevante Reports:
+  - `reports/demo_trading_evidence_DEMO_VERIFIED.json`
+  - `reports/demo_reconcile_evidence_CLOSE_VERIFIED.json`
+  - `reports/demo_reconcile_evidence_CLEAN.json`
+  - `reports/demo_lifecycle_evidence.json`
+- Wirkung: Demo-Fortschritt wird sichtbar besser bewertet.
+- Harte Grenze: kein Live-Go, `private_live_allowed` bleibt `NO_GO`.
+
+## CI-Gate Demo-ENV/Compose-Safety
+
+- Neu: CI-Job `demo-env-compose-safety` in `.github/workflows/ci.yml`.
+- Neu: `scripts/ci_demo_env_compose_gate.py` erzeugt:
+  - `reports/ci_demo_env_compose_gate.md`
+  - `reports/ci_demo_env_compose_gate.json`
+- Der Gate prueft:
+  - Vollstaendige `.env.demo.example` fuer Compose-Startwerte
+  - `.env.demo` nicht committed
+  - fail-closed Demo/Live-Safety-Flags
+  - keine Live-Keys im Demo-Profil
+  - Compose-Config-Pruefung via `.env.demo.example`
+- Auswirkung: ENV-/Compose-Regressionen werden bei PR/Push frueh blockiert.

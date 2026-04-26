@@ -245,6 +245,56 @@ jobs:
         run: python3 tools/check_github_branch_protection.py --repo "${{ github.repository }}"
         continue-on-error: true
 
+  demo-env-compose-safety:
+    name: Demo ENV Compose Safety
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11.15"
+          cache: pip
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+      - name: CI gate report (Demo ENV + Compose)
+        run: |
+          python scripts/ci_demo_env_compose_gate.py \
+            --env-file .env.demo.example \
+            --output-md reports/ci_demo_env_compose_gate.md \
+            --output-json reports/ci_demo_env_compose_gate.json
+      - name: Compose config --services (wenn Docker Compose verfuegbar)
+        shell: bash
+        run: |
+          set -euo pipefail
+          if docker compose version >/dev/null 2>&1; then
+            docker compose --env-file .env.demo.example config --services >/dev/null
+          else
+            echo "docker compose nicht verfuegbar; Schritt wird als skipped behandelt."
+          fi
+      - name: Demo ENV gate tests
+        run: pytest tests/scripts/test_ci_demo_env_compose_gate.py -q
+      - name: Demo ENV profile coverage
+        run: pytest tests/unit/config/test_env_profiles.py -q
+      - name: Demo stack healthcheck tests
+        run: pytest tests/scripts/test_demo_stack_healthcheck.py -q
+      - name: Demo stress smoke tests
+        run: pytest tests/scripts/test_demo_stress_smoke.py -q
+      - name: Demo lifecycle evidence tests
+        run: pytest tests/scripts/test_demo_lifecycle_evidence_report.py -q
+      - name: Demo lifecycle live-block safety
+        run: pytest tests/security/test_demo_lifecycle_never_enables_live.py -q
+      - name: Demo evidence not live-verified safety
+        run: pytest tests/security/test_demo_evidence_does_not_count_as_live_verified.py -q
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ci-demo-env-compose-gate
+          path: |
+            reports/ci_demo_env_compose_gate.md
+            reports/ci_demo_env_compose_gate.json
+          if-no-files-found: error
+
   dashboard:
     name: Dashboard (types, Jest, build, pnpm audit)
     runs-on: ubuntu-latest
@@ -345,6 +395,7 @@ jobs:
     if: always()
     needs:
       - python
+      - demo-env-compose-safety
       - dashboard
       - compose_healthcheck
     runs-on: ubuntu-latest
@@ -355,11 +406,13 @@ jobs:
         run: |
           set -euo pipefail
           p="${{ needs.python.result }}"
+          s="${{ needs.demo-env-compose-safety.result }}"
           d="${{ needs.dashboard.result }}"
           c="${{ needs.compose_healthcheck.result }}"
           ev="${{ github.event_name }}"
-          echo "python=$p dashboard=$d compose/e2e=$c event=$ev"
+          echo "python=$p demo_safety=$s dashboard=$d compose/e2e=$c event=$ev"
           if [ "$p" != "success" ]; then echo "FAIL: python-Job war nicht gruen"; exit 1; fi
+          if [ "$s" != "success" ]; then echo "FAIL: demo-env-compose-safety-Job war nicht gruen"; exit 1; fi
           if [ "$d" != "success" ]; then echo "FAIL: dashboard-Job war nicht gruen"; exit 1; fi
           if [ "$c" = "failure" ] || [ "$c" = "cancelled" ]; then echo "FAIL: compose/e2e-Job fehlgeschlagen"; exit 1; fi
           if [ "$c" = "success" ]; then

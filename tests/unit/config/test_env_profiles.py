@@ -8,6 +8,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 EXAMPLE_FILES = (
     ".env.example",
     ".env.local.example",
+    ".env.demo.example",
     ".env.shadow.example",
     ".env.production.example",
     ".env.test.example",
@@ -465,3 +466,32 @@ def test_test_profile_stays_deterministic_and_test_scoped() -> None:
     assert data["LIVE_ORDER_TIMEOUT_SEC"] == "60"
     assert data["LIVE_BROKER_SIGNAL_STREAM"] == "events:signal_created"
     assert "events:trade_updated" in data["LIVE_BROKER_REFERENCE_STREAMS"]
+
+
+def test_demo_example_includes_compose_required_base_values() -> None:
+    data, _ = _parse_env_file(REPO_ROOT / ".env.demo.example")
+    expected = {
+        "APP_BASE_URL": "http://127.0.0.1:8000",
+        "FRONTEND_URL": "http://127.0.0.1:3000",
+        "CORS_ALLOW_ORIGINS": "http://127.0.0.1:3000",
+        "NEXT_PUBLIC_API_BASE_URL": "http://127.0.0.1:8000",
+        "NEXT_PUBLIC_WS_BASE_URL": "ws://127.0.0.1:8000",
+        "POSTGRES_PASSWORD": "postgres",
+        "GRAFANA_ADMIN_PASSWORD": "admin",
+    }
+    for key, value in expected.items():
+        assert data.get(key) == value, f"{key} fehlt oder ist unerwartet in .env.demo.example"
+
+
+def test_demo_example_keeps_live_and_submit_flags_fail_closed() -> None:
+    data, _ = _parse_env_file(REPO_ROOT / ".env.demo.example")
+    assert data.get("LIVE_TRADE_ENABLE") == "false"
+    assert data.get("DEMO_ORDER_SUBMIT_ENABLE") == "false"
+    assert data.get("DEMO_CLOSE_POSITION_ENABLE") == "false"
+
+
+def test_demo_example_does_not_expose_live_bitget_keys() -> None:
+    data, _ = _parse_env_file(REPO_ROOT / ".env.demo.example")
+    assert data.get("BITGET_API_KEY", "") == ""
+    assert data.get("BITGET_API_SECRET", "") == ""
+    assert data.get("BITGET_API_PASSPHRASE", "") == ""
