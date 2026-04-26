@@ -197,3 +197,19 @@ def test_cli_template_strict_fails_and_writes_json(tmp_path: Path) -> None:
     assert payload["ok"] is False
     assert "p0_route_not_verified" in payload["blockers"]
     assert "kill_switch_alert_not_delivered" in payload["blockers"]
+
+
+def test_cli_strict_external_requires_evidence_json() -> None:
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(TOOL),
+            "--strict-external",
+        ],
+        cwd=REPO,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert completed.returncode == 1
+    assert "--strict-external" in completed.stderr

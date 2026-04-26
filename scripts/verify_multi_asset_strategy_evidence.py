@@ -33,8 +33,22 @@ def _load_items(path: Path) -> list[MultiAssetStrategyEvidence]:
 def _build_report(items: list[MultiAssetStrategyEvidence]) -> dict[str, Any]:
     out_items: list[dict[str, Any]] = []
     summary = {"PASS": 0, "PASS_WITH_WARNINGS": 0, "FAIL": 0}
+    reasons_global: list[str] = []
+    strategy_versions: set[tuple[str, str]] = set()
+    market_family_by_strategy: dict[str, set[str]] = {}
+    asset_classes: set[str] = set()
     for item in items:
         verdict, reasons, text = evaluate_multi_asset_strategy_evidence(item)
+        if not item.strategy_version:
+            reasons.append("strategy_version_fehlt")
+        if item.trade_count < 30:
+            reasons.append("trade_count_unter_minimum")
+        strategy_versions.add((item.strategy_id, item.strategy_version))
+        market_family_by_strategy.setdefault(item.strategy_id, set()).add(item.market_family)
+        asset_classes.add(item.asset_class)
+        if reasons:
+            verdict = "FAIL"
+        reasons_global.extend(reasons)
         summary[verdict] += 1
         out_items.append(
             {
@@ -46,9 +60,27 @@ def _build_report(items: list[MultiAssetStrategyEvidence]) -> dict[str, Any]:
                 "verdict": verdict,
                 "blockgruende_de": reasons,
                 "entscheidung_de": text,
+                "live_allowed": verdict == "PASS",
             }
         )
-    return {"generated_at": _now(), "summary": summary, "items": out_items}
+    for strategy_id, families in market_family_by_strategy.items():
+        if len(families) > 1:
+            summary["FAIL"] += 1
+            reasons_global.append(f"market_family_mix_verboten:{strategy_id}")
+    drift_guard = len(strategy_versions) == len({f"{sid}:{ver}" for sid, ver in strategy_versions})
+    status = "NOT_ENOUGH_EVIDENCE"
+    if summary["FAIL"] == 0 and summary["PASS"] > 0:
+        status = "implemented"
+    return {
+        "generated_at": _now(),
+        "status": status,
+        "verified": False,
+        "asset_classes_covered": sorted(asset_classes),
+        "version_binding_ok": drift_guard,
+        "global_block_reasons": sorted(set(reasons_global)),
+        "summary": summary,
+        "items": out_items,
+    }
 
 
 def _to_md(report: dict[str, Any]) -> str:
@@ -56,6 +88,9 @@ def _to_md(report: dict[str, Any]) -> str:
         "# Multi-Asset Strategy Performance Evidence",
         "",
         f"- Generiert: `{report['generated_at']}`",
+        f"- Status: `{report['status']}`",
+        f"- Verified: `{report['verified']}`",
+        f"- Version-Bindung ok: `{report['version_binding_ok']}`",
         f"- PASS: `{report['summary']['PASS']}`",
         f"- PASS_WITH_WARNINGS: `{report['summary']['PASS_WITH_WARNINGS']}`",
         f"- FAIL: `{report['summary']['FAIL']}`",

@@ -4,14 +4,14 @@ Status: repo-lokaler Nachweis fuer ENV-Templates, Secret-Surfaces und Rotation-P
 
 ## Summary
 
-- Datum/Zeit: `2026-04-25T22:46:12.623527+00:00`
-- Git SHA: `84d7b66`
+- Datum/Zeit: `2026-04-26T08:14:35.405980+00:00`
+- Git SHA: `339dd15`
 - Private Live: `NO_GO`
 - Full Autonomous Live: `NO_GO`
-- Failures: `0`
+- Failures: `1`
 - External Required: `3`
-- Browser-Public-Secret-Leaks: `0`
-- Secret-Surface-Zeilen: `21`
+- Browser-Public-Secret-Leaks: `6`
+- Secret-Surface-Zeilen: `9471`
 - Rotation-Policies: `20`
 
 ## ENV-Templates

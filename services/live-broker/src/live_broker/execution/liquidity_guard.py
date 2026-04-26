@@ -167,6 +167,8 @@ def verify_execution_liquidity(
     *,
     max_slippage_bps: Decimal | None = None,
     strict: bool = True,
+    now_ts_ms: int | None = None,
+    max_orderbook_age_ms: int | None = None,
     _snapshot: dict[str, Any] | None = None,
 ) -> None:
     """
@@ -198,6 +200,25 @@ def verify_execution_liquidity(
         )
     raw_b = snap.get("bids")
     raw_a = snap.get("asks")
+    if max_orderbook_age_ms is not None and max_orderbook_age_ms > 0:
+        snap_ts = _dec(snap.get("ts_ms"))
+        if now_ts_ms is None or snap_ts <= 0:
+            raise InsufficientLiquidityError(
+                f"{_BLOCKED_LOG}: orderbook timestamp fehlt (symbol={symbol!s})",
+                detail={"symbol": symbol, "side": side, "reason": "orderbook_timestamp_missing"},
+            )
+        age_ms = int(now_ts_ms - int(snap_ts))
+        if age_ms > int(max_orderbook_age_ms):
+            raise InsufficientLiquidityError(
+                f"{_BLOCKED_LOG}: orderbook stale (age_ms={age_ms} > {max_orderbook_age_ms}, symbol={symbol!s})",
+                detail={
+                    "symbol": symbol,
+                    "side": side,
+                    "reason": "orderbook_stale",
+                    "age_ms": age_ms,
+                    "max_orderbook_age_ms": int(max_orderbook_age_ms),
+                },
+            )
     bids, asks = _parse_levels(raw_b, raw_a)
     if not bids or not asks:
         msg = f"{_BLOCKED_LOG}: leeres Bid/Ask (symbol={symbol!s})"

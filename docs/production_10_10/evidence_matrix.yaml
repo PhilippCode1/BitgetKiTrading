@@ -118,6 +118,7 @@ categories:
       - README.md
       - docs/bitget-config.md
       - docs/production_10_10/bitget_asset_universe.md
+      - docs/production_10_10/BITGET_RUNTIME_EVIDENCE_GUIDE.md
       - docs/production_10_10/instrument_catalog_contract.md
       - docs/production_10_10/bitget_exchange_instrument_evidence.template.json
       - shared/python/src/shared_py/bitget/asset_universe.py
@@ -131,6 +132,8 @@ categories:
       - tests/scripts/test_bitget_exchange_instrument_evidence_report.py
       - tests/tools/test_check_bitget_asset_universe.py
       - tests/security/test_bitget_asset_universe_contracts.py
+      - tests/security/test_bitget_fail_closed_unknown_instrument.py
+      - tests/security/test_asset_fail_closed_contracts.py
     required_commands:
       - python scripts/bitget_exchange_instrument_evidence_report.py --strict --output-md reports/bitget_exchange_instrument_evidence.md --output-json reports/bitget_exchange_instrument_evidence.json
       - python scripts/refresh_bitget_asset_universe.py --dry-run
@@ -140,6 +143,8 @@ categories:
       - pytest tests/shared/test_bitget_asset_universe.py -q
       - pytest tests/tools/test_check_bitget_asset_universe.py -q
       - pytest tests/security/test_bitget_asset_universe_contracts.py -q
+      - pytest tests/security/test_bitget_fail_closed_unknown_instrument.py -q
+      - pytest tests/security/test_asset_fail_closed_contracts.py -q
     status: implemented
     blocks_live_trading: true
     severity: P0
@@ -158,6 +163,7 @@ categories:
     evidence_files:
       - docs/bitget-config.md
       - docs/production_10_10/instrument_catalog_contract.md
+      - docs/production_10_10/BITGET_RUNTIME_EVIDENCE_GUIDE.md
       - docs/production_10_10/bitget_exchange_instrument_evidence.template.json
       - shared/python/src/shared_py/bitget/instruments.py
       - shared/python/src/shared_py/bitget/asset_universe.py
@@ -170,10 +176,14 @@ categories:
       - tests/scripts/test_bitget_exchange_instrument_evidence_report.py
       - tests/shared/test_bitget_asset_universe.py
       - tests/security/test_bitget_asset_universe_contracts.py
+      - tests/security/test_bitget_fail_closed_unknown_instrument.py
+      - tests/security/test_asset_fail_closed_contracts.py
     required_commands:
       - python scripts/bitget_exchange_instrument_evidence_report.py --strict --output-md reports/bitget_exchange_instrument_evidence.md --output-json reports/bitget_exchange_instrument_evidence.json
       - python scripts/refresh_bitget_asset_universe.py --input-json tests/fixtures/bitget_asset_universe_sample.json --output-json reports/bitget_asset_universe_sample.json --output-md reports/bitget_asset_universe_sample.md
       - pytest tests/scripts/test_bitget_exchange_instrument_evidence_report.py tests/shared/test_bitget_asset_universe.py tests/security/test_bitget_asset_universe_contracts.py -q
+      - pytest tests/security/test_bitget_fail_closed_unknown_instrument.py -q
+      - pytest tests/security/test_asset_fail_closed_contracts.py -q
       - pytest shared/python/tests -q
     status: implemented
     blocks_live_trading: true
@@ -194,6 +204,7 @@ categories:
       - docs/bitget-config.md
       - docs/production_10_10/no_go_rules.md
       - shared/python/src/shared_py/bitget/asset_governance.py
+      - shared/python/src/shared_py/bitget/instruments.py
       - scripts/asset_governance_report.py
       - scripts/asset_governance_evidence_report.py
       - scripts/asset_preflight_evidence_report.py
@@ -205,11 +216,13 @@ categories:
       - tests/scripts/test_asset_preflight_evidence_report.py
       - tests/shared/test_asset_governance.py
       - tests/tools/test_check_asset_governance.py
+      - tests/security/test_bitget_fail_closed_unknown_instrument.py
     required_commands:
       - python scripts/asset_governance_evidence_report.py --strict --output-md reports/asset_governance_evidence.md --output-json reports/asset_governance_evidence.json
       - python scripts/asset_preflight_evidence_report.py --strict --output-md reports/asset_preflight_evidence.md --output-json reports/asset_preflight_evidence.json
       - python tools/check_asset_governance.py --strict
       - pytest tests/scripts/test_asset_governance_evidence_report.py tests/scripts/test_asset_preflight_evidence_report.py tests/shared/test_asset_governance.py tests/tools/test_check_asset_governance.py -q
+      - pytest tests/security/test_bitget_fail_closed_unknown_instrument.py -q
       - pytest tests/unit -q
     status: implemented
     blocks_live_trading: true
@@ -228,29 +241,26 @@ categories:
       - Monitor- und Alert-Evidence fuer stale data.
     evidence_files:
       - docs/production_10_10/market_data_quality_per_asset.md
+      - docs/production_10_10/MARKET_DATA_RUNTIME_EVIDENCE_GUIDE.md
       - shared/python/src/shared_py/market_data_quality.py
       - scripts/asset_data_quality_report.py
-      - scripts/asset_governance_evidence_report.py
-      - scripts/asset_preflight_evidence_report.py
       - tools/check_market_data_quality.py
-      - reports/asset_governance_evidence.md
-      - reports/asset_governance_evidence.json
-      - reports/asset_preflight_evidence.md
-      - reports/asset_preflight_evidence.json
-      - tests/scripts/test_asset_governance_evidence_report.py
+      - reports/asset_data_quality.md
+      - reports/asset_data_quality.json
       - tests/data/test_market_data_quality_contracts.py
       - tests/security/test_market_data_quality_live_blocking.py
+      - tests/security/test_market_data_quality_fail_closed.py
       - tests/scripts/test_asset_data_quality_report.py
-      - tests/scripts/test_asset_preflight_evidence_report.py
       - tests/tools/test_check_market_data_quality.py
     required_commands:
-      - python tools/check_market_data_quality.py --strict
-      - python scripts/asset_governance_evidence_report.py --strict --output-md reports/asset_governance_evidence.md --output-json reports/asset_governance_evidence.json
-      - python scripts/asset_preflight_evidence_report.py --strict --output-md reports/asset_preflight_evidence.md --output-json reports/asset_preflight_evidence.json
-      - pytest tests/scripts/test_asset_governance_evidence_report.py -q
+      - python scripts/asset_data_quality_report.py --output-md reports/asset_data_quality.md --output-json reports/asset_data_quality.json
+      - python tools/check_market_data_quality.py --report reports/asset_data_quality.json
+      - python tools/check_market_data_quality.py --report reports/asset_data_quality.json --strict-live
       - pytest tests/data/test_market_data_quality_contracts.py -q
       - pytest tests/security/test_market_data_quality_live_blocking.py -q
-      - pytest tests/scripts/test_asset_preflight_evidence_report.py -q
+      - pytest tests/security/test_market_data_quality_fail_closed.py -q
+      - pytest tests/scripts/test_asset_data_quality_report.py -q
+      - pytest tests/tools/test_check_market_data_quality.py -q
     status: implemented
     blocks_live_trading: true
     severity: P0
@@ -270,16 +280,39 @@ categories:
       - README.md
       - docs/risk_governor.md
       - docs/portfolio_risk_governor.md
+      - docs/production_10_10/LIQUIDITY_RUNTIME_EVIDENCE_GUIDE.md
       - shared/python/src/shared_py/liquidity_scoring.py
+      - shared/python/src/shared_py/exit_engine.py
+      - services/live-broker/src/live_broker/execution/liquidity_guard.py
+      - services/live-broker/src/live_broker/orders/service.py
+      - scripts/liquidity_spread_slippage_evidence_report.py
+      - reports/liquidity_spread_slippage_evidence.md
+      - reports/liquidity_spread_slippage_evidence.json
       - scripts/asset_governance_evidence_report.py
       - scripts/asset_preflight_evidence_report.py
       - reports/asset_governance_evidence.md
       - reports/asset_governance_evidence.json
       - reports/asset_preflight_evidence.md
       - reports/asset_preflight_evidence.json
+      - tests/security/test_liquidity_spread_slippage_live_blocking.py
+      - tests/risk/test_liquidity_scoring.py
+      - tests/unit/live_broker/test_liquidity_guard.py
+      - tests/unit/live_broker/test_orderbook_staleness_blocks_submit.py
+      - tests/unit/live_broker/test_market_order_requires_slippage_gate.py
+      - tests/scripts/test_liquidity_spread_slippage_evidence_report.py
+      - tests/tools/test_check_live_broker_preflight.py
       - tests/scripts/test_asset_governance_evidence_report.py
       - tests/scripts/test_asset_preflight_evidence_report.py
     required_commands:
+      - python scripts/liquidity_spread_slippage_evidence_report.py --output-md reports/liquidity_spread_slippage_evidence.md --output-json reports/liquidity_spread_slippage_evidence.json
+      - python tools/check_live_broker_preflight.py --strict
+      - pytest tests/security/test_liquidity_spread_slippage_live_blocking.py -q
+      - pytest tests/risk/test_liquidity_scoring.py -q
+      - pytest tests/unit/live_broker/test_liquidity_guard.py -q
+      - pytest tests/unit/live_broker/test_orderbook_staleness_blocks_submit.py -q
+      - pytest tests/unit/live_broker/test_market_order_requires_slippage_gate.py -q
+      - pytest tests/scripts/test_liquidity_spread_slippage_evidence_report.py -q
+      - pytest tests/tools/test_check_live_broker_preflight.py -q
       - python scripts/asset_governance_evidence_report.py --strict --output-md reports/asset_governance_evidence.md --output-json reports/asset_governance_evidence.json
       - pytest tests/unit/risk_engine -q
       - python scripts/asset_preflight_evidence_report.py --strict --output-md reports/asset_preflight_evidence.md --output-json reports/asset_preflight_evidence.json
@@ -300,9 +333,12 @@ categories:
       - Owner-Freigabe fuer Tier-Aenderungen.
     evidence_files:
       - docs/production_10_10/asset_risk_tiers_and_order_sizing.md
+      - docs/production_10_10/RISK_LIMITS_OWNER_EVIDENCE_GUIDE.md
       - docs/risk_governor.md
       - docs/portfolio_risk_governor.md
       - shared/python/src/shared_py/asset_risk_tiers.py
+      - shared/python/src/shared_py/leverage_allocator.py
+      - shared/python/src/shared_py/risk_engine.py
       - tools/check_asset_risk_tiers.py
       - scripts/asset_governance_evidence_report.py
       - scripts/asset_preflight_evidence_report.py
@@ -313,17 +349,26 @@ categories:
       - tests/scripts/test_asset_governance_evidence_report.py
       - tests/tools/test_check_asset_risk_tiers.py
       - tests/risk/test_asset_risk_tiers.py
+      - tests/risk/test_leverage_allocator.py
       - tests/security/test_multi_asset_order_sizing_live_blocking.py
+      - tests/security/test_risk_timeout_blocks_live.py
+      - tests/security/test_leverage_live_ramp_blocks_high_leverage.py
       - tests/scripts/test_asset_preflight_evidence_report.py
+      - tests/unit/live_broker/test_risk_preflight_blocks_submit.py
     required_commands:
       - python tools/check_asset_risk_tiers.py --strict
+      - python tools/check_asset_risk_tiers.py --strict-live
       - python scripts/asset_governance_evidence_report.py --strict --output-md reports/asset_governance_evidence.md --output-json reports/asset_governance_evidence.json
       - python scripts/asset_preflight_evidence_report.py --strict --output-md reports/asset_preflight_evidence.md --output-json reports/asset_preflight_evidence.json
       - pytest tests/scripts/test_asset_governance_evidence_report.py -q
       - pytest tests/tools/test_check_asset_risk_tiers.py -q
       - pytest tests/risk/test_asset_risk_tiers.py -q
+      - pytest tests/risk/test_leverage_allocator.py -q
       - pytest tests/security/test_multi_asset_order_sizing_live_blocking.py -q
+      - pytest tests/security/test_risk_timeout_blocks_live.py -q
+      - pytest tests/security/test_leverage_live_ramp_blocks_high_leverage.py -q
       - pytest tests/scripts/test_asset_preflight_evidence_report.py -q
+      - pytest tests/unit/live_broker/test_risk_preflight_blocks_submit.py -q
     status: implemented
     blocks_live_trading: true
     severity: P0
@@ -342,7 +387,9 @@ categories:
     evidence_files:
       - docs/risk_governor.md
       - docs/live_broker.md
+      - docs/production_10_10/RISK_LIMITS_OWNER_EVIDENCE_GUIDE.md
       - shared/python/src/shared_py/asset_risk_tiers.py
+      - shared/python/src/shared_py/order_sizing.py
       - scripts/asset_governance_evidence_report.py
       - scripts/asset_preflight_evidence_report.py
       - reports/asset_governance_evidence.md
@@ -351,13 +398,18 @@ categories:
       - reports/asset_preflight_evidence.json
       - tests/scripts/test_asset_governance_evidence_report.py
       - tests/risk/test_multi_asset_order_sizing.py
+      - tests/risk/test_leverage_allocator.py
       - tests/security/test_multi_asset_order_sizing_live_blocking.py
+      - tests/unit/live_broker/test_risk_preflight_blocks_submit.py
       - tests/scripts/test_asset_preflight_evidence_report.py
     required_commands:
       - python scripts/asset_governance_evidence_report.py --strict --output-md reports/asset_governance_evidence.md --output-json reports/asset_governance_evidence.json
       - pytest tests/unit/live_broker -q
       - python scripts/asset_preflight_evidence_report.py --strict --output-md reports/asset_preflight_evidence.md --output-json reports/asset_preflight_evidence.json
       - pytest tests/scripts/test_asset_governance_evidence_report.py tests/security/test_multi_asset_order_sizing_live_blocking.py -q
+      - pytest tests/risk/test_multi_asset_order_sizing.py -q
+      - pytest tests/risk/test_leverage_allocator.py -q
+      - pytest tests/unit/live_broker/test_risk_preflight_blocks_submit.py -q
     status: implemented
     blocks_live_trading: true
     severity: P0
@@ -376,21 +428,40 @@ categories:
     evidence_files:
       - docs/portfolio_risk_governor.md
       - docs/risk_governor.md
+      - docs/production_10_10/RISK_LIMITS_OWNER_EVIDENCE_GUIDE.md
+      - docs/production_10_10/PORTFOLIO_RISK_DRILL_GUIDE.md
+      - docs/production_10_10/owner_risk_limits.template.json
       - shared/python/src/shared_py/portfolio_risk_controls.py
       - docs/production_10_10/portfolio_strategy_evidence.template.json
       - scripts/portfolio_strategy_evidence_report.py
       - scripts/risk_execution_evidence_report.py
+      - scripts/portfolio_risk_drill_report.py
+      - reports/portfolio_risk_drill.md
+      - reports/portfolio_risk_drill.json
       - reports/portfolio_strategy_evidence.md
       - reports/portfolio_strategy_evidence.json
       - reports/risk_execution_evidence.md
       - reports/risk_execution_evidence.json
       - tests/scripts/test_portfolio_strategy_evidence_report.py
       - tests/scripts/test_risk_execution_evidence_report.py
+      - tests/scripts/test_portfolio_risk_drill_report.py
+      - tests/risk/test_portfolio_risk_controls.py
+      - tests/security/test_risk_timeout_blocks_live.py
+      - tests/security/test_portfolio_risk_blocks_opening_orders.py
+      - tests/security/test_reduce_only_after_loss_limit.py
+      - tests/security/test_global_halt_blocks_opening_orders.py
+      - tests/security/test_risk_state_unknown_blocks_live.py
+      - tests/security/test_owner_risk_limits_required.py
+      - tests/unit/live_broker/test_portfolio_risk_preflight_blocks_submit.py
     required_commands:
+      - python scripts/portfolio_risk_drill_report.py --output-md reports/portfolio_risk_drill.md --output-json reports/portfolio_risk_drill.json
       - python scripts/portfolio_strategy_evidence_report.py --strict --output-md reports/portfolio_strategy_evidence.md --output-json reports/portfolio_strategy_evidence.json
       - python scripts/risk_execution_evidence_report.py --strict --output-md reports/risk_execution_evidence.md --output-json reports/risk_execution_evidence.json
       - pytest tests/scripts/test_portfolio_strategy_evidence_report.py tests/risk/test_multi_asset_portfolio_risk.py -q
       - pytest tests/scripts/test_risk_execution_evidence_report.py -q
+      - pytest tests/scripts/test_portfolio_risk_drill_report.py -q
+      - pytest tests/security/test_portfolio_risk_blocks_opening_orders.py tests/security/test_reduce_only_after_loss_limit.py tests/security/test_global_halt_blocks_opening_orders.py tests/security/test_risk_state_unknown_blocks_live.py tests/security/test_owner_risk_limits_required.py -q
+      - pytest tests/unit/live_broker/test_portfolio_risk_preflight_blocks_submit.py -q
       - pytest tests/integration/test_portfolio_exposure_guard.py -q
     status: implemented
     blocks_live_trading: true
@@ -410,26 +481,33 @@ categories:
     evidence_files:
       - docs/model_stack_v2.md
       - docs/shadow_burn_in_ramp.md
+      - docs/playbook_registry.md
       - docs/production_10_10/portfolio_strategy_evidence.template.json
+      - docs/production_10_10/STRATEGY_VALIDATION_EVIDENCE_GUIDE.md
       - shared/python/src/shared_py/strategy_asset_evidence.py
       - shared/python/src/shared_py/multi_asset_strategy_evidence.py
+      - shared/python/src/shared_py/model_layer_contract.py
       - scripts/portfolio_strategy_evidence_report.py
       - scripts/strategy_asset_evidence_report.py
       - scripts/verify_multi_asset_strategy_evidence.py
       - reports/portfolio_strategy_evidence.md
       - reports/portfolio_strategy_evidence.json
-      - reports/strategy_asset_evidence_sample.md
-      - reports/strategy_asset_evidence_sample.json
+      - reports/strategy_asset_evidence.md
+      - reports/strategy_asset_evidence.json
       - reports/multi_asset_strategy_evidence.md
       - reports/multi_asset_strategy_evidence.json
       - tests/scripts/test_portfolio_strategy_evidence_report.py
       - tests/scripts/test_strategy_asset_evidence_report.py
       - tests/scripts/test_verify_multi_asset_strategy_evidence.py
+      - tests/security/test_strategy_validation_blocks_live.py
+      - tests/security/test_strategy_version_binding_contract.py
+      - tests/security/test_llm_cannot_authorize_execution.py
     required_commands:
       - python scripts/portfolio_strategy_evidence_report.py --strict --output-md reports/portfolio_strategy_evidence.md --output-json reports/portfolio_strategy_evidence.json
-      - python scripts/strategy_asset_evidence_report.py --output-md reports/strategy_asset_evidence_sample.md --output-json reports/strategy_asset_evidence_sample.json
+      - python scripts/strategy_asset_evidence_report.py --output-md reports/strategy_asset_evidence.md --output-json reports/strategy_asset_evidence.json
       - python scripts/verify_multi_asset_strategy_evidence.py --input-json tests/fixtures/multi_asset_strategy_evidence_sample.json --output-md reports/multi_asset_strategy_evidence.md --output-json reports/multi_asset_strategy_evidence.json --allow-failures
       - pytest tests/scripts/test_portfolio_strategy_evidence_report.py tests/scripts/test_strategy_asset_evidence_report.py tests/scripts/test_verify_multi_asset_strategy_evidence.py -q
+      - pytest tests/security/test_strategy_validation_blocks_live.py tests/security/test_strategy_version_binding_contract.py tests/security/test_llm_cannot_authorize_execution.py -q
       - python tools/backtest/run_backtest.py --help
       - pytest tests/unit/signal_engine -q
     status: implemented
@@ -451,17 +529,33 @@ categories:
       - .github/workflows/ci.yml
       - docs/live_broker.md
       - docs/production_10_10/live_broker_multi_asset_preflight.md
+      - docs/production_10_10/LIVE_BROKER_FAIL_CLOSED_DRILL_GUIDE.md
       - docs/production_10_10/live_broker_fail_closed_evidence.template.json
       - docs/production_10_10/09_live_mirror_gate_matrix.md
       - docs/production_10_10/no_go_rules.md
+      - scripts/live_broker_fail_closed_evidence_report.py
       - reports/live_broker_preflight_matrix.md
       - reports/live_broker_fail_closed_evidence.md
+      - reports/live_broker_fail_closed_evidence.json
+      - tests/scripts/test_live_broker_fail_closed_evidence_report.py
+      - tests/unit/live_broker/test_fail_closed_submit_path.py
+      - tests/unit/live_broker/test_market_data_quality_blocks_submit.py
+      - tests/unit/live_broker/test_liquidity_guard_blocks_submit.py
+      - tests/unit/live_broker/test_operator_release_required.py
+      - tests/unit/live_broker/test_shadow_match_required.py
+      - tests/unit/live_broker/test_global_halt_blocks_submit.py
+      - tests/unit/live_broker/test_safety_latch_blocks_submit.py
+      - tests/unit/live_broker/test_kill_switch_blocks_submit.py
+      - tests/unit/live_broker/test_exchange_truth_required.py
       - tests/tools/test_ci_workflow_evidence_gates.py
     required_commands:
       - pytest tests/unit/live_broker -q
       - python tools/check_live_broker_preflight.py --strict --write-report reports/live_broker_preflight_matrix.md
+      - python scripts/live_broker_fail_closed_evidence_report.py --output-md reports/live_broker_fail_closed_evidence.md --output-json reports/live_broker_fail_closed_evidence.json
       - python tools/check_live_broker_preflight.py --evidence-json docs/production_10_10/live_broker_fail_closed_evidence.template.json --strict --write-report reports/live_broker_fail_closed_evidence.md --output-json reports/live_broker_fail_closed_evidence.json
       - "CI (main/PR): Job python, Steps Evidence-Matrix 10/10 + Live-Broker Preflight-Matrix strikt"
+      - pytest tests/scripts/test_live_broker_fail_closed_evidence_report.py -q
+      - pytest tests/unit/live_broker/test_fail_closed_submit_path.py tests/unit/live_broker/test_market_data_quality_blocks_submit.py tests/unit/live_broker/test_liquidity_guard_blocks_submit.py tests/unit/live_broker/test_operator_release_required.py tests/unit/live_broker/test_shadow_match_required.py tests/unit/live_broker/test_global_halt_blocks_submit.py tests/unit/live_broker/test_safety_latch_blocks_submit.py tests/unit/live_broker/test_kill_switch_blocks_submit.py tests/unit/live_broker/test_exchange_truth_required.py -q
       - pytest tests/tools/test_ci_workflow_evidence_gates.py -q
     status: implemented
     blocks_live_trading: true
@@ -484,6 +578,7 @@ categories:
     evidence_files:
       - docs/live_broker.md
       - docs/recovery_runbook.md
+      - docs/production_10_10/RECONCILE_IDEMPOTENCY_DRILL_GUIDE.md
       - docs/production_10_10/reconcile_exchange_truth_per_asset.md
       - docs/production_10_10/reconcile_idempotency_evidence.template.json
       - docs/production_10_10/no_go_rules.md
@@ -498,6 +593,13 @@ categories:
       - tests/scripts/test_reconcile_truth_drill.py
       - tests/scripts/test_risk_execution_evidence_report.py
       - tests/security/test_order_lifecycle_idempotency.py
+      - tests/security/test_reconcile_safety_blocks_live.py
+      - tests/unit/live_broker/test_duplicate_client_oid_idempotent.py
+      - tests/unit/live_broker/test_submit_timeout_requires_reconcile.py
+      - tests/unit/live_broker/test_db_failure_after_submit_arms_latch.py
+      - tests/unit/live_broker/test_position_drift_blocks_opening_orders.py
+      - tests/unit/live_broker/test_private_ws_stale_degrades_reconcile.py
+      - tests/unit/live_broker/test_reduce_only_requires_exchange_position.py
     required_commands:
       - python scripts/reconcile_idempotency_evidence_report.py --strict --output-md reports/reconcile_idempotency_summary.md --output-json reports/reconcile_idempotency_summary.json
       - python scripts/risk_execution_evidence_report.py --strict --output-md reports/risk_execution_evidence.md --output-json reports/risk_execution_evidence.json
@@ -505,6 +607,7 @@ categories:
       - pytest tests/scripts/test_reconcile_idempotency_evidence_report.py -q
       - pytest tests/scripts/test_risk_execution_evidence_report.py -q
       - pytest tests/scripts/test_reconcile_truth_drill.py tests/security/test_order_lifecycle_idempotency.py -q
+      - pytest tests/security/test_reconcile_safety_blocks_live.py tests/unit/live_broker/test_duplicate_client_oid_idempotent.py tests/unit/live_broker/test_submit_timeout_requires_reconcile.py tests/unit/live_broker/test_db_failure_after_submit_arms_latch.py tests/unit/live_broker/test_position_drift_blocks_opening_orders.py tests/unit/live_broker/test_private_ws_stale_degrades_reconcile.py tests/unit/live_broker/test_reduce_only_requires_exchange_position.py -q
       - pytest tests/unit/live_broker -q
     status: implemented
     blocks_live_trading: true
@@ -525,6 +628,7 @@ categories:
       - docs/live_broker.md
       - docs/emergency_runbook.md
       - docs/recovery_runbook.md
+      - docs/production_10_10/RECONCILE_IDEMPOTENCY_DRILL_GUIDE.md
       - docs/production_10_10/reconcile_exchange_truth_per_asset.md
       - docs/production_10_10/reconcile_idempotency_evidence.template.json
       - docs/production_10_10/no_go_rules.md
@@ -542,6 +646,9 @@ categories:
       - tests/scripts/test_reconcile_truth_drill.py
       - tests/scripts/test_live_safety_drill.py
       - tests/scripts/test_risk_execution_evidence_report.py
+      - tests/security/test_reconcile_safety_blocks_live.py
+      - tests/unit/live_broker/test_position_drift_blocks_opening_orders.py
+      - tests/unit/live_broker/test_private_ws_stale_degrades_reconcile.py
     required_commands:
       - python scripts/reconcile_idempotency_evidence_report.py --strict --output-md reports/reconcile_idempotency_summary.md --output-json reports/reconcile_idempotency_summary.json
       - python scripts/risk_execution_evidence_report.py --strict --output-md reports/risk_execution_evidence.md --output-json reports/risk_execution_evidence.json
@@ -549,6 +656,7 @@ categories:
       - python scripts/live_safety_drill.py --evidence-json docs/production_10_10/live_safety_drill.template.json --strict
       - pytest tests/scripts/test_reconcile_idempotency_evidence_report.py -q
       - pytest tests/scripts/test_risk_execution_evidence_report.py -q
+      - pytest tests/security/test_reconcile_safety_blocks_live.py tests/unit/live_broker/test_position_drift_blocks_opening_orders.py tests/unit/live_broker/test_private_ws_stale_degrades_reconcile.py -q
       - pytest tests/unit/live_broker -q
     status: implemented
     blocks_live_trading: true
@@ -568,6 +676,7 @@ categories:
     evidence_files:
       - docs/live_broker.md
       - docs/emergency_runbook.md
+      - docs/production_10_10/LIVE_SAFETY_DRILL_GUIDE.md
       - docs/production_10_10/live_safety_drill.md
       - docs/production_10_10/live_safety_drill.template.json
       - docs/production_10_10/no_go_rules.md
@@ -575,13 +684,22 @@ categories:
       - scripts/live_safety_evidence_report.py
       - reports/live_safety_summary.md
       - reports/live_safety_summary.json
+      - reports/live_safety_evidence.md
+      - reports/live_safety_evidence.json
       - tests/scripts/test_live_safety_drill.py
       - tests/scripts/test_live_safety_evidence_report.py
+      - tests/unit/live_broker/test_kill_switch_blocks_submit.py
+      - tests/unit/live_broker/test_kill_switch_release_requires_reason.py
+      - tests/unit/live_broker/test_safety_latch_blocks_submit.py
+      - tests/unit/live_broker/test_safety_latch_blocks_replace.py
+      - tests/unit/live_broker/test_safety_latch_release_requires_reason.py
+      - tests/security/test_live_safety_no_risk_increase.py
     required_commands:
-      - python scripts/live_safety_evidence_report.py --strict --output-md reports/live_safety_summary.md --output-json reports/live_safety_summary.json
-      - python scripts/live_safety_drill.py --dry-run
+      - python scripts/live_safety_drill.py --dry-run --output-md reports/live_safety_summary.md --output-json reports/live_safety_summary.json
+      - python scripts/live_safety_evidence_report.py --strict --output-md reports/live_safety_evidence.md --output-json reports/live_safety_evidence.json
       - python scripts/live_safety_drill.py --evidence-json docs/production_10_10/live_safety_drill.template.json --strict --output-md reports/live_safety_drill.md --output-json reports/live_safety_drill.json
       - pytest tests/scripts/test_live_safety_evidence_report.py tests/scripts/test_live_safety_drill.py -q
+      - pytest tests/unit/live_broker/test_kill_switch_blocks_submit.py tests/unit/live_broker/test_kill_switch_release_requires_reason.py tests/unit/live_broker/test_safety_latch_blocks_submit.py tests/unit/live_broker/test_safety_latch_blocks_replace.py tests/unit/live_broker/test_safety_latch_release_requires_reason.py tests/security/test_live_safety_no_risk_increase.py -q
       - pytest tests/unit/live_broker -q
     status: implemented
     blocks_live_trading: true
@@ -601,19 +719,27 @@ categories:
     evidence_files:
       - docs/production_10_10/no_go_rules.md
       - docs/LaunchChecklist.md
+      - docs/production_10_10/LIVE_SAFETY_DRILL_GUIDE.md
       - docs/production_10_10/live_safety_drill.md
       - docs/production_10_10/live_safety_drill.template.json
       - scripts/live_safety_drill.py
       - scripts/live_safety_evidence_report.py
       - reports/live_safety_summary.md
       - reports/live_safety_summary.json
+      - reports/live_safety_evidence.md
+      - reports/live_safety_evidence.json
       - tests/scripts/test_live_safety_drill.py
       - tests/scripts/test_live_safety_evidence_report.py
+      - tests/unit/live_broker/test_emergency_flatten_reduce_only.py
+      - tests/unit/live_broker/test_emergency_flatten_requires_exchange_truth.py
+      - tests/unit/live_broker/test_emergency_flatten_idempotent_flat_position.py
+      - tests/security/test_live_safety_no_risk_increase.py
     required_commands:
-      - python scripts/live_safety_evidence_report.py --strict --output-md reports/live_safety_summary.md --output-json reports/live_safety_summary.json
-      - python scripts/live_safety_drill.py --dry-run
+      - python scripts/live_safety_drill.py --dry-run --output-md reports/live_safety_summary.md --output-json reports/live_safety_summary.json
+      - python scripts/live_safety_evidence_report.py --strict --output-md reports/live_safety_evidence.md --output-json reports/live_safety_evidence.json
       - python scripts/live_safety_drill.py --evidence-json docs/production_10_10/live_safety_drill.template.json --strict
       - pytest tests/scripts/test_live_safety_evidence_report.py tests/scripts/test_live_safety_drill.py -q
+      - pytest tests/unit/live_broker/test_emergency_flatten_reduce_only.py tests/unit/live_broker/test_emergency_flatten_requires_exchange_truth.py tests/unit/live_broker/test_emergency_flatten_idempotent_flat_position.py tests/security/test_live_safety_no_risk_increase.py -q
       - pytest tests/unit/live_broker -q
     status: implemented
     blocks_live_trading: true
@@ -633,6 +759,7 @@ categories:
     evidence_files:
       - docs/bitget-config.md
       - docs/production_10_10/bitget_exchange_readiness.md
+      - docs/production_10_10/BITGET_RUNTIME_EVIDENCE_GUIDE.md
       - docs/production_10_10/bitget_key_permission_evidence.template.json
       - docs/production_10_10/bitget_exchange_instrument_evidence.template.json
       - scripts/bitget_readiness_check.py
@@ -643,17 +770,23 @@ categories:
       - reports/bitget_exchange_instrument_evidence.md
       - reports/bitget_exchange_instrument_evidence.json
       - reports/bitget_key_permission_evidence.md
+      - reports/bitget_key_permission_evidence.json
+      - reports/bitget_runtime_readiness.md
+      - reports/bitget_runtime_readiness.json
       - tests/scripts/test_bitget_readiness_check.py
       - tests/scripts/test_bitget_exchange_instrument_evidence_report.py
       - tests/security/test_bitget_exchange_readiness_contracts.py
       - tests/tools/test_check_bitget_exchange_readiness.py
       - tests/tools/test_check_bitget_key_permission_evidence.py
+      - tests/security/test_bitget_fail_closed_unknown_instrument.py
     required_commands:
       - python scripts/bitget_exchange_instrument_evidence_report.py --strict --output-md reports/bitget_exchange_instrument_evidence.md --output-json reports/bitget_exchange_instrument_evidence.json
-      - python scripts/bitget_readiness_check.py --env-file .env.production.example --mode dry-run
+      - python scripts/bitget_readiness_check.py --env-file .env.production.example --mode public --output-md reports/bitget_runtime_readiness.md --output-json reports/bitget_runtime_readiness.json
+      - python scripts/bitget_readiness_check.py --env-file .env.shadow.example --mode demo-readonly --output-md reports/bitget_runtime_readiness.md --output-json reports/bitget_runtime_readiness.json
       - python tools/check_bitget_exchange_readiness.py --strict
-      - python tools/check_bitget_key_permission_evidence.py --evidence-json docs/production_10_10/bitget_key_permission_evidence.template.json --output-md reports/bitget_key_permission_evidence.md
+      - python tools/check_bitget_key_permission_evidence.py --evidence-json docs/production_10_10/bitget_key_permission_evidence.template.json --output-md reports/bitget_key_permission_evidence.md --output-json reports/bitget_key_permission_evidence.json
       - pytest tests/scripts/test_bitget_exchange_instrument_evidence_report.py tests/scripts/test_bitget_readiness_check.py tests/security/test_bitget_exchange_readiness_contracts.py tests/tools/test_check_bitget_exchange_readiness.py tests/tools/test_check_bitget_key_permission_evidence.py -q
+      - pytest tests/security/test_bitget_fail_closed_unknown_instrument.py -q
       - python tools/verify_bitget_rest.py --help
     status: implemented
     blocks_live_trading: true
@@ -720,17 +853,26 @@ categories:
       - docs/observability.md
       - docs/observability_slos.md
       - OBSERVABILITY_AND_SLOS.md
+      - docs/production_10_10/OBSERVABILITY_ALERT_INCIDENT_GUIDE.md
       - docs/production_10_10/05_alert_routing_and_incident_drill.md
       - docs/production_10_10/observability_slos_evidence.template.json
       - infra/observability/prometheus-alerts.yml
       - infra/observability/alertmanager.yml.example
       - scripts/observability_alert_evidence_report.py
+      - scripts/incident_drill_report.py
       - reports/observability_alert_evidence.md
       - reports/observability_alert_evidence.json
+      - reports/incident_drill.md
+      - reports/incident_drill.json
       - tests/scripts/test_observability_alert_evidence_report.py
+      - tests/scripts/test_incident_drill_report.py
+      - tests/security/test_logs_redact_secrets.py
+      - tests/security/test_alerts_cover_live_blockers.py
     required_commands:
       - python scripts/observability_alert_evidence_report.py --strict --output-md reports/observability_alert_evidence.md --output-json reports/observability_alert_evidence.json
+      - python scripts/incident_drill_report.py --output-md reports/incident_drill.md --output-json reports/incident_drill.json
       - pytest tests/scripts/test_observability_alert_evidence_report.py -q
+      - pytest tests/scripts/test_incident_drill_report.py tests/security/test_logs_redact_secrets.py tests/security/test_alerts_cover_live_blockers.py -q
       - pytest tests/unit/monitor_engine -q
     status: implemented
     blocks_live_trading: true
@@ -748,23 +890,30 @@ categories:
       - Incident-Drill-Report.
       - Echter Zustellnachweis.
     evidence_files:
+      - docs/production_10_10/OBSERVABILITY_ALERT_INCIDENT_GUIDE.md
       - docs/production_10_10/05_alert_routing_and_incident_drill.md
       - docs/production_10_10/alert_routing_evidence.template.json
       - docs/observability.md
       - tools/verify_alert_routing.py
       - tests/unit/tools/test_verify_alert_routing.py
       - scripts/observability_alert_evidence_report.py
+      - scripts/incident_drill_report.py
       - reports/observability_alert_evidence.md
       - reports/observability_alert_evidence.json
       - reports/alert_routing_verify.md
+      - reports/incident_drill.md
+      - reports/incident_drill.json
       - tests/scripts/test_observability_alert_evidence_report.py
+      - tests/scripts/test_incident_drill_report.py
+      - tests/security/test_alerts_cover_live_blockers.py
       - tests/tools/test_verify_alert_routing_repo_smoke.py
     required_commands:
       - python tools/verify_alert_routing.py --strict
       - python tools/verify_alert_routing.py --strict --report-md reports/alert_routing_verify.md
-      - python tools/verify_alert_routing.py --evidence-json docs/production_10_10/alert_routing_evidence.template.json --strict
+      - python tools/verify_alert_routing.py --evidence-json docs/production_10_10/alert_routing_evidence.template.json --strict --strict-external
       - python scripts/observability_alert_evidence_report.py --strict --output-md reports/observability_alert_evidence.md --output-json reports/observability_alert_evidence.json
-      - pytest tests/unit/tools/test_verify_alert_routing.py tests/scripts/test_observability_alert_evidence_report.py -q
+      - python scripts/incident_drill_report.py --output-md reports/incident_drill.md --output-json reports/incident_drill.json
+      - pytest tests/unit/tools/test_verify_alert_routing.py tests/scripts/test_observability_alert_evidence_report.py tests/scripts/test_incident_drill_report.py tests/security/test_alerts_cover_live_blockers.py -q
       - "CI-Referenz: workflow ci, job python, step Alert-Routing (Alertmanager-Beispiel + Prometheus-Regeln, strikt)"
       - pytest tests/tools/test_verify_alert_routing_repo_smoke.py -q
     status: implemented
@@ -784,21 +933,31 @@ categories:
       - DB-/Migration-Smokes.
     evidence_files:
       - docs/recovery_runbook.md
+      - docs/production_10_10/BACKUP_RESTORE_DR_GUIDE.md
       - docs/production_10_10/03_postgres_restore_drill.md
       - docs/production_10_10/disaster_recovery_restore_test.md
       - docs/production_10_10/postgres_restore_evidence.template.json
       - scripts/backup_dr_evidence_report.py
       - scripts/dr_postgres_restore_test.py
+      - scripts/disaster_recovery_drill_report.py
       - tools/dr_postgres_restore_drill.py
       - reports/backup_dr_evidence.md
       - reports/backup_dr_evidence.json
+      - reports/postgres_restore_drill.md
+      - reports/postgres_restore_drill.json
+      - reports/disaster_recovery_drill.md
+      - reports/disaster_recovery_drill.json
       - tests/scripts/test_backup_dr_evidence_report.py
       - tests/scripts/test_dr_postgres_restore_test.py
+      - tests/scripts/test_disaster_recovery_drill_report.py
+      - tests/unit/tools/test_dr_postgres_restore_drill.py
     required_commands:
       - python scripts/backup_dr_evidence_report.py --strict --output-md reports/backup_dr_evidence.md --output-json reports/backup_dr_evidence.json
-      - python scripts/dr_postgres_restore_test.py --dry-run
+      - python scripts/dr_postgres_restore_test.py --dry-run --output-md reports/postgres_restore_drill.md --output-json reports/postgres_restore_drill.json
+      - python scripts/disaster_recovery_drill_report.py --output-md reports/disaster_recovery_drill.md --output-json reports/disaster_recovery_drill.json
       - python scripts/dr_postgres_restore_test.py --evidence-json docs/production_10_10/postgres_restore_evidence.template.json --strict
       - python tools/dr_postgres_restore_drill.py --help
+      - pytest tests/scripts/test_backup_dr_evidence_report.py tests/scripts/test_dr_postgres_restore_test.py tests/scripts/test_disaster_recovery_drill_report.py tests/unit/tools/test_dr_postgres_restore_drill.py -q
     status: implemented
     blocks_live_trading: true
     severity: P0
@@ -846,23 +1005,40 @@ categories:
       - RTO/RPO-Evidence.
     evidence_files:
       - docs/recovery_runbook.md
+      - docs/production_10_10/BACKUP_RESTORE_DR_GUIDE.md
       - docs/production_10_10/03_postgres_restore_drill.md
       - docs/production_10_10/disaster_recovery_restore_test.md
       - docs/production_10_10/postgres_restore_evidence.template.json
       - scripts/backup_dr_evidence_report.py
       - scripts/dr_postgres_restore_test.py
+      - scripts/disaster_recovery_drill_report.py
       - docs/production_10_10/live_safety_drill.md
       - scripts/live_safety_drill.py
       - reports/backup_dr_evidence.md
       - reports/backup_dr_evidence.json
+      - reports/postgres_restore_drill.md
+      - reports/postgres_restore_drill.json
+      - reports/disaster_recovery_drill.md
+      - reports/disaster_recovery_drill.json
       - tests/scripts/test_backup_dr_evidence_report.py
       - tests/scripts/test_dr_postgres_restore_test.py
+      - tests/scripts/test_disaster_recovery_drill_report.py
       - tests/scripts/test_live_safety_drill.py
+      - tests/security/test_recovery_blocks_live_until_reconcile.py
+      - tests/security/test_restore_requires_safety_latch.py
+      - tests/security/test_recovery_no_duplicate_orders.py
+      - tests/integration/test_db_live_recovery_contracts.py
+      - tests/integration/test_http_stack_recovery.py
     required_commands:
       - python scripts/backup_dr_evidence_report.py --strict --output-md reports/backup_dr_evidence.md --output-json reports/backup_dr_evidence.json
+      - python scripts/dr_postgres_restore_test.py --dry-run --output-md reports/postgres_restore_drill.md --output-json reports/postgres_restore_drill.json
+      - python scripts/disaster_recovery_drill_report.py --output-md reports/disaster_recovery_drill.md --output-json reports/disaster_recovery_drill.json
       - python scripts/dr_postgres_restore_test.py --evidence-json docs/production_10_10/postgres_restore_evidence.template.json --strict
-      - python scripts/live_safety_drill.py --dry-run
       - python tools/dr_postgres_restore_drill.py --help
+      - pytest tests/scripts/test_backup_dr_evidence_report.py tests/scripts/test_dr_postgres_restore_test.py tests/scripts/test_disaster_recovery_drill_report.py -q
+      - pytest tests/unit/tools/test_dr_postgres_restore_drill.py -q
+      - pytest tests/security/test_recovery_blocks_live_until_reconcile.py tests/security/test_restore_requires_safety_latch.py tests/security/test_recovery_no_duplicate_orders.py -q
+      - pytest tests/integration/test_db_live_recovery_contracts.py -q
     status: implemented
     blocks_live_trading: true
     severity: P0

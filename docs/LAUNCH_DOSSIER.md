@@ -193,6 +193,20 @@ Nach jeder Echtgeld-Mirror-Phase oder jedem relevanten Incident:
 
 **No-Go,** solange: Secrets fehlen oder liegen im Klartext im Repo; `healthcheck.sh` oder Migrationen schlagen fehl; dauerhaft `fail`/unklare Reconcile-Lage bei geplantem Live; keine Rollback-Revision dokumentiert; rechtliche Freigabe fehlt.
 
+## 11. Finale 10/10-Abschlusspruefung
+
+Vor jeder privaten Live-Freigabe muss zusaetzlich der finale Report erzeugt werden:
+
+```bash
+python scripts/final_go_no_go_report.py --output-md reports/final_go_no_go_report.md --output-json reports/final_go_no_go_report.json
+```
+
+Regel:
+
+- `private_live_allowed` darf nur `YES` sein, wenn keine offenen P0/P1-Live-Blocker,
+  keine fehlende Runtime-Evidence und ein gueltiger Owner-Release vorliegen.
+- `full_autonomous_live` bleibt ohne lange echte Live-Historie immer `NO`.
+
 ---
 
 _Letzte inhaltliche Synchronisation: CI-Workflow, `tools/check_coverage_gates.py`, Runbooks wie oben verlinkt._

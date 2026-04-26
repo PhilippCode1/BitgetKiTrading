@@ -3,6 +3,7 @@ from __future__ import annotations
 from shared_py.liquidity_scoring import (
     build_liquidity_assessment,
     build_liquidity_block_reasons_de,
+    evaluate_liquidity_gate,
     recommended_max_order_notional,
 )
 
@@ -168,3 +169,32 @@ def test_german_block_reasons_generated() -> None:
     de = build_liquidity_block_reasons_de(["spread_zu_hoch", "orderbook_stale"])
     assert any("Spread" in item for item in de)
     assert any("stale" in item.lower() for item in de)
+
+
+def test_synthetic_evidence_never_live_allowed() -> None:
+    result = evaluate_liquidity_gate(
+        {
+            "symbol": "BTCUSDT",
+            "order_type": "market",
+            "requested_size": 0.1,
+                "requested_notional": 100.0,
+            "best_bid": 60000.0,
+            "best_ask": 60001.0,
+            "bids": [{"price": 60000.0, "qty": 1.0}],
+            "asks": [{"price": 60001.0, "qty": 1.0}],
+                "orderbook_depth_top_10": 5000.0,
+            "timestamp_age_ms": 500,
+            "max_orderbook_age_ms": 10_000,
+            "estimated_slippage_bps": 8.0,
+            "min_depth_ratio": 0.5,
+            "tick_size": 0.1,
+            "lot_size": 0.001,
+            "min_qty": 0.001,
+            "min_notional": 5.0,
+            "precision": {"price": 1},
+            "runtime_data": False,
+        }
+    )
+    assert result.status in {"fail", "not_enough_evidence"}
+    assert result.live_allowed is False
+    assert result.evidence_level == "synthetic"

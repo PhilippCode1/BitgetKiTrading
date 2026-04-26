@@ -1,0 +1,63 @@
+{
+  "checked_at": "2026-04-26T09:28:04.007753+00:00",
+  "git_sha": "339dd15",
+  "assets_checked": 2,
+  "live_allowed_count": 0,
+  "status": "not_enough_evidence",
+  "decision": "not_enough_evidence",
+  "evidence_level": "synthetic",
+  "assets": [
+    {
+      "liquidity_score": 0.973413,
+      "status": "fail",
+      "live_allowed": false,
+      "reasons": [
+        "lot_size_missing",
+        "market_order_slippage_missing",
+        "min_notional_missing",
+        "min_qty_missing",
+        "precision_missing",
+        "slippage_zu_hoch",
+        "tick_size_missing"
+      ],
+      "spread_bps": 0.15872889897699224,
+      "estimated_slippage_bps": 0.0,
+      "depth_score": 1.0,
+      "staleness_ms": 1500,
+      "checked_at": "2026-04-26T09:28:04.006714+00:00",
+      "evidence_level": "synthetic",
+      "asset": "BTCUSDT",
+      "allowed_order_size": 0.0,
+      "blocked_order_size": 0.8
+    },
+    {
+      "liquidity_score": 0.7,
+      "status": "fail",
+      "live_allowed": false,
+      "reasons": [
+        "depth_unzureichend",
+        "liquiditaetstier_blockiert_live",
+        "lot_size_missing",
+        "market_order_slippage_missing",
+        "min_notional_missing",
+        "min_qty_missing",
+        "orderbook_fehlt",
+        "orderbook_stale",
+        "ordergroesse_ueber_liquiditaetsgrenze",
+        "precision_missing",
+        "slippage_unbekannt",
+        "spread_unbekannt",
+        "tick_size_missing"
+      ],
+      "spread_bps": null,
+      "estimated_slippage_bps": null,
+      "depth_score": 1.0,
+      "staleness_ms": 60000,
+      "checked_at": "2026-04-26T09:28:04.006714+00:00",
+      "evidence_level": "synthetic",
+      "asset": "ALTUSDT",
+      "allowed_order_size": 0.0,
+      "blocked_order_size": 100.0
+    }
+  ]
+}

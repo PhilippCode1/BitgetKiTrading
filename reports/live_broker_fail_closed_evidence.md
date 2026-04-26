@@ -1,53 +1,30 @@
-# Live-Broker Fail-Closed Evidence Check
+# Live Broker Fail-Closed Evidence Report
 
-Status: prueft externen Live-Broker-Fail-Closed-Nachweis ohne echte Secrets und ohne echte Orders.
+- Generiert: `2026-04-26T09:54:30Z`
+- Git SHA: `339dd15`
+- Status: `implemented`
+- Decision: `NOT_ENOUGH_EVIDENCE`
+- Verified: `False`
+- Evidence-Level: `synthetic`
+- Preflight ok: `True`
 
-## Summary
-
-- Schema: `live-broker-fail-closed-evidence-v1`
-- Environment: `staging`
-- Execution Mode: `shadow`
-- Git SHA: `missing`
-- Operator: `missing`
-- Ergebnis: `FAIL`
-
-## Blocker
-- `drill_started_at_missing`
-- `drill_completed_at_missing`
-- `git_sha_missing`
-- `operator_missing`
-- `evidence_reference_missing`
-- `preflight_matrix_not_passed`
-- `required_blocking_reasons_not_covered`
-- `provider_error_not_blocking`
-- `redis_missing_not_blocking`
-- `database_missing_not_blocking`
-- `exchange_truth_missing_not_blocking`
-- `public_api_timeout_not_blocking`
-- `private_api_timeout_not_blocking`
-- `stale_market_data_not_blocking`
-- `unknown_instrument_not_blocking`
-- `risk_context_missing_not_blocking`
-- `operator_release_missing_not_blocking`
-- `shadow_match_missing_not_blocking`
-- `reconcile_fail_not_blocking`
-- `kill_switch_not_blocking`
-- `safety_latch_not_blocking`
-- `idempotency_missing_not_blocking`
-- `audit_context_missing_not_blocking`
-- `warning_defaults_not_blocking_live`
-- `all_green_control_sent_exchange_submit`
-- `audit_trail_not_verified`
-- `alert_delivery_not_verified`
-- `main_console_gate_state_not_verified`
-
-## Warnings
-- `owner_signoff_missing_external_required`
-
-## Secret-Surface
-- Keine unredigierten Secret-Felder erkannt.
-
-## Einordnung
-
-- Repo-lokale Preflight-Matrix ist Code-Evidence, aber keine private Live-Freigabe.
-- Live bleibt `NO_GO`, bis Provider-/Redis-/DB-/Timeout-/Exchange-Truth-Failures, Audit, Alert und Main-Console-State extern belegt sind.
+- `db_unavailable`: expected=block actual=block pass=True reason=db_unavailable_blocks_submit
+- `redis_unavailable`: expected=block actual=block pass=True reason=redis_unavailable_blocks_submit
+- `risk_timeout`: expected=block actual=block pass=True reason=risk_timeout_blocks_submit
+- `market_data_stale`: expected=block actual=block pass=True reason=market_data_stale_blocks_submit
+- `orderbook_missing`: expected=block actual=block pass=True reason=orderbook_missing_blocks_submit
+- `exchange_truth_missing`: expected=block actual=block pass=True reason=exchange_truth_missing_blocks_submit
+- `unknown_instrument`: expected=block actual=block pass=True reason=unknown_instrument_blocks_submit
+- `quarantined_asset`: expected=block actual=block pass=True reason=quarantined_asset_blocks_submit
+- `shadow_mismatch`: expected=block actual=block pass=True reason=shadow_mismatch_blocks_submit
+- `operator_release_missing`: expected=block actual=block pass=True reason=operator_release_missing_blocks_submit
+- `safety_latch_active`: expected=block actual=block pass=True reason=safety_latch_active_blocks_submit
+- `kill_switch_active`: expected=block actual=block pass=True reason=kill_switch_active_blocks_submit
+- `global_halt_active`: expected=block actual=block pass=True reason=global_halt_active_blocks_submit
+- `bitget_auth_error`: expected=block actual=block pass=True reason=bitget_auth_error_blocks_submit
+- `bitget_permission_error`: expected=block actual=block pass=True reason=bitget_permission_error_blocks_submit
+- `bitget_timeout`: expected=block actual=block pass=True reason=bitget_timeout_blocks_submit
+- `bitget_5xx`: expected=block actual=block pass=True reason=bitget_5xx_blocks_submit
+- `duplicate_client_oid`: expected=block actual=block pass=True reason=duplicate_client_oid_blocks_submit
+- `reconcile_degraded`: expected=block actual=block pass=True reason=reconcile_degraded_blocks_submit
+- `env_invalid`: expected=block actual=block pass=True reason=env_invalid_blocks_submit

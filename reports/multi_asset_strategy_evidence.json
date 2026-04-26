@@ -1,11 +1,33 @@
 {
-  "generated_at": "2026-04-25T23:19:39Z",
+  "asset_classes_covered": [
+    "major_high_liquidity",
+    "new_listing"
+  ],
+  "generated_at": "2026-04-26T09:40:10Z",
+  "global_block_reasons": [
+    "Asset-Klasse ist für Live gesperrt/quarantänepflichtig.",
+    "Asset-Klassen-Breakdown unzureichend.",
+    "Datenqualität nicht ausreichend.",
+    "Drawdown-Regel verletzt.",
+    "Extrem geringe Trade-Anzahl.",
+    "Max-Drawdown über 20%.",
+    "Negative oder null Expectancy nach Kosten.",
+    "No-Trade-Qualität unzureichend.",
+    "Out-of-sample-Evidence fehlt.",
+    "Regime-Breakdown unzureichend.",
+    "Shadow-Burn-in-Evidence fehlt.",
+    "Slippage/Fees/Funding-Evidence fehlt.",
+    "Walk-forward-Evidence fehlt.",
+    "Zu wenige Trades für robuste Aussage.",
+    "trade_count_unter_minimum"
+  ],
   "items": [
     {
       "asset_class": "major_high_liquidity",
       "asset_symbol": "BTCUSDT",
       "blockgruende_de": [],
       "entscheidung_de": "Strategie strat_major_momentum für BTCUSDT/major_high_liquidity: Eignung ausreichend (PASS).",
+      "live_allowed": true,
       "market_family": "futures",
       "strategy_id": "strat_major_momentum",
       "strategy_version": "1.2.0",
@@ -28,18 +50,23 @@
         "Negative oder null Expectancy nach Kosten.",
         "Max-Drawdown über 20%.",
         "Extrem geringe Trade-Anzahl.",
-        "Zu wenige Trades für robuste Aussage."
+        "Zu wenige Trades für robuste Aussage.",
+        "trade_count_unter_minimum"
       ],
       "entscheidung_de": "Strategie strat_new_listing_guard für NEWCOINUSDT/new_listing: Asset-Klasse ist für Live gesperrt/quarantänepflichtig.; Walk-forward-Evidence fehlt.; Slippage/Fees/Funding-Evidence fehlt.; Out-of-sample-Evidence fehlt.; Shadow-Burn-in-Evidence fehlt.; Drawdown-Regel verletzt.; Regime-Breakdown unzureichend.; Asset-Klassen-Breakdown unzureichend.; No-Trade-Qualität unzureichend.; Datenqualität nicht ausreichend.; Negative oder null Expectancy nach Kosten.; Max-Drawdown über 20%.; Extrem geringe Trade-Anzahl.",
+      "live_allowed": false,
       "market_family": "futures",
       "strategy_id": "strat_new_listing_guard",
       "strategy_version": "0.9.1",
       "verdict": "FAIL"
     }
   ],
+  "status": "NOT_ENOUGH_EVIDENCE",
   "summary": {
     "FAIL": 1,
     "PASS": 1,
     "PASS_WITH_WARNINGS": 0
-  }
+  },
+  "verified": false,
+  "version_binding_ok": true
 }

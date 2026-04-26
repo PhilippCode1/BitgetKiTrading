@@ -13,8 +13,11 @@ from typing import Any
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
-DOC_PATH = ROOT / "docs" / "production_10_10" / "asset_risk_tiers_and_leverage_caps.md"
+DOC_PATH = ROOT / "docs" / "production_10_10" / "asset_risk_tiers_and_order_sizing.md"
 RISK_TIER_LOGIC_PATH = ROOT / "shared" / "python" / "src" / "shared_py" / "asset_risk_tiers.py"
+LEVERAGE_ALLOCATOR_PATH = ROOT / "shared" / "python" / "src" / "shared_py" / "leverage_allocator.py"
+RISK_ENGINE_PATH = ROOT / "shared" / "python" / "src" / "shared_py" / "risk_engine.py"
+RISK_REPORT_PATH = ROOT / "reports" / "risk_execution_evidence.json"
 RISK_GOVERNOR_PATH = ROOT / "services" / "signal-engine" / "src" / "signal_engine" / "risk_governor.py"
 MATRIX_PATH = ROOT / "docs" / "production_10_10" / "evidence_matrix.yaml"
 ASSET_GOV_DOC_PATH = ROOT / "docs" / "production_10_10" / "asset_quarantine_and_live_allowlist.md"
@@ -84,6 +87,22 @@ def analyze_asset_risk_tiers() -> dict[str, Any]:
             code="asset_risk_logic_missing",
             message="Missing shared/python/src/shared_py/asset_risk_tiers.py.",
             path=RISK_TIER_LOGIC_PATH,
+        )
+    if not LEVERAGE_ALLOCATOR_PATH.is_file():
+        _issue(
+            issues,
+            severity="error",
+            code="leverage_allocator_missing",
+            message="Missing shared/python/src/shared_py/leverage_allocator.py.",
+            path=LEVERAGE_ALLOCATOR_PATH,
+        )
+    if not RISK_ENGINE_PATH.is_file():
+        _issue(
+            issues,
+            severity="error",
+            code="risk_engine_missing",
+            message="Missing shared/python/src/shared_py/risk_engine.py.",
+            path=RISK_ENGINE_PATH,
         )
     if not RISK_GOVERNOR_PATH.is_file():
         _issue(
@@ -193,6 +212,8 @@ def analyze_asset_risk_tiers() -> dict[str, Any]:
         "ok": len(errors) == 0,
         "doc_exists": DOC_PATH.is_file(),
         "risk_tier_logic_exists": RISK_TIER_LOGIC_PATH.is_file(),
+        "leverage_allocator_exists": LEVERAGE_ALLOCATOR_PATH.is_file(),
+        "risk_engine_exists": RISK_ENGINE_PATH.is_file(),
         "risk_governor_exists": RISK_GOVERNOR_PATH.is_file(),
         "matrix_has_asset_risk_tiers": matrix_has_category,
         "issues": [asdict(item) for item in issues],
@@ -221,10 +242,37 @@ def render_text(summary: dict[str, Any]) -> str:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--strict", action="store_true")
+    parser.add_argument("--strict-live", action="store_true")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
 
     summary = analyze_asset_risk_tiers()
+    strict_live_errors = 0
+    if args.strict_live:
+        report_ok = False
+        if RISK_REPORT_PATH.is_file():
+            try:
+                payload = json.loads(RISK_REPORT_PATH.read_text(encoding="utf-8"))
+            except json.JSONDecodeError:
+                payload = {}
+            report_ok = (
+                isinstance(payload, dict)
+                and payload.get("runtime_evidence_present") is True
+                and payload.get("owner_limits_present") is True
+                and payload.get("status") == "verified"
+            )
+        if not report_ok:
+            strict_live_errors += 1
+            summary["issues"].append(
+                {
+                    "severity": "error",
+                    "code": "strict_live_evidence_missing",
+                    "message": "Strict-Live blockiert: owner_limits/runtime_evidence/verified fehlen im Risk-Report.",
+                    "path": str(RISK_REPORT_PATH),
+                }
+            )
+            summary["error_count"] += 1
+            summary["ok"] = False
     if args.json:
         print(json.dumps(summary, indent=2, sort_keys=True))
     else:
@@ -233,6 +281,8 @@ def main(argv: list[str] | None = None) -> int:
     if summary["error_count"] > 0:
         return 1
     if args.strict and summary["warning_count"] > 0:
+        return 1
+    if args.strict_live and strict_live_errors > 0:
         return 1
     return 0
 

@@ -1,0 +1,90 @@
+{
+  "generated_at": "2026-04-26T10:14:36.044614+00:00",
+  "git_sha": "339dd15",
+  "status": "NOT_ENOUGH_EVIDENCE",
+  "verified": false,
+  "evidence_level": "synthetic",
+  "private_live_allowed": "NO_GO",
+  "incident_drill_present": true,
+  "delivery_verified": false,
+  "slo_baseline_verified": false,
+  "scenarios": [
+    {
+      "id": "live_broker_down",
+      "expected": "alert_and_block_live",
+      "actual": "alert_and_block_live",
+      "pass": true
+    },
+    {
+      "id": "market_data_stale",
+      "expected": "alert_and_block_live",
+      "actual": "alert_and_block_live",
+      "pass": true
+    },
+    {
+      "id": "risk_timeout",
+      "expected": "alert_and_block_live",
+      "actual": "alert_and_block_live",
+      "pass": true
+    },
+    {
+      "id": "reconcile_drift",
+      "expected": "alert_and_block_live",
+      "actual": "alert_and_block_live",
+      "pass": true
+    },
+    {
+      "id": "safety_latch_active",
+      "expected": "alert_and_block_live",
+      "actual": "alert_and_block_live",
+      "pass": true
+    },
+    {
+      "id": "kill_switch_active",
+      "expected": "alert_and_block_live",
+      "actual": "alert_and_block_live",
+      "pass": true
+    },
+    {
+      "id": "bitget_auth_error",
+      "expected": "alert_and_block_live",
+      "actual": "alert_and_block_live",
+      "pass": true
+    },
+    {
+      "id": "db_unavailable",
+      "expected": "alert_and_block_live",
+      "actual": "alert_and_block_live",
+      "pass": true
+    },
+    {
+      "id": "redis_unavailable",
+      "expected": "alert_and_block_live",
+      "actual": "alert_and_block_live",
+      "pass": true
+    },
+    {
+      "id": "alert_engine_route_test",
+      "expected": "alert_and_block_live",
+      "actual": "alert_and_block_live",
+      "pass": true
+    },
+    {
+      "id": "dashboard_shows_no_go",
+      "expected": "alert_and_block_live",
+      "actual": "alert_and_block_live",
+      "pass": true
+    },
+    {
+      "id": "operator_acknowledges_incident",
+      "expected": "alert_and_block_live",
+      "actual": "alert_and_block_live",
+      "pass": true
+    }
+  ],
+  "external_required": [
+    "real_alert_delivery_proof_missing",
+    "real_operator_acknowledgement_proof_missing",
+    "real_slo_baseline_missing"
+  ]
+}

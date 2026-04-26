@@ -87,3 +87,17 @@ def test_dangerous_mock_substring_fails(tmp_path: Path) -> None:
     assert r.returncode == 1
     err = (r.stderr or "").lower()
     assert "prod_ex_only" in err or "mock-teilfolge" in err
+
+
+def test_next_public_secret_name_fails(tmp_path: Path) -> None:
+    bad = tmp_path / "public_secret.env"
+    bad.write_text("NEXT_PUBLIC_OPENAI_API_KEY=placeholder\n", encoding="utf-8")
+    r = subprocess.run(
+        [sys.executable, str(SCRIPT), str(bad)],
+        cwd=str(REPO),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert r.returncode == 1
+    assert "NEXT_PUBLIC" in (r.stderr or "")

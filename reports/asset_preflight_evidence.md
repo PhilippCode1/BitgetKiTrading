@@ -4,8 +4,8 @@ Status: kombinierte repo-lokale Fixture-Evidence fuer Asset Governance, Datenqua
 
 ## Summary
 
-- Datum/Zeit: `2026-04-25T23:07:35.748385+00:00`
-- Git SHA: `84d7b66`
+- Datum/Zeit: `2026-04-26T09:10:26.642868+00:00`
+- Git SHA: `339dd15`
 - Gepruefte Assets: `2`
 - Live technisch blockiert: `2`
 - Live technisch erlaubt: `0`
@@ -44,3 +44,4 @@ Status: kombinierte repo-lokale Fixture-Evidence fuer Asset Governance, Datenqua
 - LIVE_ALLOWED in diesem Report waere nur technisch vorpruefbar, nicht private_live_allowed.
 - Fehlende Governance-, Datenqualitaets-, Liquiditaets- oder Risk-Tier-Evidence blockiert fail-closed.
 - Live-Broker-Preflight-Codes werden als Schnittstelle mitbelegt; fehlende Required-Codes bleiben P0-Evidence-Gap.
+- Status bleibt not_enough_evidence ohne echte Runtime-Exchange-Evidence.

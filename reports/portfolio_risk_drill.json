@@ -1,0 +1,166 @@
+{
+  "generated_at": "2026-04-26T09:48:25Z",
+  "git_sha": "339dd15",
+  "status": "implemented",
+  "decision": "NOT_ENOUGH_EVIDENCE",
+  "verified": false,
+  "evidence_level": "synthetic",
+  "live_allowed": false,
+  "all_scenarios_passed": true,
+  "scenarios": [
+    {
+      "scenario": "normalzustand",
+      "expected_decision": "ALLOW_OPENING",
+      "actual_decision": "ALLOW_OPENING",
+      "pass": true,
+      "reasons": [],
+      "risk_state": "normal",
+      "reduce_only_allowed": true,
+      "evidence_level": "synthetic",
+      "live_allowed": true
+    },
+    {
+      "scenario": "max_asset_exposure_verletzt",
+      "expected_decision": "BLOCK_OPENING",
+      "actual_decision": "BLOCK_OPENING",
+      "pass": true,
+      "reasons": [
+        "asset_exposure_ueber_limit"
+      ],
+      "risk_state": "degraded",
+      "reduce_only_allowed": true,
+      "evidence_level": "synthetic",
+      "live_allowed": false
+    },
+    {
+      "scenario": "max_family_exposure_verletzt",
+      "expected_decision": "BLOCK_OPENING",
+      "actual_decision": "BLOCK_OPENING",
+      "pass": true,
+      "reasons": [
+        "family_exposure_zu_hoch"
+      ],
+      "risk_state": "degraded",
+      "reduce_only_allowed": true,
+      "evidence_level": "synthetic",
+      "live_allowed": false
+    },
+    {
+      "scenario": "max_correlation_exposure_verletzt",
+      "expected_decision": "BLOCK_OPENING",
+      "actual_decision": "BLOCK_OPENING",
+      "pass": true,
+      "reasons": [
+        "correlation_group_exposure_zu_hoch"
+      ],
+      "risk_state": "degraded",
+      "reduce_only_allowed": true,
+      "evidence_level": "synthetic",
+      "live_allowed": false
+    },
+    {
+      "scenario": "daily_loss_limit_erreicht",
+      "expected_decision": "BLOCK_OPENING",
+      "actual_decision": "BLOCK_OPENING",
+      "pass": true,
+      "reasons": [
+        "daily_loss_limit_erreicht"
+      ],
+      "risk_state": "reduce_only",
+      "reduce_only_allowed": true,
+      "evidence_level": "synthetic",
+      "live_allowed": false
+    },
+    {
+      "scenario": "weekly_loss_limit_erreicht",
+      "expected_decision": "BLOCK_OPENING",
+      "actual_decision": "BLOCK_OPENING",
+      "pass": true,
+      "reasons": [
+        "weekly_loss_limit_erreicht"
+      ],
+      "risk_state": "reduce_only",
+      "reduce_only_allowed": true,
+      "evidence_level": "synthetic",
+      "live_allowed": false
+    },
+    {
+      "scenario": "drawdown_limit_erreicht",
+      "expected_decision": "BLOCK_OPENING",
+      "actual_decision": "BLOCK_OPENING",
+      "pass": true,
+      "reasons": [
+        "intraday_drawdown_limit_erreicht"
+      ],
+      "risk_state": "halt_new_entries",
+      "reduce_only_allowed": true,
+      "evidence_level": "synthetic",
+      "live_allowed": false
+    },
+    {
+      "scenario": "loss_streak_limit_erreicht",
+      "expected_decision": "BLOCK_OPENING",
+      "actual_decision": "BLOCK_OPENING",
+      "pass": true,
+      "reasons": [
+        "loss_streak_limit_erreicht"
+      ],
+      "risk_state": "degraded",
+      "reduce_only_allowed": true,
+      "evidence_level": "synthetic",
+      "live_allowed": false
+    },
+    {
+      "scenario": "global_halt_aktiv",
+      "expected_decision": "BLOCK_OPENING",
+      "actual_decision": "BLOCK_OPENING",
+      "pass": true,
+      "reasons": [
+        "global_halt_aktiv"
+      ],
+      "risk_state": "global_halt",
+      "reduce_only_allowed": false,
+      "evidence_level": "synthetic",
+      "live_allowed": false
+    },
+    {
+      "scenario": "risk_state_unknown",
+      "expected_decision": "BLOCK_OPENING",
+      "actual_decision": "BLOCK_OPENING",
+      "pass": true,
+      "reasons": [
+        "portfolio_snapshot_stale"
+      ],
+      "risk_state": "unknown_blocked",
+      "reduce_only_allowed": false,
+      "evidence_level": "synthetic",
+      "live_allowed": false
+    },
+    {
+      "scenario": "reduce_only_nach_loss_limit",
+      "expected_decision": "BLOCK_OPENING",
+      "actual_decision": "BLOCK_OPENING",
+      "pass": true,
+      "reasons": [
+        "daily_loss_limit_erreicht"
+      ],
+      "risk_state": "reduce_only",
+      "reduce_only_allowed": true,
+      "evidence_level": "synthetic",
+      "live_allowed": false
+    },
+    {
+      "scenario": "opening_order_nach_halt_blockiert",
+      "expected_decision": "BLOCK_OPENING",
+      "actual_decision": "BLOCK_OPENING",
+      "pass": true,
+      "reasons": [
+        "global_halt_aktiv"
+      ],
+      "risk_state": "global_halt",
+      "reduce_only_allowed": false,
+      "evidence_level": "synthetic",
+      "live_allowed": false
+    }
+  ]
+}

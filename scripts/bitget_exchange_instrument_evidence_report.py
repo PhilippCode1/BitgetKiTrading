@@ -389,7 +389,7 @@ def build_report_payload(
 
     exchange_preflight_rows = [
         {"id": "key_permission_template_missing_external", "preflight": _preflight_decision(bitget_ok=key_assessment.status == "PASS")},
-        {"id": "readiness_dry_run_no_external_network", "preflight": _preflight_decision(bitget_ok=readiness_report.result == "PASS")},
+        {"id": "readiness_dry_run_no_external_network", "preflight": _preflight_decision(bitget_ok=readiness_report.status == "verified")},
     ]
 
     covered_instrument_reasons = sorted({reason for row in instrument_rows for reason in row["block_reasons"]})
@@ -455,7 +455,7 @@ def render_markdown(payload: dict[str, Any]) -> str:
         f"- Git SHA: `{payload['git_sha']}`",
         f"- Private-Live-Entscheidung: `{payload['private_live_decision']}`",
         f"- Full-Autonomous-Live: `{payload['full_autonomous_live']}`",
-        f"- Dry-run Ergebnis: `{payload['readiness_dry_run']['result']}`",
+        f"- Runtime-Readiness-Status: `{payload['readiness_dry_run']['status']}`",
         f"- Live-Write erlaubt: `{str(payload['readiness_dry_run']['live_write_allowed']).lower()}`",
         f"- Key-Permission-Evidence: `{payload['key_permission_assessment']['status']}`",
         f"- Externe Exchange/Instrument-Evidence: `{payload['external_evidence_assessment']['status']}`",

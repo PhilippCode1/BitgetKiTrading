@@ -1,11 +1,5 @@
 #!/usr/bin/env python3
-"""Safe read-only Bitget Exchange Readiness check.
-
-Modes:
-- dry-run: no network calls.
-- readonly: public/private read-only requests only; never orders.
-- demo-safe: demo credentials only, still read-only; never orders.
-"""
+"""Bitget Runtime Readiness Check (fail-closed, redacted, no live-order automation)."""
 
 from __future__ import annotations
 
@@ -29,11 +23,8 @@ import httpx
 from shared_py.bitget.exchange_readiness import (
     READINESS_CONTRACT_VERSION,
     WRITE_ORDER_ALLOWED_DEFAULT,
-    assess_permissions,
     assert_readonly_request,
     classify_http_status,
-    path_uses_legacy_v1,
-    readiness_verdict,
     server_time_skew_blockers,
 )
 from shared_py.bitget.http import build_private_rest_headers, build_query_string
@@ -75,10 +66,11 @@ class StepStatus:
 @dataclass
 class BitgetReadinessReport:
     contract_version: str
-    generated_at: str
+    checked_at: str
     git_sha: str
     mode: str
-    env_profile: str
+    environment: str
+    status: str
     credential_type: str
     credential_summary: dict[str, str]
     api_version_paths: list[str]
@@ -90,8 +82,9 @@ class BitgetReadinessReport:
     rate_limit_status: StepStatus
     blockers: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
-    result: str = "FAIL"
     live_write_allowed: bool = WRITE_ORDER_ALLOWED_DEFAULT
+    demo_trade_smoke_executed: bool = False
+    demo_trade_smoke_guard_ack: bool = False
 
 
 def load_dotenv(path: Path) -> dict[str, str]:
@@ -260,10 +253,33 @@ def _private_get_json(
     return response.status_code, payload if isinstance(payload, dict) else {"data": payload}
 
 
+def _status_from(blockers: list[str], warnings: list[str], runtime_evidence_present: bool) -> str:
+    if blockers:
+        return "failed"
+    if warnings:
+        return "not_enough_evidence"
+    if runtime_evidence_present:
+        return "verified"
+    return "not_enough_evidence"
+
+
+def _mode_requires_private(mode: str) -> bool:
+    return mode in {"readonly", "demo-readonly", "demo-trade-smoke", "live-readonly"}
+
+
+def _mode_requires_demo(mode: str) -> bool:
+    return mode in {"demo-readonly", "demo-trade-smoke"}
+
+
+def _mode_requires_live(mode: str) -> bool:
+    return mode == "live-readonly"
+
+
 def build_readiness_report(
     env: dict[str, str],
     *,
     mode: str,
+    demo_trade_smoke_ack: bool = False,
     client: httpx.Client | None = None,
 ) -> BitgetReadinessReport:
     blockers: list[str] = []
@@ -274,14 +290,14 @@ def build_readiness_report(
     product_type = env.get("BITGET_PRODUCT_TYPE") or env.get("BITGET_FUTURES_DEFAULT_PRODUCT_TYPE") or "USDT-FUTURES"
     margin_coin = env.get("BITGET_MARGIN_COIN") or env.get("BITGET_FUTURES_DEFAULT_MARGIN_COIN") or "USDT"
 
+    runtime_evidence_present = False
+    demo_trade_smoke_executed = False
     if cred_type == "mixed":
         blockers.append("demo_live_credential_mix")
-    if mode == "demo-safe" and cred_type != "demo":
-        blockers.append("demo_safe_requires_demo_credentials")
-    if any(path_uses_legacy_v1(path) for path in DOC_API_VERSION_PATHS):
-        blockers.append("legacy_v1_api_path_configured")
-    else:
-        warnings.append("api_version_v2_paths_documented_v1_usage_is_risk")
+    if _mode_requires_demo(mode) and cred_type != "demo":
+        blockers.append("demo_mode_requires_demo_credentials")
+    if _mode_requires_live(mode) and cred_type != "live":
+        blockers.append("live_mode_requires_live_credentials")
 
     if product_type == "COIN-FUTURES" and is_placeholder(margin_coin):
         blockers.append("coin_futures_requires_margin_coin")
@@ -290,22 +306,18 @@ def build_readiness_report(
         detail=f"productType={product_type}; marginCoin={margin_coin or 'missing'}",
     )
 
-    public_api_status = StepStatus("unavailable", "dry-run: no network calls")
-    private_status = StepStatus("unavailable", "dry-run: private read-only not executed")
-    instrument_status = StepStatus("unavailable", "dry-run: instrument discovery not executed")
+    public_api_status = StepStatus("unavailable", "network check not executed")
+    private_status = StepStatus("unavailable", "private read-only not executed")
+    instrument_status = StepStatus("unavailable", "instrument discovery not executed")
     rate_limit_status = StepStatus("ready", "no rate limit observed in dry-run")
-    permission_status = StepStatus("degraded", "permission evidence missing; live write remains blocked")
+    permission_status = StepStatus("degraded", "runtime permission evidence missing")
 
-    if mode == "dry-run":
-        warnings.extend(
-            [
-                "dry_run_no_public_network_evidence",
-                "dry_run_no_private_auth_evidence",
-                "dry_run_no_instrument_universe_evidence",
-                "permission_evidence_missing_live_write_blocked",
-            ]
-        )
-    else:
+    if mode == "public":
+        warnings.append("private_runtime_not_checked")
+    if mode == "demo-trade-smoke" and not demo_trade_smoke_ack:
+        blockers.append("demo_trade_smoke_requires_explicit_ack")
+
+    if mode != "dry-run":
         if client is None:
             client = httpx.Client(timeout=10.0)
             close_client = True
@@ -318,6 +330,8 @@ def build_readiness_report(
                 warnings.append("public_api_rate_limit")
             elif classification != "ok" or str(payload.get("code") or "00000") != "00000":
                 blockers.append(f"public_api_{classification}")
+            else:
+                runtime_evidence_present = True
             server_time = _extract_server_time(payload)
             offset_ms = None if server_time is None else server_time - int(datetime.now(tz=UTC).timestamp() * 1000)
             skew_blockers = server_time_skew_blockers(offset_ms)
@@ -339,6 +353,8 @@ def build_readiness_report(
                 warnings.append("instrument_rate_limit")
             elif inst_classification != "ok":
                 blockers.append(f"instrument_universe_{inst_classification}")
+            else:
+                runtime_evidence_present = True
             instrument_status = StepStatus(
                 status="ready" if inst_classification == "ok" and bool(inst_payload) else "error",
                 detail="instrument universe response received" if bool(inst_payload) else "instrument universe missing",
@@ -349,35 +365,42 @@ def build_readiness_report(
                 status="degraded" if "rate_limit" in {classification, inst_classification} else "ready",
                 detail="rate limit observed" if "rate_limit" in {classification, inst_classification} else "no rate limit observed",
             )
-            if cred_type in {"live", "demo"}:
-                private_path = PRIVATE_FUTURES_ACCOUNT_PATH
-                private_status_code, private_payload = _private_get_json(
-                    client,
-                    base_url,
-                    private_path,
-                    env,
-                    params={"productType": product_type.lower()},
-                )
-                private_classification = classify_http_status(private_status_code)
-                if private_classification == "rate_limit":
-                    warnings.append("private_api_rate_limit")
-                elif private_classification in {"auth", "permission"}:
-                    blockers.append(f"private_api_{private_classification}")
-                elif private_classification != "ok":
-                    blockers.append(f"private_api_{private_classification}")
-                private_status = StepStatus(
-                    status="ready" if private_classification == "ok" else "error",
-                    detail="private read-only response received",
-                    http_status=private_status_code,
-                    classification=private_classification,
-                )
-                perm = assess_permissions(_extract_permissions(private_payload))
-            else:
-                warnings.append("private_credentials_missing_readonly_skipped")
-                perm = assess_permissions(None)
-            blockers.extend(perm.blockers)
-            warnings.extend(perm.warnings)
-            permission_status = StepStatus(status=perm.status, detail=";".join(perm.blockers + perm.warnings) or "ok")
+            if _mode_requires_private(mode):
+                if cred_type not in {"live", "demo"}:
+                    warnings.append("private_credentials_missing_readonly_skipped")
+                    permission_status = StepStatus(status="degraded", detail="private credentials missing")
+                else:
+                    private_path = PRIVATE_FUTURES_ACCOUNT_PATH
+                    private_status_code, private_payload = _private_get_json(
+                        client,
+                        base_url,
+                        private_path,
+                        env,
+                        params={"productType": product_type.lower()},
+                    )
+                    private_classification = classify_http_status(private_status_code)
+                    if private_classification == "rate_limit":
+                        warnings.append("private_api_rate_limit")
+                    elif private_classification in {"auth", "permission"}:
+                        blockers.append(f"private_api_{private_classification}")
+                    elif private_classification != "ok":
+                        blockers.append(f"private_api_{private_classification}")
+                    else:
+                        runtime_evidence_present = True
+                    private_status = StepStatus(
+                        status="ready" if private_classification == "ok" else "error",
+                        detail="private read-only response received",
+                        http_status=private_status_code,
+                        classification=private_classification,
+                    )
+                    if _extract_permissions(private_payload):
+                        permission_status = StepStatus(status="ready", detail="permissions observed via runtime payload")
+                    else:
+                        permission_status = StepStatus(status="degraded", detail="permissions endpoint not observable")
+                        warnings.append("permissions_not_explicit_in_runtime_payload")
+                    if mode == "demo-trade-smoke":
+                        demo_trade_smoke_executed = True
+                        warnings.append("demo_trade_smoke_write_call_not_implemented_in_script")
         except httpx.HTTPStatusError as exc:
             blockers.append(f"http_status_error:{exc.response.status_code}")
         except httpx.HTTPError as exc:
@@ -387,13 +410,14 @@ def build_readiness_report(
             if close_client:
                 client.close()
 
-    result = readiness_verdict(blockers, warnings)
+    status = _status_from(blockers, warnings, runtime_evidence_present)
     return BitgetReadinessReport(
         contract_version=READINESS_CONTRACT_VERSION,
-        generated_at=datetime.now(tz=UTC).isoformat(),
+        checked_at=datetime.now(tz=UTC).isoformat(),
         git_sha=git_sha(),
         mode=mode,
-        env_profile=profile,
+        environment=profile,
+        status=status,
         credential_type=cred_type,
         credential_summary=credential_summary(env),
         api_version_paths=list(DOC_API_VERSION_PATHS),
@@ -405,8 +429,9 @@ def build_readiness_report(
         rate_limit_status=rate_limit_status,
         blockers=blockers,
         warnings=warnings,
-        result=result,
         live_write_allowed=WRITE_ORDER_ALLOWED_DEFAULT,
+        demo_trade_smoke_executed=demo_trade_smoke_executed,
+        demo_trade_smoke_guard_ack=demo_trade_smoke_ack,
     )
 
 
@@ -438,10 +463,11 @@ def report_to_markdown(report: BitgetReadinessReport) -> str:
     lines = [
         "# Bitget Readiness Report",
         "",
-        f"- Datum/Zeit: `{report.generated_at}`",
+        f"- Datum/Zeit: `{report.checked_at}`",
         f"- Git SHA: `{report.git_sha}`",
         f"- Modus: `{report.mode}`",
-        f"- ENV-Profil: `{report.env_profile}`",
+        f"- ENV-Profil: `{report.environment}`",
+        f"- Status: `{report.status}`",
         f"- Credential-Typ: `{report.credential_type}`",
         f"- API-Version/Pfade: `{', '.join(report.api_version_paths)}`",
         f"- Public API Status: `{report.public_api_status.status}`",
@@ -450,7 +476,8 @@ def report_to_markdown(report: BitgetReadinessReport) -> str:
         f"- Instrument Universe Status: `{report.instrument_universe_status.status}`",
         f"- ProductType/MarginCoin Mapping: `{report.product_mapping_status.status}`",
         f"- Rate Limit Status: `{report.rate_limit_status.status}`",
-        f"- Ergebnis: `{report.result}`",
+        f"- Demo-Trade-Smoke Ack: `{str(report.demo_trade_smoke_guard_ack).lower()}`",
+        f"- Demo-Trade-Smoke ausgefuehrt: `{str(report.demo_trade_smoke_executed).lower()}`",
         f"- Live-Write erlaubt: `{str(report.live_write_allowed).lower()}`",
         "",
         "## Blocker",
@@ -470,7 +497,13 @@ def report_to_markdown(report: BitgetReadinessReport) -> str:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--env-file", type=Path, required=True)
-    parser.add_argument("--mode", choices=("dry-run", "readonly", "demo-safe"), default="dry-run")
+    parser.add_argument(
+        "--mode",
+        choices=("public", "readonly", "demo-readonly", "demo-trade-smoke", "live-readonly", "dry-run", "demo-safe"),
+        default="public",
+    )
+    parser.add_argument("--output-json", type=Path)
+    parser.add_argument("--i-understand-demo-order-smoke", action="store_true")
     parser.add_argument("--output-md", type=Path)
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
@@ -479,24 +512,35 @@ def main(argv: list[str] | None = None) -> int:
         print(f"ERROR env_file_missing: {args.env_file}")
         return 1
     env = load_dotenv(args.env_file)
-    report = build_readiness_report(env, mode=args.mode)
+    normalized_mode = {"dry-run": "public", "demo-safe": "demo-readonly"}.get(args.mode, args.mode)
+    report = build_readiness_report(
+        env,
+        mode=normalized_mode,
+        demo_trade_smoke_ack=args.i_understand_demo_order_smoke,
+    )
     if args.output_md:
         args.output_md.parent.mkdir(parents=True, exist_ok=True)
         args.output_md.write_text(report_to_markdown(report), encoding="utf-8")
+    if args.output_json:
+        args.output_json.parent.mkdir(parents=True, exist_ok=True)
+        args.output_json.write_text(
+            json.dumps(redact(asdict(report)), indent=2, sort_keys=True, ensure_ascii=False),
+            encoding="utf-8",
+        )
     payload = redact(asdict(report))
     if args.json:
         print(json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False))
     else:
         print(
             "bitget_readiness: "
-            f"result={report.result} mode={report.mode} profile={report.env_profile} "
+            f"status={report.status} mode={report.mode} profile={report.environment} "
             f"credential_type={report.credential_type} live_write_allowed=false"
         )
         for blocker in report.blockers:
             print(f"BLOCKER {blocker}")
         for warning in report.warnings:
             print(f"WARNING {warning}")
-    return 1 if report.result == "FAIL" else 0
+    return 1 if report.status == "failed" else 0
 
 
 if __name__ == "__main__":

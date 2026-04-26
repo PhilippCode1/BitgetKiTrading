@@ -473,6 +473,11 @@ def main() -> int:
     ap.add_argument("--env-file", type=Path, default=None)
     ap.add_argument("--report-md", type=Path, default=None, dest="report")
     ap.add_argument("--evidence-json", type=Path, default=None)
+    ap.add_argument(
+        "--strict-external",
+        action="store_true",
+        help="Erfordert externen Zustellnachweis (nur zusammen mit --evidence-json sinnvoll).",
+    )
     ap.add_argument("--write-template", type=Path, default=None)
     ap.add_argument("--output-json", type=Path, default=None)
     ap.add_argument(
@@ -510,7 +515,15 @@ def main() -> int:
             args.output_json.write_text(json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False), encoding="utf-8")
         if not args.report:
             print(text)
+        if args.strict_external and not payload["ok"]:
+            return 1
         return 1 if args.strict and not payload["ok"] else 0
+    if args.strict_external:
+        print(
+            "ERROR: --strict-external verlangt --evidence-json mit echtem Zustellnachweis.",
+            file=sys.stderr,
+        )
+        return 1
 
     env: dict[str, str] = {k: v for k, v in os.environ.items()}
     if args.env_file and args.env_file.is_file():

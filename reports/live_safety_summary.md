@@ -1,42 +1,32 @@
-# Live Safety Evidence Report
+# Live Safety Drill Evidence
 
-Status: kombinierter repo-lokaler Nachweis fuer Kill-Switch, Safety-Latch und Emergency-Flatten ohne echte Exchange-Orders.
+- Datum/Zeit: `2026-04-26T10:03:35.358031+00:00`
+- Git SHA: `339dd15`
+- Modus: `dry-run`
+- Kill-Switch aktiv: `true`
+- Safety-Latch aktiv: `true`
+- Opening Order blockiert: `true`
+- Emergency-Flatten reduce-only: `true`
+- Audit erwartet: `true`
+- Alert erwartet: `true`
+- Go/No-Go: `NO_GO`
+- Live-Write erlaubt: `false`
 
-## Summary
-
-- Datum/Zeit: `2026-04-25T22:59:45.000322+00:00`
-- Git SHA: `84d7b66`
-- Private Live: `NO_GO`
-- Full Autonomous Live: `NO_GO`
-- Failures: `0`
-- External Required: `5`
-- External Template Status: `FAIL`
-- External Template Blocker: `21`
-
-## Safety-Simulation
-
-- Kill-Switch blockiert Opening: `True`
-- Safety-Latch blockiert Opening: `True`
-- Emergency-Flatten safe/reduce-only: `True`
-- Live-Write erlaubt: `False`
-
-## Emergency-Flatten-Cases
-
-- `valid_reduce_only`: safe=`True`, expected=`True`
-- `not_reduce_only`: safe=`False`, expected=`False`
-- `would_increase_exposure`: safe=`False`, expected=`False`
-- `missing_position_truth`: safe=`False`, expected=`False`
-
-## External Required
-
-- `real_staging_shadow_kill_switch_drill_missing`
-- `real_staging_shadow_safety_latch_drill_missing`
-- `real_emergency_flatten_reduce_only_drill_missing`
-- `audit_alert_reconcile_main_console_safety_evidence_missing`
-- `owner_signed_live_safety_acceptance_missing`
-
-## Einordnung
-
-- Dieser Report beweist repo-lokale Safety-Contracts und Simulationen, nicht echte Live-Freigabe.
-- Das Repo-Template muss ohne externe Evidence FAIL bleiben.
-- Emergency-Flatten ist nur akzeptabel, wenn reduce-only, exchange-truth-geprueft und nicht exposure-erhoehend belegt ist.
+## Redacted JSON
+```json
+{
+  "alert_expected": true,
+  "audit_expected": true,
+  "emergency_flatten_reduce_only": true,
+  "emergency_flatten_safe": true,
+  "generated_at": "2026-04-26T10:03:35.358031+00:00",
+  "git_sha": "339dd15",
+  "go_no_go": "NO_GO",
+  "kill_switch_active": true,
+  "live_write_allowed": false,
+  "mode": "dry-run",
+  "opening_order_blocked_by_kill_switch": true,
+  "opening_order_blocked_by_safety_latch": true,
+  "safety_latch_active": true
+}
+```

@@ -1,0 +1,82 @@
+{
+  "status": "implemented",
+  "decision": "NOT_ENOUGH_EVIDENCE",
+  "verified": false,
+  "evidence_level": "synthetic",
+  "scenarios": [
+    {
+      "scenario": "exchange_order_missing",
+      "status": "warning",
+      "reconcile_required": true,
+      "safety_latch_required": false,
+      "blocking_reasons": [],
+      "warning_reasons": [
+        "exchange_order_missing"
+      ],
+      "evidence_level": "synthetic",
+      "live_allowed": false
+    },
+    {
+      "scenario": "local_order_missing",
+      "status": "warning",
+      "reconcile_required": true,
+      "safety_latch_required": false,
+      "blocking_reasons": [],
+      "warning_reasons": [
+        "local_order_missing"
+      ],
+      "evidence_level": "synthetic",
+      "live_allowed": false
+    },
+    {
+      "scenario": "position_mismatch",
+      "status": "blocked",
+      "reconcile_required": false,
+      "safety_latch_required": false,
+      "blocking_reasons": [
+        "position_mismatch"
+      ],
+      "warning_reasons": [],
+      "evidence_level": "synthetic",
+      "live_allowed": false
+    },
+    {
+      "scenario": "stale_reconcile",
+      "status": "blocked",
+      "reconcile_required": false,
+      "safety_latch_required": false,
+      "blocking_reasons": [
+        "reconcile_stale"
+      ],
+      "warning_reasons": [],
+      "evidence_level": "synthetic",
+      "live_allowed": false
+    },
+    {
+      "scenario": "unknown_order_state",
+      "status": "blocked",
+      "reconcile_required": false,
+      "safety_latch_required": false,
+      "blocking_reasons": [
+        "unknown_order_state"
+      ],
+      "warning_reasons": [],
+      "evidence_level": "synthetic",
+      "live_allowed": false
+    },
+    {
+      "scenario": "safety_latch_required",
+      "status": "blocked",
+      "reconcile_required": false,
+      "safety_latch_required": true,
+      "blocking_reasons": [
+        "fill_mismatch"
+      ],
+      "warning_reasons": [
+        "fill_mismatch"
+      ],
+      "evidence_level": "synthetic",
+      "live_allowed": false
+    }
+  ]
+}

@@ -7,7 +7,7 @@ import argparse
 import json
 import subprocess
 import sys
-from dataclasses import asdict
+from functools import lru_cache
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -24,7 +24,7 @@ from shared_py.secret_lifecycle import (  # noqa: E402
     build_secret_rotation_audit_payload,
     secret_reuse_across_env_is_forbidden,
 )
-from tools.inventory_secret_surfaces import build_rows  # noqa: E402
+from tools.inventory_secret_surfaces import scan_repo  # noqa: E402
 from tools.validate_env_profile import (  # noqa: E402
     bootstrap_issues,
     conditional_env_issues,
@@ -88,15 +88,20 @@ def _template_assessment(path_name: str, profile: str) -> dict[str, Any]:
     }
 
 
+@lru_cache(maxsize=1)
 def _surface_assessment() -> dict[str, Any]:
-    rows = build_rows()
-    browser_leaks = [asdict(row) for row in rows if row.kind == "public_leak_risk"]
-    server_secret_rows = [row for row in rows if row.kind == "secret"]
+    payload = scan_repo()
+    findings = payload["findings"]
+    browser_leaks = [item for item in findings if item["rule"] == "next_public_secret_name"]
+    server_secret_rows = [
+        item for item in findings if item["rule"] in {"jwt_secret_assignment", "internal_api_key_assignment", "secret_key_assignment"}
+    ]
     return {
-        "row_count": len(rows),
+        "row_count": payload["scanned_files"],
         "server_secret_count": len(server_secret_rows),
         "browser_public_leak_count": len(browser_leaks),
         "browser_public_leaks": browser_leaks,
+        "env_files_not_ignored": payload["env_files_not_ignored"],
     }
 
 

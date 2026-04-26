@@ -63,6 +63,14 @@ def test_master_status_contains_required_sections() -> None:
         "Live-Geld-Entscheidung",
     ):
         assert heading in report
+    for metric in (
+        "P0-Blocker",
+        "P1-Blocker",
+        "Verified-Kategorien",
+        "Implemented-Kategorien",
+        "External-Required-Kategorien",
+    ):
+        assert metric in report
     assert "`private_live_allowed`: `NO_GO`" in report
     assert "`full_autonomous_live`: `NO_GO`" in report
 

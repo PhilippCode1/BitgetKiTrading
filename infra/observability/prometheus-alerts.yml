@@ -544,3 +544,214 @@ groups:
           description: "TimesFM-Instanz: GPU-Engpass — Latenzen, Signal-SLO, Shadow-Gating pruefen; nvidia-smi, Batch-Groesse, weitere Replicas/Queue."
           runbook: "docs/monitoring_runbook.md"
           promql_note: "gpu_utilization_percent{gpu_index=0} > 90; VRAM: total-used < 512MiB."
+
+  - name: institutional_live_blocker_coverage
+    rules:
+      - alert: ApiGatewayDown
+        expr: up{job="api-gateway"} == 0
+        for: 3m
+        labels:
+          severity: critical
+          category: edge
+        annotations:
+          summary: "API-Gateway down"
+          description: "Gateway nicht scrapebar."
+          runbook: "docs/monitoring_runbook.md#p0-slo-und-wiring"
+
+      - alert: OrderbookStale
+        expr: data_freshness_seconds{datapoint="orderbook"} > 30
+        for: 2m
+        labels:
+          severity: critical
+          category: data
+        annotations:
+          summary: "Orderbook stale"
+          description: "Orderbook-Freshness ueber Schwelle."
+          runbook: "docs/monitoring_runbook.md#data-stale-candles"
+
+      - alert: MarketDataQualityFail
+        expr: market_data_quality_failures_24h > 0
+        for: 5m
+        labels:
+          severity: critical
+          category: data
+        annotations:
+          summary: "Market-Data-Quality fail"
+          description: "Mindestens ein Data-Quality-Fail im Lookback."
+          runbook: "docs/monitoring_runbook.md#data-stale-candles"
+
+      - alert: RiskGovernorTimeout
+        expr: risk_governor_timeouts_1h > 0
+        for: 5m
+        labels:
+          severity: critical
+          category: risk
+        annotations:
+          summary: "Risk-Governor Timeout"
+          description: "Risk-Entscheidung nicht innerhalb SLA."
+          runbook: "docs/monitoring_runbook.md#risk-blocks"
+
+      - alert: PortfolioRiskDegraded
+        expr: portfolio_risk_degraded_1h > 0
+        for: 5m
+        labels:
+          severity: critical
+          category: risk
+        annotations:
+          summary: "Portfolio-Risk degraded"
+          description: "Portfolio-Risk-Status nicht normal."
+          runbook: "docs/monitoring_runbook.md#risk-blocks"
+
+      - alert: DailyLossLimitReached
+        expr: portfolio_daily_loss_limit_reached > 0
+        for: 1m
+        labels:
+          severity: critical
+          category: risk
+        annotations:
+          summary: "Daily Loss Limit erreicht"
+          description: "Neue Opening-Orders muessen blockiert bleiben."
+          runbook: "docs/monitoring_runbook.md#risk-blocks"
+
+      - alert: DrawdownLimitReached
+        expr: portfolio_drawdown_limit_reached > 0
+        for: 1m
+        labels:
+          severity: critical
+          category: risk
+        annotations:
+          summary: "Drawdown Limit erreicht"
+          description: "Neue Opening-Orders muessen blockiert bleiben."
+          runbook: "docs/monitoring_runbook.md#risk-blocks"
+
+      - alert: EmergencyFlattenTriggered
+        expr: emergency_flatten_triggered_24h > 0
+        for: 1m
+        labels:
+          severity: critical
+          category: safety
+        annotations:
+          summary: "Emergency-Flatten wurde ausgeloest"
+          description: "Sicherheitsaktion aktiv, Operator-Review erforderlich."
+          runbook: "docs/monitoring_runbook.md#safety-latch"
+
+      - alert: BitgetAuthError
+        expr: bitget_auth_errors_1h > 0
+        for: 2m
+        labels:
+          severity: critical
+          category: exchange
+        annotations:
+          summary: "Bitget Auth Error"
+          description: "Exchange Auth fehlgeschlagen."
+          runbook: "docs/monitoring_runbook.md#auth-anomalies"
+
+      - alert: BitgetPermissionError
+        expr: bitget_permission_errors_1h > 0
+        for: 2m
+        labels:
+          severity: critical
+          category: exchange
+        annotations:
+          summary: "Bitget Permission Error"
+          description: "Exchange-Berechtigung unzureichend."
+          runbook: "docs/monitoring_runbook.md#auth-anomalies"
+
+      - alert: BitgetApi5xxSpike
+        expr: bitget_api_5xx_rate_5m > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          category: exchange
+        annotations:
+          summary: "Bitget API 5xx Spike"
+          description: "Exchange 5xx-Rate ueber Schwelle."
+          runbook: "docs/monitoring_runbook.md#p0-slo-und-wiring"
+
+      - alert: RedisUnavailable
+        expr: redis_up == 0
+        for: 2m
+        labels:
+          severity: critical
+          category: queue
+        annotations:
+          summary: "Redis unavailable"
+          description: "Redis nicht verfuegbar."
+          runbook: "docs/monitoring_runbook.md#redis-stream-lag-critical"
+
+      - alert: PostgresUnavailable
+        expr: postgres_up == 0
+        for: 2m
+        labels:
+          severity: critical
+          category: data
+        annotations:
+          summary: "Postgres unavailable"
+          description: "Postgres nicht verfuegbar."
+          runbook: "docs/monitoring_runbook.md#p0-slo-und-wiring"
+
+      - alert: AlertEngineDown
+        expr: up{job="alert-engine"} == 0
+        for: 3m
+        labels:
+          severity: critical
+          category: ops
+        annotations:
+          summary: "Alert-Engine down"
+          description: "Alert-Engine nicht scrapebar."
+          runbook: "docs/monitoring_runbook.md#alert-backlog"
+
+      - alert: DashboardCannotReachGateway
+        expr: dashboard_gateway_unreachable_5m > 0
+        for: 5m
+        labels:
+          severity: warning
+          category: edge
+        annotations:
+          summary: "Dashboard erreicht Gateway nicht"
+          description: "BFF/UI-Gateway-Kommunikation gestoert."
+          runbook: "docs/monitoring_runbook.md#p0-slo-und-wiring"
+
+      - alert: SecretEnvMisconfiguration
+        expr: env_secret_misconfiguration_24h > 0
+        for: 5m
+        labels:
+          severity: critical
+          category: security
+        annotations:
+          summary: "Secret/ENV Misconfiguration"
+          description: "Unsichere ENV-/Secret-Konfiguration entdeckt."
+          runbook: "docs/monitoring_runbook.md#auth-anomalies"
+
+      - alert: BranchReleaseGateFailed
+        expr: ci_release_gate_failures_24h > 0
+        for: 10m
+        labels:
+          severity: warning
+          category: release
+        annotations:
+          summary: "Branch/Release-Gate failed"
+          description: "CI Release-Gates melden Fehler."
+          runbook: "docs/monitoring_runbook.md#alert-backlog"
+
+      - alert: BackupRestoreFailure
+        expr: backup_restore_failures_24h > 0
+        for: 10m
+        labels:
+          severity: critical
+          category: recovery
+        annotations:
+          summary: "Backup/Restore failure"
+          description: "Fehler im Backup-/Restore-Drill."
+          runbook: "docs/monitoring_runbook.md#reconcile-lag"
+
+      - alert: ShadowLiveDivergence
+        expr: shadow_live_assessment_mismatch_24h > 0
+        for: 10m
+        labels:
+          severity: warning
+          category: trading
+        annotations:
+          summary: "Shadow/Live divergence"
+          description: "Mismatch im Shadow-/Live-Vergleich."
+          runbook: "docs/monitoring_runbook.md#replay-shadow-divergenz"

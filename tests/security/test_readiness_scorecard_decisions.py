@@ -51,6 +51,52 @@ def test_missing_restore_blocks_private_live_allowed() -> None:
     assert any("backup_restore" in item for item in scorecard.live_blockers)
 
 
+def test_any_single_p0_not_verified_blocks_private_live_allowed() -> None:
+    scorecard = build_readiness_scorecard(
+        _matrix(overrides={"order_idempotency": "implemented"}),
+        report_names=_all_reports(),
+        asset_data_quality_verified=True,
+        owner_private_live_release_confirmed=True,
+    )
+    assert _mode(scorecard, "private_live_allowed") == "NO_GO"
+    assert any("order_idempotency_not_verified" in item for item in scorecard.private_live_blockers)
+
+
+def test_implemented_never_counts_like_verified() -> None:
+    scorecard = build_readiness_scorecard(
+        _matrix(overrides={"live_broker_fail_closed": "implemented"}),
+        report_names=_all_reports(),
+        asset_data_quality_verified=True,
+        owner_private_live_release_confirmed=True,
+    )
+    category = next(item for item in scorecard.categories if item.id == "live_broker_fail_closed")
+    assert category.decision == "NOT_ENOUGH_EVIDENCE"
+    assert _mode(scorecard, "private_live_allowed") == "NO_GO"
+
+
+def test_external_required_never_counts_like_verified() -> None:
+    scorecard = build_readiness_scorecard(
+        _matrix(overrides={"backup_restore": "external_required"}),
+        report_names=_all_reports(),
+        asset_data_quality_verified=True,
+        owner_private_live_release_confirmed=True,
+    )
+    category = next(item for item in scorecard.categories if item.id == "backup_restore")
+    assert category.decision == "EXTERNAL_REQUIRED"
+    assert _mode(scorecard, "private_live_allowed") == "NO_GO"
+
+
+def test_branch_protection_only_implemented_keeps_private_live_no_go() -> None:
+    scorecard = build_readiness_scorecard(
+        _matrix(overrides={"branch_protection_ci": "implemented"}),
+        report_names=_all_reports(),
+        asset_data_quality_verified=True,
+        owner_private_live_release_confirmed=True,
+    )
+    assert _mode(scorecard, "private_live_allowed") == "NO_GO"
+    assert any("branch_protection_ci_not_verified" in item for item in scorecard.private_live_blockers)
+
+
 def test_missing_shadow_burn_in_blocks_private_live_allowed() -> None:
     scorecard = build_readiness_scorecard(
         _matrix(overrides={"shadow_burn_in": "external_required"}),
@@ -179,6 +225,21 @@ def test_owner_release_payload_accepts_valid() -> None:
         )
         is True
     )
+
+
+def test_implemented_and_external_required_never_upgrade_to_go() -> None:
+    scorecard = build_readiness_scorecard(
+        _matrix(
+            overrides={
+                "bitget_exchange_readiness": "external_required",
+                "reconcile_safety": "implemented",
+            }
+        ),
+        report_names=_all_reports(),
+        asset_data_quality_verified=True,
+        owner_private_live_release_confirmed=True,
+    )
+    assert _mode(scorecard, "private_live_allowed") == "NO_GO"
 
 
 def test_paper_can_go_when_no_live_danger() -> None:

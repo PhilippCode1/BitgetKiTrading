@@ -10,12 +10,16 @@ from __future__ import annotations
 
 import json
 import re
+import subprocess
 import sys
 import tomllib
 from pathlib import Path
 
 _REPO = Path(__file__).resolve().parents[1]
 _MATRIX = _REPO / "docs" / "REPO_FREEZE_GAP_MATRIX.md"
+_EVIDENCE_MATRIX = _REPO / "docs" / "production_10_10" / "evidence_matrix.yaml"
+_EVIDENCE_REPORT = _REPO / "docs" / "production_10_10" / "evidence_status_report.md"
+_SCORECARD = _REPO / "docs" / "production_10_10" / "production_readiness_scorecard.md"
 _SKIP_PARTS = frozenset(
     {
         "node_modules",
@@ -160,18 +164,90 @@ def _check_versions() -> list[str]:
     return []
 
 
+def _check_evidence_drift_and_scorecard() -> list[str]:
+    errs: list[str] = []
+    if not _EVIDENCE_MATRIX.is_file():
+        errs.append(f"FEHLT: {_EVIDENCE_MATRIX}")
+    if not _EVIDENCE_REPORT.is_file():
+        errs.append(f"FEHLT: {_EVIDENCE_REPORT}")
+    if not _SCORECARD.is_file():
+        errs.append(f"FEHLT: {_SCORECARD}")
+        return errs
+
+    score_text = _SCORECARD.read_text(encoding="utf-8")
+    if "private_live_allowed" not in score_text:
+        errs.append("Scorecard unvollstaendig: private_live_allowed fehlt")
+    if "full_autonomous_live" not in score_text:
+        errs.append("Scorecard unvollstaendig: full_autonomous_live fehlt")
+    if "Philipp Crljic Entscheidung: `PENDING`" not in score_text and "Philipp Crljic: PENDING" not in score_text:
+        errs.append("Owner-Signoff-PENDING-Hinweis fehlt in Scorecard")
+
+    priv_line = next(
+        (line for line in score_text.splitlines() if "`private_live_allowed`:" in line),
+        "",
+    )
+    if "`GO`" in priv_line:
+        errs.append("private_live_allowed ist GO (Release muss blockieren)")
+
+    full_line = next(
+        (line for line in score_text.splitlines() if "`full_autonomous_live`:" in line),
+        "",
+    )
+    if "`GO`" in full_line or "`GO_WITH_WARNINGS`" in full_line:
+        errs.append("full_autonomous_live ist nicht NO_GO (Release muss blockieren)")
+
+    if "external_required" in score_text and "`private_live_allowed`: `GO`" in score_text:
+        errs.append("external_required wird implizit als live-faehig behandelt")
+
+    if "## Live-Blocker" not in score_text:
+        errs.append("Scorecard ohne Live-Blocker-Abschnitt")
+    return errs
+
+
+def _check_evidence_report_sync() -> list[str]:
+    if not _EVIDENCE_MATRIX.is_file() or not _EVIDENCE_REPORT.is_file():
+        return ["evidence_matrix oder evidence_status_report fehlt"]
+    try:
+        proc = subprocess.run(
+            [
+                sys.executable,
+                str(_REPO / "tools" / "check_10_10_evidence.py"),
+                "--check-report",
+                str(_EVIDENCE_REPORT),
+            ],
+            cwd=_REPO,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError as exc:
+        return [f"check_10_10_evidence nicht ausfuehrbar: {exc}"]
+    if proc.returncode != 0:
+        msg = (proc.stderr or proc.stdout or "unknown").strip()
+        return [f"Evidence-Drift oder Matrix-Fehler: {msg[:500]}"]
+    return []
+
+
 def main() -> int:
     a = _check_freeze_matrix()
     b = _check_versions()
+    c = _check_evidence_drift_and_scorecard()
+    d = _check_evidence_report_sync()
     if a:
         print("FAIL: REPO_FREEZE / CI-Freeze-Status", file=sys.stderr, flush=True)
         print("\n".join(a), file=sys.stderr, flush=True)
     if b:
         print("FAIL: Monorepo-Versions-Einheitlichkeit", file=sys.stderr, flush=True)
         print("\n".join(b), file=sys.stderr, flush=True)
-    if a or b:
+    if c:
+        print("FAIL: Readiness-Scorecard / Owner / Mode-Invarianten", file=sys.stderr, flush=True)
+        print("\n".join(c), file=sys.stderr, flush=True)
+    if d:
+        print("FAIL: Evidence-Matrix/Status-Drift", file=sys.stderr, flush=True)
+        print("\n".join(d), file=sys.stderr, flush=True)
+    if a or b or c or d:
         return 1
-    print("OK: release-approval (Freeze+Version)", flush=True)
+    print("OK: release-approval (Freeze+Version+Evidence+Scorecard)", flush=True)
     return 0
 
 

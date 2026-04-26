@@ -4,9 +4,13 @@ Status: synthetischer Fail-closed-Nachweis fuer Portfolio-Risk, Order-Idempotenc
 
 ## Summary
 
-- Datum/Zeit: `2026-04-25T22:55:30.236003+00:00`
-- Git SHA: `84d7b66`
+- Datum/Zeit: `2026-04-26T09:48:29.743600+00:00`
+- Git SHA: `339dd15`
 - Private-Live-Entscheidung: `NO_GO`
+- Owner-Limits vorhanden: `False`
+- Runtime-Evidence vorhanden: `False`
+- Live erlaubt: `False`
+- Status: `not_enough_evidence`
 - Fehlende Required-Preflight-Blockgruende: `0`
 
 ## Live-Broker-Preflight-Coverage
@@ -17,8 +21,8 @@ Status: synthetischer Fail-closed-Nachweis fuer Portfolio-Risk, Order-Idempotenc
 ## Portfolio-Risk
 
 - `missing_snapshot`: blockiert=`True`, Gruende=portfolio_snapshot_fehlt
-- `stale_snapshot`: blockiert=`True`, Gruende=portfolio_snapshot_stale
-- `limit_breach`: blockiert=`True`, Gruende=correlation_stress_zu_hoch, total_exposure_ueber_limit, margin_usage_ueber_limit, max_concurrent_positions_ueberschritten, zu_viele_pending_live_candidates, net_long_exposure_ueber_limit, family_exposure_zu_hoch
+- `stale_snapshot`: blockiert=`True`, Gruende=portfolio_snapshot_stale, owner_limits_fehlen
+- `limit_breach`: blockiert=`True`, Gruende=correlation_stress_zu_hoch, total_exposure_ueber_limit, margin_usage_ueber_limit, max_concurrent_positions_ueberschritten, zu_viele_pending_live_candidates, net_long_exposure_ueber_limit, family_exposure_zu_hoch, owner_limits_fehlen
 
 ## Order-Idempotency
 
@@ -46,3 +50,4 @@ Status: synthetischer Fail-closed-Nachweis fuer Portfolio-Risk, Order-Idempotenc
 - Synthetische Repo-Evidence ohne echte Orders und ohne Secrets.
 - Portfolio-, Idempotency- und Reconcile-Fehler muessen vor Live-Submit denselben Live-Broker-Preflight blockieren.
 - Externe Exchange-Truth-/Staging-Evidence bleibt fuer private Live erforderlich.
+- Ohne Owner-Limits und Runtime-Evidence bleibt Status not_enough_evidence.

@@ -2,7 +2,7 @@
 
 **Status:** `PASS`
 **Config:** `C:\Users\Acer\OneDrive\Documents\Cursor1\bitget-btc-ai\infra\observability\alertmanager.yml.example`
-**Receiver:** 9 | **Unterrouten (geschätzt):** 9
+**Receiver:** 9 | **Unterrouten (geschätzt):** 12
 **${ENV}-Platzhalter in Datei:** 21 | **unaufgelöst (ALERTMANAGER_*):** 21
 
 ## Befunde

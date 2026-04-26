@@ -47,6 +47,15 @@ def test_default_payload_no_internal_issues_and_blocks_private_live() -> None:
     assert p["full_autonomous_live"] == "NO_GO"
     assert p["external_template_assessment"]["status"] == "FAIL"
     assert p["ci_workflow_mandatory_jobs"]["ok"] is True
+    assert "remote_branch_protection" in p
+    assert "expected_checks" in p["remote_branch_protection"]
+    assert "found_checks" in p["remote_branch_protection"]
+    assert "missing_checks" in p["remote_branch_protection"]
+    assert p["remote_branch_protection"]["decision"] in {
+        "verified",
+        "not_enough_evidence",
+        "failed",
+    }
 
 
 def test_assess_external_template_passes_for_synthetic_verified() -> None:

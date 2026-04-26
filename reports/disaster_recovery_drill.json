@@ -1,0 +1,104 @@
+{
+  "generated_at": "2026-04-26T10:08:32.755811+00:00",
+  "git_sha": "339dd15",
+  "environment": "synthetic_local",
+  "status": "NOT_ENOUGH_EVIDENCE",
+  "verified": false,
+  "evidence_level": "synthetic",
+  "private_live_allowed": "NO_GO",
+  "checks": [
+    {
+      "scenario": "db_restart",
+      "expected": "block_or_reconcile_required",
+      "actual": "block_or_reconcile_required",
+      "pass": true,
+      "evidence_level": "synthetic"
+    },
+    {
+      "scenario": "redis_restart",
+      "expected": "block_or_reconcile_required",
+      "actual": "block_or_reconcile_required",
+      "pass": true,
+      "evidence_level": "synthetic"
+    },
+    {
+      "scenario": "live_broker_restart",
+      "expected": "block_or_reconcile_required",
+      "actual": "block_or_reconcile_required",
+      "pass": true,
+      "evidence_level": "synthetic"
+    },
+    {
+      "scenario": "api_gateway_restart",
+      "expected": "block_or_reconcile_required",
+      "actual": "block_or_reconcile_required",
+      "pass": true,
+      "evidence_level": "synthetic"
+    },
+    {
+      "scenario": "stale_event_stream",
+      "expected": "block_or_reconcile_required",
+      "actual": "block_or_reconcile_required",
+      "pass": true,
+      "evidence_level": "synthetic"
+    },
+    {
+      "scenario": "missing_local_order_after_restore",
+      "expected": "block_or_reconcile_required",
+      "actual": "block_or_reconcile_required",
+      "pass": true,
+      "evidence_level": "synthetic"
+    },
+    {
+      "scenario": "exchange_open_local_missing",
+      "expected": "block_or_reconcile_required",
+      "actual": "block_or_reconcile_required",
+      "pass": true,
+      "evidence_level": "synthetic"
+    },
+    {
+      "scenario": "local_open_exchange_missing",
+      "expected": "block_or_reconcile_required",
+      "actual": "block_or_reconcile_required",
+      "pass": true,
+      "evidence_level": "synthetic"
+    },
+    {
+      "scenario": "safety_latch_after_recovery",
+      "expected": "block_or_reconcile_required",
+      "actual": "block_or_reconcile_required",
+      "pass": true,
+      "evidence_level": "synthetic"
+    },
+    {
+      "scenario": "no_opening_until_reconcile_clean",
+      "expected": "block_or_reconcile_required",
+      "actual": "block_or_reconcile_required",
+      "pass": true,
+      "evidence_level": "synthetic"
+    },
+    {
+      "scenario": "audit_trail_after_restore",
+      "expected": "block_or_reconcile_required",
+      "actual": "block_or_reconcile_required",
+      "pass": true,
+      "evidence_level": "synthetic"
+    },
+    {
+      "scenario": "alert_after_recovery_issue",
+      "expected": "block_or_reconcile_required",
+      "actual": "block_or_reconcile_required",
+      "pass": true,
+      "evidence_level": "synthetic"
+    }
+  ],
+  "external_required": [
+    "staging_or_clone_drill_missing",
+    "runtime_rto_rpo_measurement_missing",
+    "owner_review_missing"
+  ],
+  "notes": [
+    "Ohne echten Staging-/Clone-Drill bleibt Disaster-Recovery NOT_ENOUGH_EVIDENCE.",
+    "Recovery muss fail-closed bleiben: reconcile + exchange-truth + operator review vor Live."
+  ]
+}

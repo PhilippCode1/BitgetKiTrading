@@ -21,6 +21,7 @@ def test_checker_runs_strict() -> None:
     )
     assert completed.returncode == 0
     assert "check_live_broker_preflight" in completed.stdout
+    assert "submit_guard_missing" not in completed.stdout
 
 
 def test_checker_json_parseable() -> None:
@@ -37,6 +38,8 @@ def test_checker_json_parseable() -> None:
     assert payload["scenario_count"] >= 24
     assert "asset_not_in_catalog" in payload["covered_blocking_reasons"]
     assert "liquidity_not_pass" in payload["covered_blocking_reasons"]
+    assert "orderbook_missing" in payload["covered_blocking_reasons"]
+    assert "market_order_slippage_gate_missing" in payload["covered_blocking_reasons"]
 
 
 def test_checker_writes_preflight_matrix_report(tmp_path: Path) -> None:

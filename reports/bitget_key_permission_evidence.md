@@ -4,32 +4,27 @@ Status: prueft externe Permission-Evidence ohne echte Secrets.
 
 ## Summary
 
-- Schema: `bitget-exchange-readiness-v1`
+- Schema: `bitget-key-permission-evidence-v2`
 - Environment: `production`
-- Account Mode: `live_candidate`
+- Mode: `live-readonly`
 - Read Permission: `True`
-- Trade Permission: `True`
+- Trade Permission: `False`
 - Withdrawal Permission: `False`
-- IP-Allowlist: `False`
-- Account-Schutz: `False`
-- Ergebnis: `FAIL`
+- IP-Allowlist: `True`
+- Account-Schutz geprueft: `True`
+- Ergebnis: `verified`
 
 ## Blocker
-- `ip_allowlist_not_confirmed`
-- `account_protection_not_confirmed`
-- `instrument_scope_missing`
-- `reviewer_missing`
-- `reviewed_at_missing`
-- `evidence_reference_missing`
+- Keine technischen Blocker.
 
 ## Warnings
-- `owner_signoff_missing_external_required`
+- Keine Warnings.
 
 ## Secret-Surface
 - Keine unredigierten Secret-Felder erkannt.
 
 ## Einordnung
 
-- `PASS_WITH_WARNINGS` oder `PASS` ersetzt keinen Owner-Go/No-Go-Signoff.
+- `verified` ersetzt keinen finalen Owner-Go/No-Go-Signoff.
 - Withdrawal-Rechte sind immer P0-Blocker.
 - Echte API-Keys duerfen nicht in diesem JSON stehen.

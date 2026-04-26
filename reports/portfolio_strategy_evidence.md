@@ -4,8 +4,8 @@ Status: synthetischer Fail-closed-Nachweis fuer Portfolio-Risk und Strategy-Vali
 
 ## Summary
 
-- Datum/Zeit: `2026-04-25T23:19:36Z`
-- Git SHA: `84d7b66`
+- Datum/Zeit: `2026-04-26T09:48:27Z`
+- Git SHA: `339dd15`
 - Private-Live-Entscheidung: `NO_GO`
 - Full-Autonomous-Live: `NO_GO`
 - Externe Evidence: `FAIL`
@@ -16,29 +16,29 @@ Status: synthetischer Fail-closed-Nachweis fuer Portfolio-Risk und Strategy-Vali
 
 ## Portfolio-Risk-Coverage
 
-- Abgedeckt: `account_equity_ungueltig`, `correlation_stress_zu_hoch`, `family_exposure_zu_hoch`, `funding_konzentration_zu_hoch`, `largest_position_risk_ueber_limit`, `margin_usage_ueber_limit`, `max_concurrent_positions_ueberschritten`, `net_long_exposure_ueber_limit`, `net_short_exposure_ueber_limit`, `portfolio_snapshot_fehlt`, `portfolio_snapshot_stale`, `total_exposure_ueber_limit`, `zu_viele_pending_live_candidates`, `zu_viele_pending_orders`
+- Abgedeckt: `account_equity_ungueltig`, `correlation_stress_zu_hoch`, `family_exposure_zu_hoch`, `funding_konzentration_zu_hoch`, `largest_position_risk_ueber_limit`, `margin_usage_ueber_limit`, `max_concurrent_positions_ueberschritten`, `net_long_exposure_ueber_limit`, `net_short_exposure_ueber_limit`, `owner_limits_fehlen`, `portfolio_snapshot_fehlt`, `portfolio_snapshot_stale`, `total_exposure_ueber_limit`, `zu_viele_pending_live_candidates`, `zu_viele_pending_orders`
 - Fehlend: -
 
 - `missing_snapshot`: blockiert=`True`, Gruende=portfolio_snapshot_fehlt
-- `stale_snapshot`: blockiert=`True`, Gruende=portfolio_snapshot_stale
-- `invalid_equity`: blockiert=`True`, Gruende=account_equity_ungueltig, margin_usage_ueber_limit
-- `total_exposure_over_limit`: blockiert=`True`, Gruende=total_exposure_ueber_limit, net_long_exposure_ueber_limit, family_exposure_zu_hoch
-- `margin_usage_over_limit`: blockiert=`True`, Gruende=margin_usage_ueber_limit
-- `largest_position_risk_over_limit`: blockiert=`True`, Gruende=largest_position_risk_ueber_limit
-- `max_concurrent_positions`: blockiert=`True`, Gruende=max_concurrent_positions_ueberschritten
-- `pending_orders_over_limit`: blockiert=`True`, Gruende=zu_viele_pending_orders
-- `pending_live_candidates_over_limit`: blockiert=`True`, Gruende=zu_viele_pending_live_candidates
-- `net_long_exposure_over_limit`: blockiert=`True`, Gruende=net_long_exposure_ueber_limit
-- `net_short_exposure_over_limit`: blockiert=`True`, Gruende=net_short_exposure_ueber_limit
-- `correlation_stress_over_limit`: blockiert=`True`, Gruende=correlation_stress_zu_hoch
-- `funding_concentration_over_limit`: blockiert=`True`, Gruende=funding_konzentration_zu_hoch
-- `family_exposure_over_limit`: blockiert=`True`, Gruende=net_long_exposure_ueber_limit, family_exposure_zu_hoch
+- `stale_snapshot`: blockiert=`True`, Gruende=portfolio_snapshot_stale, owner_limits_fehlen
+- `invalid_equity`: blockiert=`True`, Gruende=account_equity_ungueltig, margin_usage_ueber_limit, owner_limits_fehlen
+- `total_exposure_over_limit`: blockiert=`True`, Gruende=total_exposure_ueber_limit, net_long_exposure_ueber_limit, family_exposure_zu_hoch, owner_limits_fehlen
+- `margin_usage_over_limit`: blockiert=`True`, Gruende=margin_usage_ueber_limit, owner_limits_fehlen
+- `largest_position_risk_over_limit`: blockiert=`True`, Gruende=largest_position_risk_ueber_limit, owner_limits_fehlen
+- `max_concurrent_positions`: blockiert=`True`, Gruende=max_concurrent_positions_ueberschritten, owner_limits_fehlen
+- `pending_orders_over_limit`: blockiert=`True`, Gruende=zu_viele_pending_orders, owner_limits_fehlen
+- `pending_live_candidates_over_limit`: blockiert=`True`, Gruende=zu_viele_pending_live_candidates, owner_limits_fehlen
+- `net_long_exposure_over_limit`: blockiert=`True`, Gruende=net_long_exposure_ueber_limit, owner_limits_fehlen
+- `net_short_exposure_over_limit`: blockiert=`True`, Gruende=net_short_exposure_ueber_limit, owner_limits_fehlen
+- `correlation_stress_over_limit`: blockiert=`True`, Gruende=correlation_stress_zu_hoch, owner_limits_fehlen
+- `funding_concentration_over_limit`: blockiert=`True`, Gruende=funding_konzentration_zu_hoch, owner_limits_fehlen
+- `family_exposure_over_limit`: blockiert=`True`, Gruende=net_long_exposure_ueber_limit, family_exposure_zu_hoch, owner_limits_fehlen
 
 ## Strategy-Asset-Evidence
 
-- `trend_follow_v2`/`BTCUSDT`: blockiert=`False`, Gruende=-
-- `trend_follow_v2`/`ALTUSDT`: blockiert=`True`, Gruende=asset_class_unknown, strategy_evidence_expired, risk_tier_mismatch, data_quality_mismatch, strategy_scope_mismatch
-- `synthetic_research_only_guard`/`ETHUSDT`: blockiert=`True`, Gruende=evidence_status_nicht_live_faehig
+- `trend_follow_v2`/`BTCUSDT`: blockiert=`True`, Gruende=fees_fehlen, spread_fehlt, slippage_fehlt, funding_fehlt_futures, drawdown_fehlt, zu_wenige_trades, profit_factor_fehlt, out_of_sample_fehlt_oder_nicht_bestanden, walk_forward_fehlt_oder_nicht_bestanden, paper_evidence_fehlt_oder_nicht_bestanden, shadow_evidence_fehlt_oder_nicht_bestanden, marktphasen_nicht_ausreichend, verlustserie_nicht_bewertet, risk_per_trade_unbekannt, parameter_hash_fehlt, parameter_nicht_reproduzierbar, checked_at_fehlt, git_sha_fehlt
+- `trend_follow_v2`/`ALTUSDT`: blockiert=`True`, Gruende=asset_class_unknown, strategy_evidence_expired, risk_tier_mismatch, data_quality_mismatch, strategy_scope_mismatch, fees_fehlen, spread_fehlt, slippage_fehlt, funding_fehlt_futures, drawdown_fehlt, zu_wenige_trades, profit_factor_fehlt, out_of_sample_fehlt_oder_nicht_bestanden, walk_forward_fehlt_oder_nicht_bestanden, paper_evidence_fehlt_oder_nicht_bestanden, shadow_evidence_fehlt_oder_nicht_bestanden, marktphasen_nicht_ausreichend, verlustserie_nicht_bewertet, risk_per_trade_unbekannt, parameter_hash_fehlt, parameter_nicht_reproduzierbar, checked_at_fehlt, git_sha_fehlt
+- `synthetic_research_only_guard`/`ETHUSDT`: blockiert=`True`, Gruende=evidence_status_nicht_live_faehig, fees_fehlen, spread_fehlt, slippage_fehlt, funding_fehlt_futures, drawdown_fehlt, zu_wenige_trades, profit_factor_fehlt, out_of_sample_fehlt_oder_nicht_bestanden, walk_forward_fehlt_oder_nicht_bestanden, paper_evidence_fehlt_oder_nicht_bestanden, shadow_evidence_fehlt_oder_nicht_bestanden, marktphasen_nicht_ausreichend, verlustserie_nicht_bewertet, risk_per_trade_unbekannt, parameter_hash_fehlt, parameter_nicht_reproduzierbar, checked_at_fehlt, git_sha_fehlt
 
 ## Multi-Asset-Strategy-Evidence
 

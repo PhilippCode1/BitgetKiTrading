@@ -34,6 +34,19 @@ class LivePreflightContext:
     audit_context_present: bool
     warning_policy_allows_live: dict[str, bool] = field(default_factory=dict)
     checked_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
+    liquidity_gate_present: bool = True
+    spread_gate_present: bool = True
+    slippage_gate_present: bool = True
+    orderbook_present: bool = True
+    orderbook_fresh: bool = True
+    market_order_slippage_checked: bool = True
+    stop_tp_executable: bool = True
+    recovery_latch_active: bool = False
+    recovery_reconcile_required: bool = False
+    recovery_exchange_truth_required: bool = False
+    recovery_operator_review_required: bool = False
+    redis_state_known: bool = True
+    event_state_known: bool = True
 
 
 @dataclass(frozen=True)
@@ -70,6 +83,19 @@ _DE_REASON = {
     "account_snapshot_stale": "Account-Snapshot ist stale oder fehlt.",
     "idempotency_key_missing": "Idempotency-Key fehlt.",
     "audit_context_missing": "Audit-Context fehlt.",
+    "liquidity_gate_missing": "Liquidity-Gate fehlt.",
+    "spread_gate_missing": "Spread-Gate fehlt.",
+    "slippage_gate_missing": "Slippage-Gate fehlt.",
+    "orderbook_missing": "Orderbook fehlt.",
+    "orderbook_stale": "Orderbook ist stale.",
+    "market_order_slippage_gate_missing": "Market-Order ohne Slippage-Gate ist nicht erlaubt.",
+    "stop_tp_not_executable": "Stop/TP ist unter Mikrostrukturregeln nicht ausfuehrbar.",
+    "recovery_latch_active": "Recovery-Latch ist aktiv.",
+    "recovery_reconcile_required": "Recovery verlangt Reconcile vor Live.",
+    "recovery_exchange_truth_required": "Recovery verlangt Exchange-Truth vor Live.",
+    "recovery_operator_review_required": "Recovery verlangt Operator-Review vor Live.",
+    "redis_state_unknown": "Redis-State ist unbekannt.",
+    "event_state_unknown": "Event-State ist unbekannt.",
 }
 
 
@@ -141,6 +167,32 @@ def evaluate_live_preflight(context: LivePreflightContext) -> LivePreflightDecis
         block("idempotency_key_missing")
     if not context.audit_context_present:
         block("audit_context_missing")
+    if not context.liquidity_gate_present:
+        block("liquidity_gate_missing")
+    if not context.spread_gate_present:
+        block("spread_gate_missing")
+    if not context.slippage_gate_present:
+        block("slippage_gate_missing")
+    if not context.orderbook_present:
+        block("orderbook_missing")
+    if not context.orderbook_fresh:
+        block("orderbook_stale")
+    if not context.market_order_slippage_checked:
+        block("market_order_slippage_gate_missing")
+    if not context.stop_tp_executable:
+        block("stop_tp_not_executable")
+    if context.recovery_latch_active:
+        block("recovery_latch_active")
+    if context.recovery_reconcile_required:
+        block("recovery_reconcile_required")
+    if context.recovery_exchange_truth_required:
+        block("recovery_exchange_truth_required")
+    if context.recovery_operator_review_required:
+        block("recovery_operator_review_required")
+    if not context.redis_state_known:
+        block("redis_state_unknown")
+    if not context.event_state_known:
+        block("event_state_unknown")
 
     passed = len(blocking) == 0
     return LivePreflightDecision(
@@ -199,5 +251,18 @@ def build_live_preflight_audit_payload(
             "account_snapshot_fresh": context.account_snapshot_fresh,
             "idempotency_present": bool(context.idempotency_key),
             "audit_context_present": context.audit_context_present,
+            "liquidity_gate_present": context.liquidity_gate_present,
+            "spread_gate_present": context.spread_gate_present,
+            "slippage_gate_present": context.slippage_gate_present,
+            "orderbook_present": context.orderbook_present,
+            "orderbook_fresh": context.orderbook_fresh,
+            "market_order_slippage_checked": context.market_order_slippage_checked,
+            "stop_tp_executable": context.stop_tp_executable,
+            "recovery_latch_active": context.recovery_latch_active,
+            "recovery_reconcile_required": context.recovery_reconcile_required,
+            "recovery_exchange_truth_required": context.recovery_exchange_truth_required,
+            "recovery_operator_review_required": context.recovery_operator_review_required,
+            "redis_state_known": context.redis_state_known,
+            "event_state_known": context.event_state_known,
         },
     }

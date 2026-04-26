@@ -66,6 +66,18 @@ REQUIRED_STRATEGY_BLOCK_REASONS = (
     "risk_tier_mismatch",
     "data_quality_mismatch",
     "strategy_scope_mismatch",
+    "fees_fehlen",
+    "spread_fehlt",
+    "slippage_fehlt",
+    "drawdown_fehlt",
+    "zu_wenige_trades",
+    "out_of_sample_fehlt_oder_nicht_bestanden",
+    "walk_forward_fehlt_oder_nicht_bestanden",
+    "paper_evidence_fehlt_oder_nicht_bestanden",
+    "shadow_evidence_fehlt_oder_nicht_bestanden",
+    "risk_per_trade_unbekannt",
+    "parameter_hash_fehlt",
+    "parameter_nicht_reproduzierbar",
 )
 
 REQUIRED_MULTI_ASSET_STRATEGY_REASONS = (

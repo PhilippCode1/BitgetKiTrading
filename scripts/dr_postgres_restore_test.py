@@ -310,6 +310,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--evidence-json", type=Path)
     parser.add_argument("--write-template", type=Path)
     parser.add_argument("--output-md", type=Path)
+    parser.add_argument("--output-json", type=Path)
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--strict", action="store_true")
     parser.add_argument("--i-understand-this-is-a-test-db", action="store_true")
@@ -340,6 +341,12 @@ def main(argv: list[str] | None = None) -> int:
                 external_evidence_to_markdown(loaded, assessment, secret_issues),
                 encoding="utf-8",
             )
+        if args.output_json:
+            args.output_json.parent.mkdir(parents=True, exist_ok=True)
+            args.output_json.write_text(
+                json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False),
+                encoding="utf-8",
+            )
         if args.json:
             print(json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False))
         else:
@@ -361,6 +368,12 @@ def main(argv: list[str] | None = None) -> int:
     if args.output_md:
         args.output_md.parent.mkdir(parents=True, exist_ok=True)
         args.output_md.write_text(evidence_to_markdown(evidence), encoding="utf-8")
+    if args.output_json:
+        args.output_json.parent.mkdir(parents=True, exist_ok=True)
+        args.output_json.write_text(
+            json.dumps(asdict(evidence), indent=2, sort_keys=True, ensure_ascii=False),
+            encoding="utf-8",
+        )
     if args.json:
         print(json.dumps(asdict(evidence), indent=2, sort_keys=True, ensure_ascii=False))
     else:

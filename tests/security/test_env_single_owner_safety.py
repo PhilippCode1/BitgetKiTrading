@@ -93,6 +93,12 @@ def test_next_public_bitget_secret_fails() -> None:
     assert "browser_secret_key_name" in _codes(env)
 
 
+def test_runtime_placeholder_secret_fails() -> None:
+    env = _base_prod_env()
+    env["INTERNAL_API_KEY"] = "<SET_ME>"
+    assert "placeholder_runtime_secret" in _codes(env)
+
+
 def test_demo_live_key_mix_fails() -> None:
     env = _base_prod_env()
     env["BITGET_API_KEY"] = "live-key-reference"

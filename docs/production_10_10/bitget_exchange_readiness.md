@@ -9,10 +9,10 @@ Readiness bleibt Live-Write blockiert.
 
 ## 2) Read-only vs Write
 
-`scripts/bitget_readiness_check.py` nutzt nur sichere Read-only-Pruefungen.
-Das Skript darf keine Order senden, ersetzen, canceln oder submitten. Der
-Standard ist `dry-run`; `readonly` und `demo-safe` duerfen nur GET-/Read-Pfade
-nutzen. `Live-Write erlaubt?` ist standardmaessig `false`.
+`scripts/bitget_readiness_check.py` nutzt fail-closed Runtime-Modi:
+`public`, `readonly`, `demo-readonly`, `demo-trade-smoke` (nur mit
+`--i-understand-demo-order-smoke`) und `live-readonly`.
+Live-Write bleibt standardmaessig `false`; automatisches Live-Trading ist verboten.
 
 ## 3) Demo vs Live
 
@@ -108,8 +108,9 @@ Audit-Trail.
 ## 12) Tests
 
 ```bash
-python scripts/bitget_readiness_check.py --env-file .env.production.example --mode dry-run
-python tools/check_bitget_key_permission_evidence.py --evidence-json docs/production_10_10/bitget_key_permission_evidence.template.json --strict
+python scripts/bitget_readiness_check.py --env-file .env.production.example --mode public --output-md reports/bitget_runtime_readiness.md --output-json reports/bitget_runtime_readiness.json
+python scripts/bitget_readiness_check.py --env-file .env.shadow.example --mode demo-readonly --output-md reports/bitget_runtime_readiness.md --output-json reports/bitget_runtime_readiness.json
+python tools/check_bitget_key_permission_evidence.py --evidence-json docs/production_10_10/bitget_key_permission_evidence.template.json --strict --output-md reports/bitget_key_permission_evidence.md --output-json reports/bitget_key_permission_evidence.json
 python tools/check_bitget_exchange_readiness.py --strict
 pytest tests/scripts/test_bitget_readiness_check.py -q
 pytest tests/security/test_bitget_exchange_readiness_contracts.py -q
@@ -120,5 +121,5 @@ Echte Bitget-Readiness bleibt externe Runtime-Evidence und darf keine Secrets
 enthalten:
 
 ```bash
-python scripts/bitget_readiness_check.py --env-file .env.production --mode readonly --output-md reports/bitget_readiness.md
+python scripts/bitget_readiness_check.py --env-file .env.production --mode live-readonly --output-md reports/bitget_runtime_readiness.md --output-json reports/bitget_runtime_readiness.json
 ```

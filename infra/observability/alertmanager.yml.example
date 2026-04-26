@@ -67,6 +67,21 @@ route:
       receiver: infra_data_stack
       continue: true
 
+    - matchers:
+        - alertname =~ "RedisUnavailable|PostgresUnavailable|BackupRestoreFailure|BranchReleaseGateFailed|AlertEngineDown"
+      receiver: infra_data_stack
+      continue: true
+
+    - matchers:
+        - alertname =~ "BitgetAuthError|BitgetPermissionError|BitgetApi5xxSpike"
+      receiver: gateway_security
+      continue: true
+
+    - matchers:
+        - alertname =~ "DailyLossLimitReached|DrawdownLimitReached|PortfolioRiskDegraded|RiskGovernorTimeout|EmergencyFlattenTriggered|ShadowLiveDivergence"
+      receiver: p0_trading_halt
+      continue: true
+
     # --- LLM: Operator-Funktionen (Fehlerrate / Latenz) — critical, nicht nur warning ---
     - matchers:
         - alertname =~ "LlmHigh(ErrorRate|Latency)"

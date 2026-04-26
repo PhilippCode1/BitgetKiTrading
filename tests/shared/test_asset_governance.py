@@ -3,6 +3,7 @@ from __future__ import annotations
 from shared_py.bitget.asset_governance import (
     AssetGovernanceRecord,
     can_transition,
+    evaluate_trade_decision,
     live_block_reasons,
 )
 
@@ -85,3 +86,12 @@ def test_transition_does_not_skip_discovered_to_live_allowed() -> None:
     )
     assert out.allowed is False
     assert "state_transition_ueberspringt_stufen" in out.reasons
+
+
+def test_trade_decision_machine_readable_no_trade() -> None:
+    decision = evaluate_trade_decision(
+        _record(state="live_candidate", evidence_refs=[], data_quality_status="data_unknown", liquidity_ok=False)
+    )
+    assert decision.allowed is False
+    assert decision.decision == "no_trade"
+    assert decision.severity == "P0"

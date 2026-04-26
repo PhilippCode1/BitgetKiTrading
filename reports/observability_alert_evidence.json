@@ -1,12 +1,80 @@
 {
-  "generated_at": "2026-04-25T23:32:39Z",
-  "git_sha": "84d7b66",
+  "generated_at": "2026-04-26T10:14:36Z",
+  "git_sha": "339dd15",
   "private_live_decision": "NO_GO",
   "full_autonomous_live": "NO_GO",
   "observability_doc_surface": {
     "ok": true,
     "required_count": 4,
     "missing_paths": []
+  },
+  "prometheus_surface": {
+    "metrics_count": 62,
+    "alerts_count": 61,
+    "runbooks_count": 38,
+    "alerts": [
+      "AlertBacklogHigh",
+      "AlertEngineDown",
+      "ApiGatewayDown",
+      "BackupRestoreFailure",
+      "BitgetApi5xxSpike",
+      "BitgetAuthError",
+      "BitgetPermissionError",
+      "BranchReleaseGateFailed",
+      "CommerceBillingAuthFailures",
+      "CommerceLedgerWriteSpike",
+      "DailyLossLimitReached",
+      "DashboardCannotReachGateway",
+      "DataStaleCandles1m",
+      "DataStaleSignals",
+      "DrawdownLimitReached",
+      "DriftLinkedExecutionDecisionsElevated",
+      "EmergencyFlattenTriggered",
+      "ExecutionRiskBlocksElevated",
+      "GatewayAuthAnomalies",
+      "GatewayHighErrorRate",
+      "InferenceGpuSaturation",
+      "KillSwitchActive",
+      "LLMPipelineStaleOrDLQ",
+      "LearnDriftEventsSpike",
+      "LiveBrokerDown",
+      "LiveBrokerProcessHeartbeatStale",
+      "LiveCriticalAudits",
+      "LiveOrderExitFailures",
+      "LiveOrderFailRateHigh",
+      "LlmHighErrorRate",
+      "LlmHighLatency",
+      "ManualLiveBrokerAuthFailures",
+      "MarketDataQualityFail",
+      "MarketPipelineLag",
+      "MarketVpinExtremeToxicity",
+      "MonitorEngineTickSlowP90",
+      "MonitorEngineTickStalled",
+      "OnlineDriftHardBlock",
+      "OnlineDriftShadowOnly",
+      "OrderbookStale",
+      "PortfolioRiskDegraded",
+      "PostgresUnavailable",
+      "ReconcileDriftNonZero",
+      "ReconcileLagHigh",
+      "RedisStreamLagCritical",
+      "RedisStreamLagHigh",
+      "RedisUnavailable",
+      "RiskGovernorTimeout",
+      "SafetyLatchActive",
+      "SecretEnvMisconfiguration",
+      "ShadowLiveAssessmentMismatch",
+      "ShadowLiveDivergence",
+      "ShadowLiveGateActivity",
+      "SignalDoNotTradeSpike",
+      "SignalPipelineLagP95High",
+      "SignalRouterInstability",
+      "SignalStopFragilityElevated",
+      "SignalThroughputStalled",
+      "SpecialistDisagreementHigh",
+      "SpecialistDisagreementSevere",
+      "TelegramDeliveryIssues"
+    ]
   },
   "alertmanager_verify": {
     "status": "PASS",
@@ -15,7 +83,7 @@
       "config": "C:\\Users\\Acer\\OneDrive\\Documents\\Cursor1\\bitget-btc-ai\\infra\\observability\\alertmanager.yml.example",
       "alerts_file": "C:\\Users\\Acer\\OneDrive\\Documents\\Cursor1\\bitget-btc-ai\\infra\\observability\\prometheus-alerts.yml",
       "receivers_count": 9,
-      "subroutes_count": 9,
+      "subroutes_count": 12,
       "env_var_refs": 21,
       "unresolved_alertmanager_env": 21
     }
@@ -71,6 +139,12 @@
       "owner_signoff_fehlt"
     ]
   },
+  "incident_drill": {
+    "present": true,
+    "status": "NOT_ENOUGH_EVIDENCE",
+    "verified": false
+  },
+  "secret_leak_check_ok": true,
   "internal_issues": [],
   "external_required": [
     "Staging-/Shadow-Alert-Drill mit Zustellnachweis: siehe alert_routing_evidence.template.json und verify_alert_routing --evidence-json.",
@@ -80,6 +154,7 @@
   "recommended_commands": [
     "python tools/verify_alert_routing.py --strict",
     "python tools/verify_alert_routing.py --evidence-json docs/production_10_10/alert_routing_evidence.template.json --strict",
+    "python scripts/incident_drill_report.py --output-md reports/incident_drill.md --output-json reports/incident_drill.json",
     "pytest tests/unit/monitor_engine -q"
   ],
   "notes": [

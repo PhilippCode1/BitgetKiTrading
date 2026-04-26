@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from dataclasses import asdict
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
@@ -2393,6 +2394,48 @@ class LiveBrokerOrderService:
                     reason="shadow_match_latch_absent",
                 )
 
+    def _assert_portfolio_risk_state_allows_opening(
+        self,
+        *,
+        opening_order: bool,
+        request: OrderCreateRequest,
+        trace_merged: dict[str, Any],
+        allow_safety_bypass: bool,
+    ) -> None:
+        if allow_safety_bypass or not opening_order:
+            return
+        raw_state = str(
+            trace_merged.get("portfolio_risk_state")
+            or trace_merged.get("risk_state")
+            or "unknown_blocked"
+        ).strip().lower()
+        opening_allowed = bool(trace_merged.get("portfolio_opening_orders_allowed", False))
+        risk_check_fresh = bool(trace_merged.get("portfolio_risk_check_fresh", False))
+        if self._global_halt is not None and self._global_halt.is_halted:
+            raise BitgetRestError(
+                classification="validation",
+                message="portfolio_risk_global_halt_active",
+                retryable=False,
+            )
+        if not risk_check_fresh:
+            raise BitgetRestError(
+                classification="validation",
+                message="portfolio_risk_state_unknown_or_stale",
+                retryable=False,
+            )
+        if raw_state in {"unknown_blocked", "global_halt", "halt_new_entries", "degraded"}:
+            raise BitgetRestError(
+                classification="validation",
+                message=f"portfolio_risk_state_blocks_opening:{raw_state}",
+                retryable=False,
+            )
+        if not opening_allowed:
+            raise BitgetRestError(
+                classification="validation",
+                message="portfolio_risk_opening_orders_not_allowed",
+                retryable=False,
+            )
+
     def _assert_catalog_order_capabilities(
         self,
         catalog_entry: Any,
@@ -2571,6 +2614,12 @@ class LiveBrokerOrderService:
                     message=str(exc),
                     retryable=False,
                 ) from exc
+        elif self._settings.live_order_submission_enabled:
+            raise BitgetRestError(
+                classification="validation",
+                message="instrument_catalog_missing_fail_closed",
+                retryable=False,
+            )
         if self._metadata_service is not None:
             try:
                 family = str(request.market_family or self._settings.market_family)
@@ -2595,11 +2644,22 @@ class LiveBrokerOrderService:
                     message=str(exc),
                     retryable=False,
                 ) from exc
+        elif self._settings.live_order_submission_enabled:
+            raise BitgetRestError(
+                classification="validation",
+                message="instrument_metadata_service_missing_fail_closed",
+                retryable=False,
+            )
         effective_family = str(
             request.market_family
             or (catalog_entry.market_family if catalog_entry is not None else None)
-            or self._settings.market_family
         ).lower()
+        if effective_family not in {"spot", "margin", "futures"}:
+            raise BitgetRestError(
+                classification="validation",
+                message=f"invalid_or_missing_market_family_fail_closed:{effective_family or 'missing'}",
+                retryable=False,
+            )
         margin_mode_for_profile: str | None = None
         if effective_family == "margin":
             margin_mode_for_profile = str(
@@ -2616,25 +2676,38 @@ class LiveBrokerOrderService:
             product_type = (
                 request.product_type
                 or (catalog_entry.product_type if catalog_entry is not None else None)
-                or self._settings.product_type
             )
         else:
             product_type = (
                 request.product_type
                 or (catalog_entry.product_type if catalog_entry is not None else None)
-                or ("SPOT" if effective_family == "spot" else "MARGIN")
             )
         margin_coin = (
             request.margin_coin
             or (catalog_entry.margin_coin if catalog_entry is not None else None)
-            or self._settings.effective_margin_coin
         )
-        if not str(margin_coin or "").strip():
-            margin_coin = "USDT"
+        if effective_family in {"futures", "margin"} and not str(product_type or "").strip():
+            raise BitgetRestError(
+                classification="validation",
+                message="missing_product_type_fail_closed",
+                retryable=False,
+            )
+        if effective_family in {"futures", "margin"} and not str(margin_coin or "").strip():
+            raise BitgetRestError(
+                classification="validation",
+                message="missing_margin_coin_fail_closed",
+                retryable=False,
+            )
         self._assert_catalog_order_capabilities(catalog_entry, request, effective_family)
         self._assert_live_open_governance(
             request,
             opening_order=not bool(request.reduce_only),
+            allow_safety_bypass=allow_safety_bypass,
+        )
+        self._assert_portfolio_risk_state_allows_opening(
+            opening_order=not bool(request.reduce_only),
+            request=request,
+            trace_merged=trace_merged,
             allow_safety_bypass=allow_safety_bypass,
         )
         request = self._maybe_apply_passive_maker_rewrite(
@@ -2663,7 +2736,11 @@ class LiveBrokerOrderService:
                         vside,
                         str(self._settings.redis_url or ""),
                         max_slippage_bps=cap,
-                        strict=bool(self._settings.live_liquidity_guard_strict_no_cache),
+                        strict=True,
+                        now_ts_ms=int(time.time() * 1000),
+                        max_orderbook_age_ms=int(
+                            self._settings.live_reconcile_private_ws_stale_sec * 1000
+                        ),
                     )
                 except InsufficientLiquidityError as exc:
                     msg = str(exc)[:2000]
@@ -2673,6 +2750,12 @@ class LiveBrokerOrderService:
                         message=msg,
                         retryable=True,
                     ) from exc
+        elif str(request.order_type or "").lower() == "market":
+            raise BitgetRestError(
+                classification="validation",
+                message="market_order_requires_liquidity_slippage_gate",
+                retryable=False,
+            )
         self._assert_kill_switch_allows_submit(
             operation=action,
             product_type=product_type,

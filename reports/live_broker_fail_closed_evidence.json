@@ -1,37 +1,293 @@
 {
-  "blockers": [
-    "drill_started_at_missing",
-    "drill_completed_at_missing",
-    "git_sha_missing",
-    "operator_missing",
-    "evidence_reference_missing",
-    "preflight_matrix_not_passed",
-    "required_blocking_reasons_not_covered",
-    "provider_error_not_blocking",
-    "redis_missing_not_blocking",
-    "database_missing_not_blocking",
-    "exchange_truth_missing_not_blocking",
-    "public_api_timeout_not_blocking",
-    "private_api_timeout_not_blocking",
-    "stale_market_data_not_blocking",
-    "unknown_instrument_not_blocking",
-    "risk_context_missing_not_blocking",
-    "operator_release_missing_not_blocking",
-    "shadow_match_missing_not_blocking",
-    "reconcile_fail_not_blocking",
-    "kill_switch_not_blocking",
-    "safety_latch_not_blocking",
-    "idempotency_missing_not_blocking",
-    "audit_context_missing_not_blocking",
-    "warning_defaults_not_blocking_live",
-    "all_green_control_sent_exchange_submit",
-    "audit_trail_not_verified",
-    "alert_delivery_not_verified",
-    "main_console_gate_state_not_verified"
+  "generated_at": "2026-04-26T09:54:30Z",
+  "git_sha": "339dd15",
+  "status": "implemented",
+  "decision": "NOT_ENOUGH_EVIDENCE",
+  "verified": false,
+  "preflight_ok": true,
+  "preflight_error_count": 0,
+  "scenarios": [
+    {
+      "scenario": "db_unavailable",
+      "expected": "block",
+      "actual": "block",
+      "pass": true,
+      "reason": "db_unavailable_blocks_submit",
+      "audit_fields": {
+        "gate": "live_broker_fail_closed",
+        "decision": "block_live",
+        "checked_at": "2026-04-26T09:54:30Z"
+      },
+      "evidence_level": "synthetic",
+      "live_allowed": false
+    },
+    {
+      "scenario": "redis_unavailable",
+      "expected": "block",
+      "actual": "block",
+      "pass": true,
+      "reason": "redis_unavailable_blocks_submit",
+      "audit_fields": {
+        "gate": "live_broker_fail_closed",
+        "decision": "block_live",
+        "checked_at": "2026-04-26T09:54:30Z"
+      },
+      "evidence_level": "synthetic",
+      "live_allowed": false
+    },
+    {
+      "scenario": "risk_timeout",
+      "expected": "block",
+      "actual": "block",
+      "pass": true,
+      "reason": "risk_timeout_blocks_submit",
+      "audit_fields": {
+        "gate": "live_broker_fail_closed",
+        "decision": "block_live",
+        "checked_at": "2026-04-26T09:54:30Z"
+      },
+      "evidence_level": "synthetic",
+      "live_allowed": false
+    },
+    {
+      "scenario": "market_data_stale",
+      "expected": "block",
+      "actual": "block",
+      "pass": true,
+      "reason": "market_data_stale_blocks_submit",
+      "audit_fields": {
+        "gate": "live_broker_fail_closed",
+        "decision": "block_live",
+        "checked_at": "2026-04-26T09:54:30Z"
+      },
+      "evidence_level": "synthetic",
+      "live_allowed": false
+    },
+    {
+      "scenario": "orderbook_missing",
+      "expected": "block",
+      "actual": "block",
+      "pass": true,
+      "reason": "orderbook_missing_blocks_submit",
+      "audit_fields": {
+        "gate": "live_broker_fail_closed",
+        "decision": "block_live",
+        "checked_at": "2026-04-26T09:54:30Z"
+      },
+      "evidence_level": "synthetic",
+      "live_allowed": false
+    },
+    {
+      "scenario": "exchange_truth_missing",
+      "expected": "block",
+      "actual": "block",
+      "pass": true,
+      "reason": "exchange_truth_missing_blocks_submit",
+      "audit_fields": {
+        "gate": "live_broker_fail_closed",
+        "decision": "block_live",
+        "checked_at": "2026-04-26T09:54:30Z"
+      },
+      "evidence_level": "synthetic",
+      "live_allowed": false
+    },
+    {
+      "scenario": "unknown_instrument",
+      "expected": "block",
+      "actual": "block",
+      "pass": true,
+      "reason": "unknown_instrument_blocks_submit",
+      "audit_fields": {
+        "gate": "live_broker_fail_closed",
+        "decision": "block_live",
+        "checked_at": "2026-04-26T09:54:30Z"
+      },
+      "evidence_level": "synthetic",
+      "live_allowed": false
+    },
+    {
+      "scenario": "quarantined_asset",
+      "expected": "block",
+      "actual": "block",
+      "pass": true,
+      "reason": "quarantined_asset_blocks_submit",
+      "audit_fields": {
+        "gate": "live_broker_fail_closed",
+        "decision": "block_live",
+        "checked_at": "2026-04-26T09:54:30Z"
+      },
+      "evidence_level": "synthetic",
+      "live_allowed": false
+    },
+    {
+      "scenario": "shadow_mismatch",
+      "expected": "block",
+      "actual": "block",
+      "pass": true,
+      "reason": "shadow_mismatch_blocks_submit",
+      "audit_fields": {
+        "gate": "live_broker_fail_closed",
+        "decision": "block_live",
+        "checked_at": "2026-04-26T09:54:30Z"
+      },
+      "evidence_level": "synthetic",
+      "live_allowed": false
+    },
+    {
+      "scenario": "operator_release_missing",
+      "expected": "block",
+      "actual": "block",
+      "pass": true,
+      "reason": "operator_release_missing_blocks_submit",
+      "audit_fields": {
+        "gate": "live_broker_fail_closed",
+        "decision": "block_live",
+        "checked_at": "2026-04-26T09:54:30Z"
+      },
+      "evidence_level": "synthetic",
+      "live_allowed": false
+    },
+    {
+      "scenario": "safety_latch_active",
+      "expected": "block",
+      "actual": "block",
+      "pass": true,
+      "reason": "safety_latch_active_blocks_submit",
+      "audit_fields": {
+        "gate": "live_broker_fail_closed",
+        "decision": "block_live",
+        "checked_at": "2026-04-26T09:54:30Z"
+      },
+      "evidence_level": "synthetic",
+      "live_allowed": false
+    },
+    {
+      "scenario": "kill_switch_active",
+      "expected": "block",
+      "actual": "block",
+      "pass": true,
+      "reason": "kill_switch_active_blocks_submit",
+      "audit_fields": {
+        "gate": "live_broker_fail_closed",
+        "decision": "block_live",
+        "checked_at": "2026-04-26T09:54:30Z"
+      },
+      "evidence_level": "synthetic",
+      "live_allowed": false
+    },
+    {
+      "scenario": "global_halt_active",
+      "expected": "block",
+      "actual": "block",
+      "pass": true,
+      "reason": "global_halt_active_blocks_submit",
+      "audit_fields": {
+        "gate": "live_broker_fail_closed",
+        "decision": "block_live",
+        "checked_at": "2026-04-26T09:54:30Z"
+      },
+      "evidence_level": "synthetic",
+      "live_allowed": false
+    },
+    {
+      "scenario": "bitget_auth_error",
+      "expected": "block",
+      "actual": "block",
+      "pass": true,
+      "reason": "bitget_auth_error_blocks_submit",
+      "audit_fields": {
+        "gate": "live_broker_fail_closed",
+        "decision": "block_live",
+        "checked_at": "2026-04-26T09:54:30Z"
+      },
+      "evidence_level": "synthetic",
+      "live_allowed": false
+    },
+    {
+      "scenario": "bitget_permission_error",
+      "expected": "block",
+      "actual": "block",
+      "pass": true,
+      "reason": "bitget_permission_error_blocks_submit",
+      "audit_fields": {
+        "gate": "live_broker_fail_closed",
+        "decision": "block_live",
+        "checked_at": "2026-04-26T09:54:30Z"
+      },
+      "evidence_level": "synthetic",
+      "live_allowed": false
+    },
+    {
+      "scenario": "bitget_timeout",
+      "expected": "block",
+      "actual": "block",
+      "pass": true,
+      "reason": "bitget_timeout_blocks_submit",
+      "audit_fields": {
+        "gate": "live_broker_fail_closed",
+        "decision": "block_live",
+        "checked_at": "2026-04-26T09:54:30Z"
+      },
+      "evidence_level": "synthetic",
+      "live_allowed": false
+    },
+    {
+      "scenario": "bitget_5xx",
+      "expected": "block",
+      "actual": "block",
+      "pass": true,
+      "reason": "bitget_5xx_blocks_submit",
+      "audit_fields": {
+        "gate": "live_broker_fail_closed",
+        "decision": "block_live",
+        "checked_at": "2026-04-26T09:54:30Z"
+      },
+      "evidence_level": "synthetic",
+      "live_allowed": false
+    },
+    {
+      "scenario": "duplicate_client_oid",
+      "expected": "block",
+      "actual": "block",
+      "pass": true,
+      "reason": "duplicate_client_oid_blocks_submit",
+      "audit_fields": {
+        "gate": "live_broker_fail_closed",
+        "decision": "block_live",
+        "checked_at": "2026-04-26T09:54:30Z"
+      },
+      "evidence_level": "synthetic",
+      "live_allowed": false
+    },
+    {
+      "scenario": "reconcile_degraded",
+      "expected": "block",
+      "actual": "block",
+      "pass": true,
+      "reason": "reconcile_degraded_blocks_submit",
+      "audit_fields": {
+        "gate": "live_broker_fail_closed",
+        "decision": "block_live",
+        "checked_at": "2026-04-26T09:54:30Z"
+      },
+      "evidence_level": "synthetic",
+      "live_allowed": false
+    },
+    {
+      "scenario": "env_invalid",
+      "expected": "block",
+      "actual": "block",
+      "pass": true,
+      "reason": "env_invalid_blocks_submit",
+      "audit_fields": {
+        "gate": "live_broker_fail_closed",
+        "decision": "block_live",
+        "checked_at": "2026-04-26T09:54:30Z"
+      },
+      "evidence_level": "synthetic",
+      "live_allowed": false
+    }
   ],
-  "ok": false,
-  "status": "FAIL",
-  "warnings": [
-    "owner_signoff_missing_external_required"
-  ]
+  "evidence_level": "synthetic",
+  "live_allowed": false
 }

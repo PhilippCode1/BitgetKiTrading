@@ -1,0 +1,16 @@
+{
+  "max_daily_loss_percent": null,
+  "max_weekly_loss_percent": null,
+  "max_total_drawdown_percent": null,
+  "max_position_notional_usd": null,
+  "max_total_notional_usd": null,
+  "max_open_positions": null,
+  "max_leverage_initial": null,
+  "max_leverage_after_burn_in": null,
+  "allowed_asset_tiers": [],
+  "blocked_assets": [],
+  "owner_name": "Philipp Crljic",
+  "reviewed_at": "CHANGE_ME_ISO8601",
+  "status": "external_required",
+  "signature_reference": "CHANGE_ME_OWNER_SIGNOFF_REFERENCE"
+}

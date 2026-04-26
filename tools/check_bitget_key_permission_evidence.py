@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validiert externe Bitget-Key-/Permission-Evidence ohne echte Secrets."""
+"""Validiert Bitget Key-Permission-Evidence (fail-closed, secret-redacted)."""
 
 from __future__ import annotations
 
@@ -15,12 +15,9 @@ for import_path in (ROOT, SHARED_SRC):
     if str(import_path) not in sys.path:
         sys.path.insert(0, str(import_path))
 
-from shared_py.bitget.exchange_readiness import (  # noqa: E402
-    READINESS_CONTRACT_VERSION,
-    assess_external_key_evidence,
-)
-
 DEFAULT_TEMPLATE = ROOT / "docs" / "production_10_10" / "bitget_key_permission_evidence.template.json"
+DEFAULT_OUTPUT_MD = ROOT / "reports" / "bitget_key_permission_evidence.md"
+DEFAULT_OUTPUT_JSON = ROOT / "reports" / "bitget_key_permission_evidence.json"
 
 SECRET_LIKE_KEYS = ("api_key", "secret", "passphrase", "token", "password", "private_key")
 
@@ -44,28 +41,72 @@ def secret_surface_issues(payload: dict[str, Any]) -> list[str]:
 
 def build_template() -> dict[str, Any]:
     return {
-        "schema_version": READINESS_CONTRACT_VERSION,
+        "schema_version": "bitget-key-permission-evidence-v2",
         "environment": "production",
-        "account_mode": "live_candidate",
+        "mode": "live-readonly",
+        "account_alias_redacted": "acct-***",
+        "key_id_redacted": "key-***",
+        "permissions_observed": ["read"],
         "read_permission": True,
-        "trade_permission": True,
+        "trade_permission": False,
         "withdrawal_permission": False,
         "ip_allowlist_enabled": False,
-        "account_protection_enabled": False,
-        "api_version": "v2",
-        "instrument_scope": "",
-        "reviewed_by": "",
-        "reviewed_at": "",
+        "account_protection_checked": False,
+        "checked_at": "",
+        "checked_by": "",
         "evidence_reference": "",
-        "owner_signoff": False,
-        "api_key": "[REDACTED]",
-        "api_secret": "[REDACTED]",
-        "passphrase": "[REDACTED]",
-        "notes_de": "Template: echte Werte extern pruefen; Secrets niemals im Repo speichern.",
+        "owner_review": {"signoff": False, "reviewer": "", "reviewed_at": ""},
+        "status": "not_enough_evidence",
+        "notes_de": "Template: echte Permission/IP-Allowlist/Account-Schutz-Evidence extern erheben; keine Secrets im Repo.",
     }
 
 
-def render_markdown(payload: dict[str, Any], assessment: Any, secret_issues: list[str]) -> str:
+def _validate_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    required = (
+        "environment",
+        "mode",
+        "account_alias_redacted",
+        "key_id_redacted",
+        "permissions_observed",
+        "read_permission",
+        "trade_permission",
+        "withdrawal_permission",
+        "ip_allowlist_enabled",
+        "account_protection_checked",
+        "checked_at",
+        "checked_by",
+        "evidence_reference",
+        "owner_review",
+        "status",
+    )
+    blockers: list[str] = []
+    warnings: list[str] = []
+    for key in required:
+        if key not in payload:
+            blockers.append(f"missing_required_field:{key}")
+    if payload.get("withdrawal_permission") is not False:
+        blockers.append("p0_withdraw_permission_must_be_false")
+    owner = payload.get("owner_review")
+    owner_signoff = isinstance(owner, dict) and owner.get("signoff") is True
+    if payload.get("trade_permission") is True and not owner_signoff:
+        blockers.append("trade_permission_without_owner_signoff_not_verified")
+    if payload.get("ip_allowlist_enabled") is not True:
+        warnings.append("ip_allowlist_not_checked_not_enough_evidence")
+    if payload.get("account_protection_checked") is not True:
+        warnings.append("account_protection_not_checked_not_enough_evidence")
+    is_template = any("CHANGE_ME" in str(v) for v in payload.values() if isinstance(v, str))
+    if is_template or payload.get("status") in {"template", "not_enough_evidence"}:
+        warnings.append("template_or_placeholder_evidence_not_enough_evidence")
+    expected_redacted = ("account_alias_redacted", "key_id_redacted")
+    for key in expected_redacted:
+        val = str(payload.get(key, ""))
+        if not val or ("*" not in val and "redacted" not in val.lower()):
+            warnings.append(f"field_not_redacted_hint:{key}")
+    final_status = "failed" if blockers else ("not_enough_evidence" if warnings else "verified")
+    return {"status": final_status, "blockers": blockers, "warnings": warnings}
+
+
+def render_markdown(payload: dict[str, Any], assessment: dict[str, Any], secret_issues: list[str]) -> str:
     lines = [
         "# Bitget Key Permission Evidence Check",
         "",
@@ -73,24 +114,24 @@ def render_markdown(payload: dict[str, Any], assessment: Any, secret_issues: lis
         "",
         "## Summary",
         "",
-        f"- Schema: `{payload.get('schema_version')}`",
+        f"- Schema: `{payload.get('schema_version', 'n/a')}`",
         f"- Environment: `{payload.get('environment')}`",
-        f"- Account Mode: `{payload.get('account_mode')}`",
+        f"- Mode: `{payload.get('mode')}`",
         f"- Read Permission: `{payload.get('read_permission')}`",
         f"- Trade Permission: `{payload.get('trade_permission')}`",
         f"- Withdrawal Permission: `{payload.get('withdrawal_permission')}`",
         f"- IP-Allowlist: `{payload.get('ip_allowlist_enabled')}`",
-        f"- Account-Schutz: `{payload.get('account_protection_enabled')}`",
-        f"- Ergebnis: `{assessment.status}`",
+        f"- Account-Schutz geprueft: `{payload.get('account_protection_checked')}`",
+        f"- Ergebnis: `{assessment['status']}`",
         "",
         "## Blocker",
     ]
-    lines.extend(f"- `{item}`" for item in assessment.blockers)
-    if not assessment.blockers:
+    lines.extend(f"- `{item}`" for item in assessment["blockers"])
+    if not assessment["blockers"]:
         lines.append("- Keine technischen Blocker.")
     lines.extend(["", "## Warnings"])
-    lines.extend(f"- `{item}`" for item in assessment.warnings)
-    if not assessment.warnings:
+    lines.extend(f"- `{item}`" for item in assessment["warnings"])
+    if not assessment["warnings"]:
         lines.append("- Keine Warnings.")
     lines.extend(["", "## Secret-Surface"])
     if secret_issues:
@@ -102,7 +143,7 @@ def render_markdown(payload: dict[str, Any], assessment: Any, secret_issues: lis
             "",
             "## Einordnung",
             "",
-            "- `PASS_WITH_WARNINGS` oder `PASS` ersetzt keinen Owner-Go/No-Go-Signoff.",
+            "- `verified` ersetzt keinen finalen Owner-Go/No-Go-Signoff.",
             "- Withdrawal-Rechte sind immer P0-Blocker.",
             "- Echte API-Keys duerfen nicht in diesem JSON stehen.",
             "",
@@ -115,7 +156,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--evidence-json", type=Path, default=DEFAULT_TEMPLATE)
     parser.add_argument("--write-template", type=Path)
-    parser.add_argument("--output-md", type=Path)
+    parser.add_argument("--output-md", type=Path, default=DEFAULT_OUTPUT_MD)
+    parser.add_argument("--output-json", type=Path, default=DEFAULT_OUTPUT_JSON)
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--strict", action="store_true")
     args = parser.parse_args(argv)
@@ -127,23 +169,26 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     payload = load_payload(args.evidence_json)
-    assessment = assess_external_key_evidence(payload)
+    assessment = _validate_payload(payload)
     secret_issues = secret_surface_issues(payload)
     result = {
-        "ok": assessment.status == "PASS" and not secret_issues,
-        "status": assessment.status,
-        "blockers": list(assessment.blockers) + secret_issues,
-        "warnings": list(assessment.warnings),
+        "ok": assessment["status"] == "verified" and not secret_issues,
+        "status": assessment["status"],
+        "blockers": list(assessment["blockers"]) + secret_issues,
+        "warnings": list(assessment["warnings"]),
     }
     if args.output_md:
         args.output_md.parent.mkdir(parents=True, exist_ok=True)
         args.output_md.write_text(render_markdown(payload, assessment, secret_issues), encoding="utf-8")
+    if args.output_json:
+        args.output_json.parent.mkdir(parents=True, exist_ok=True)
+        args.output_json.write_text(json.dumps(result, indent=2, sort_keys=True, ensure_ascii=False), encoding="utf-8")
     if args.json:
         print(json.dumps(result, indent=2, sort_keys=True, ensure_ascii=False))
     else:
         print(
             "bitget_key_permission_evidence: "
-            f"status={assessment.status} blockers={len(result['blockers'])} warnings={len(result['warnings'])}"
+            f"status={assessment['status']} blockers={len(result['blockers'])} warnings={len(result['warnings'])}"
         )
         for blocker in result["blockers"]:
             print(f"BLOCKER {blocker}")

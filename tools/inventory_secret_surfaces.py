@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """
-Inventar: welche ENV-Schluessel sind Secret, oeffentlich (NEXT_PUBLIC_*), nur Dashboard-Server,
-nur Backend — abgeleitet aus config/required_secrets_matrix.json und
-apps/dashboard/public-env-allowlist.cjs.
+Repo-weiter Secret-Surface-Scan mit Redaction.
 
-Liefert konsolenlesbare Tabelle und optional --report-md.
+Findet potenzielle Secret-Leaks in Dateien (inkl. NEXT_PUBLIC-Namen) und schreibt
+redigierte Reports als Markdown/JSON.
 """
 
 from __future__ import annotations
@@ -12,230 +11,240 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import subprocess
 import sys
 from dataclasses import asdict, dataclass
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 MATRIX = ROOT / "config" / "required_secrets_matrix.json"
-PUBLIC_ALLOW = ROOT / "apps" / "dashboard" / "public-env-allowlist.cjs"
 
-# Wird in server-env.ts, Route-Handlern, Edge gelesen — nie als NEXT_PUBLIC_ duplizieren.
-DASHBOARD_SERVER_ONLY: frozenset[str] = frozenset(
-    {
-        "API_GATEWAY_URL",
-        "DASHBOARD_GATEWAY_AUTHORIZATION",
-        "PAYMENT_MOCK_WEBHOOK_SECRET",
-        "COMMERCIAL_TELEGRAM_REQUIRED_FOR_CONSOLE",
-    }
+EXCLUDED_DIRS = {
+    ".git",
+    "node_modules",
+    ".venv",
+    "venv",
+    "dist",
+    "build",
+    ".next",
+    ".cursor",
+}
+
+TEXT_FILE_SUFFIXES = {
+    ".env",
+    ".example",
+    ".py",
+    ".ts",
+    ".tsx",
+    ".js",
+    ".jsx",
+    ".json",
+    ".yaml",
+    ".yml",
+    ".md",
+    ".txt",
+    ".ini",
+    ".cfg",
+    ".toml",
+    ".sh",
+    ".ps1",
+}
+
+PATTERNS: tuple[tuple[str, re.Pattern[str], str], ...] = (
+    ("openai_key", re.compile(r"sk-(?:proj|live|test|ant|or-v1)-[A-Za-z0-9_\-]{16,}"), "critical"),
+    ("bearer_token", re.compile(r"Authorization\s*:\s*Bearer\s+[A-Za-z0-9._\-]{12,}", re.IGNORECASE), "high"),
+    ("private_key", re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"), "critical"),
+    ("aws_access_key", re.compile(r"\bAKIA[0-9A-Z]{16}\b"), "critical"),
+    ("jwt_secret_assignment", re.compile(r"\bJWT_SECRET\s*=\s*[^\s#]{8,}"), "high"),
+    ("internal_api_key_assignment", re.compile(r"\bINTERNAL_API_KEY\s*=\s*[^\s#]{8,}"), "high"),
+    ("secret_key_assignment", re.compile(r"\bSECRET_KEY\s*=\s*[^\s#]{8,}"), "high"),
+    ("passphrase_assignment", re.compile(r"\bPASSPHRASE\s*=\s*[^\s#]{8,}", re.IGNORECASE), "high"),
+    ("token_assignment", re.compile(r"\bTOKEN\s*=\s*[^\s#]{8,}", re.IGNORECASE), "medium"),
+    ("next_public_secret_name", re.compile(r"\bNEXT_PUBLIC_[A-Z0-9_]*(SECRET|TOKEN|API_KEY|JWT|PASSPHRASE)[A-Z0-9_]*\s*="), "critical"),
+    ("bitget_secret", re.compile(r"\bBITGET_(?:DEMO_)?API_(?:KEY|SECRET|PASSPHRASE)\s*=\s*[^\s#]{8,}"), "high"),
 )
 
-# Aus docs/SECRETS_MATRIX: kritisch, aber ggf. nicht in der knappen required_secrets_matrix-Union.
-ADDITIONAL_CRITICAL_ENV: tuple[dict[str, str], ...] = (
-    {
-        "env": "BITGET_API_KEY",
-        "services": "live-broker, market-stream, …",
-        "local": "optional (Demo)",
-        "staging": "required (live data)",
-        "production": "required for live",
-        "surface": "server_backend",
-    },
-    {
-        "env": "BITGET_API_SECRET",
-        "services": "live-broker, …",
-        "local": "optional (Demo)",
-        "staging": "required",
-        "production": "required for live",
-        "surface": "server_backend",
-    },
-    {
-        "env": "BITGET_API_PASSPHRASE",
-        "services": "live-broker, …",
-        "local": "optional (Demo)",
-        "staging": "required",
-        "production": "required for live",
-        "surface": "server_backend",
-    },
-    {
-        "env": "TELEGRAM_BOT_TOKEN",
-        "services": "alert path",
-        "local": "optional",
-        "staging": "required if alerts live",
-        "production": "required if outbox live",
-        "surface": "server_backend",
-    },
-    {
-        "env": "OPENAI_API_KEY",
-        "services": "llm-orchestrator, …",
-        "local": "optional if fake",
-        "staging": "required if not fake",
-        "production": "required if not fake",
-        "surface": "server_backend",
-    },
-)
+@dataclass(frozen=True)
+class Finding:
+    file: str
+    line: int
+    rule: str
+    severity: str
+    redacted_snippet: str
 
 
-def _read_next_public_keys() -> list[str]:
-    raw = PUBLIC_ALLOW.read_text(encoding="utf-8")
-    m = re.findall(r'"((?:NEXT_PUBLIC_[A-Z0-9_]+))"', raw)
-    return sorted({k for k in m if k.startswith("NEXT_PUBLIC_")})
-
-
-def _load_matrix() -> list[dict[str, object]]:
+def _load_matrix_env_names() -> set[str]:
+    if not MATRIX.is_file():
+        return set()
     data = json.loads(MATRIX.read_text(encoding="utf-8"))
-    return list(data.get("entries") or [])
+    entries = list(data.get("entries") or [])
+    return {str(item.get("env", "")).strip() for item in entries if str(item.get("env", "")).strip()}
 
 
-@dataclass(frozen=True, slots=True)
-class Row:
-    env: str
-    kind: str
-    surface: str
-    public_in_browser: str
-    may_placeholder_in_git: str
-    services: str
-    local: str
-    staging: str
-    production: str
+def _is_text_file(path: Path) -> bool:
+    if path.suffix.lower() in TEXT_FILE_SUFFIXES:
+        return True
+    return path.name.startswith(".env")
 
 
-def _classify_surface(
-    env: str,
-    next_public: set[str],
-) -> tuple[str, str]:
-    """
-    Returns (surface, public_in_browser_yn).
-    surface: browser_public | server_dashboard | server_backend
-    """
-    if env.startswith("NEXT_PUBLIC_") or env in next_public:
-        return "browser_public", "yes (flags/URLs, not secrets by design)"
-    if env in DASHBOARD_SERVER_ONLY:
-        return "server_dashboard (Next server only)", "no (server components / BFF)"
-    return "server_backend (Python/Workers)", "no"
+def _redact(value: str) -> str:
+    cleaned = re.sub(r"[A-Za-z0-9]", "*", value.strip())
+    if len(cleaned) > 96:
+        cleaned = cleaned[:96] + "..."
+    return cleaned
 
 
-def _placeholder_rule(env: str) -> str:
-    if env.startswith("NEXT_PUBLIC_"):
-        return "yes: URL/Flags as example only; must be non-loopback in prod"
-    return "no: use Vault/SM, never real values in template"
+def _scan_file(path: Path) -> list[Finding]:
+    findings: list[Finding] = []
+    try:
+        lines = path.read_text(encoding="utf-8", errors="ignore").splitlines()
+    except Exception:
+        return findings
+    rel = path.relative_to(ROOT).as_posix()
+    for idx, line in enumerate(lines, start=1):
+        for rule_name, pattern, severity in PATTERNS:
+            if rule_name == "next_public_secret_name" and not path.name.startswith(".env"):
+                continue
+            match = pattern.search(line)
+            if not match:
+                continue
+            findings.append(
+                Finding(
+                    file=rel,
+                    line=idx,
+                    rule=rule_name,
+                    severity=severity,
+                    redacted_snippet=_redact(line),
+                )
+            )
+    return findings
 
 
-def _classify_kind(env: str, surface: str) -> str:
-    u = env.upper()
-    if surface.startswith("browser_public"):
-        if re.search(r"(SECRET|TOKEN|PASSWORD|PASSPHRASE|PRIVATE|JWT|API_KEY)", u):
-            return "public_leak_risk"
-        return "public_config"
-    if re.search(r"(SECRET|TOKEN|PASSWORD|PASSPHRASE|PRIVATE|JWT|API_KEY|WEBHOOK)", u):
-        return "secret"
-    return "server_config"
-
-
-def build_rows() -> list[Row]:
-    nxs = set(_read_next_public_keys())
-    out_by_env: dict[str, Row] = {}
-    for e in _load_matrix():
-        env = str(e["env"])
-        svc = e.get("services", "*")
-        ssvc = json.dumps(svc) if isinstance(svc, (list, dict)) else (str(svc) if svc else "*")
-        surf, pub = _classify_surface(env, nxs)
-        out_by_env[env] = Row(
-            env=env,
-            kind=_classify_kind(env, surf),
-            surface=surf,
-            public_in_browser=pub,
-            may_placeholder_in_git=_placeholder_rule(env),
-            services=ssvc,
-            local=str(e.get("local", "")),
-            staging=str(e.get("staging", "")),
-            production=str(e.get("production", "")),
-        )
-    for a in ADDITIONAL_CRITICAL_ENV:
-        env = a["env"]
-        if env in out_by_env:
+def _env_files_not_ignored() -> list[str]:
+    out: list[str] = []
+    for p in ROOT.rglob(".env*"):
+        if p.is_dir():
             continue
-        surf, pub = _classify_surface(env, nxs)
-        if "surface" in a:
-            surf = a["surface"]
-        out_by_env[env] = Row(
-            env=env,
-            kind=_classify_kind(env, surf),
-            surface=surf,
-            public_in_browser=pub,
-            may_placeholder_in_git="no: production-blocking if leaked",
-            services=a["services"],
-            local=a["local"],
-            staging=a["staging"],
-            production=a["production"],
+        name = p.name
+        if name.endswith(".example") or name == ".env.example":
+            continue
+        rel = p.relative_to(ROOT).as_posix()
+        completed = subprocess.run(
+            ["git", "check-ignore", rel],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
         )
-    return sorted(out_by_env.values(), key=lambda r: r.env)
+        if completed.returncode != 0:
+            out.append(rel)
+    return sorted(out)
 
 
-def _md_table(rows: list[Row]) -> str:
-    h = (
-        "| ENV | Typ | Surface | Public im Browser? | Placeholder in Git-Template? | services | local | staging | production |\n"
-        "| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n"
-    )
-    body = "\n".join(
-        f"| `{r.env}` | {r.kind} | {r.surface} | {r.public_in_browser} | {r.may_placeholder_in_git} | {r.services} | {r.local} | {r.staging} | {r.production} |"
-        for r in rows
-    )
-    return h + body + "\n"
+def scan_repo() -> dict[str, Any]:
+    findings: list[Finding] = []
+    scanned_files = 0
+    for path in ROOT.rglob("*"):
+        if not path.is_file():
+            continue
+        rel_parts = set(path.relative_to(ROOT).parts)
+        if rel_parts & EXCLUDED_DIRS:
+            continue
+        if not _is_text_file(path):
+            continue
+        scanned_files += 1
+        findings.extend(_scan_file(path))
+    matrix_keys = sorted(_load_matrix_env_names())
+    env_not_ignored = _env_files_not_ignored()
+    severity_counts = {"critical": 0, "high": 0, "medium": 0}
+    for f in findings:
+        severity_counts[f.severity] = severity_counts.get(f.severity, 0) + 1
+    return {
+        "generated_at": datetime.now(UTC).isoformat(),
+        "scanned_files": scanned_files,
+        "matrix_env_keys_count": len(matrix_keys),
+        "matrix_env_keys_sample": matrix_keys[:20],
+        "severity_counts": severity_counts,
+        "findings": [asdict(f) for f in findings],
+        "env_files_not_ignored": env_not_ignored,
+        "critical_found": severity_counts.get("critical", 0) > 0 or bool(env_not_ignored),
+    }
+
+
+def _to_md(payload: dict[str, Any]) -> str:
+    lines = [
+        "# Secret Surface Inventory",
+        "",
+        f"- generated_at: `{payload['generated_at']}`",
+        f"- scanned_files: `{payload['scanned_files']}`",
+        f"- critical: `{payload['severity_counts'].get('critical', 0)}`",
+        f"- high: `{payload['severity_counts'].get('high', 0)}`",
+        f"- medium: `{payload['severity_counts'].get('medium', 0)}`",
+        f"- env_files_not_ignored: `{len(payload['env_files_not_ignored'])}`",
+        "",
+        "## Findings (redacted)",
+        "",
+        "| file | line | severity | rule | redacted_snippet |",
+        "| --- | ---: | --- | --- | --- |",
+    ]
+    for finding in payload["findings"][:500]:
+        lines.append(
+            f"| `{finding['file']}` | {finding['line']} | {finding['severity']} | `{finding['rule']}` | `{finding['redacted_snippet']}` |"
+        )
+    lines.append("")
+    if payload["env_files_not_ignored"]:
+        lines.append("## .env Not Ignored")
+        lines.append("")
+        for item in payload["env_files_not_ignored"]:
+            lines.append(f"- `{item}`")
+        lines.append("")
+    return "\n".join(lines)
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(
-        description="Inventar Secret-Surfaces (keine Secret-Werte)."
-    )
+    ap = argparse.ArgumentParser(description="Repo Secret-Surface-Scan (redacted).")
     ap.add_argument(
-        "--report-md",
+        "--output-md",
         metavar="PATH",
         type=Path,
-        help="Markdown-Report in diese Datei schreiben (utf-8).",
+        help="Markdown-Report schreiben.",
     )
     ap.add_argument(
-        "--json",
+        "--output-json",
+        metavar="PATH",
+        type=Path,
+        help="JSON-Report schreiben.",
+    )
+    ap.add_argument(
+        "--strict",
         action="store_true",
-        help="Zusaetzlich JSON (Zeilen) auf stdout.",
+        help="Exit-Code 1 bei kritischen Funden.",
     )
+    # Rueckwaertskompatibel
+    ap.add_argument("--report-md", type=Path, help=argparse.SUPPRESS)
+    ap.add_argument("--json", action="store_true", help=argparse.SUPPRESS)
     args = ap.parse_args()
-    if not MATRIX.is_file():
-        print("Fehlend: config/required_secrets_matrix.json", file=sys.stderr)
-        return 2
-    rows = build_rows()
-    n = len(rows)
-    print(
-        f"inventoried_secret_surface_rows={n} "
-        f"(matrix + {len(ADDITIONAL_CRITICAL_ENV)} zusaetzliche kritische Bitget/Provider-ENV aus Doku) sources={MATRIX.name} + {PUBLIC_ALLOW.name}",
-    )
+    payload = scan_repo()
+    output_md = args.output_md or args.report_md
+    if output_md:
+        output_md.parent.mkdir(parents=True, exist_ok=True)
+        output_md.write_text(_to_md(payload), encoding="utf-8")
+    if args.output_json:
+        args.output_json.parent.mkdir(parents=True, exist_ok=True)
+        args.output_json.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
     if args.json:
-        out = [asdict(r) for r in rows]
-        print(json.dumps({"generated": datetime.now(UTC).isoformat(), "rows": out}, indent=2))
-    for r in rows:
-        print(
-            f"{r.env:45} {r.surface:28} {r.production:10}",
-        )
-    if args.report_md is not None:
-        header = (
-            f"# Secret-Surface-Inventar (automatisch)\n\n"
-            f"**Generiert:** `{datetime.now(UTC).isoformat()}`\n"
-            f"**Quelle:** `config/required_secrets_matrix.json` + `apps/dashboard/public-env-allowlist.cjs` + Ergänzungen in `tools/inventory_secret_surfaces.py` (Bitget/Telegram/LLM).\n\n"
-            f"**Anzahl Zeilen:** {n}\n\n"
-        )
-        args.report_md.parent.mkdir(parents=True, exist_ok=True)
-        args.report_md.write_text(
-            header
-            + "## Tabelle\n\n"
-            + _md_table(rows)
-            + "\n## Hinweise\n\n"
-            + "- `browser_public` inline’t nur unkritische Konfiguration; trotzdem in Prod bewusst setzen (kein stiller `localhost` im Production-Build).\n"
-            + "- `server_dashboard` bleibt in `server-env.ts` / BFF, nie `NEXT_PUBLIC_*`.\n"
-            + "- `server_backend` sind Exchange-Keys, interne API-Keys, DB-Passwörter — ausschließlich Laufzeit-Secret-Store, Rotation: `docs/SECRETS_MATRIX.md` (Abschnitt Rotation).\n"
-            + "\n**Verifikation (Prod):** `python tools/verify_production_secret_sources.py --env-file <file> --strict`.\n",
-            encoding="utf-8",
-        )
-        print(f"Wrote {args.report_md.as_posix()}", file=sys.stderr)
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+    print(
+        "secret_surface_inventory: "
+        f"files={payload['scanned_files']} "
+        f"critical={payload['severity_counts'].get('critical', 0)} "
+        f"high={payload['severity_counts'].get('high', 0)} "
+        f"env_not_ignored={len(payload['env_files_not_ignored'])}"
+    )
+    if args.strict and payload["critical_found"]:
+        return 1
     return 0
 
 

@@ -139,3 +139,19 @@ def test_load_report_payloads_reads_asset_preflight_evidence(tmp_path: Path) -> 
     payloads = load_report_payloads(tmp_path)
     assert "asset_preflight_evidence" in payloads
     assert payloads["asset_preflight_evidence"]["assets_checked"] == 1
+
+
+def test_evidence_report_stays_in_sync_with_matrix() -> None:
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "tools" / "check_10_10_evidence.py"),
+            "--check-report",
+            "docs/production_10_10/evidence_status_report.md",
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert completed.returncode == 0, (completed.stdout, completed.stderr)

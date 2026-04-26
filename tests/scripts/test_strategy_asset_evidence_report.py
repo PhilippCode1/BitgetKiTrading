@@ -43,3 +43,8 @@ def test_report_generates_german_block_reasons(tmp_path: Path) -> None:
     payload = json.loads(out_json.read_text(encoding="utf-8"))
     combined = " ".join(item["summary_de"] for item in payload["items"])
     assert "blockiert" in combined or "Gate-Schritt" in combined
+    assert payload["verified"] is False
+    assert payload["status"] in {"NOT_ENOUGH_EVIDENCE", "implemented"}
+    assert payload["checked_asset_classes"]
+    assert all("decision" in item for item in payload["items"])
+    assert any(item["decision"] in {"BLOCK_FOR_LIVE", "BLOCK_ALL", "ALLOW_FOR_PAPER"} for item in payload["items"])

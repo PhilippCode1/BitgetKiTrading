@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
-from typing import Literal
+from typing import Any, Literal
 
 LiquidityTier = Literal["TIER_1", "TIER_2", "TIER_3", "TIER_4", "TIER_5"]
+LiquidityEvidenceLevel = Literal["synthetic", "runtime"]
 
 
 @dataclass(frozen=True)
@@ -19,6 +20,20 @@ class LiquidityAssessment:
     live_allowed: bool
     block_reasons: list[str]
     last_updated_utc: str
+
+
+@dataclass(frozen=True)
+class LiquidityScoreResult:
+    liquidity_score: float
+    status: Literal["pass", "warn", "fail", "not_enough_evidence"]
+    live_allowed: bool
+    reasons: list[str]
+    spread_bps: float | None
+    estimated_slippage_bps: float | None
+    depth_score: float
+    staleness_ms: int
+    checked_at: str
+    evidence_level: LiquidityEvidenceLevel
 
 
 def compute_spread_bps(*, bid: float | None, ask: float | None) -> float | None:
@@ -223,3 +238,72 @@ def build_liquidity_assessment(
         block_reasons=reasons,
         last_updated_utc=datetime.now(tz=UTC).isoformat(),
     )
+
+
+def evaluate_liquidity_gate(payload: dict[str, Any]) -> LiquidityScoreResult:
+    assessment = build_liquidity_assessment(
+        symbol=str(payload.get("symbol") or "UNKNOWN"),
+        bid=payload.get("best_bid", payload.get("bid")),
+        ask=payload.get("best_ask", payload.get("ask")),
+        bids=list(payload.get("bids") or []),
+        asks=list(payload.get("asks") or []),
+        orderbook_age_ms=int(payload.get("timestamp_age_ms", payload.get("orderbook_age_ms", 0)) or 0),
+        max_orderbook_age_ms=int(payload.get("max_orderbook_age_ms", 0) or 0),
+        planned_qty=float(payload.get("requested_size", payload.get("planned_qty", 0.0)) or 0.0),
+        requested_notional=float(payload.get("requested_notional", 0.0) or 0.0),
+        status=str(payload.get("instrument_status") or payload.get("status") or "active"),
+        owner_approved_small_size=bool(payload.get("owner_approved_small_size")),
+    )
+    reason_set = set(assessment.block_reasons)
+    if payload.get("order_type") == "market" and payload.get("estimated_slippage_bps") is None:
+        reason_set.add("market_order_slippage_missing")
+    for required in ("tick_size", "lot_size", "min_qty", "min_notional", "precision"):
+        if payload.get(required) in (None, "", {}):
+            reason_set.add(f"{required}_missing")
+    depth_top10 = float(payload.get("orderbook_depth_top_10") or 0.0)
+    req_notional = float(payload.get("requested_notional") or 0.0)
+    min_depth_ratio = float(payload.get("min_depth_ratio") or 0.0)
+    if req_notional > 0 and depth_top10 > 0 and min_depth_ratio > 0:
+        if depth_top10 / req_notional < min_depth_ratio:
+            reason_set.add("depth_ratio_too_low")
+
+    spread = assessment.spread_bps
+    est_slip = payload.get("estimated_slippage_bps")
+    estimated_slippage_bps = float(est_slip) if est_slip is not None else assessment.slippage_buy_bps
+    depth_score = min(1.0, max(0.0, depth_top10 / max(req_notional, 1.0))) if req_notional > 0 else 1.0
+    staleness_ms = int(payload.get("timestamp_age_ms", payload.get("orderbook_age_ms", 0)) or 0)
+    evidence_level: LiquidityEvidenceLevel = "runtime" if bool(payload.get("runtime_data")) else "synthetic"
+    reasons = list(dict.fromkeys(sorted(reason_set)))
+    if reasons:
+        status: Literal["pass", "warn", "fail", "not_enough_evidence"] = "fail"
+    elif evidence_level != "runtime":
+        status = "not_enough_evidence"
+    elif assessment.liquidity_tier == "TIER_3":
+        status = "warn"
+    else:
+        status = "pass"
+    score = 1.0
+    if spread is not None:
+        score -= min(0.5, max(0.0, spread / 100.0))
+    if estimated_slippage_bps is not None:
+        score -= min(0.4, max(0.0, estimated_slippage_bps / 150.0))
+    score -= min(0.3, max(0.0, staleness_ms / 60_000.0))
+    score -= min(0.4, max(0.0, 1.0 - depth_score))
+    score = max(0.0, min(1.0, score))
+    live_allowed = status == "pass" and evidence_level == "runtime" and not reasons
+    return LiquidityScoreResult(
+        liquidity_score=round(score, 6),
+        status=status,
+        live_allowed=live_allowed,
+        reasons=reasons,
+        spread_bps=spread,
+        estimated_slippage_bps=estimated_slippage_bps,
+        depth_score=round(depth_score, 6),
+        staleness_ms=staleness_ms,
+        checked_at=datetime.now(tz=UTC).isoformat(),
+        evidence_level=evidence_level,
+    )
+
+
+def liquidity_score_to_dict(result: LiquidityScoreResult) -> dict[str, Any]:
+    return asdict(result)

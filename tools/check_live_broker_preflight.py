@@ -47,6 +47,13 @@ REQUIRED_BLOCKING_REASONS = (
     "account_snapshot_stale",
     "idempotency_key_missing",
     "audit_context_missing",
+    "liquidity_gate_missing",
+    "spread_gate_missing",
+    "slippage_gate_missing",
+    "orderbook_missing",
+    "orderbook_stale",
+    "market_order_slippage_gate_missing",
+    "stop_tp_not_executable",
 )
 
 
@@ -188,6 +195,13 @@ def _base_context() -> LivePreflightContext:
         audit_context_present=True,
         warning_policy_allows_live={},
         checked_at="synthetic-preflight-check",
+        liquidity_gate_present=True,
+        spread_gate_present=True,
+        slippage_gate_present=True,
+        orderbook_present=True,
+        orderbook_fresh=True,
+        market_order_slippage_checked=True,
+        stop_tp_executable=True,
     )
 
 
@@ -219,6 +233,13 @@ SCENARIOS: tuple[tuple[str, LivePreflightContext, str], ...] = (
     ("account_snapshot_stale", _ctx(account_snapshot_fresh=False), "Account-Snapshot stale."),
     ("idempotency_key_missing", _ctx(idempotency_key=None), "Idempotency-Key fehlt."),
     ("audit_context_missing", _ctx(audit_context_present=False), "Audit-Context fehlt."),
+    ("liquidity_gate_missing", _ctx(liquidity_gate_present=False), "Liquidity-Gate fehlt."),
+    ("spread_gate_missing", _ctx(spread_gate_present=False), "Spread-Gate fehlt."),
+    ("slippage_gate_missing", _ctx(slippage_gate_present=False), "Slippage-Gate fehlt."),
+    ("orderbook_missing", _ctx(orderbook_present=False), "Orderbook fehlt."),
+    ("orderbook_stale", _ctx(orderbook_fresh=False), "Orderbook ist stale."),
+    ("market_order_slippage_gate_missing", _ctx(market_order_slippage_checked=False), "Market-Order ohne Slippage-Gate."),
+    ("stop_tp_not_executable", _ctx(stop_tp_executable=False), "Stop/TP technisch nicht ausfuehrbar."),
     ("all_green_control", _base_context(), "Kontrollfall ohne echten Submit."),
 )
 
@@ -261,6 +282,13 @@ def analyze() -> dict[str, object]:
     main_console = ROOT / "docs" / "production_10_10" / "main_console_product_direction.md"
     no_go = ROOT / "docs" / "production_10_10" / "no_go_rules.md"
     live_broker_service = ROOT / "services" / "live-broker" / "src" / "live_broker" / "orders" / "service.py"
+    fail_closed_report_script = ROOT / "scripts" / "live_broker_fail_closed_evidence_report.py"
+    fail_closed_report_test = ROOT / "tests" / "scripts" / "test_live_broker_fail_closed_evidence_report.py"
+    fail_closed_report_md = ROOT / "reports" / "live_broker_fail_closed_evidence.md"
+    fail_closed_report_json = ROOT / "reports" / "live_broker_fail_closed_evidence.json"
+    liquidity_report_md = ROOT / "reports" / "liquidity_spread_slippage_evidence.md"
+    liquidity_report_json = ROOT / "reports" / "liquidity_spread_slippage_evidence.json"
+    liquidity_report_script = ROOT / "scripts" / "liquidity_spread_slippage_evidence_report.py"
 
     for path, code, message in (
         (doc, "doc_missing", "Live-Preflight-Doku fehlt."),
@@ -269,6 +297,13 @@ def analyze() -> dict[str, object]:
         (lb_test, "live_broker_test_missing", "Live-Broker-Contract-Tests fehlen."),
         (tool_test, "tool_test_missing", "Tool-Tests fehlen."),
         (live_broker_service, "live_broker_missing", "Live-Broker-Service fehlt."),
+        (fail_closed_report_script, "fail_closed_report_script_missing", "Fail-Closed-Evidence-Report-Script fehlt."),
+        (fail_closed_report_test, "fail_closed_report_test_missing", "Fail-Closed-Evidence-Report-Test fehlt."),
+        (fail_closed_report_md, "fail_closed_report_md_missing", "Fail-Closed-Evidence-Markdown fehlt."),
+        (fail_closed_report_json, "fail_closed_report_json_missing", "Fail-Closed-Evidence-JSON fehlt."),
+        (liquidity_report_script, "liquidity_report_script_missing", "Liquidity-Evidence-Report-Script fehlt."),
+        (liquidity_report_md, "liquidity_report_md_missing", "Liquidity-Evidence-Markdown fehlt."),
+        (liquidity_report_json, "liquidity_report_json_missing", "Liquidity-Evidence-JSON fehlt."),
     ):
         if not path.is_file():
             issues.append({"severity": "error", "code": code, "message": message, "path": str(path)})
@@ -286,6 +321,28 @@ def analyze() -> dict[str, object]:
             issues.append({"severity": "error", "code": "main_console_preflight_missing", "message": "Main-Console-Doku erwaehnt Preflight-Blockgruende nicht.", "path": str(main_console)})
     else:
         issues.append({"severity": "error", "code": "main_console_doc_missing", "message": "Main-Console-Doku fehlt.", "path": str(main_console)})
+
+    if live_broker_service.is_file():
+        service_text = live_broker_service.read_text(encoding="utf-8")
+        required_submit_guards = (
+            "_assert_submit_runtime_gates",
+            "_assert_catalog_order_capabilities",
+            "_assert_live_open_governance",
+            "_assert_kill_switch_allows_submit",
+            "_assert_safety_latch_allows_submit",
+            "_evaluate_post_preflight_execution_guards",
+            "_global_halt.assert_not_halted",
+        )
+        for guard in required_submit_guards:
+            if guard not in service_text:
+                issues.append(
+                    {
+                        "severity": "error",
+                        "code": "submit_guard_missing",
+                        "message": f"P0-Gate fehlt im Submit-Pfad: {guard}",
+                        "path": str(live_broker_service),
+                    }
+                )
 
     results = scenario_results()
     covered = {

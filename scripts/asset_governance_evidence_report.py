@@ -102,6 +102,20 @@ def build_report_payload() -> dict[str, Any]:
     if assertions["missing_assertions"]:
         failures.append("asset_status_assertions_missing")
 
+    assets = preflight["assets"]
+    blocked_due_metadata = sum(
+        1
+        for row in assets
+        if any(
+            reason in row.get("block_reasons", [])
+            for reason in ("missing_precision", "missing_min_qty", "missing_min_notional", "asset_governance_missing")
+        )
+    )
+    quarantined_count = sum(1 for row in assets if row.get("governance_state") == "quarantine")
+    delisted_count = sum(1 for row in assets if row.get("governance_state") == "delisted")
+    exchange_evidence_present = False
+    overall_status = "implemented" if failures else "implemented"
+    readiness_decision = "not_enough_evidence" if not exchange_evidence_present else "verified"
     return {
         "generated_at": datetime.now(tz=UTC).isoformat(),
         "git_sha": _git_sha(),
@@ -115,6 +129,18 @@ def build_report_payload() -> dict[str, Any]:
             "required_live_preflight_reasons": list(REQUIRED_ASSET_PREFLIGHT_REASONS),
             "missing_required_live_preflight_reasons": missing_preflight_reasons,
             "source_files": preflight["source_files"],
+        },
+        "summary": {
+            "assets_checked": preflight["assets_checked"],
+            "assets_allowed": preflight["live_allowed_count"],
+            "assets_blocked": preflight["live_blocked_count"],
+            "assets_quarantined": quarantined_count,
+            "assets_delisted": delisted_count,
+            "assets_blocked_missing_metadata": blocked_due_metadata,
+            "live_would_be_allowed": False,
+            "exchange_runtime_evidence_present": exchange_evidence_present,
+            "status": overall_status,
+            "decision": readiness_decision,
         },
         "block_reason_coverage": {
             "covered_block_reasons": covered_reasons,
@@ -136,6 +162,8 @@ def build_report_payload() -> dict[str, Any]:
             "Keine Fixture darf private Live freigeben; echte Bitget-/Shadow-/Owner-Evidence bleibt external_required.",
             "Quarantaene, stale Daten, schlechte Liquiditaet, unbekannte Risk-Tiers und unsicheres Sizing muessen vor Submit blockieren.",
         ],
+        "status": overall_status,
+        "decision": readiness_decision,
     }
 
 

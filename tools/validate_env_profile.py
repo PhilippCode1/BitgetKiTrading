@@ -16,6 +16,7 @@ Nach JWT-Mint (lokal): erneut mit --with-dashboard-operator aufrufen.
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import subprocess
 import sys
@@ -244,6 +245,48 @@ def bootstrap_issues(env: dict[str, str], profile: str, *, template: bool = Fals
     return issues
 
 
+def secret_strength_issues(env: dict[str, str], profile: str, *, template: bool = False) -> list[str]:
+    prod_like = profile in ("staging", "shadow", "production")
+    if not prod_like or template:
+        return []
+    weak_markers = ("password", "changeme", "123", "secret", "test")
+    min_len = 16
+    keys = ("INTERNAL_API_KEY", "JWT_SECRET", "SECRET_KEY", "ENCRYPTION_KEY", "ADMIN_TOKEN")
+    issues: list[str] = []
+    for key in keys:
+        value = (env.get(key) or "").strip()
+        if _bad(value):
+            issues.append(f"{key} fehlt/Platzhalter in Runtime.")
+            continue
+        if len(value) < min_len:
+            issues.append(f"{key} zu kurz (mindestens {min_len} Zeichen).")
+        lower = value.lower()
+        if any(marker in lower for marker in weak_markers):
+            issues.append(f"{key} enthaelt triviales Muster (password/changeme/123/secret/test).")
+    return issues
+
+
+def credential_isolation_issues(env: dict[str, str], profile: str, *, template: bool = False) -> list[str]:
+    prod_like = profile in ("staging", "shadow", "production")
+    if not prod_like:
+        return []
+    issues: list[str] = []
+    live_keys = any((env.get(k) or "").strip() and not _bad(env.get(k, "")) for k in ("BITGET_API_KEY", "BITGET_API_SECRET", "BITGET_API_PASSPHRASE"))
+    demo_keys = any((env.get(k) or "").strip() and not _bad(env.get(k, "")) for k in ("BITGET_DEMO_API_KEY", "BITGET_DEMO_API_SECRET", "BITGET_DEMO_API_PASSPHRASE"))
+    demo_enabled = _truthy(env.get("BITGET_DEMO_ENABLED", ""))
+    if live_keys and demo_keys:
+        issues.append("Live- und Demo-Bitget-Credentials gleichzeitig gesetzt (verboten).")
+    if demo_enabled and live_keys:
+        issues.append("BITGET_DEMO_ENABLED=true mit gesetzten Live-Keys (verboten).")
+    if profile == "shadow" and _truthy(env.get("LIVE_TRADE_ENABLE", "")):
+        issues.append("Shadow-Profil darf LIVE_TRADE_ENABLE=true nicht setzen.")
+    if profile == "production" and _truthy(env.get("LIVE_TRADE_ENABLE", "")) and demo_enabled:
+        issues.append("Production-Live darf keine Demo-Credentials/Flags aktiv haben.")
+    if template:
+        return [item for item in issues if "gleichzeitig gesetzt" not in item]
+    return issues
+
+
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--env-file", type=Path, required=True)
@@ -261,6 +304,16 @@ def main() -> int:
         "--template",
         action="store_true",
         help="Validiert Beispiel-/Template-Dateien: Pflichtschluessel muessen existieren, Platzhalterwerte sind erlaubt.",
+    )
+    p.add_argument(
+        "--strict",
+        action="store_true",
+        help="Strenger Modus: behandelt Warnlagen als Fehler.",
+    )
+    p.add_argument(
+        "--json",
+        action="store_true",
+        help="Gibt strukturierte JSON-Ausgabe aus.",
     )
     args = p.parse_args()
     if not args.env_file.is_file():
@@ -311,14 +364,37 @@ def main() -> int:
     problems.extend(f"  {m}" for m in next_public_secret_key_issues(env))
     problems.extend(llm_gateway_base_issues(env, args.profile))
     problems.extend(bootstrap_issues(env, args.profile, template=args.template))
+    problems.extend(f"  {m}" for m in secret_strength_issues(env, args.profile, template=args.template))
+    problems.extend(f"  {m}" for m in credential_isolation_issues(env, args.profile, template=args.template))
 
-    if problems:
+    has_error = bool(problems)
+    if args.strict and args.profile in ("shadow", "production") and args.template:
+        if env.get("PRODUCTION", "").strip().lower() != "true":
+            problems.append("  Strikt: Shadow/Production-Template muss PRODUCTION=true enthalten.")
+            has_error = True
+
+    if has_error:
         msg = f"validate_env_profile: {args.profile} - {args.env_file}"
-        print(msg, file=sys.stderr)
-        print("Probleme:", file=sys.stderr)
-        print("\n".join(problems), file=sys.stderr)
-        print("", file=sys.stderr)
-        print(f"Dokumentation: {_DOC_BASE}", file=sys.stderr)
+        if args.json:
+            print(
+                json.dumps(
+                    {
+                        "ok": False,
+                        "profile": args.profile,
+                        "env_file": str(args.env_file),
+                        "template": args.template,
+                        "strict": args.strict,
+                        "problems": [item.strip() for item in problems],
+                    },
+                    ensure_ascii=False,
+                )
+            )
+        else:
+            print(msg, file=sys.stderr)
+            print("Probleme:", file=sys.stderr)
+            print("\n".join(problems), file=sys.stderr)
+            print("", file=sys.stderr)
+            print(f"Dokumentation: {_DOC_BASE}", file=sys.stderr)
         return 1
     if args.profile == "production" and not args.template:
         child_env = {k: str(v) for k, v in os.environ.items() if v is not None}
@@ -338,7 +414,22 @@ def main() -> int:
                 file=sys.stderr,
             )
             return 1
-    print(f"OK validate_env_profile: {args.profile} {args.env_file}")
+    if args.json:
+        print(
+            json.dumps(
+                {
+                    "ok": True,
+                    "profile": args.profile,
+                    "env_file": str(args.env_file),
+                    "template": args.template,
+                    "strict": args.strict,
+                    "problems": [],
+                },
+                ensure_ascii=False,
+            )
+        )
+    else:
+        print(f"OK validate_env_profile: {args.profile} {args.env_file}")
     return 0
 
 

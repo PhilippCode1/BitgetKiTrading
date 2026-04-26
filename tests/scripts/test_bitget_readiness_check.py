@@ -35,7 +35,7 @@ def test_dry_run_makes_no_network_calls(monkeypatch: pytest.MonkeyPatch) -> None
 
     monkeypatch.setattr(httpx, "Client", fail_client)
     report = build_readiness_report(_base_env(), mode="dry-run")
-    assert report.result == "PASS_WITH_WARNINGS"
+    assert report.status in {"verified", "not_enough_evidence"}
     assert report.public_api_status.status == "unavailable"
     assert report.live_write_allowed is False
 
@@ -65,8 +65,8 @@ def test_demo_live_key_mix_fails() -> None:
             "BITGET_DEMO_API_KEY": "demo-key",
         }
     )
-    report = build_readiness_report(env, mode="dry-run")
-    assert report.result == "FAIL"
+    report = build_readiness_report(env, mode="public")
+    assert report.status == "failed"
     assert "demo_live_credential_mix" in report.blockers
 
 
@@ -79,7 +79,7 @@ def test_report_contains_required_fields(tmp_path: Path) -> None:
             "--env-file",
             ".env.production.example",
             "--mode",
-            "dry-run",
+            "public",
             "--output-md",
             str(output),
         ],
@@ -102,7 +102,7 @@ def test_report_contains_required_fields(tmp_path: Path) -> None:
         "Permission Status",
         "Instrument Universe Status",
         "Rate Limit Status",
-        "Ergebnis",
+            "Status",
         "Live-Write erlaubt",
     ):
         assert required in content
@@ -110,6 +110,21 @@ def test_report_contains_required_fields(tmp_path: Path) -> None:
 
 def test_template_env_dry_run_loads() -> None:
     env = load_dotenv(ROOT / ".env.shadow.example")
-    report = build_readiness_report(env, mode="dry-run")
-    assert report.mode == "dry-run"
+    report = build_readiness_report(env, mode="public")
+    assert report.mode == "public"
     assert report.live_write_allowed is False
+
+
+def test_demo_trade_smoke_requires_explicit_ack() -> None:
+    env = _base_env()
+    env.update(
+        {
+            "BITGET_DEMO_ENABLED": "true",
+            "BITGET_DEMO_API_KEY": "demo-key",
+            "BITGET_DEMO_API_SECRET": "demo-secret",
+            "BITGET_DEMO_API_PASSPHRASE": "demo-pass",
+        }
+    )
+    report = build_readiness_report(env, mode="demo-trade-smoke", demo_trade_smoke_ack=False)
+    assert report.status == "failed"
+    assert "demo_trade_smoke_requires_explicit_ack" in report.blockers

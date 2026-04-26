@@ -1,0 +1,146 @@
+{
+  "generated_at": "2026-04-26T10:03:40.065400+00:00",
+  "git_sha": "339dd15",
+  "private_live_decision": "NO_GO",
+  "full_autonomous_live": "NO_GO",
+  "external_template": {
+    "path": "docs\\production_10_10\\live_safety_drill.template.json",
+    "status": "FAIL",
+    "blockers": [
+      "drill_started_at_missing",
+      "drill_completed_at_missing",
+      "git_sha_missing",
+      "operator_missing",
+      "evidence_reference_missing",
+      "kill_switch_arm_not_verified",
+      "kill_switch_opening_submit_not_blocked",
+      "kill_switch_release_not_operator_gated",
+      "safety_latch_arm_not_verified",
+      "safety_latch_submit_not_blocked",
+      "safety_latch_replace_not_blocked",
+      "safety_latch_release_reason_not_required",
+      "emergency_flatten_not_tested",
+      "emergency_flatten_not_reduce_only",
+      "emergency_flatten_exchange_truth_not_checked",
+      "emergency_flatten_no_increase_not_confirmed",
+      "cancel_all_not_tested",
+      "audit_trail_not_verified",
+      "alert_delivery_not_verified",
+      "main_console_state_not_verified",
+      "reconcile_after_drill_not_ok"
+    ],
+    "warnings": [
+      "owner_signoff_missing_external_required"
+    ],
+    "secret_surface_issues": [],
+    "missing_required_blockers": []
+  },
+  "simulation": {
+    "generated_at": "2026-04-26T10:03:39.865930+00:00",
+    "git_sha": "339dd15",
+    "mode": "simulated",
+    "kill_switch_active": true,
+    "safety_latch_active": true,
+    "opening_order_blocked_by_kill_switch": true,
+    "opening_order_blocked_by_safety_latch": true,
+    "emergency_flatten_reduce_only": true,
+    "emergency_flatten_safe": true,
+    "audit_expected": true,
+    "alert_expected": true,
+    "go_no_go": "NO_GO",
+    "live_write_allowed": false
+  },
+  "main_console_cases": [
+    {
+      "id": "kill_switch_active",
+      "blocked": true,
+      "snapshot": {
+        "reconcile_status": "ok",
+        "kill_switch_active": true,
+        "safety_latch_active": false,
+        "exchange_truth_status": "ok",
+        "backend_connected": true
+      }
+    },
+    {
+      "id": "safety_latch_active",
+      "blocked": true,
+      "snapshot": {
+        "reconcile_status": "ok",
+        "kill_switch_active": false,
+        "safety_latch_active": true,
+        "exchange_truth_status": "ok",
+        "backend_connected": true
+      }
+    },
+    {
+      "id": "reconcile_fail",
+      "blocked": true,
+      "snapshot": {
+        "reconcile_status": "fail",
+        "kill_switch_active": false,
+        "safety_latch_active": false,
+        "exchange_truth_status": "ok",
+        "backend_connected": true
+      }
+    },
+    {
+      "id": "exchange_truth_missing",
+      "blocked": true,
+      "snapshot": {
+        "reconcile_status": "ok",
+        "kill_switch_active": false,
+        "safety_latch_active": false,
+        "exchange_truth_status": "not_checked",
+        "backend_connected": true
+      }
+    }
+  ],
+  "emergency_flatten_cases": [
+    {
+      "id": "valid_reduce_only",
+      "reduce_only": true,
+      "requested_qty": 0.4,
+      "position_qty": 1.0,
+      "safe": true,
+      "expected_safe": true
+    },
+    {
+      "id": "not_reduce_only",
+      "reduce_only": false,
+      "requested_qty": 0.4,
+      "position_qty": 1.0,
+      "safe": false,
+      "expected_safe": false
+    },
+    {
+      "id": "would_increase_exposure",
+      "reduce_only": true,
+      "requested_qty": 1.5,
+      "position_qty": 1.0,
+      "safe": false,
+      "expected_safe": false
+    },
+    {
+      "id": "missing_position_truth",
+      "reduce_only": true,
+      "requested_qty": 0.4,
+      "position_qty": 0.0,
+      "safe": false,
+      "expected_safe": false
+    }
+  ],
+  "external_required": [
+    "real_staging_shadow_kill_switch_drill_missing",
+    "real_staging_shadow_safety_latch_drill_missing",
+    "real_emergency_flatten_reduce_only_drill_missing",
+    "audit_alert_reconcile_main_console_safety_evidence_missing",
+    "owner_signed_live_safety_acceptance_missing"
+  ],
+  "failures": [],
+  "notes": [
+    "Dieser Report beweist repo-lokale Safety-Contracts und Simulationen, nicht echte Live-Freigabe.",
+    "Das Repo-Template muss ohne externe Evidence FAIL bleiben.",
+    "Emergency-Flatten ist nur akzeptabel, wenn reduce-only, exchange-truth-geprueft und nicht exposure-erhoehend belegt ist."
+  ]
+}

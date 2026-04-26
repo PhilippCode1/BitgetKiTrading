@@ -127,3 +127,24 @@ def test_cli_template_strict_fails_and_outputs_json() -> None:
     payload = json.loads(completed.stdout)
     assert payload["ok"] is False
     assert "restore_status_not_pass" in payload["blockers"]
+
+
+def test_cli_writes_output_json_for_dry_run(tmp_path: Path) -> None:
+    out_json = tmp_path / "restore.json"
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--dry-run",
+            "--output-json",
+            str(out_json),
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert completed.returncode == 0
+    payload = json.loads(out_json.read_text(encoding="utf-8"))
+    assert payload["status"] == "DRY_RUN"
+    assert payload["live_ready"] is False

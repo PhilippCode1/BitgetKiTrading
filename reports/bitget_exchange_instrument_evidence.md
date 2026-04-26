@@ -4,11 +4,11 @@ Status: synthetischer Fail-closed-Nachweis fuer Bitget-Readiness, Key-Permission
 
 ## Summary
 
-- Datum/Zeit: `2026-04-25T23:27:31Z`
-- Git SHA: `84d7b66`
+- Datum/Zeit: `2026-04-26T09:02:20Z`
+- Git SHA: `339dd15`
 - Private-Live-Entscheidung: `NO_GO`
 - Full-Autonomous-Live: `NO_GO`
-- Dry-run Ergebnis: `PASS_WITH_WARNINGS`
+- Runtime-Readiness-Status: `not_enough_evidence`
 - Live-Write erlaubt: `false`
 - Key-Permission-Evidence: `FAIL`
 - Externe Exchange/Instrument-Evidence: `FAIL`

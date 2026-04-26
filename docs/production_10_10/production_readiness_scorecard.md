@@ -1,7 +1,7 @@
 # Production Readiness Scorecard
 
-- Datum/Zeit: `2026-04-26T04:18:41.159600+00:00`
-- Git SHA: `84d7b66`
+- Datum/Zeit: `2026-04-26T10:19:14.882697+00:00`
+- Git SHA: `339dd15`
 - Projektname: `bitget-btc-ai`
 - Gesamtstatus: `NO_GO`
 - Owner-Signoff-Feld: `Philipp Crljic: PENDING`
@@ -13,7 +13,7 @@
 - `shadow`: `GO_WITH_WARNINGS` - Shadow darf ohne Live-Submits laufen; fehlende Live-Evidence bleibt sichtbar.
 - `staging`: `NOT_ENOUGH_EVIDENCE` - Staging braucht fehlende P0-Evidence vor privatem Live-Go.
 - `private_live_candidate`: `NO_GO` - Private Live Candidate bleibt blockiert, solange P0-/Asset-Blocker offen sind.
-- `private_live_allowed`: `NO_GO` - Private Live braucht verifizierte Bitget-, Restore-, Burn-in-, Safety-, Asset-, Broker-, Reconcile- und Owner-Evidence.
+- `private_live_allowed`: `NO_GO` - Private Live braucht verifizierte Bitget-, Restore-, Burn-in-, Safety-, Asset-, Broker-, Reconcile- und Owner-Evidence sowie die maschinelle Datei reports/owner_private_live_release.json (gitignored) mit gueltiger Struktur.
 - `full_autonomous_live`: `NO_GO` - Full Autonomous Live bleibt standardmaessig NO_GO ohne vollstaendig verified Matrix und lange echte Live-Historie.
 
 ## Kategorieuebersicht
@@ -107,6 +107,7 @@
 - `reconcile_safety_not_verified:implemented`
 - `shadow_burn_in_not_verified:external_required`
 - `bitget_exchange_readiness_runtime_report_missing`
+- `owner_private_live_release:not_confirmed`
 
 ## Asset-Blocker
 
@@ -164,6 +165,12 @@
 - Echte Backtest-/Walk-forward-/Paper-/Shadow-Berichte pro Asset-Klasse mit Lineage und Divergenz extern archivieren.
 - Owner-signierte Limits und echten Staging-/Shadow-Portfolio-Drill mit Snapshot-, Exposure-, Korrelation- und Family-Limit extern archivieren.
 - Externen Staging-/Shadow-Fail-Closed-Drill mit Provider-, Redis-, DB-, Timeout- und Exchange-Truth-Failures ausfuehren.
+
+## Maschinelle Owner-Freigabe (Private Live)
+
+- `owner_private_live_release_confirmed`: `false`
+- Erwartete lokale Datei (gitignored): `reports/owner_private_live_release.json`
+- Template: `docs/production_10_10/owner_private_live_release.template.json`
 
 ## Owner-Signoff
 

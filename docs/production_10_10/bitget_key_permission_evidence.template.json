@@ -1,20 +1,25 @@
 {
-  "schema_version": "bitget-exchange-readiness-v1",
+  "schema_version": "bitget-key-permission-evidence-v2",
   "environment": "production",
-  "account_mode": "live_candidate",
+  "mode": "live-readonly",
+  "account_alias_redacted": "acct-***",
+  "key_id_redacted": "key-***",
+  "permissions_observed": [
+    "read"
+  ],
   "read_permission": true,
-  "trade_permission": true,
+  "trade_permission": false,
   "withdrawal_permission": false,
   "ip_allowlist_enabled": false,
-  "account_protection_enabled": false,
-  "api_version": "v2",
-  "instrument_scope": "",
-  "reviewed_by": "",
-  "reviewed_at": "",
-  "evidence_reference": "",
-  "owner_signoff": false,
-  "api_key": "[REDACTED]",
-  "api_secret": "[REDACTED]",
-  "passphrase": "[REDACTED]",
-  "notes_de": "Template: echte Permission-/IP-Allowlist-/Account-Schutz-Evidence extern pruefen; Secrets niemals im Repo speichern."
+  "account_protection_checked": false,
+  "checked_at": "CHANGE_ME_ISO8601",
+  "checked_by": "CHANGE_ME_REVIEWER",
+  "evidence_reference": "CHANGE_ME_REFERENCE_URI",
+  "owner_review": {
+    "signoff": false,
+    "reviewer": "",
+    "reviewed_at": ""
+  },
+  "status": "not_enough_evidence",
+  "notes_de": "Template: keine Secrets im Repo, Withdraw muss false bleiben, IP-Allowlist/Account-Schutz extern nachweisen."
 }

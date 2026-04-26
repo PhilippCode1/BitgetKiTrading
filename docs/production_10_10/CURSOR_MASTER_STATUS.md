@@ -4,14 +4,19 @@ Status: automatisch aus `docs/production_10_10/evidence_matrix.yaml` und der Pro
 
 ## Durchlauf
 
-- Datum/Zeit: `2026-04-26T07:10:56.400960+00:00`
+- Datum/Zeit: `2026-04-26T10:19:16.637738+00:00`
 - Git-Branch: `main`
-- Git-SHA: `84d7b66`
+- Git-SHA: `339dd15`
 - Gesamt-Score: `5/10`
 - Gesamtstatus: `NO_GO`
 - Live-Blocker: `30`
+- P0-Blocker: `23`
+- P1-Blocker: `7`
 - Private-Live-Blocker: `23`
 - Asset-Blocker: `5`
+- Verified-Kategorien: `1`
+- Implemented-Kategorien: `28`
+- External-Required-Kategorien: `2`
 
 ## Go/No-Go
 
@@ -120,13 +125,11 @@ Status: automatisch aus `docs/production_10_10/evidence_matrix.yaml` und der Pro
 
 ## In diesem Durchlauf erledigt
 
-- docs/ci_release_gates.md: exakte GitHub Required-Check-Namen wie ci.yml jobs.*.name; Contract-Test test_ci_release_gates_doc_contract.py.
-- tools/check_github_branch_protection.py: MATCH fuer Job-Id UND jobs.*.name aus ci.yml; Fixture branch_protection_pass_display_names.json + Test.
-- evidence_matrix branch_protection_ci notes: Hinweis auf Display-Namen + Fixture.
+- `scripts/cursor_master_status.py` erzeugt diesen Master-Status reproduzierbar.
 
 ## Tests dieses Durchlaufs
 
-- pytest tests/unit/docs/test_ci_release_gates_doc_contract.py tests/unit/tools/test_check_github_branch_protection.py -q (9 passed)
+- Noch keine Tests fuer diesen Durchlauf eingetragen.
 
 ## Nicht ausgefuehrte Tests
 
@@ -138,7 +141,7 @@ Status: automatisch aus `docs/production_10_10/evidence_matrix.yaml` und der Pro
 
 ## Naechster erster Schritt
 
-- P0: Operative Evidence (Burn-in, Restore RTO/RPO, Bitget-Runtime, Drills, Owner-Release); remote Branch-Protection nur verified mit API-Export.
+- P0 zuerst: naechsten groessten Live-Blocker mit Strict-Report, Tests und Evidence-Matrix verknuepfen.
 
 ## Live-Geld-Entscheidung
 

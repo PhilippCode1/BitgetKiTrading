@@ -1,6 +1,9 @@
 # Multi-Asset Strategy Performance Evidence
 
-- Generiert: `2026-04-25T23:19:39Z`
+- Generiert: `2026-04-26T09:40:10Z`
+- Status: `NOT_ENOUGH_EVIDENCE`
+- Verified: `False`
+- Version-Bindung ok: `True`
 - PASS: `1`
 - PASS_WITH_WARNINGS: `0`
 - FAIL: `1`
@@ -17,4 +20,4 @@
 - Market-Family: `futures`
 - Bewertung: `FAIL`
 - Entscheidung (de): Strategie strat_new_listing_guard für NEWCOINUSDT/new_listing: Asset-Klasse ist für Live gesperrt/quarantänepflichtig.; Walk-forward-Evidence fehlt.; Slippage/Fees/Funding-Evidence fehlt.; Out-of-sample-Evidence fehlt.; Shadow-Burn-in-Evidence fehlt.; Drawdown-Regel verletzt.; Regime-Breakdown unzureichend.; Asset-Klassen-Breakdown unzureichend.; No-Trade-Qualität unzureichend.; Datenqualität nicht ausreichend.; Negative oder null Expectancy nach Kosten.; Max-Drawdown über 20%.; Extrem geringe Trade-Anzahl.
-- Blockgründe (de): Asset-Klasse ist für Live gesperrt/quarantänepflichtig., Walk-forward-Evidence fehlt., Slippage/Fees/Funding-Evidence fehlt., Out-of-sample-Evidence fehlt., Shadow-Burn-in-Evidence fehlt., Drawdown-Regel verletzt., Regime-Breakdown unzureichend., Asset-Klassen-Breakdown unzureichend., No-Trade-Qualität unzureichend., Datenqualität nicht ausreichend., Negative oder null Expectancy nach Kosten., Max-Drawdown über 20%., Extrem geringe Trade-Anzahl., Zu wenige Trades für robuste Aussage.
+- Blockgründe (de): Asset-Klasse ist für Live gesperrt/quarantänepflichtig., Walk-forward-Evidence fehlt., Slippage/Fees/Funding-Evidence fehlt., Out-of-sample-Evidence fehlt., Shadow-Burn-in-Evidence fehlt., Drawdown-Regel verletzt., Regime-Breakdown unzureichend., Asset-Klassen-Breakdown unzureichend., No-Trade-Qualität unzureichend., Datenqualität nicht ausreichend., Negative oder null Expectancy nach Kosten., Max-Drawdown über 20%., Extrem geringe Trade-Anzahl., Zu wenige Trades für robuste Aussage., trade_count_unter_minimum

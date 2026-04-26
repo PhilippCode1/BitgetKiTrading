@@ -1138,16 +1138,24 @@ class BitgetAssetUniverseInstrument(BaseModel):
     tick_size: str | None = None
     lot_size: str | None = None
     min_qty: str | None = None
+    min_order_size: str | None = None
     min_notional: str | None = None
+    max_order_size: str | None = None
     price_precision: int | None = None
     quantity_precision: int | None = None
     status: AssetUniverseStatus = "unknown"
     is_tradable: bool = False
+    tradable: bool = False
     is_chart_visible: bool = False
     is_live_allowed: bool = False
+    is_delisted: bool = False
+    is_quarantined: bool = False
     block_reasons: list[str] = Field(default_factory=list)
     discovered_at: int | None = None
     last_verified_at: int | None = None
+    fetched_at: int | None = None
+    metadata_age_sec: int | None = None
+    evidence_hash: str | None = None
     source: str = "runtime_catalog"
     asset_tier: int = 0
     data_quality_ok: bool = False
@@ -1165,7 +1173,9 @@ class BitgetAssetUniverseInstrument(BaseModel):
         "tick_size",
         "lot_size",
         "min_qty",
+        "min_order_size",
         "min_notional",
+        "max_order_size",
         "source",
         mode="before",
     )
@@ -1234,14 +1244,22 @@ class BitgetAssetUniverseInstrument(BaseModel):
             tick_size=entry.price_tick_size,
             lot_size=entry.quantity_step,
             min_qty=entry.quantity_min,
+            min_order_size=entry.quantity_min,
             min_notional=entry.min_notional_quote,
+            max_order_size=entry.quantity_max,
             price_precision=entry.price_precision,
             quantity_precision=entry.quantity_precision,
             status=status,
             is_tradable=entry.trading_enabled,
+            tradable=entry.trading_enabled,
             is_chart_visible=entry.subscribe_enabled,
+            is_delisted=str(entry.status or "").lower() == "delisted",
+            is_quarantined=False,
             discovered_at=refresh_ts,
             last_verified_at=refresh_ts,
+            fetched_at=refresh_ts,
+            metadata_age_sec=0 if refresh_ts is not None else None,
+            evidence_hash=entry.canonical_instrument_id,
             source=entry.metadata_source or "runtime_catalog",
             asset_tier=asset_tier,
             data_quality_ok=data_quality_ok,
@@ -1258,13 +1276,21 @@ class BitgetAssetUniverseInstrument(BaseModel):
             reasons.append("status_unknown")
         if status in {"delisted", "suspended", "blocked", "quarantined"}:
             reasons.append(f"status_{status}")
+        if self.is_delisted:
+            reasons.append("is_delisted")
+        if self.is_quarantined:
+            reasons.append("is_quarantined")
         if self.market_family == "futures" and not self.product_type:
             reasons.append("missing_product_type_for_futures")
         if self.market_family == "futures" and not self.margin_coin:
             reasons.append("missing_margin_coin_for_futures")
         if self.price_precision is None or self.quantity_precision is None:
             reasons.append("missing_precision")
-        if not self.min_qty:
+        if not self.tick_size:
+            reasons.append("missing_tick_size")
+        if not self.lot_size:
+            reasons.append("missing_lot_size")
+        if not (self.min_qty or self.min_order_size):
             reasons.append("missing_min_qty")
         if not self.min_notional:
             reasons.append("missing_min_notional")

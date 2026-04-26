@@ -1,6 +1,6 @@
 # Bitget Asset Universe Refresh Report
 
-- Datum/Zeit: `2026-04-25T23:27:33.409755+00:00`
+- Datum/Zeit: `2026-04-26T09:04:57.366566+00:00`
 - Projektname: `bitget-btc-ai`
 - Modus: `fixture_or_readonly`
 

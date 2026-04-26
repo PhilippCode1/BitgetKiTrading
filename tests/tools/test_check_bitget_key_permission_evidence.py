@@ -18,12 +18,14 @@ def _valid_payload() -> dict[str, object]:
     payload.update(
         {
             "ip_allowlist_enabled": True,
-            "account_protection_enabled": True,
-            "instrument_scope": "USDT-FUTURES",
-            "reviewed_by": "external-security-review",
-            "reviewed_at": "2026-04-26T00:00:00Z",
+            "account_protection_checked": True,
+            "checked_by": "external-security-review",
+            "checked_at": "2026-04-26T00:00:00Z",
             "evidence_reference": "external-ticket-123",
-            "owner_signoff": True,
+            "owner_review": {"signoff": True, "reviewer": "Philipp", "reviewed_at": "2026-04-26T00:10:00Z"},
+            "status": "verified",
+            "account_alias_redacted": "acct-***",
+            "key_id_redacted": "key-***",
         }
     )
     return payload
@@ -40,8 +42,8 @@ def test_template_is_valid_json_but_strict_blocks_external_gaps() -> None:
     assert completed.returncode == 1
     payload = json.loads(completed.stdout)
     assert payload["ok"] is False
-    assert "ip_allowlist_not_confirmed" in payload["blockers"]
-    assert "account_protection_not_confirmed" in payload["blockers"]
+    assert "ip_allowlist_not_checked_not_enough_evidence" in payload["warnings"]
+    assert "account_protection_not_checked_not_enough_evidence" in payload["warnings"]
 
 
 def test_strict_accepts_secret_free_external_evidence(tmp_path: Path) -> None:

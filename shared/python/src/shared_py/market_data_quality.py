@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
-from typing import Literal
+from typing import Any, Literal
 
 DataQualityStatus = Literal[
     "data_unknown",
@@ -15,6 +15,7 @@ DataQualityStatus = Literal[
     "data_quarantined",
     "data_live_blocked",
 ]
+EvidenceLevel = Literal["synthetic", "runtime", "external_required"]
 
 PASS_OUTCOME = "PASS"
 PASS_WITH_WARNINGS_OUTCOME = "PASS_WITH_WARNINGS"
@@ -44,6 +45,25 @@ class AssetDataQualitySummary:
     warnings: list[str]
     live_impact: str
     result: str
+
+
+@dataclass(frozen=True)
+class AssetMarketDataQualityResult:
+    asset: str
+    market_family: str
+    status: Literal["pass", "warn", "fail", "not_enough_evidence"]
+    live_allowed: bool
+    paper_allowed: bool
+    shadow_allowed: bool
+    reasons: list[str]
+    freshness: dict[str, Any]
+    gaps: dict[str, Any]
+    plausibility: dict[str, Any]
+    cross_source: dict[str, Any]
+    checked_at: str
+    evidence_level: EvidenceLevel
+    alert_required: bool
+    alert_route_verified: bool
 
 
 def _iso_utc_now() -> str:
@@ -185,6 +205,58 @@ def validate_spread_sanity(
     return len(reasons) == 0, reasons, warnings
 
 
+def validate_price_plausibility(
+    *,
+    bid: float | None,
+    ask: float | None,
+    last_price: float | None,
+    mark_price: float | None,
+    index_price: float | None,
+    max_mark_index_deviation_bps: float = 80.0,
+    max_last_mid_deviation_bps: float = 120.0,
+) -> tuple[bool, list[str], list[str]]:
+    reasons: list[str] = []
+    warnings: list[str] = []
+    for name, value in (
+        ("bid", bid),
+        ("ask", ask),
+        ("last_price", last_price),
+        ("mark_price", mark_price),
+        ("index_price", index_price),
+    ):
+        if value is not None and value <= 0:
+            reasons.append(f"{name}_non_positive")
+    if bid is not None and ask is not None and bid > ask:
+        reasons.append("bid_gt_ask")
+    if bid is not None and ask is not None and last_price is not None and bid <= ask:
+        mid = (bid + ask) / 2.0
+        if mid > 0:
+            dev_bps = abs(last_price - mid) / mid * 10_000.0
+            if dev_bps > max_last_mid_deviation_bps:
+                reasons.append("last_price_implausible_vs_mid")
+    if mark_price is not None and index_price is not None and index_price > 0:
+        dev_bps = abs(mark_price - index_price) / index_price * 10_000.0
+        if dev_bps > max_mark_index_deviation_bps:
+            reasons.append("mark_index_deviation_too_high")
+        elif dev_bps > max_mark_index_deviation_bps * 0.7:
+            warnings.append("mark_index_deviation_elevated")
+    return len(reasons) == 0, list(dict.fromkeys(reasons)), list(dict.fromkeys(warnings))
+
+
+def validate_timestamp_guard(
+    *,
+    tick_ts_ms: int | None,
+    now_ts_ms: int,
+    max_future_tolerance_ms: int = 3_000,
+) -> tuple[bool, list[str]]:
+    if not tick_ts_ms or tick_ts_ms <= 0:
+        return False, ["tick_timestamp_missing"]
+    delta = int(tick_ts_ms) - int(now_ts_ms)
+    if delta > max_future_tolerance_ms:
+        return False, ["tick_timestamp_from_future"]
+    return True, []
+
+
 def validate_funding_freshness(
     *,
     market_family: str,
@@ -235,6 +307,115 @@ def asset_data_quality_blocks_live(
     if quality_status in _BLOCKING_STATUSES:
         return True
     return any(bool(str(reason).strip()) for reason in block_reasons)
+
+
+def evaluate_market_data_quality(payload: dict[str, Any]) -> AssetMarketDataQualityResult:
+    now_ts_ms = int(payload.get("now_ts_ms") or 0)
+    market_family = str(payload.get("market_family") or "unknown").lower()
+    is_runtime = bool(payload.get("runtime_data", False))
+    exchange_truth_checked = bool(payload.get("exchange_truth_checked", False))
+    alert_route_verified = bool(payload.get("alert_route_verified", False))
+
+    ok_ob, ob_reasons = validate_orderbook_freshness(
+        orderbook_present=bool(payload.get("orderbook_present")),
+        last_orderbook_ts_ms=payload.get("last_orderbook_ts_ms"),
+        now_ts_ms=now_ts_ms,
+        max_age_ms=int(payload.get("orderbook_max_age_ms") or 0),
+    )
+    ok_cseq, cseq_reasons = validate_candle_sequence(list(payload.get("candles") or []))
+    ok_gap, gap_reasons = detect_candle_gaps(
+        list(payload.get("candles") or []),
+        int(payload.get("expected_candle_interval_ms") or 0),
+    )
+    ok_ohlc, ohlc_reasons = validate_ohlc_sanity(list(payload.get("candles") or []))
+    ok_spread, spread_reasons, spread_warnings = validate_spread_sanity(
+        bid=(float(payload["best_bid"]) if payload.get("best_bid") is not None else None),
+        ask=(float(payload["best_ask"]) if payload.get("best_ask") is not None else None),
+        max_spread_bps=float(payload.get("max_spread_bps") or 50.0),
+    )
+    ok_ts, ts_reasons = validate_timestamp_guard(
+        tick_ts_ms=payload.get("price_tick_ts_ms") or payload.get("last_orderbook_ts_ms"),
+        now_ts_ms=now_ts_ms,
+        max_future_tolerance_ms=int(payload.get("max_future_tolerance_ms") or 3_000),
+    )
+    ok_pl, pl_reasons, pl_warnings = validate_price_plausibility(
+        bid=(float(payload["best_bid"]) if payload.get("best_bid") is not None else None),
+        ask=(float(payload["best_ask"]) if payload.get("best_ask") is not None else None),
+        last_price=(float(payload["last_price"]) if payload.get("last_price") is not None else None),
+        mark_price=(float(payload["mark_price"]) if payload.get("mark_price") is not None else None),
+        index_price=(float(payload["index_price"]) if payload.get("index_price") is not None else None),
+        max_mark_index_deviation_bps=float(payload.get("max_mark_index_deviation_bps") or 80.0),
+        max_last_mid_deviation_bps=float(payload.get("max_last_mid_deviation_bps") or 120.0),
+    )
+
+    reasons: list[str] = []
+    warnings: list[str] = []
+    if not ok_ob:
+        reasons.extend(ob_reasons)
+    if not ok_cseq:
+        reasons.extend(cseq_reasons)
+    if not ok_gap:
+        reasons.extend(gap_reasons)
+    if not ok_ohlc:
+        reasons.extend(ohlc_reasons)
+    if not ok_spread:
+        reasons.extend(spread_reasons)
+    if not ok_ts:
+        reasons.extend(ts_reasons)
+    if not ok_pl:
+        reasons.extend(pl_reasons)
+    warnings.extend(spread_warnings)
+    warnings.extend(pl_warnings)
+
+    if bool(payload.get("provider_unavailable")) or bool(payload.get("redis_unavailable")):
+        reasons.append("provider_or_cache_unavailable")
+    if market_family == "futures":
+        if payload.get("mark_price") is None:
+            reasons.append("mark_price_missing_for_futures")
+        if payload.get("product_type") in (None, ""):
+            reasons.append("product_type_missing_for_futures")
+    if market_family == "margin" and payload.get("margin_coin") in (None, ""):
+        reasons.append("margin_coin_missing_for_margin")
+    if not exchange_truth_checked:
+        warnings.append("exchange_truth_not_checked")
+
+    reasons = list(dict.fromkeys(reasons))
+    warnings = list(dict.fromkeys(warnings))
+    evidence_level: EvidenceLevel = "runtime" if is_runtime else "synthetic"
+    if not exchange_truth_checked:
+        evidence_level = "external_required"
+    if reasons:
+        status: Literal["pass", "warn", "fail", "not_enough_evidence"] = "fail"
+    elif warnings:
+        status = "not_enough_evidence" if "exchange_truth_not_checked" in warnings else "warn"
+    else:
+        status = "pass"
+
+    live_allowed = status == "pass" and evidence_level == "runtime" and exchange_truth_checked
+    return AssetMarketDataQualityResult(
+        asset=str(payload.get("symbol") or "").upper(),
+        market_family=market_family,
+        status=status,
+        live_allowed=live_allowed,
+        paper_allowed=True,
+        shadow_allowed=True,
+        reasons=reasons + ([] if live_allowed else (["quality_not_live_eligible"] if status != "pass" else ["runtime_evidence_missing"])),
+        freshness={
+            "price_tick_age_ms": int(payload.get("price_tick_age_ms") or 0),
+            "orderbook_age_ms": int(payload.get("now_ts_ms") or 0) - int(payload.get("last_orderbook_ts_ms") or 0),
+            "funding_age_ms": None if payload.get("funding_last_ts_ms") is None else int(payload.get("now_ts_ms") or 0) - int(payload.get("funding_last_ts_ms") or 0),
+        },
+        gaps={"candle_gap_detected": "candle_critical_gap" in reasons},
+        plausibility={"warnings": warnings, "checks_passed": len(pl_reasons) == 0 and len(spread_reasons) == 0},
+        cross_source={
+            "exchange_truth_checked": exchange_truth_checked,
+            "provider_vs_exchange_consistent": "mark_index_deviation_too_high" not in reasons,
+        },
+        checked_at=_iso_utc_now(),
+        evidence_level=evidence_level,
+        alert_required=bool(reasons) or ("exchange_truth_not_checked" in warnings),
+        alert_route_verified=alert_route_verified,
+    )
 
 
 def build_asset_data_quality_summary(

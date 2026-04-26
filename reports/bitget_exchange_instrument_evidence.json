@@ -1,14 +1,15 @@
 {
-  "generated_at": "2026-04-25T23:27:31Z",
-  "git_sha": "84d7b66",
+  "generated_at": "2026-04-26T09:02:20Z",
+  "git_sha": "339dd15",
   "private_live_decision": "NO_GO",
   "full_autonomous_live": "NO_GO",
   "readiness_dry_run": {
     "contract_version": "bitget-exchange-readiness-v1",
-    "generated_at": "2026-04-25T23:27:31.795883+00:00",
-    "git_sha": "84d7b66",
+    "checked_at": "2026-04-26T09:02:20.156078+00:00",
+    "git_sha": "339dd15",
     "mode": "dry-run",
-    "env_profile": "production",
+    "environment": "production",
+    "status": "not_enough_evidence",
     "credential_type": "none",
     "credential_summary": {
       "live_key": "missing_or_placeholder",
@@ -27,25 +28,25 @@
     ],
     "public_api_status": {
       "status": "unavailable",
-      "detail": "dry-run: no network calls",
+      "detail": "network check not executed",
       "http_status": null,
       "classification": null
     },
     "private_readonly_status": {
       "status": "unavailable",
-      "detail": "dry-run: private read-only not executed",
+      "detail": "private read-only not executed",
       "http_status": null,
       "classification": null
     },
     "permission_status": {
       "status": "degraded",
-      "detail": "permission evidence missing; live write remains blocked",
+      "detail": "runtime permission evidence missing",
       "http_status": null,
       "classification": null
     },
     "instrument_universe_status": {
       "status": "unavailable",
-      "detail": "dry-run: instrument discovery not executed",
+      "detail": "instrument discovery not executed",
       "http_status": null,
       "classification": null
     },
@@ -62,25 +63,23 @@
       "classification": null
     },
     "blockers": [],
-    "warnings": [
-      "api_version_v2_paths_documented_v1_usage_is_risk",
-      "dry_run_no_public_network_evidence",
-      "dry_run_no_private_auth_evidence",
-      "dry_run_no_instrument_universe_evidence",
-      "permission_evidence_missing_live_write_blocked"
-    ],
-    "result": "PASS_WITH_WARNINGS",
-    "live_write_allowed": false
+    "warnings": [],
+    "live_write_allowed": false,
+    "demo_trade_smoke_executed": false,
+    "demo_trade_smoke_guard_ack": false
   },
   "key_permission_assessment": {
     "status": "FAIL",
     "blockers": [
+      "schema_version_mismatch",
+      "account_mode_invalid",
+      "trade_permission_not_confirmed",
       "ip_allowlist_not_confirmed",
       "account_protection_not_confirmed",
+      "api_version_not_v2",
       "instrument_scope_missing",
       "reviewer_missing",
-      "reviewed_at_missing",
-      "evidence_reference_missing"
+      "reviewed_at_missing"
     ],
     "warnings": [
       "owner_signoff_missing_external_required"

@@ -2,12 +2,16 @@
 
 ## Zusammenfassung
 
-- Erzeugt: `2026-04-25T23:32:39Z`
-- Git SHA: `84d7b66`
+- Erzeugt: `2026-04-26T10:14:36Z`
+- Git SHA: `339dd15`
 - Doku vollstaendig: `True`
+- Alerts vorhanden: `61`
+- Metrics erkannt: `62`
 - Alertmanager/Prometheus-Check: `PASS`
 - Alert-Drill-JSON (strict): `False`
 - Ops/SLO-JSON: `FAIL`
+- Incident-Drill vorhanden: `True`
+- Secret-Leak-Check: `True`
 - Interne Issues: `0`
 
 ## Alertmanager / Prometheus (repo)
@@ -53,6 +57,7 @@
 
 - `python tools/verify_alert_routing.py --strict`
 - `python tools/verify_alert_routing.py --evidence-json docs/production_10_10/alert_routing_evidence.template.json --strict`
+- `python scripts/incident_drill_report.py --output-md reports/incident_drill.md --output-json reports/incident_drill.json`
 - `pytest tests/unit/monitor_engine -q`
 
 ## Einordnung

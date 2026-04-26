@@ -48,6 +48,9 @@ def test_script_generates_report_with_german_blockgruende(tmp_path: Path) -> Non
     payload = json.loads(out_json.read_text(encoding="utf-8"))
     assert "summary" in payload
     assert payload["summary"]["FAIL"] >= 1
+    assert payload["verified"] is False
+    assert payload["status"] in {"NOT_ENOUGH_EVIDENCE", "implemented"}
+    assert "version_binding_ok" in payload
 
 
 def test_script_can_generate_fail_closed_report_without_failing_cli(tmp_path: Path) -> None:

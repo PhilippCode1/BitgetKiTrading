@@ -3,6 +3,7 @@ from __future__ import annotations
 from shared_py.market_data_quality import (
     asset_data_quality_blocks_live,
     detect_candle_gaps,
+    evaluate_market_data_quality,
     validate_candle_sequence,
     validate_funding_freshness,
     validate_ohlc_sanity,
@@ -81,3 +82,28 @@ def test_funding_stale_warning_or_block() -> None:
 
 def test_unknown_status_fail_closed() -> None:
     assert asset_data_quality_blocks_live(quality_status="data_unknown", block_reasons=[]) is True
+
+
+def test_runtime_evidence_required_for_live_allowed() -> None:
+    result = evaluate_market_data_quality(
+        {
+            "symbol": "BTCUSDT",
+            "market_family": "futures",
+            "product_type": "USDT-FUTURES",
+            "candles": _candles_ok(),
+            "expected_candle_interval_ms": 1000,
+            "orderbook_present": True,
+            "last_orderbook_ts_ms": 9_900,
+            "now_ts_ms": 10_000,
+            "orderbook_max_age_ms": 500,
+            "best_bid": 100.0,
+            "best_ask": 100.1,
+            "last_price": 100.05,
+            "mark_price": 100.06,
+            "index_price": 100.0,
+            "runtime_data": False,
+            "exchange_truth_checked": False,
+        }
+    )
+    assert result.status == "not_enough_evidence"
+    assert result.live_allowed is False

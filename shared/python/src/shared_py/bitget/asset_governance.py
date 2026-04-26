@@ -97,6 +97,16 @@ class TransitionDecision:
     reasons: list[str]
 
 
+class AssetTradeDecision(BaseModel):
+    allowed: bool
+    decision: Literal["allow_trade", "no_trade"]
+    reasons: list[str] = Field(default_factory=list)
+    severity: Literal["P0", "P1", "P2", "P3"] = "P0"
+    asset: str
+    market_family: str
+    evidence_missing: list[str] = Field(default_factory=list)
+
+
 def _state_index(state: AssetState) -> int:
     if state in TERMINAL_BLOCK_STATES:
         return -1
@@ -177,6 +187,27 @@ def live_block_reasons(record: AssetGovernanceRecord) -> list[str]:
     if not record.bitget_status_clear:
         reasons.append("bitget_status_nicht_klar")
     return list(dict.fromkeys(reasons))
+
+
+def evaluate_trade_decision(record: AssetGovernanceRecord) -> AssetTradeDecision:
+    reasons = live_block_reasons(record)
+    evidence_missing: list[str] = []
+    if not record.evidence_refs:
+        evidence_missing.append("evidence_refs_missing")
+    if not record.bitget_status_clear:
+        evidence_missing.append("bitget_status_not_clear")
+    if record.data_quality_status != "data_ok":
+        evidence_missing.append("data_quality_not_ok")
+    allowed = len(reasons) == 0
+    return AssetTradeDecision(
+        allowed=allowed,
+        decision="allow_trade" if allowed else "no_trade",
+        reasons=reasons,
+        severity="P0" if not allowed else "P3",
+        asset=record.symbol,
+        market_family=record.market_family,
+        evidence_missing=list(dict.fromkeys(evidence_missing)),
+    )
 
 
 def german_label_for_state(state: AssetState) -> str:

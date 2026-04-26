@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-04-25T23:19:36Z",
-  "git_sha": "84d7b66",
+  "generated_at": "2026-04-26T09:48:27Z",
+  "git_sha": "339dd15",
   "private_live_decision": "NO_GO",
   "full_autonomous_live": "NO_GO",
   "portfolio_scenarios": [
@@ -28,9 +28,31 @@
           "portfolio_snapshot_fehlt"
         ],
         "cap_reasons": [],
-        "allows_next_gate_only": false
+        "allows_next_gate_only": false,
+        "account_equity": 0.0,
+        "free_margin": 0.0,
+        "used_margin": 0.0,
+        "total_notional": 0.0,
+        "total_leverage_exposure": 0.0,
+        "exposure_by_asset": null,
+        "exposure_by_market_family": null,
+        "exposure_by_correlation_group": null,
+        "daily_realized_pnl": 0.0,
+        "daily_unrealized_pnl": 0.0,
+        "weekly_pnl": 0.0,
+        "current_drawdown": 0.0,
+        "max_drawdown": 0.0,
+        "longest_loss_streak": 0,
+        "current_loss_streak": 0,
+        "global_halt_active": false,
+        "risk_state": "unknown_blocked",
+        "opening_orders_allowed": false,
+        "reduce_only_allowed": false,
+        "reasons": [
+          "portfolio_snapshot_fehlt"
+        ]
       },
-      "summary_de": "Portfolio-Risiko blockiert Live-Opening: portfolio_snapshot_fehlt. Portfolio-Go/No-Go: NO_GO.",
+      "summary_de": "Portfolio-Risiko blockiert Live-Opening: portfolio_snapshot_fehlt. Risk-State=unknown_blocked. Portfolio-Go/No-Go: NO_GO.",
       "preflight": {
         "submit_allowed": false,
         "blocking_reasons": [
@@ -43,7 +65,8 @@
       "id": "stale_snapshot",
       "blocks_live": true,
       "block_reasons": [
-        "portfolio_snapshot_stale"
+        "portfolio_snapshot_stale",
+        "owner_limits_fehlen"
       ],
       "cap_reasons": [],
       "portfolio_result": {
@@ -62,12 +85,40 @@
         "basis_risk": 5.0,
         "largest_position_risk": 0.01,
         "block_reasons": [
-          "portfolio_snapshot_stale"
+          "portfolio_snapshot_stale",
+          "owner_limits_fehlen"
         ],
         "cap_reasons": [],
-        "allows_next_gate_only": false
+        "allows_next_gate_only": false,
+        "account_equity": 10000.0,
+        "free_margin": 0.0,
+        "used_margin": 2000.0,
+        "total_notional": 4000.0,
+        "total_leverage_exposure": 0.0,
+        "exposure_by_asset": {
+          "BTCUSDT": 4000.0
+        },
+        "exposure_by_market_family": {
+          "futures": 4000.0
+        },
+        "exposure_by_correlation_group": {},
+        "daily_realized_pnl": 0.0,
+        "daily_unrealized_pnl": 0.0,
+        "weekly_pnl": 0.0,
+        "current_drawdown": 0.0,
+        "max_drawdown": 0.0,
+        "longest_loss_streak": 0,
+        "current_loss_streak": 0,
+        "global_halt_active": false,
+        "risk_state": "unknown_blocked",
+        "opening_orders_allowed": false,
+        "reduce_only_allowed": false,
+        "reasons": [
+          "portfolio_snapshot_stale",
+          "owner_limits_fehlen"
+        ]
       },
-      "summary_de": "Portfolio-Risiko blockiert Live-Opening: portfolio_snapshot_stale. Portfolio-Go/No-Go: NO_GO.",
+      "summary_de": "Portfolio-Risiko blockiert Live-Opening: portfolio_snapshot_stale, owner_limits_fehlen. Risk-State=unknown_blocked. Portfolio-Go/No-Go: NO_GO.",
       "preflight": {
         "submit_allowed": false,
         "blocking_reasons": [
@@ -81,7 +132,8 @@
       "blocks_live": true,
       "block_reasons": [
         "account_equity_ungueltig",
-        "margin_usage_ueber_limit"
+        "margin_usage_ueber_limit",
+        "owner_limits_fehlen"
       ],
       "cap_reasons": [],
       "portfolio_result": {
@@ -101,12 +153,41 @@
         "largest_position_risk": 0.01,
         "block_reasons": [
           "account_equity_ungueltig",
-          "margin_usage_ueber_limit"
+          "margin_usage_ueber_limit",
+          "owner_limits_fehlen"
         ],
         "cap_reasons": [],
-        "allows_next_gate_only": false
+        "allows_next_gate_only": false,
+        "account_equity": 0.0,
+        "free_margin": 0.0,
+        "used_margin": 2000.0,
+        "total_notional": 4000.0,
+        "total_leverage_exposure": 0.0,
+        "exposure_by_asset": {
+          "BTCUSDT": 4000.0
+        },
+        "exposure_by_market_family": {
+          "futures": 4000.0
+        },
+        "exposure_by_correlation_group": {},
+        "daily_realized_pnl": 0.0,
+        "daily_unrealized_pnl": 0.0,
+        "weekly_pnl": 0.0,
+        "current_drawdown": 0.0,
+        "max_drawdown": 0.0,
+        "longest_loss_streak": 0,
+        "current_loss_streak": 0,
+        "global_halt_active": false,
+        "risk_state": "unknown_blocked",
+        "opening_orders_allowed": false,
+        "reduce_only_allowed": false,
+        "reasons": [
+          "account_equity_ungueltig",
+          "margin_usage_ueber_limit",
+          "owner_limits_fehlen"
+        ]
       },
-      "summary_de": "Portfolio-Risiko blockiert Live-Opening: account_equity_ungueltig, margin_usage_ueber_limit. Portfolio-Go/No-Go: NO_GO.",
+      "summary_de": "Portfolio-Risiko blockiert Live-Opening: account_equity_ungueltig, margin_usage_ueber_limit, owner_limits_fehlen. Risk-State=unknown_blocked. Portfolio-Go/No-Go: NO_GO.",
       "preflight": {
         "submit_allowed": false,
         "blocking_reasons": [
@@ -121,7 +202,8 @@
       "block_reasons": [
         "total_exposure_ueber_limit",
         "net_long_exposure_ueber_limit",
-        "family_exposure_zu_hoch"
+        "family_exposure_zu_hoch",
+        "owner_limits_fehlen"
       ],
       "cap_reasons": [],
       "portfolio_result": {
@@ -142,12 +224,42 @@
         "block_reasons": [
           "total_exposure_ueber_limit",
           "net_long_exposure_ueber_limit",
-          "family_exposure_zu_hoch"
+          "family_exposure_zu_hoch",
+          "owner_limits_fehlen"
         ],
         "cap_reasons": [],
-        "allows_next_gate_only": false
+        "allows_next_gate_only": false,
+        "account_equity": 10000.0,
+        "free_margin": 0.0,
+        "used_margin": 2000.0,
+        "total_notional": 30000.0,
+        "total_leverage_exposure": 0.0,
+        "exposure_by_asset": {
+          "BTCUSDT": 30000.0
+        },
+        "exposure_by_market_family": {
+          "futures": 30000.0
+        },
+        "exposure_by_correlation_group": {},
+        "daily_realized_pnl": 0.0,
+        "daily_unrealized_pnl": 0.0,
+        "weekly_pnl": 0.0,
+        "current_drawdown": 0.0,
+        "max_drawdown": 0.0,
+        "longest_loss_streak": 0,
+        "current_loss_streak": 0,
+        "global_halt_active": false,
+        "risk_state": "unknown_blocked",
+        "opening_orders_allowed": false,
+        "reduce_only_allowed": false,
+        "reasons": [
+          "total_exposure_ueber_limit",
+          "net_long_exposure_ueber_limit",
+          "family_exposure_zu_hoch",
+          "owner_limits_fehlen"
+        ]
       },
-      "summary_de": "Portfolio-Risiko blockiert Live-Opening: total_exposure_ueber_limit, net_long_exposure_ueber_limit, family_exposure_zu_hoch. Portfolio-Go/No-Go: NO_GO.",
+      "summary_de": "Portfolio-Risiko blockiert Live-Opening: total_exposure_ueber_limit, net_long_exposure_ueber_limit, family_exposure_zu_hoch, owner_limits_fehlen. Risk-State=unknown_blocked. Portfolio-Go/No-Go: NO_GO.",
       "preflight": {
         "submit_allowed": false,
         "blocking_reasons": [
@@ -160,7 +272,8 @@
       "id": "margin_usage_over_limit",
       "blocks_live": true,
       "block_reasons": [
-        "margin_usage_ueber_limit"
+        "margin_usage_ueber_limit",
+        "owner_limits_fehlen"
       ],
       "cap_reasons": [],
       "portfolio_result": {
@@ -179,12 +292,40 @@
         "basis_risk": 5.0,
         "largest_position_risk": 0.01,
         "block_reasons": [
-          "margin_usage_ueber_limit"
+          "margin_usage_ueber_limit",
+          "owner_limits_fehlen"
         ],
         "cap_reasons": [],
-        "allows_next_gate_only": false
+        "allows_next_gate_only": false,
+        "account_equity": 10000.0,
+        "free_margin": 0.0,
+        "used_margin": 7000.0,
+        "total_notional": 4000.0,
+        "total_leverage_exposure": 0.0,
+        "exposure_by_asset": {
+          "BTCUSDT": 4000.0
+        },
+        "exposure_by_market_family": {
+          "futures": 4000.0
+        },
+        "exposure_by_correlation_group": {},
+        "daily_realized_pnl": 0.0,
+        "daily_unrealized_pnl": 0.0,
+        "weekly_pnl": 0.0,
+        "current_drawdown": 0.0,
+        "max_drawdown": 0.0,
+        "longest_loss_streak": 0,
+        "current_loss_streak": 0,
+        "global_halt_active": false,
+        "risk_state": "unknown_blocked",
+        "opening_orders_allowed": false,
+        "reduce_only_allowed": false,
+        "reasons": [
+          "margin_usage_ueber_limit",
+          "owner_limits_fehlen"
+        ]
       },
-      "summary_de": "Portfolio-Risiko blockiert Live-Opening: margin_usage_ueber_limit. Portfolio-Go/No-Go: NO_GO.",
+      "summary_de": "Portfolio-Risiko blockiert Live-Opening: margin_usage_ueber_limit, owner_limits_fehlen. Risk-State=unknown_blocked. Portfolio-Go/No-Go: NO_GO.",
       "preflight": {
         "submit_allowed": false,
         "blocking_reasons": [
@@ -197,7 +338,8 @@
       "id": "largest_position_risk_over_limit",
       "blocks_live": true,
       "block_reasons": [
-        "largest_position_risk_ueber_limit"
+        "largest_position_risk_ueber_limit",
+        "owner_limits_fehlen"
       ],
       "cap_reasons": [],
       "portfolio_result": {
@@ -216,12 +358,40 @@
         "basis_risk": 5.0,
         "largest_position_risk": 0.08,
         "block_reasons": [
-          "largest_position_risk_ueber_limit"
+          "largest_position_risk_ueber_limit",
+          "owner_limits_fehlen"
         ],
         "cap_reasons": [],
-        "allows_next_gate_only": false
+        "allows_next_gate_only": false,
+        "account_equity": 10000.0,
+        "free_margin": 0.0,
+        "used_margin": 2000.0,
+        "total_notional": 3000.0,
+        "total_leverage_exposure": 0.0,
+        "exposure_by_asset": {
+          "BTCUSDT": 3000.0
+        },
+        "exposure_by_market_family": {
+          "futures": 3000.0
+        },
+        "exposure_by_correlation_group": {},
+        "daily_realized_pnl": 0.0,
+        "daily_unrealized_pnl": 0.0,
+        "weekly_pnl": 0.0,
+        "current_drawdown": 0.0,
+        "max_drawdown": 0.0,
+        "longest_loss_streak": 0,
+        "current_loss_streak": 0,
+        "global_halt_active": false,
+        "risk_state": "unknown_blocked",
+        "opening_orders_allowed": false,
+        "reduce_only_allowed": false,
+        "reasons": [
+          "largest_position_risk_ueber_limit",
+          "owner_limits_fehlen"
+        ]
       },
-      "summary_de": "Portfolio-Risiko blockiert Live-Opening: largest_position_risk_ueber_limit. Portfolio-Go/No-Go: NO_GO.",
+      "summary_de": "Portfolio-Risiko blockiert Live-Opening: largest_position_risk_ueber_limit, owner_limits_fehlen. Risk-State=unknown_blocked. Portfolio-Go/No-Go: NO_GO.",
       "preflight": {
         "submit_allowed": false,
         "blocking_reasons": [
@@ -234,7 +404,8 @@
       "id": "max_concurrent_positions",
       "blocks_live": true,
       "block_reasons": [
-        "max_concurrent_positions_ueberschritten"
+        "max_concurrent_positions_ueberschritten",
+        "owner_limits_fehlen"
       ],
       "cap_reasons": [],
       "portfolio_result": {
@@ -253,12 +424,43 @@
         "basis_risk": 5.0,
         "largest_position_risk": 0.01,
         "block_reasons": [
-          "max_concurrent_positions_ueberschritten"
+          "max_concurrent_positions_ueberschritten",
+          "owner_limits_fehlen"
         ],
         "cap_reasons": [],
-        "allows_next_gate_only": false
+        "allows_next_gate_only": false,
+        "account_equity": 10000.0,
+        "free_margin": 0.0,
+        "used_margin": 2000.0,
+        "total_notional": 4000.0,
+        "total_leverage_exposure": 0.0,
+        "exposure_by_asset": {
+          "BTCUSDT": 1000.0,
+          "ETHUSDT": 1000.0,
+          "SOLUSDT": 1000.0,
+          "XRPUSDT": 1000.0
+        },
+        "exposure_by_market_family": {
+          "futures": 4000.0
+        },
+        "exposure_by_correlation_group": {},
+        "daily_realized_pnl": 0.0,
+        "daily_unrealized_pnl": 0.0,
+        "weekly_pnl": 0.0,
+        "current_drawdown": 0.0,
+        "max_drawdown": 0.0,
+        "longest_loss_streak": 0,
+        "current_loss_streak": 0,
+        "global_halt_active": false,
+        "risk_state": "unknown_blocked",
+        "opening_orders_allowed": false,
+        "reduce_only_allowed": false,
+        "reasons": [
+          "max_concurrent_positions_ueberschritten",
+          "owner_limits_fehlen"
+        ]
       },
-      "summary_de": "Portfolio-Risiko blockiert Live-Opening: max_concurrent_positions_ueberschritten. Portfolio-Go/No-Go: NO_GO.",
+      "summary_de": "Portfolio-Risiko blockiert Live-Opening: max_concurrent_positions_ueberschritten, owner_limits_fehlen. Risk-State=unknown_blocked. Portfolio-Go/No-Go: NO_GO.",
       "preflight": {
         "submit_allowed": false,
         "blocking_reasons": [
@@ -271,7 +473,8 @@
       "id": "pending_orders_over_limit",
       "blocks_live": true,
       "block_reasons": [
-        "zu_viele_pending_orders"
+        "zu_viele_pending_orders",
+        "owner_limits_fehlen"
       ],
       "cap_reasons": [],
       "portfolio_result": {
@@ -290,12 +493,43 @@
         "basis_risk": 5.0,
         "largest_position_risk": 0.01,
         "block_reasons": [
-          "zu_viele_pending_orders"
+          "zu_viele_pending_orders",
+          "owner_limits_fehlen"
         ],
         "cap_reasons": [],
-        "allows_next_gate_only": false
+        "allows_next_gate_only": false,
+        "account_equity": 10000.0,
+        "free_margin": 0.0,
+        "used_margin": 2000.0,
+        "total_notional": 5500.0,
+        "total_leverage_exposure": 0.0,
+        "exposure_by_asset": {
+          "BTCUSDT": 4000.0,
+          "AUSDT": 500.0,
+          "BUSDT": 500.0,
+          "CUSDT": 500.0
+        },
+        "exposure_by_market_family": {
+          "futures": 5500.0
+        },
+        "exposure_by_correlation_group": {},
+        "daily_realized_pnl": 0.0,
+        "daily_unrealized_pnl": 0.0,
+        "weekly_pnl": 0.0,
+        "current_drawdown": 0.0,
+        "max_drawdown": 0.0,
+        "longest_loss_streak": 0,
+        "current_loss_streak": 0,
+        "global_halt_active": false,
+        "risk_state": "unknown_blocked",
+        "opening_orders_allowed": false,
+        "reduce_only_allowed": false,
+        "reasons": [
+          "zu_viele_pending_orders",
+          "owner_limits_fehlen"
+        ]
       },
-      "summary_de": "Portfolio-Risiko blockiert Live-Opening: zu_viele_pending_orders. Portfolio-Go/No-Go: NO_GO.",
+      "summary_de": "Portfolio-Risiko blockiert Live-Opening: zu_viele_pending_orders, owner_limits_fehlen. Risk-State=unknown_blocked. Portfolio-Go/No-Go: NO_GO.",
       "preflight": {
         "submit_allowed": false,
         "blocking_reasons": [
@@ -308,7 +542,8 @@
       "id": "pending_live_candidates_over_limit",
       "blocks_live": true,
       "block_reasons": [
-        "zu_viele_pending_live_candidates"
+        "zu_viele_pending_live_candidates",
+        "owner_limits_fehlen"
       ],
       "cap_reasons": [],
       "portfolio_result": {
@@ -327,12 +562,42 @@
         "basis_risk": 5.0,
         "largest_position_risk": 0.01,
         "block_reasons": [
-          "zu_viele_pending_live_candidates"
+          "zu_viele_pending_live_candidates",
+          "owner_limits_fehlen"
         ],
         "cap_reasons": [],
-        "allows_next_gate_only": false
+        "allows_next_gate_only": false,
+        "account_equity": 10000.0,
+        "free_margin": 0.0,
+        "used_margin": 2000.0,
+        "total_notional": 5000.0,
+        "total_leverage_exposure": 0.0,
+        "exposure_by_asset": {
+          "BTCUSDT": 4000.0,
+          "SOLUSDT": 500.0,
+          "ADAUSDT": 500.0
+        },
+        "exposure_by_market_family": {
+          "futures": 5000.0
+        },
+        "exposure_by_correlation_group": {},
+        "daily_realized_pnl": 0.0,
+        "daily_unrealized_pnl": 0.0,
+        "weekly_pnl": 0.0,
+        "current_drawdown": 0.0,
+        "max_drawdown": 0.0,
+        "longest_loss_streak": 0,
+        "current_loss_streak": 0,
+        "global_halt_active": false,
+        "risk_state": "unknown_blocked",
+        "opening_orders_allowed": false,
+        "reduce_only_allowed": false,
+        "reasons": [
+          "zu_viele_pending_live_candidates",
+          "owner_limits_fehlen"
+        ]
       },
-      "summary_de": "Portfolio-Risiko blockiert Live-Opening: zu_viele_pending_live_candidates. Portfolio-Go/No-Go: NO_GO.",
+      "summary_de": "Portfolio-Risiko blockiert Live-Opening: zu_viele_pending_live_candidates, owner_limits_fehlen. Risk-State=unknown_blocked. Portfolio-Go/No-Go: NO_GO.",
       "preflight": {
         "submit_allowed": false,
         "blocking_reasons": [
@@ -345,7 +610,8 @@
       "id": "net_long_exposure_over_limit",
       "blocks_live": true,
       "block_reasons": [
-        "net_long_exposure_ueber_limit"
+        "net_long_exposure_ueber_limit",
+        "owner_limits_fehlen"
       ],
       "cap_reasons": [],
       "portfolio_result": {
@@ -364,12 +630,40 @@
         "basis_risk": 5.0,
         "largest_position_risk": 0.01,
         "block_reasons": [
-          "net_long_exposure_ueber_limit"
+          "net_long_exposure_ueber_limit",
+          "owner_limits_fehlen"
         ],
         "cap_reasons": [],
-        "allows_next_gate_only": false
+        "allows_next_gate_only": false,
+        "account_equity": 10000.0,
+        "free_margin": 0.0,
+        "used_margin": 2000.0,
+        "total_notional": 13000.0,
+        "total_leverage_exposure": 0.0,
+        "exposure_by_asset": {
+          "BTCUSDT": 13000.0
+        },
+        "exposure_by_market_family": {
+          "futures": 13000.0
+        },
+        "exposure_by_correlation_group": {},
+        "daily_realized_pnl": 0.0,
+        "daily_unrealized_pnl": 0.0,
+        "weekly_pnl": 0.0,
+        "current_drawdown": 0.0,
+        "max_drawdown": 0.0,
+        "longest_loss_streak": 0,
+        "current_loss_streak": 0,
+        "global_halt_active": false,
+        "risk_state": "unknown_blocked",
+        "opening_orders_allowed": false,
+        "reduce_only_allowed": false,
+        "reasons": [
+          "net_long_exposure_ueber_limit",
+          "owner_limits_fehlen"
+        ]
       },
-      "summary_de": "Portfolio-Risiko blockiert Live-Opening: net_long_exposure_ueber_limit. Portfolio-Go/No-Go: NO_GO.",
+      "summary_de": "Portfolio-Risiko blockiert Live-Opening: net_long_exposure_ueber_limit, owner_limits_fehlen. Risk-State=unknown_blocked. Portfolio-Go/No-Go: NO_GO.",
       "preflight": {
         "submit_allowed": false,
         "blocking_reasons": [
@@ -382,7 +676,8 @@
       "id": "net_short_exposure_over_limit",
       "blocks_live": true,
       "block_reasons": [
-        "net_short_exposure_ueber_limit"
+        "net_short_exposure_ueber_limit",
+        "owner_limits_fehlen"
       ],
       "cap_reasons": [],
       "portfolio_result": {
@@ -401,12 +696,40 @@
         "basis_risk": 5.0,
         "largest_position_risk": 0.01,
         "block_reasons": [
-          "net_short_exposure_ueber_limit"
+          "net_short_exposure_ueber_limit",
+          "owner_limits_fehlen"
         ],
         "cap_reasons": [],
-        "allows_next_gate_only": false
+        "allows_next_gate_only": false,
+        "account_equity": 10000.0,
+        "free_margin": 0.0,
+        "used_margin": 2000.0,
+        "total_notional": 13000.0,
+        "total_leverage_exposure": 0.0,
+        "exposure_by_asset": {
+          "BTCUSDT": 13000.0
+        },
+        "exposure_by_market_family": {
+          "futures": 13000.0
+        },
+        "exposure_by_correlation_group": {},
+        "daily_realized_pnl": 0.0,
+        "daily_unrealized_pnl": 0.0,
+        "weekly_pnl": 0.0,
+        "current_drawdown": 0.0,
+        "max_drawdown": 0.0,
+        "longest_loss_streak": 0,
+        "current_loss_streak": 0,
+        "global_halt_active": false,
+        "risk_state": "unknown_blocked",
+        "opening_orders_allowed": false,
+        "reduce_only_allowed": false,
+        "reasons": [
+          "net_short_exposure_ueber_limit",
+          "owner_limits_fehlen"
+        ]
       },
-      "summary_de": "Portfolio-Risiko blockiert Live-Opening: net_short_exposure_ueber_limit. Portfolio-Go/No-Go: NO_GO.",
+      "summary_de": "Portfolio-Risiko blockiert Live-Opening: net_short_exposure_ueber_limit, owner_limits_fehlen. Risk-State=unknown_blocked. Portfolio-Go/No-Go: NO_GO.",
       "preflight": {
         "submit_allowed": false,
         "blocking_reasons": [
@@ -419,7 +742,8 @@
       "id": "correlation_stress_over_limit",
       "blocks_live": true,
       "block_reasons": [
-        "correlation_stress_zu_hoch"
+        "correlation_stress_zu_hoch",
+        "owner_limits_fehlen"
       ],
       "cap_reasons": [],
       "portfolio_result": {
@@ -438,12 +762,40 @@
         "basis_risk": 5.0,
         "largest_position_risk": 0.01,
         "block_reasons": [
-          "correlation_stress_zu_hoch"
+          "correlation_stress_zu_hoch",
+          "owner_limits_fehlen"
         ],
         "cap_reasons": [],
-        "allows_next_gate_only": false
+        "allows_next_gate_only": false,
+        "account_equity": 10000.0,
+        "free_margin": 0.0,
+        "used_margin": 2000.0,
+        "total_notional": 4000.0,
+        "total_leverage_exposure": 0.0,
+        "exposure_by_asset": {
+          "BTCUSDT": 4000.0
+        },
+        "exposure_by_market_family": {
+          "futures": 4000.0
+        },
+        "exposure_by_correlation_group": {},
+        "daily_realized_pnl": 0.0,
+        "daily_unrealized_pnl": 0.0,
+        "weekly_pnl": 0.0,
+        "current_drawdown": 0.0,
+        "max_drawdown": 0.0,
+        "longest_loss_streak": 0,
+        "current_loss_streak": 0,
+        "global_halt_active": false,
+        "risk_state": "unknown_blocked",
+        "opening_orders_allowed": false,
+        "reduce_only_allowed": false,
+        "reasons": [
+          "correlation_stress_zu_hoch",
+          "owner_limits_fehlen"
+        ]
       },
-      "summary_de": "Portfolio-Risiko blockiert Live-Opening: correlation_stress_zu_hoch. Portfolio-Go/No-Go: NO_GO.",
+      "summary_de": "Portfolio-Risiko blockiert Live-Opening: correlation_stress_zu_hoch, owner_limits_fehlen. Risk-State=unknown_blocked. Portfolio-Go/No-Go: NO_GO.",
       "preflight": {
         "submit_allowed": false,
         "blocking_reasons": [
@@ -456,7 +808,8 @@
       "id": "funding_concentration_over_limit",
       "blocks_live": true,
       "block_reasons": [
-        "funding_konzentration_zu_hoch"
+        "funding_konzentration_zu_hoch",
+        "owner_limits_fehlen"
       ],
       "cap_reasons": [],
       "portfolio_result": {
@@ -475,12 +828,40 @@
         "basis_risk": 5.0,
         "largest_position_risk": 0.01,
         "block_reasons": [
-          "funding_konzentration_zu_hoch"
+          "funding_konzentration_zu_hoch",
+          "owner_limits_fehlen"
         ],
         "cap_reasons": [],
-        "allows_next_gate_only": false
+        "allows_next_gate_only": false,
+        "account_equity": 10000.0,
+        "free_margin": 0.0,
+        "used_margin": 2000.0,
+        "total_notional": 1000.0,
+        "total_leverage_exposure": 0.0,
+        "exposure_by_asset": {
+          "BTCUSDT": 1000.0
+        },
+        "exposure_by_market_family": {
+          "futures": 1000.0
+        },
+        "exposure_by_correlation_group": {},
+        "daily_realized_pnl": 0.0,
+        "daily_unrealized_pnl": 0.0,
+        "weekly_pnl": 0.0,
+        "current_drawdown": 0.0,
+        "max_drawdown": 0.0,
+        "longest_loss_streak": 0,
+        "current_loss_streak": 0,
+        "global_halt_active": false,
+        "risk_state": "unknown_blocked",
+        "opening_orders_allowed": false,
+        "reduce_only_allowed": false,
+        "reasons": [
+          "funding_konzentration_zu_hoch",
+          "owner_limits_fehlen"
+        ]
       },
-      "summary_de": "Portfolio-Risiko blockiert Live-Opening: funding_konzentration_zu_hoch. Portfolio-Go/No-Go: NO_GO.",
+      "summary_de": "Portfolio-Risiko blockiert Live-Opening: funding_konzentration_zu_hoch, owner_limits_fehlen. Risk-State=unknown_blocked. Portfolio-Go/No-Go: NO_GO.",
       "preflight": {
         "submit_allowed": false,
         "blocking_reasons": [
@@ -494,7 +875,8 @@
       "blocks_live": true,
       "block_reasons": [
         "net_long_exposure_ueber_limit",
-        "family_exposure_zu_hoch"
+        "family_exposure_zu_hoch",
+        "owner_limits_fehlen"
       ],
       "cap_reasons": [],
       "portfolio_result": {
@@ -514,12 +896,41 @@
         "largest_position_risk": 0.01,
         "block_reasons": [
           "net_long_exposure_ueber_limit",
-          "family_exposure_zu_hoch"
+          "family_exposure_zu_hoch",
+          "owner_limits_fehlen"
         ],
         "cap_reasons": [],
-        "allows_next_gate_only": false
+        "allows_next_gate_only": false,
+        "account_equity": 10000.0,
+        "free_margin": 0.0,
+        "used_margin": 2000.0,
+        "total_notional": 16000.0,
+        "total_leverage_exposure": 0.0,
+        "exposure_by_asset": {
+          "BTCUSDT": 16000.0
+        },
+        "exposure_by_market_family": {
+          "futures": 16000.0
+        },
+        "exposure_by_correlation_group": {},
+        "daily_realized_pnl": 0.0,
+        "daily_unrealized_pnl": 0.0,
+        "weekly_pnl": 0.0,
+        "current_drawdown": 0.0,
+        "max_drawdown": 0.0,
+        "longest_loss_streak": 0,
+        "current_loss_streak": 0,
+        "global_halt_active": false,
+        "risk_state": "unknown_blocked",
+        "opening_orders_allowed": false,
+        "reduce_only_allowed": false,
+        "reasons": [
+          "net_long_exposure_ueber_limit",
+          "family_exposure_zu_hoch",
+          "owner_limits_fehlen"
+        ]
       },
-      "summary_de": "Portfolio-Risiko blockiert Live-Opening: net_long_exposure_ueber_limit, family_exposure_zu_hoch. Portfolio-Go/No-Go: NO_GO.",
+      "summary_de": "Portfolio-Risiko blockiert Live-Opening: net_long_exposure_ueber_limit, family_exposure_zu_hoch, owner_limits_fehlen. Risk-State=unknown_blocked. Portfolio-Go/No-Go: NO_GO.",
       "preflight": {
         "submit_allowed": false,
         "blocking_reasons": [
@@ -537,12 +948,33 @@
       "asset_class": "top_liquid_futures",
       "market_family": "futures",
       "evidence_status": "shadow_passed",
-      "blocks_live": false,
-      "block_reasons": [],
-      "summary_de": "Strategie trend_follow_v2 v2.3.1 fuer BTCUSDT/top_liquid_futures hat Evidence-Status shadow_passed und darf nur den naechsten Gate-Schritt erreichen.",
+      "blocks_live": true,
+      "block_reasons": [
+        "fees_fehlen",
+        "spread_fehlt",
+        "slippage_fehlt",
+        "funding_fehlt_futures",
+        "drawdown_fehlt",
+        "zu_wenige_trades",
+        "profit_factor_fehlt",
+        "out_of_sample_fehlt_oder_nicht_bestanden",
+        "walk_forward_fehlt_oder_nicht_bestanden",
+        "paper_evidence_fehlt_oder_nicht_bestanden",
+        "shadow_evidence_fehlt_oder_nicht_bestanden",
+        "marktphasen_nicht_ausreichend",
+        "verlustserie_nicht_bewertet",
+        "risk_per_trade_unbekannt",
+        "parameter_hash_fehlt",
+        "parameter_nicht_reproduzierbar",
+        "checked_at_fehlt",
+        "git_sha_fehlt"
+      ],
+      "summary_de": "Strategie trend_follow_v2 v2.3.1 fuer BTCUSDT/top_liquid_futures blockiert (ALLOW_FOR_PAPER): fees_fehlen, spread_fehlt, slippage_fehlt, funding_fehlt_futures, drawdown_fehlt, zu_wenige_trades, profit_factor_fehlt, out_of_sample_fehlt_oder_nicht_bestanden, walk_forward_fehlt_oder_nicht_bestanden, paper_evidence_fehlt_oder_nicht_bestanden, shadow_evidence_fehlt_oder_nicht_bestanden, marktphasen_nicht_ausreichend, verlustserie_nicht_bewertet, risk_per_trade_unbekannt, parameter_hash_fehlt, parameter_nicht_reproduzierbar, checked_at_fehlt, git_sha_fehlt.",
       "preflight": {
-        "submit_allowed": true,
-        "blocking_reasons": [],
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "strategy_evidence_missing_or_invalid"
+        ],
         "missing_gates": []
       }
     },
@@ -559,9 +991,27 @@
         "strategy_evidence_expired",
         "risk_tier_mismatch",
         "data_quality_mismatch",
-        "strategy_scope_mismatch"
+        "strategy_scope_mismatch",
+        "fees_fehlen",
+        "spread_fehlt",
+        "slippage_fehlt",
+        "funding_fehlt_futures",
+        "drawdown_fehlt",
+        "zu_wenige_trades",
+        "profit_factor_fehlt",
+        "out_of_sample_fehlt_oder_nicht_bestanden",
+        "walk_forward_fehlt_oder_nicht_bestanden",
+        "paper_evidence_fehlt_oder_nicht_bestanden",
+        "shadow_evidence_fehlt_oder_nicht_bestanden",
+        "marktphasen_nicht_ausreichend",
+        "verlustserie_nicht_bewertet",
+        "risk_per_trade_unbekannt",
+        "parameter_hash_fehlt",
+        "parameter_nicht_reproduzierbar",
+        "checked_at_fehlt",
+        "git_sha_fehlt"
       ],
-      "summary_de": "Strategie trend_follow_v2 v2.3.1 fuer ALTUSDT/unknown blockiert: asset_class_unknown, strategy_evidence_expired, risk_tier_mismatch, data_quality_mismatch, strategy_scope_mismatch.",
+      "summary_de": "Strategie trend_follow_v2 v2.3.1 fuer ALTUSDT/unknown blockiert (BLOCK_ALL): asset_class_unknown, strategy_evidence_expired, risk_tier_mismatch, data_quality_mismatch, strategy_scope_mismatch, fees_fehlen, spread_fehlt, slippage_fehlt, funding_fehlt_futures, drawdown_fehlt, zu_wenige_trades, profit_factor_fehlt, out_of_sample_fehlt_oder_nicht_bestanden, walk_forward_fehlt_oder_nicht_bestanden, paper_evidence_fehlt_oder_nicht_bestanden, shadow_evidence_fehlt_oder_nicht_bestanden, marktphasen_nicht_ausreichend, verlustserie_nicht_bewertet, risk_per_trade_unbekannt, parameter_hash_fehlt, parameter_nicht_reproduzierbar, checked_at_fehlt, git_sha_fehlt.",
       "preflight": {
         "submit_allowed": false,
         "blocking_reasons": [
@@ -579,9 +1029,27 @@
       "evidence_status": "research_only",
       "blocks_live": true,
       "block_reasons": [
-        "evidence_status_nicht_live_faehig"
+        "evidence_status_nicht_live_faehig",
+        "fees_fehlen",
+        "spread_fehlt",
+        "slippage_fehlt",
+        "funding_fehlt_futures",
+        "drawdown_fehlt",
+        "zu_wenige_trades",
+        "profit_factor_fehlt",
+        "out_of_sample_fehlt_oder_nicht_bestanden",
+        "walk_forward_fehlt_oder_nicht_bestanden",
+        "paper_evidence_fehlt_oder_nicht_bestanden",
+        "shadow_evidence_fehlt_oder_nicht_bestanden",
+        "marktphasen_nicht_ausreichend",
+        "verlustserie_nicht_bewertet",
+        "risk_per_trade_unbekannt",
+        "parameter_hash_fehlt",
+        "parameter_nicht_reproduzierbar",
+        "checked_at_fehlt",
+        "git_sha_fehlt"
       ],
-      "summary_de": "Strategie synthetic_research_only_guard v0.1.0 fuer ETHUSDT/mid_liquidity blockiert: evidence_status_nicht_live_faehig.",
+      "summary_de": "Strategie synthetic_research_only_guard v0.1.0 fuer ETHUSDT/mid_liquidity blockiert (ALLOW_FOR_PAPER): evidence_status_nicht_live_faehig, fees_fehlen, spread_fehlt, slippage_fehlt, funding_fehlt_futures, drawdown_fehlt, zu_wenige_trades, profit_factor_fehlt, out_of_sample_fehlt_oder_nicht_bestanden, walk_forward_fehlt_oder_nicht_bestanden, paper_evidence_fehlt_oder_nicht_bestanden, shadow_evidence_fehlt_oder_nicht_bestanden, marktphasen_nicht_ausreichend, verlustserie_nicht_bewertet, risk_per_trade_unbekannt, parameter_hash_fehlt, parameter_nicht_reproduzierbar, checked_at_fehlt, git_sha_fehlt.",
       "preflight": {
         "submit_allowed": false,
         "blocking_reasons": [
@@ -690,6 +1158,7 @@
     "max_concurrent_positions_ueberschritten",
     "net_long_exposure_ueber_limit",
     "net_short_exposure_ueber_limit",
+    "owner_limits_fehlen",
     "portfolio_snapshot_fehlt",
     "portfolio_snapshot_stale",
     "total_exposure_ueber_limit",
@@ -699,11 +1168,29 @@
   "missing_portfolio_block_reasons": [],
   "covered_strategy_block_reasons": [
     "asset_class_unknown",
+    "checked_at_fehlt",
     "data_quality_mismatch",
+    "drawdown_fehlt",
     "evidence_status_nicht_live_faehig",
+    "fees_fehlen",
+    "funding_fehlt_futures",
+    "git_sha_fehlt",
+    "marktphasen_nicht_ausreichend",
+    "out_of_sample_fehlt_oder_nicht_bestanden",
+    "paper_evidence_fehlt_oder_nicht_bestanden",
+    "parameter_hash_fehlt",
+    "parameter_nicht_reproduzierbar",
+    "profit_factor_fehlt",
+    "risk_per_trade_unbekannt",
     "risk_tier_mismatch",
+    "shadow_evidence_fehlt_oder_nicht_bestanden",
+    "slippage_fehlt",
+    "spread_fehlt",
     "strategy_evidence_expired",
-    "strategy_scope_mismatch"
+    "strategy_scope_mismatch",
+    "verlustserie_nicht_bewertet",
+    "walk_forward_fehlt_oder_nicht_bestanden",
+    "zu_wenige_trades"
   ],
   "missing_strategy_block_reasons": [],
   "covered_multi_asset_strategy_reasons": [

@@ -88,7 +88,7 @@ def validate(root: Path = ROOT, *, strict: bool = False) -> list[CheckIssue]:
         for call in forbidden_calls:
             if call in script:
                 _issue(issues, "script_write_call_forbidden", f"readiness script contains {call}")
-        for required_phrase in ("dry-run", "readonly", "demo-safe", "live_write_allowed"):
+        for required_phrase in ("public", "readonly", "demo-readonly", "demo-trade-smoke", "live-readonly", "live_write_allowed"):
             if required_phrase not in script:
                 _issue(issues, "script_mode_missing", f"script missing {required_phrase}")
 

@@ -239,11 +239,36 @@ def _report_markdown() -> str:
     return "\n".join(lines)
 
 
+def _simulated_payload() -> dict[str, Any]:
+    rows: list[dict[str, Any]] = []
+    for name, ctx in _build_simulated_cases():
+        decision = evaluate_reconcile_truth(ctx)
+        rows.append(
+            {
+                "scenario": name,
+                "status": decision.status,
+                "reconcile_required": decision.reconcile_required,
+                "safety_latch_required": decision.safety_latch_required,
+                "blocking_reasons": decision.blocking_reasons,
+                "warning_reasons": decision.warning_reasons,
+                "evidence_level": "synthetic",
+                "live_allowed": False,
+            }
+        )
+    return {
+        "status": "implemented",
+        "decision": "NOT_ENOUGH_EVIDENCE",
+        "verified": False,
+        "evidence_level": "synthetic",
+        "scenarios": rows,
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Reconcile/Exchange-Truth Drill")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--mode", default="simulated")
-    parser.add_argument("--output-md", default="reports/reconcile_truth_drill_sample.md")
+    parser.add_argument("--output-md", default="reports/reconcile_truth_drill.md")
     parser.add_argument("--evidence-json", type=Path)
     parser.add_argument("--write-template", type=Path)
     parser.add_argument("--output-json", type=Path)
@@ -280,11 +305,21 @@ def main() -> int:
     if args.mode != "simulated":
         raise SystemExit("Nur --mode simulated ist lokal erlaubt.")
     if args.dry_run:
+        payload = _simulated_payload()
+        out_md = Path(args.output_md)
+        out_md.parent.mkdir(parents=True, exist_ok=True)
+        out_md.write_text(_report_markdown(), encoding="utf-8")
+        if args.output_json:
+            args.output_json.parent.mkdir(parents=True, exist_ok=True)
+            args.output_json.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
         print("reconcile_truth_drill: dry-run ok (mode=simulated)")
         return 0
     out = Path(args.output_md)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(_report_markdown(), encoding="utf-8")
+    if args.output_json:
+        args.output_json.parent.mkdir(parents=True, exist_ok=True)
+        args.output_json.write_text(json.dumps(_simulated_payload(), indent=2, ensure_ascii=False), encoding="utf-8")
     print(f"reconcile_truth_drill: ok (mode=simulated, output={out.as_posix()})")
     return 0
 

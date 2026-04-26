@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-04-25T23:07:35.748385+00:00",
-  "git_sha": "84d7b66",
+  "generated_at": "2026-04-26T09:10:26.642868+00:00",
+  "git_sha": "339dd15",
   "source_files": {
     "asset_governance": "tests\\fixtures\\asset_governance_sample.json",
     "market_data_quality": "tests\\fixtures\\market_data_quality_sample.json",
@@ -27,15 +27,23 @@
       "symbol": "ALTUSDT",
       "market_family": "FUTURES",
       "product_type": "USDT-FUTURES",
+      "instrument_status": "quarantine",
       "governance_state": "quarantine",
       "risk_tier": "RISK_TIER_UNKNOWN",
       "data_quality_status": "data_live_blocked",
       "liquidity_tier": "TIER_5",
+      "metadata_complete": false,
+      "catalog_fresh": false,
+      "quarantine": true,
+      "delisted": false,
+      "precision_complete": true,
+      "order_params_complete": false,
       "liquidity_live_allowed": false,
       "requested_leverage": 7,
       "requested_notional": 3000.0,
       "sizing_valid": false,
       "live_preflight_status": "LIVE_BLOCKED",
+      "decision": "BLOCK_ALL",
       "submit_allowed": false,
       "live_preflight_blocking_reasons": [
         "owner_approval_missing",
@@ -93,15 +101,23 @@
       "symbol": "BTCUSDT",
       "market_family": "FUTURES",
       "product_type": "USDT-FUTURES",
+      "instrument_status": "live_candidate",
       "governance_state": "live_candidate",
       "risk_tier": "RISK_TIER_1_MAJOR_LIQUID",
       "data_quality_status": "data_ok",
       "liquidity_tier": "TIER_1",
+      "metadata_complete": true,
+      "catalog_fresh": true,
+      "quarantine": false,
+      "delisted": false,
+      "precision_complete": true,
+      "order_params_complete": true,
       "liquidity_live_allowed": false,
       "requested_leverage": 7,
       "requested_notional": 5000.0,
       "sizing_valid": true,
       "live_preflight_status": "LIVE_BLOCKED",
+      "decision": "ALLOW_FOR_SHADOW",
       "submit_allowed": false,
       "live_preflight_blocking_reasons": [
         "owner_approval_missing",
@@ -130,6 +146,8 @@
     "Repo-lokale Fixture-Evidence; keine echte Bitget-/Shadow-/Owner-Evidence.",
     "LIVE_ALLOWED in diesem Report waere nur technisch vorpruefbar, nicht private_live_allowed.",
     "Fehlende Governance-, Datenqualitaets-, Liquiditaets- oder Risk-Tier-Evidence blockiert fail-closed.",
-    "Live-Broker-Preflight-Codes werden als Schnittstelle mitbelegt; fehlende Required-Codes bleiben P0-Evidence-Gap."
-  ]
+    "Live-Broker-Preflight-Codes werden als Schnittstelle mitbelegt; fehlende Required-Codes bleiben P0-Evidence-Gap.",
+    "Status bleibt not_enough_evidence ohne echte Runtime-Exchange-Evidence."
+  ],
+  "status": "not_enough_evidence"
 }

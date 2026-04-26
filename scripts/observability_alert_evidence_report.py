@@ -7,6 +7,7 @@ import argparse
 import importlib.util
 import json
 import os
+import re
 import subprocess
 import sys
 import uuid
@@ -19,6 +20,7 @@ DEFAULT_ALERT_EVIDENCE = ROOT / "docs" / "production_10_10" / "alert_routing_evi
 DEFAULT_OBSERVABILITY_EVIDENCE = ROOT / "docs" / "production_10_10" / "observability_slos_evidence.template.json"
 ALERTMANAGER_EXAMPLE = ROOT / "infra" / "observability" / "alertmanager.yml.example"
 PROMETHEUS_ALERTS = ROOT / "infra" / "observability" / "prometheus-alerts.yml"
+INCIDENT_DRILL_JSON = ROOT / "reports" / "incident_drill.json"
 OBSERVABILITY_EVIDENCE_SCHEMA = 1
 
 REQUIRED_DOCS: tuple[Path, ...] = (
@@ -126,6 +128,41 @@ def _secret_scan(obj: Any, path: str = "") -> list[str]:
     return issues
 
 
+def _extract_prometheus_surface() -> dict[str, Any]:
+    try:
+        import yaml
+    except Exception:
+        return {"metrics": [], "alerts": [], "runbooks": [], "error": "yaml_import_failed"}
+    if not PROMETHEUS_ALERTS.is_file():
+        return {"metrics": [], "alerts": [], "runbooks": [], "error": "prometheus_alerts_missing"}
+    raw = PROMETHEUS_ALERTS.read_text(encoding="utf-8", errors="replace")
+    parsed = yaml.safe_load(raw) or {}
+    alerts: list[str] = []
+    runbooks: list[str] = []
+    groups = parsed.get("groups") if isinstance(parsed, dict) else None
+    if isinstance(groups, list):
+        for group in groups:
+            if not isinstance(group, dict):
+                continue
+            for rule in group.get("rules") or []:
+                if not isinstance(rule, dict):
+                    continue
+                name = str(rule.get("alert") or "").strip()
+                if name:
+                    alerts.append(name)
+                ann = rule.get("annotations") if isinstance(rule.get("annotations"), dict) else {}
+                rb = str(ann.get("runbook") or "").strip()
+                if rb:
+                    runbooks.append(rb)
+    metrics = sorted(set(re.findall(r"\b([a-zA-Z_][a-zA-Z0-9_]*)(?:\{| >| ==| <)", raw)))
+    return {
+        "metrics": metrics,
+        "alerts": sorted(set(alerts)),
+        "runbooks": sorted(set(runbooks)),
+        "error": "",
+    }
+
+
 def assess_observability_ops_evidence(payload: dict[str, Any]) -> dict[str, Any]:
     failures: list[str] = []
     if payload.get("schema_version") != OBSERVABILITY_EVIDENCE_SCHEMA:
@@ -182,6 +219,7 @@ def build_report_payload(
 ) -> dict[str, Any]:
     var_mod = _load_verify_alert_routing_mod()
     doc_surface = analyze_observability_doc_surface()
+    prometheus_surface = _extract_prometheus_surface()
     env = {k: v for k, v in os.environ.items()}
 
     alert_yaml_status: str = "SKIPPED"
@@ -207,6 +245,15 @@ def build_report_payload(
 
     obs_json = json.loads(observability_evidence_json.read_text(encoding="utf-8"))
     obs_assessment = assess_observability_ops_evidence(obs_json)
+    incident_present = INCIDENT_DRILL_JSON.is_file()
+    incident_payload: dict[str, Any] = {}
+    if incident_present:
+        try:
+            loaded = json.loads(INCIDENT_DRILL_JSON.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict):
+                incident_payload = loaded
+        except Exception:
+            incident_payload = {}
 
     internal_issues: list[str] = []
     if not doc_surface.get("ok"):
@@ -215,6 +262,7 @@ def build_report_payload(
         internal_issues.append("alertmanager_prometheus_config_not_pass")
     if d1_secrets:
         internal_issues.append("alert_drill_json_secret_surface")
+    secret_leak_check_ok = not d1_secrets and not _secret_scan(obs_json)
 
     return {
         "generated_at": _now(),
@@ -222,6 +270,12 @@ def build_report_payload(
         "private_live_decision": "NO_GO",
         "full_autonomous_live": "NO_GO",
         "observability_doc_surface": doc_surface,
+        "prometheus_surface": {
+            "metrics_count": len(prometheus_surface.get("metrics") or []),
+            "alerts_count": len(prometheus_surface.get("alerts") or []),
+            "runbooks_count": len(prometheus_surface.get("runbooks") or []),
+            "alerts": prometheus_surface.get("alerts") or [],
+        },
         "alertmanager_verify": {
             "status": alert_yaml_status,
             "issues": alert_yaml_issues,
@@ -235,6 +289,12 @@ def build_report_payload(
             "ok_strict": d1_ok,
         },
         "observability_ops_evidence": obs_assessment,
+        "incident_drill": {
+            "present": incident_present,
+            "status": str(incident_payload.get("status") or "missing"),
+            "verified": bool(incident_payload.get("verified", False)),
+        },
+        "secret_leak_check_ok": secret_leak_check_ok,
         "internal_issues": internal_issues,
         "external_required": [
             "Staging-/Shadow-Alert-Drill mit Zustellnachweis: siehe alert_routing_evidence.template.json und verify_alert_routing --evidence-json.",
@@ -244,6 +304,7 @@ def build_report_payload(
         "recommended_commands": [
             "python tools/verify_alert_routing.py --strict",
             "python tools/verify_alert_routing.py --evidence-json docs/production_10_10/alert_routing_evidence.template.json --strict",
+            "python scripts/incident_drill_report.py --output-md reports/incident_drill.md --output-json reports/incident_drill.json",
             "pytest tests/unit/monitor_engine -q",
         ],
         "notes": [
@@ -262,9 +323,13 @@ def render_markdown(payload: dict[str, Any]) -> str:
         f"- Erzeugt: `{payload['generated_at']}`",
         f"- Git SHA: `{payload['git_sha']}`",
         f"- Doku vollstaendig: `{payload['observability_doc_surface']['ok']}`",
+        f"- Alerts vorhanden: `{payload['prometheus_surface']['alerts_count']}`",
+        f"- Metrics erkannt: `{payload['prometheus_surface']['metrics_count']}`",
         f"- Alertmanager/Prometheus-Check: `{payload['alertmanager_verify']['status']}`",
         f"- Alert-Drill-JSON (strict): `{payload['alert_delivery_evidence']['ok_strict']}`",
         f"- Ops/SLO-JSON: `{payload['observability_ops_evidence']['status']}`",
+        f"- Incident-Drill vorhanden: `{payload['incident_drill']['present']}`",
+        f"- Secret-Leak-Check: `{payload['secret_leak_check_ok']}`",
         f"- Interne Issues: `{len(payload['internal_issues'])}`",
         "",
         "## Alertmanager / Prometheus (repo)",

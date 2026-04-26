@@ -269,15 +269,41 @@ def build_report_payload(
                 "symbol": symbol,
                 "market_family": gov.market_family if gov else None,
                 "product_type": gov.product_type if gov else None,
+                "instrument_status": gov.state if gov else "missing",
                 "governance_state": gov.state if gov else "missing",
                 "risk_tier": risk_tier,
                 "data_quality_status": data_quality_status,
                 "liquidity_tier": liq.get("liquidity_tier") if liq else None,
+                "metadata_complete": not any(
+                    reason in all_block_reasons
+                    for reason in (
+                        "asset_governance_missing",
+                        "asset_tier_missing_or_unknown",
+                        "asset_tier_unknown",
+                    )
+                ),
+                "catalog_fresh": "orderbook_stale" not in all_block_reasons,
+                "quarantine": bool(gov and gov.state == "quarantine"),
+                "delisted": bool(gov and gov.state == "delisted"),
+                "precision_complete": "missing_precision" not in all_block_reasons,
+                "order_params_complete": not any(
+                    reason in all_block_reasons
+                    for reason in ("missing_min_qty", "missing_min_notional", "order_sizing_not_safe")
+                ),
                 "liquidity_live_allowed": liquidity_green,
                 "requested_leverage": requested_leverage,
                 "requested_notional": requested_notional,
                 "sizing_valid": bool(sizing.get("valid")),
                 "live_preflight_status": "LIVE_ALLOWED" if not all_block_reasons and live_decision.submit_allowed else "LIVE_BLOCKED",
+                "decision": (
+                    "BLOCK_ALL"
+                    if bool(gov and gov.state in {"quarantine", "delisted", "suspended", "unknown"})
+                    else (
+                        "ALLOW_FOR_SHADOW"
+                        if (not live_decision.submit_allowed and mdq is not None and liq is not None)
+                        else "BLOCK_FOR_LIVE"
+                    )
+                ),
                 "submit_allowed": live_decision.submit_allowed,
                 "live_preflight_blocking_reasons": live_decision.blocking_reasons,
                 "live_preflight_missing_gates": live_decision.missing_gates,
@@ -326,7 +352,9 @@ def build_report_payload(
             "LIVE_ALLOWED in diesem Report waere nur technisch vorpruefbar, nicht private_live_allowed.",
             "Fehlende Governance-, Datenqualitaets-, Liquiditaets- oder Risk-Tier-Evidence blockiert fail-closed.",
             "Live-Broker-Preflight-Codes werden als Schnittstelle mitbelegt; fehlende Required-Codes bleiben P0-Evidence-Gap.",
+            "Status bleibt not_enough_evidence ohne echte Runtime-Exchange-Evidence.",
         ],
+        "status": "not_enough_evidence",
     }
 
 

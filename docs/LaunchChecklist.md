@@ -103,6 +103,7 @@ Vor Go-Live (**shadow** als Referenz-Betrieb oder **live** mit echten Orders) di
 | ---- | ----------------- | ---------------------- |
 | Checkliste (dieses Dokument) |  |  |
 | `release_sanity_checks.py` grün |  |  |
+| `final_go_no_go_report.py` erstellt und geprueft (`private_live_allowed=NO`) bei offenen P0/P1 |  |  |
 | Shadow-Burn-In-Report (Skript) mit JSON-`report_sha256` + `PASS` archiviert |  |  |
 | Postgres-DR-Restore-Drill (Staging, `PASS`, RTO/RPO) archiviert |  |  |
 | Externe Abhängigkeiten (API/Webhooks/Secrets) laut Doku geprüft |  |  |

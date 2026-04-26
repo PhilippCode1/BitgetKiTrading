@@ -13,14 +13,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from shared_py.market_data_quality import (
-    build_asset_data_quality_summary,
-    detect_candle_gaps,
-    summary_to_dict,
-    validate_candle_sequence,
-    validate_funding_freshness,
-    validate_ohlc_sanity,
-    validate_orderbook_freshness,
-    validate_spread_sanity,
+    evaluate_market_data_quality,
 )
 
 def _git_sha() -> str:
@@ -55,6 +48,9 @@ def _load_payload(path: Path | None) -> dict[str, Any]:
             "orderbook_max_age_ms": 30_000,
             "best_bid": 3014.8,
             "best_ask": 3015.2,
+            "last_price": 3015.0,
+            "mark_price": 3014.9,
+            "index_price": 3015.1,
             "max_spread_bps": 20.0,
             "funding_last_ts_ms": 1_700_000_050_000,
             "funding_max_age_ms": 3_600_000,
@@ -70,94 +66,35 @@ def _load_payload(path: Path | None) -> dict[str, Any]:
             "redis_fresh": True,
             "oi_fresh": True,
             "oi_required": False,
+            "runtime_data": False,
+            "exchange_truth_checked": False,
+            "alert_route_verified": False,
         }
     return json.loads(path.read_text(encoding="utf-8"))
 
 
 def evaluate_payload(payload: dict[str, Any]) -> dict[str, Any]:
-    reasons: list[str] = []
-    warnings: list[str] = []
-    candles = list(payload.get("candles") or [])
-
-    ok_seq, seq_reasons = validate_candle_sequence(candles)
-    if not ok_seq:
-        reasons.extend(seq_reasons)
-    ok_gaps, gap_reasons = detect_candle_gaps(candles, int(payload.get("expected_candle_interval_ms", 0)))
-    if not ok_gaps:
-        reasons.extend(gap_reasons)
-    ok_ohlc, ohlc_reasons = validate_ohlc_sanity(candles)
-    if not ok_ohlc:
-        reasons.extend(ohlc_reasons)
-
-    ok_ob, ob_reasons = validate_orderbook_freshness(
-        orderbook_present=bool(payload.get("orderbook_present")),
-        last_orderbook_ts_ms=payload.get("last_orderbook_ts_ms"),
-        now_ts_ms=int(payload.get("now_ts_ms", 0)),
-        max_age_ms=int(payload.get("orderbook_max_age_ms", 0)),
-    )
-    if not ok_ob:
-        reasons.extend(ob_reasons)
-
-    ok_spread, spread_reasons, spread_warnings = validate_spread_sanity(
-        bid=(float(payload["best_bid"]) if payload.get("best_bid") is not None else None),
-        ask=(float(payload["best_ask"]) if payload.get("best_ask") is not None else None),
-        max_spread_bps=float(payload.get("max_spread_bps", 0)),
-    )
-    if not ok_spread:
-        reasons.extend(spread_reasons)
-    warnings.extend(spread_warnings)
-
-    ok_funding, funding_reasons, funding_warnings = validate_funding_freshness(
-        market_family=str(payload.get("market_family") or ""),
-        funding_last_ts_ms=payload.get("funding_last_ts_ms"),
-        now_ts_ms=int(payload.get("now_ts_ms", 0)),
-        max_age_ms=int(payload.get("funding_max_age_ms", 0)),
-        funding_required_for_strategy=bool(payload.get("funding_required_for_strategy")),
-    )
-    if not ok_funding:
-        reasons.extend(funding_reasons)
-    warnings.extend(funding_warnings)
-
-    if bool(payload.get("delisted")):
-        reasons.append("asset_delisted")
-    if bool(payload.get("suspended")):
-        reasons.append("asset_suspended")
-    if float(payload.get("provider_error_rate", 0.0)) > float(payload.get("provider_error_rate_max", 1.0)):
-        reasons.append("provider_error_rate_too_high")
-    if not bool(payload.get("redis_fresh", True)):
-        reasons.append("redis_eventbus_stale")
-    if not bool(payload.get("signal_input_complete", True)):
-        reasons.append("signal_input_incomplete")
-    if not bool(payload.get("instrument_metadata_fresh", True)):
-        reasons.append("instrument_metadata_stale")
-    if not bool(payload.get("market_family_clear", True)):
-        reasons.append("market_family_ambiguous")
-    if not bool(payload.get("product_type_clear", True)):
-        reasons.append("product_type_ambiguous")
-    if bool(payload.get("oi_required")) and not bool(payload.get("oi_fresh", False)):
-        warnings.append("open_interest_stale_warning")
-
-    deduped_reasons = list(dict.fromkeys(reasons))
-    deduped_warnings = list(dict.fromkeys(warnings))
-    if deduped_reasons:
-        quality_status = "data_live_blocked"
-    elif deduped_warnings:
-        quality_status = "data_warning"
-    else:
-        quality_status = "data_ok"
-
-    summary = build_asset_data_quality_summary(
-        symbol=str(payload.get("symbol") or ""),
-        market_family=str(payload.get("market_family") or ""),
-        product_type=payload.get("product_type"),
-        data_source=str(payload.get("data_source") or "unknown"),
-        quality_status=quality_status,
-        block_reasons=deduped_reasons,
-        warnings=deduped_warnings,
-    )
-    out = summary_to_dict(summary)
-    out["git_sha"] = _git_sha()
-    return out
+    result = evaluate_market_data_quality(payload)
+    summary = {
+        "asset": result.asset,
+        "market_family": result.market_family,
+        "status": result.status,
+        "live_allowed": result.live_allowed,
+        "paper_allowed": result.paper_allowed,
+        "shadow_allowed": result.shadow_allowed,
+        "reasons": result.reasons,
+        "freshness": result.freshness,
+        "gaps": result.gaps,
+        "plausibility": result.plausibility,
+        "cross_source": result.cross_source,
+        "checked_at": result.checked_at,
+        "evidence_level": result.evidence_level,
+        "alert_required": result.alert_required,
+        "alert_route_verified": result.alert_route_verified,
+        "data_source": str(payload.get("data_source") or "unknown"),
+        "git_sha": _git_sha(),
+    }
+    return summary
 
 
 def render_markdown(summary: dict[str, Any]) -> str:
@@ -168,19 +105,24 @@ def render_markdown(summary: dict[str, Any]) -> str:
 
     return (
         "# Asset Data Quality Report\n\n"
-        f"- Datum/Zeit: `{summary['timestamp_utc']}`\n"
+        f"- Datum/Zeit: `{summary['checked_at']}`\n"
         f"- Git SHA: `{summary.get('git_sha', 'unknown')}`\n"
-        f"- Asset/Symbol: `{summary['symbol']}`\n"
+        f"- Asset/Symbol: `{summary['asset']}`\n"
         f"- MarketFamily: `{summary['market_family']}`\n"
-        f"- ProductType: `{summary.get('product_type')}`\n"
+        f"- Status: `{summary['status']}`\n"
+        f"- Evidence-Level: `{summary['evidence_level']}`\n"
         f"- Datenquelle: `{summary['data_source']}`\n"
-        f"- Quality Status: `{summary['quality_status']}`\n"
-        f"- Live-Auswirkung: `{summary['live_impact']}`\n"
-        f"- Ergebnis: `{summary['result']}`\n\n"
+        f"- Live erlaubt: `{summary['live_allowed']}`\n"
+        f"- Shadow erlaubt: `{summary['shadow_allowed']}`\n"
+        f"- Paper erlaubt: `{summary['paper_allowed']}`\n"
+        f"- Alert erforderlich: `{summary['alert_required']}`\n"
+        f"- Alert-Route verifiziert: `{summary['alert_route_verified']}`\n\n"
         "## Block Reasons\n"
-        f"{_fmt_list(summary.get('block_reasons', []))}\n\n"
-        "## Warnings\n"
-        f"{_fmt_list(summary.get('warnings', []))}\n"
+        f"{_fmt_list(summary.get('reasons', []))}\n\n"
+        "## Freshness\n"
+        f"- price_tick_age_ms: `{summary['freshness'].get('price_tick_age_ms')}`\n"
+        f"- orderbook_age_ms: `{summary['freshness'].get('orderbook_age_ms')}`\n"
+        f"- funding_age_ms: `{summary['freshness'].get('funding_age_ms')}`\n"
     )
 
 
@@ -189,6 +131,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--input-json", type=Path)
     parser.add_argument("--output-md", type=Path)
+    parser.add_argument("--output-json", type=Path)
     args = parser.parse_args(argv)
 
     payload = _load_payload(args.input_json if not args.dry_run else None)
@@ -201,6 +144,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"wrote report: {args.output_md}")
     else:
         print(markdown)
+    if args.output_json:
+        args.output_json.parent.mkdir(parents=True, exist_ok=True)
+        args.output_json.write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
+        print(f"wrote report: {args.output_json}")
     return 0
 
 

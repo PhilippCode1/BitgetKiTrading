@@ -23,6 +23,8 @@ def test_payload_keeps_private_live_no_go_until_external_asset_evidence_exists()
     assert "real_per_asset_market_data_quality_window_missing" in payload["external_required"]
     assert "real_orderbook_liquidity_slippage_window_missing" in payload["external_required"]
     assert "owner_signed_asset_risk_tier_acceptance_missing" in payload["external_required"]
+    assert payload["summary"]["status"] == "implemented"
+    assert payload["summary"]["decision"] == "not_enough_evidence"
 
 
 def test_asset_preflight_required_reasons_are_covered() -> None:

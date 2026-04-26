@@ -9,7 +9,6 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 from statistics import mean
-from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 SHARED_SRC = ROOT / "shared" / "python" / "src"
@@ -171,6 +170,15 @@ def render_master_status(
     p0_blockers = [item for item in scorecard.live_blockers if "(P0)" in item]
     p1_blockers = [item for item in scorecard.live_blockers if "(P1)" in item]
     p2_blockers = [item for item in scorecard.live_blockers if "(P2)" in item]
+    status_counts: dict[str, int] = {
+        "verified": 0,
+        "implemented": 0,
+        "external_required": 0,
+        "partial": 0,
+        "missing": 0,
+    }
+    for category in scorecard.categories:
+        status_counts[category.status] = status_counts.get(category.status, 0) + 1
     mode_by_id = {item.mode: item for item in scorecard.mode_decisions}
     branch = _git_value(["branch", "--show-current"])
     git_sha = _git_value(["rev-parse", "--short", "HEAD"])
@@ -188,8 +196,13 @@ def render_master_status(
         f"- Gesamt-Score: `{overall_score}/10`",
         f"- Gesamtstatus: `{scorecard.overall_status}`",
         f"- Live-Blocker: `{len(scorecard.live_blockers)}`",
+        f"- P0-Blocker: `{len(p0_blockers)}`",
+        f"- P1-Blocker: `{len(p1_blockers)}`",
         f"- Private-Live-Blocker: `{len(scorecard.private_live_blockers)}`",
         f"- Asset-Blocker: `{len(scorecard.asset_blockers)}`",
+        f"- Verified-Kategorien: `{status_counts.get('verified', 0)}`",
+        f"- Implemented-Kategorien: `{status_counts.get('implemented', 0)}`",
+        f"- External-Required-Kategorien: `{status_counts.get('external_required', 0)}`",
         "",
         "## Go/No-Go",
         "",

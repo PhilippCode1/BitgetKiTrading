@@ -16,6 +16,7 @@ def test_payload_blocks_fixture_assets_fail_closed() -> None:
     payload = build_report_payload()
     assert payload["assets_checked"] == 2
     assert payload["private_live_decision"] == "NO_GO"
+    assert payload["status"] == "not_enough_evidence"
     assert payload["live_allowed_count"] == 0
     assert payload["missing_required_live_preflight_reasons"] == []
     assert "asset_not_live_allowed" in payload["covered_live_preflight_reasons"]
@@ -27,11 +28,13 @@ def test_payload_blocks_fixture_assets_fail_closed() -> None:
     assert "strategy_evidence_missing_or_invalid" in payload["covered_live_preflight_reasons"]
     by_symbol = {row["symbol"]: row for row in payload["assets"]}
     assert by_symbol["BTCUSDT"]["live_preflight_status"] == "LIVE_BLOCKED"
+    assert by_symbol["BTCUSDT"]["decision"] in {"BLOCK_FOR_LIVE", "ALLOW_FOR_SHADOW"}
     assert by_symbol["BTCUSDT"]["submit_allowed"] is False
     assert "state_live_candidate_nicht_live_freigegeben" in by_symbol["BTCUSDT"]["block_reasons"]
     assert "asset_not_live_allowed" in by_symbol["BTCUSDT"]["live_preflight_blocking_reasons"]
     assert "slippage_too_high" in by_symbol["BTCUSDT"]["live_preflight_blocking_reasons"]
     assert by_symbol["ALTUSDT"]["live_preflight_status"] == "LIVE_BLOCKED"
+    assert by_symbol["ALTUSDT"]["decision"] == "BLOCK_ALL"
     assert by_symbol["ALTUSDT"]["submit_allowed"] is False
     assert "asset_tier_unknown" in by_symbol["ALTUSDT"]["block_reasons"]
     assert "data_quality_not_pass" in by_symbol["ALTUSDT"]["live_preflight_blocking_reasons"]

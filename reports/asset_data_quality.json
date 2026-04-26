@@ -1,0 +1,35 @@
+{
+  "asset": "ETHUSDT",
+  "market_family": "futures",
+  "status": "not_enough_evidence",
+  "live_allowed": false,
+  "paper_allowed": true,
+  "shadow_allowed": true,
+  "reasons": [
+    "quality_not_live_eligible"
+  ],
+  "freshness": {
+    "price_tick_age_ms": 0,
+    "orderbook_age_ms": 10000,
+    "funding_age_ms": 20000
+  },
+  "gaps": {
+    "candle_gap_detected": false
+  },
+  "plausibility": {
+    "warnings": [
+      "exchange_truth_not_checked"
+    ],
+    "checks_passed": true
+  },
+  "cross_source": {
+    "exchange_truth_checked": false,
+    "provider_vs_exchange_consistent": true
+  },
+  "checked_at": "2026-04-26T09:20:15+00:00",
+  "evidence_level": "external_required",
+  "alert_required": true,
+  "alert_route_verified": false,
+  "data_source": "dry_run_fixture",
+  "git_sha": "339dd15"
+}

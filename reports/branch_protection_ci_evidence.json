@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-04-25T23:42:46Z",
-  "git_sha": "84d7b66",
+  "generated_at": "2026-04-26T07:55:57Z",
+  "git_sha": "339dd15",
   "private_live_decision": "NO_GO",
   "full_autonomous_live": "NO_GO",
   "ci_workflow_mandatory_jobs": {
@@ -10,6 +10,12 @@
       "dashboard",
       "compose_healthcheck",
       "release-approval-gate"
+    ],
+    "expected_required_checks": [
+      "ci / Python (Ruff, pytest, contracts, modul_mate, pip-audit, …)",
+      "ci / Dashboard (types, Jest, build, pnpm audit)",
+      "ci / Docker Compose + Health + KI-Smoke + Playwright E2E",
+      "ci / Unified Release Gate (all jobs + FREEZE + version lock)"
     ],
     "missing_mandatory": []
   },
@@ -36,6 +42,18 @@
       "missing_for_ci_yml": []
     }
   },
+  "remote_branch_protection": {
+    "checked_via_api": false,
+    "expected_checks": [
+      "ci / Python (Ruff, pytest, contracts, modul_mate, pip-audit, …)",
+      "ci / Dashboard (types, Jest, build, pnpm audit)",
+      "ci / Docker Compose + Health + KI-Smoke + Playwright E2E",
+      "ci / Unified Release Gate (all jobs + FREEZE + version lock)"
+    ],
+    "found_checks": [],
+    "missing_checks": [],
+    "decision": "not_enough_evidence"
+  },
   "external_template_assessment": {
     "status": "FAIL",
     "failures": [
@@ -55,11 +73,11 @@
   },
   "internal_issues": [],
   "external_required": [
-    "GitHub/Git-Host: Required Status Checks inkl. release-approval-gate, PR-Reviews, kein Force-Push — siehe branch_protection_evidence.template.json.",
+    "GitHub/Git-Host: Required Status Checks inkl. release-approval-gate, PR-Reviews, kein Force-Push; siehe branch_protection_evidence.template.json.",
     "Export oder Screenshot der Branch-Protection-Einstellungen ohne Secrets; Owner-Signoff."
   ],
   "notes": [
-    "API-Status UNKNOWN_NO_GITHUB_AUTH ist in CI/Agent erwartbar; kein FAIL der lokalen Repo-Checks.",
+    "API-Status UNKNOWN_NO_GITHUB_AUTH in CI/Agent erwartbar; kein FAIL der lokalen Repo-Checks.",
     "Lokale Pflicht: Job-Ids in ci.yml passen zu tools/check_github_branch_protection.MANDATORY."
   ]
 }
