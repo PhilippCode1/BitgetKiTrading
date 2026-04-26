@@ -8,12 +8,22 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import pytest
+
 # signal_engine conftest legt services/signal-engine/src an; adversarial via Root-pyproject
 _SERVICE_ADV = (
     Path(__file__).resolve().parents[2] / "services" / "adversarial-engine" / "src"
 )
 if str(_SERVICE_ADV) not in sys.path:
     sys.path.insert(0, str(_SERVICE_ADV))
+
+pytest.importorskip(
+    "torch",
+    reason=(
+        "adversarial stress test requires torch; "
+        "not part of default unit coverage environment"
+    ),
+)
 
 from adversarial_engine.market_stresser import (  # noqa: E402
     stress_path_risk_features,
