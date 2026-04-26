@@ -51,23 +51,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: ENV-Profile Templates (shadow, production --template)
-        run: |
-          set -euo pipefail
-          python3 tools/validate_env_profile.py --env-file .env.shadow.example --profile shadow --template
-          python3 tools/validate_env_profile.py --env-file .env.production.example --profile production --template
-
       - name: Shell scripts (Syntax)
         run: >-
           bash -n scripts/start_all.sh scripts/healthcheck.sh scripts/deploy.sh
           scripts/integration_compose_smoke.sh scripts/wait_compose_healthy.sh
           scripts/rc_health.sh tools/run_tests.sh
-
-      - name: Release sanity (Secrets / Ballast / Compose-Bindings)
-        run: python tools/release_sanity_checks.py
-
-      - name: Prod/Shadow ENV template security gate
-        run: python3 tools/check_production_env_template_security.py
 
       - uses: actions/setup-python@v5
         with:
@@ -98,6 +86,18 @@ jobs:
           set -euo pipefail
           python3 tools/render_ci_env_example.py --input .env.local.example --output /tmp/ci.env.local
           python3 tools/validate_env_profile.py --env-file /tmp/ci.env.local --profile local
+
+      - name: ENV-Profile Templates (shadow, production --template)
+        run: |
+          set -euo pipefail
+          python3 tools/validate_env_profile.py --env-file .env.shadow.example --profile shadow --template
+          python3 tools/validate_env_profile.py --env-file .env.production.example --profile production --template
+
+      - name: Release sanity (Secrets / Ballast / Compose-Bindings)
+        run: python tools/release_sanity_checks.py
+
+      - name: Prod/Shadow ENV template security gate
+        run: python3 tools/check_production_env_template_security.py
 
       - name: Ruff (tests, tools, integration inkl. fixtures)
         run: >-
