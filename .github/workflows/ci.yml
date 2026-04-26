@@ -343,6 +343,8 @@ jobs:
         run: |
           set -euo pipefail
           sed 's/<SET_ME>/ci_repeatable_secret_min_32_chars_x/g' .env.local.example > .env.local
+          # Minimal-Stack startet ohne migrate-Job; Gateway-Lifespan sonst Migrationssonde -> Restart-Loop.
+          printf '\nBITGET_SKIP_MIGRATION_LATCH=1\n' >> .env.local
       - name: Docker Compose config validate
         run: >-
           docker compose --env-file .env.local -f docker-compose.yml -f docker-compose.local-publish.yml
