@@ -39,10 +39,18 @@ def test_train_take_trade_prob_model_writes_artifact_and_metrics(
     inserted: dict[str, object] = {}
     cleared: list[str] = []
 
+    def _fake_fetch(
+        _conn: object,
+        *,
+        symbol: str | None = None,
+        min_decision_ts_ms: int | None = None,
+    ) -> list[dict[str, object]]:
+        return rows
+
     monkeypatch.setattr(
         repo_model_runs,
         "fetch_take_trade_training_rows",
-        lambda _conn, symbol=None: rows,
+        _fake_fetch,
     )
     monkeypatch.setattr(
         repo_model_runs,

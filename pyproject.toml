@@ -7,6 +7,8 @@ readme = "README.md"
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "shared/python/tests", "services/onchain-sniffer/tests"]
+# Echte Haenger (Endlosschleifen) sichtbar machen; volle Suite dauert oft 20–40+ Min (ca. 2000 Tests).
+faulthandler_timeout = 300
 pythonpath = [
   "shared/python/src",
   "services/adversarial-engine/src",
@@ -68,6 +70,8 @@ select = ["E", "F", "I", "UP", "B"]
 "tools/validate_env_profile.py" = ["E402", "I001"]
 # Diagnose-Texte und lange Hint-Zeilen.
 "tools/local_stack_doctor.py" = ["E501"]
+# Lange Repo-Pfade und Issue-Payloads.
+"tools/check_ai_operator_assistant_safety.py" = ["E501"]
 # Dossier-Markdown-Template in Python-String.
 "tools/build_run85_dossier.py" = ["E501"]
 

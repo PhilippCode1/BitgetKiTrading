@@ -55,3 +55,37 @@ python tools/verify_alert_routing.py --config infra/observability/alertmanager.y
 
 - Exit **0**: Struktur-`PASS` (lokal ohne echte Webhooks).
 - Echte Pager/Slack-Produktivität = **externe** Evidenz (`BLOCKED_EXTERNAL` bis Drill vorliegt).
+
+## Externer Zustellnachweis-Contract
+
+Der Strukturcheck ersetzt keinen echten Zustellnachweis. Fuer private
+Live-Evidence muss ein secret-freies JSON gegen den Delivery-Contract geprueft
+werden:
+
+```bash
+python tools/verify_alert_routing.py \
+  --evidence-json docs/production_10_10/alert_routing_evidence.template.json \
+  --strict \
+  --report-md reports/alert_routing_evidence.md \
+  --output-json reports/alert_routing_evidence.json
+```
+
+Das Repo-Template bleibt absichtlich `FAIL`, bis echte externe Evidence
+vorliegt. Fuer Live muss mindestens belegt sein:
+
+- Drill-Start/-Ende, Git-SHA, Operator und Evidence-Referenz
+- Testalert-Label, damit kein Prod-Feuer ohne Change-Fenster passiert
+- P0- und P1-Route verifiziert
+- Kill-Switch-, Reconcile-, Market-Data-Stale- und Gateway-Auth-Alert zugestellt
+- echter Delivery-Kanal und Proof-Referenz
+- menschliche Quittierung
+- Ack-Latenz innerhalb Budget
+- Dedupe verifiziert
+- Runbook-Link verifiziert
+- Main-Console-Alert-State verifiziert
+- Alert-Payload ohne Secrets verifiziert
+- Owner-Signoff separat vorhanden
+
+Felder mit Secret-Bezug wie `webhook_url`, `routing_key`, `authorization`,
+`token`, `secret`, `password` oder `api_key` duerfen keine echten Werte
+enthalten.

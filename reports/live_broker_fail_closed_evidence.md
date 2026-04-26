@@ -1,0 +1,53 @@
+# Live-Broker Fail-Closed Evidence Check
+
+Status: prueft externen Live-Broker-Fail-Closed-Nachweis ohne echte Secrets und ohne echte Orders.
+
+## Summary
+
+- Schema: `live-broker-fail-closed-evidence-v1`
+- Environment: `staging`
+- Execution Mode: `shadow`
+- Git SHA: `missing`
+- Operator: `missing`
+- Ergebnis: `FAIL`
+
+## Blocker
+- `drill_started_at_missing`
+- `drill_completed_at_missing`
+- `git_sha_missing`
+- `operator_missing`
+- `evidence_reference_missing`
+- `preflight_matrix_not_passed`
+- `required_blocking_reasons_not_covered`
+- `provider_error_not_blocking`
+- `redis_missing_not_blocking`
+- `database_missing_not_blocking`
+- `exchange_truth_missing_not_blocking`
+- `public_api_timeout_not_blocking`
+- `private_api_timeout_not_blocking`
+- `stale_market_data_not_blocking`
+- `unknown_instrument_not_blocking`
+- `risk_context_missing_not_blocking`
+- `operator_release_missing_not_blocking`
+- `shadow_match_missing_not_blocking`
+- `reconcile_fail_not_blocking`
+- `kill_switch_not_blocking`
+- `safety_latch_not_blocking`
+- `idempotency_missing_not_blocking`
+- `audit_context_missing_not_blocking`
+- `warning_defaults_not_blocking_live`
+- `all_green_control_sent_exchange_submit`
+- `audit_trail_not_verified`
+- `alert_delivery_not_verified`
+- `main_console_gate_state_not_verified`
+
+## Warnings
+- `owner_signoff_missing_external_required`
+
+## Secret-Surface
+- Keine unredigierten Secret-Felder erkannt.
+
+## Einordnung
+
+- Repo-lokale Preflight-Matrix ist Code-Evidence, aber keine private Live-Freigabe.
+- Live bleibt `NO_GO`, bis Provider-/Redis-/DB-/Timeout-/Exchange-Truth-Failures, Audit, Alert und Main-Console-State extern belegt sind.

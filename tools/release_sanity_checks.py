@@ -39,6 +39,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
+# Operative Owner-Freigabe: nur lokal (siehe .gitignore); niemals committen.
+OWNER_PRIVATE_LIVE_RELEASE_REL = "reports/owner_private_live_release.json"
+
 SKIP_DIRS = {
     ".git",
     ".venv",
@@ -80,6 +83,36 @@ SECRET_PATTERNS: list[tuple[re.Pattern[str], str]] = [
 
 # Nur offensichtliche Wildcard-Host-Publishes (ohne Umgebungsvariable)
 RAW_WILDCARD_PORT = re.compile(r"^\s*-\s*[\"']?0\.0\.0\.0:\d+:\d+")
+
+
+def owner_private_live_release_tracked_by_git(
+    root: Path | None = None,
+) -> tuple[str, str] | None:
+    """
+    Liegt die operative Owner-Freigabe-Datei im Git-Index, ist das ein Prozess-
+    /Security-Verstoss (Secrets/False-Go-Risiko).
+    """
+    base = root or ROOT
+    try:
+        proc = subprocess.run(
+            ["git", "ls-files", "--", OWNER_PRIVATE_LIVE_RELEASE_REL],
+            cwd=str(base),
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=60,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if proc.returncode != 0:
+        return None
+    if any(line.strip() for line in proc.stdout.splitlines()):
+        return (
+            "ERROR",
+            f"{OWNER_PRIVATE_LIVE_RELEASE_REL} ist im Git-Index getrackt — "
+            "git rm --cached; Datei nur lokal nach echter Freigabe nutzen.",
+        )
+    return None
 
 
 def _iter_files() -> list[Path]:
@@ -478,6 +511,10 @@ def main() -> int:
 
     errors = 0
     warns = 0
+
+    if tracked := owner_private_live_release_tracked_by_git():
+        print(tracked[1], file=sys.stderr, flush=True)
+        errors += 1
 
     for path in _iter_files():
         rel = path.relative_to(ROOT)

@@ -20,7 +20,15 @@ def test_event_timestamp_age_uses_start_ts_ms_fallback() -> None:
     e = EventEnvelope(
         event_type="candle_close",
         symbol="BTCUSDT",
-        payload={"start_ts_ms": 1_000_000, "timeframe": "1m", "o": 1, "h": 1, "l": 1, "c": 1, "usdt_vol": 1.0},
+        payload={
+            "start_ts_ms": 1_000_000,
+            "timeframe": "1m",
+            "open": 1,
+            "high": 1,
+            "low": 1,
+            "close": 1,
+            "usdt_vol": 1.0,
+        },
     )
     age = FeatureWorker.event_timestamp_age_ms_at_ingress(e, 1_003_500)
     assert age == 3_500
@@ -31,7 +39,15 @@ def test_event_timestamp_age_prefers_exchange_ts() -> None:
         event_type="candle_close",
         symbol="BTCUSDT",
         exchange_ts_ms=100,
-        payload={"start_ts_ms": 5000, "timeframe": "1m", "o": 1, "h": 1, "l": 1, "c": 1, "usdt_vol": 1.0},
+        payload={
+            "start_ts_ms": 5000,
+            "timeframe": "1m",
+            "open": 1,
+            "high": 1,
+            "low": 1,
+            "close": 1,
+            "usdt_vol": 1.0,
+        },
     )
     age = FeatureWorker.event_timestamp_age_ms_at_ingress(e, 4000)
     assert age == 4000 - 100

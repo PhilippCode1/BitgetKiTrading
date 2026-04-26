@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
@@ -19,6 +20,16 @@ for candidate in (REPO_ROOT, LIVE_BROKER_SRC, SHARED_SRC):
 from live_broker.config import LiveBrokerSettings
 from live_broker.execution.models import ExecutionIntentRequest
 from live_broker.execution.service import LiveExecutionService
+
+
+@pytest.fixture(autouse=True)
+def _stub_db_live_execution_policy_for_unit() -> object:
+    # String-Ziel: immer dasselbe Modul wie zur Laufzeit in evaluate_intent (kein reales psycopg).
+    with patch(
+        "live_broker.execution.service.LiveExecutionService._assert_db_live_execution_policy",
+        lambda _self: None,
+    ):
+        yield
 
 
 class _FakeExchangeClient:
@@ -86,6 +97,7 @@ def _live_settings(monkeypatch: pytest.MonkeyPatch, **extra: str) -> LiveBrokerS
         "BITGET_API_PASSPHRASE": "pass",
         "RISK_MAX_POSITION_RISK_PCT": "0.5",
         "LIVE_BROKER_BLOCK_LIVE_WITHOUT_EXCHANGE_TRUTH": "true",
+        "RISK_GOVERNOR_LIVE_RAMP_MAX_LEVERAGE": "12",
     }
     values.update(extra)
     for k, v in values.items():

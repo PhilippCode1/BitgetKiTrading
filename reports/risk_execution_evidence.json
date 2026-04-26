@@ -1,0 +1,340 @@
+{
+  "generated_at": "2026-04-25T22:55:30.236003+00:00",
+  "git_sha": "84d7b66",
+  "private_live_decision": "NO_GO",
+  "portfolio_scenarios": [
+    {
+      "id": "missing_snapshot",
+      "blocks_live": true,
+      "block_reasons": [
+        "portfolio_snapshot_fehlt"
+      ],
+      "cap_reasons": [],
+      "summary_de": "Portfolio-Risiko blockiert Live-Opening: portfolio_snapshot_fehlt. Portfolio-Go/No-Go: NO_GO.",
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "portfolio_risk_not_safe"
+        ],
+        "missing_gates": []
+      }
+    },
+    {
+      "id": "stale_snapshot",
+      "blocks_live": true,
+      "block_reasons": [
+        "portfolio_snapshot_stale"
+      ],
+      "cap_reasons": [],
+      "summary_de": "Portfolio-Risiko blockiert Live-Opening: portfolio_snapshot_stale. Portfolio-Go/No-Go: NO_GO.",
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "portfolio_risk_not_safe"
+        ],
+        "missing_gates": []
+      }
+    },
+    {
+      "id": "limit_breach",
+      "blocks_live": true,
+      "block_reasons": [
+        "correlation_stress_zu_hoch",
+        "total_exposure_ueber_limit",
+        "margin_usage_ueber_limit",
+        "max_concurrent_positions_ueberschritten",
+        "zu_viele_pending_live_candidates",
+        "net_long_exposure_ueber_limit",
+        "family_exposure_zu_hoch"
+      ],
+      "cap_reasons": [],
+      "summary_de": "Portfolio-Risiko blockiert Live-Opening: correlation_stress_zu_hoch, total_exposure_ueber_limit, margin_usage_ueber_limit, max_concurrent_positions_ueberschritten, zu_viele_pending_live_candidates, net_long_exposure_ueber_limit, family_exposure_zu_hoch. Portfolio-Go/No-Go: NO_GO.",
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "portfolio_risk_not_safe"
+        ],
+        "missing_gates": []
+      }
+    }
+  ],
+  "order_idempotency_scenarios": [
+    {
+      "id": "idempotency_missing",
+      "new_state": "blocked",
+      "block_reasons": [
+        "idempotency_fehlt"
+      ],
+      "blocks_live": true,
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "idempotency_key_missing"
+        ],
+        "missing_gates": []
+      }
+    },
+    {
+      "id": "duplicate_client_oid",
+      "new_state": "blocked",
+      "block_reasons": [
+        "duplicate_client_order_id"
+      ],
+      "blocks_live": true,
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "safety_latch_active"
+        ],
+        "missing_gates": []
+      }
+    },
+    {
+      "id": "unknown_submit_state_retry",
+      "new_state": "blocked",
+      "block_reasons": [
+        "unknown_submit_state_blockiert_neue_openings"
+      ],
+      "blocks_live": true,
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "unknown_order_state_active"
+        ],
+        "missing_gates": []
+      }
+    },
+    {
+      "id": "timeout_sets_unknown",
+      "new_state": "unknown_submit_state",
+      "block_reasons": [
+        "submit_timeout_unknown_state"
+      ],
+      "blocks_live": true,
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "unknown_order_state_active"
+        ],
+        "missing_gates": []
+      }
+    },
+    {
+      "id": "db_failure_requires_reconcile",
+      "new_state": "reconcile_required",
+      "block_reasons": [
+        "db_failure_reconcile_required"
+      ],
+      "blocks_live": true,
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "reconcile_not_ok"
+        ],
+        "missing_gates": []
+      }
+    },
+    {
+      "id": "retry_without_reconcile",
+      "new_state": "blocked",
+      "block_reasons": [
+        "retry_ohne_reconcile_verboten"
+      ],
+      "blocks_live": true,
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "reconcile_not_ok"
+        ],
+        "missing_gates": []
+      }
+    }
+  ],
+  "reconcile_scenarios": [
+    {
+      "id": "stale",
+      "status": "blocked",
+      "block_reasons": [
+        "reconcile_stale"
+      ],
+      "warning_reasons": [],
+      "reconcile_required": false,
+      "safety_latch_required": false,
+      "blocks_live": true,
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "reconcile_not_ok"
+        ],
+        "missing_gates": []
+      }
+    },
+    {
+      "id": "exchange_unreachable",
+      "status": "blocked",
+      "block_reasons": [
+        "exchange_unreachable"
+      ],
+      "warning_reasons": [],
+      "reconcile_required": false,
+      "safety_latch_required": false,
+      "blocks_live": true,
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "reconcile_not_ok"
+        ],
+        "missing_gates": []
+      }
+    },
+    {
+      "id": "auth_failed",
+      "status": "blocked",
+      "block_reasons": [
+        "auth_failed"
+      ],
+      "warning_reasons": [],
+      "reconcile_required": false,
+      "safety_latch_required": false,
+      "blocks_live": true,
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "reconcile_not_ok"
+        ],
+        "missing_gates": []
+      }
+    },
+    {
+      "id": "unknown_order_state",
+      "status": "blocked",
+      "block_reasons": [
+        "unknown_order_state"
+      ],
+      "warning_reasons": [],
+      "reconcile_required": false,
+      "safety_latch_required": false,
+      "blocks_live": true,
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "reconcile_not_ok",
+          "unknown_order_state_active"
+        ],
+        "missing_gates": []
+      }
+    },
+    {
+      "id": "position_mismatch",
+      "status": "blocked",
+      "block_reasons": [
+        "position_mismatch"
+      ],
+      "warning_reasons": [],
+      "reconcile_required": false,
+      "safety_latch_required": false,
+      "blocks_live": true,
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "reconcile_not_ok"
+        ],
+        "missing_gates": []
+      }
+    },
+    {
+      "id": "fill_mismatch",
+      "status": "blocked",
+      "block_reasons": [
+        "fill_mismatch"
+      ],
+      "warning_reasons": [
+        "fill_mismatch"
+      ],
+      "reconcile_required": false,
+      "safety_latch_required": true,
+      "blocks_live": true,
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "reconcile_not_ok",
+          "safety_latch_active"
+        ],
+        "missing_gates": []
+      }
+    },
+    {
+      "id": "exchange_order_missing",
+      "status": "warning",
+      "block_reasons": [],
+      "warning_reasons": [
+        "exchange_order_missing"
+      ],
+      "reconcile_required": true,
+      "safety_latch_required": false,
+      "blocks_live": true,
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "reconcile_not_ok"
+        ],
+        "missing_gates": []
+      }
+    },
+    {
+      "id": "local_order_missing",
+      "status": "warning",
+      "block_reasons": [],
+      "warning_reasons": [
+        "local_order_missing"
+      ],
+      "reconcile_required": true,
+      "safety_latch_required": false,
+      "blocks_live": true,
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "reconcile_not_ok"
+        ],
+        "missing_gates": []
+      }
+    },
+    {
+      "id": "safety_latch_active",
+      "status": "blocked",
+      "block_reasons": [
+        "safety_latch_active"
+      ],
+      "warning_reasons": [],
+      "reconcile_required": false,
+      "safety_latch_required": false,
+      "blocks_live": true,
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "reconcile_not_ok",
+          "safety_latch_active"
+        ],
+        "missing_gates": []
+      }
+    }
+  ],
+  "covered_live_preflight_reasons": [
+    "idempotency_key_missing",
+    "portfolio_risk_not_safe",
+    "reconcile_not_ok",
+    "safety_latch_active",
+    "unknown_order_state_active"
+  ],
+  "missing_required_live_preflight_reasons": [],
+  "scenario_counts": {
+    "portfolio": 3,
+    "order_idempotency": 6,
+    "reconcile": 9
+  },
+  "notes": [
+    "Synthetische Repo-Evidence ohne echte Orders und ohne Secrets.",
+    "Portfolio-, Idempotency- und Reconcile-Fehler muessen vor Live-Submit denselben Live-Broker-Preflight blockieren.",
+    "Externe Exchange-Truth-/Staging-Evidence bleibt fuer private Live erforderlich."
+  ]
+}

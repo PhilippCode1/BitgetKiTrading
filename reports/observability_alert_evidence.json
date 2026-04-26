@@ -1,0 +1,89 @@
+{
+  "generated_at": "2026-04-25T23:32:39Z",
+  "git_sha": "84d7b66",
+  "private_live_decision": "NO_GO",
+  "full_autonomous_live": "NO_GO",
+  "observability_doc_surface": {
+    "ok": true,
+    "required_count": 4,
+    "missing_paths": []
+  },
+  "alertmanager_verify": {
+    "status": "PASS",
+    "issues": [],
+    "meta": {
+      "config": "C:\\Users\\Acer\\OneDrive\\Documents\\Cursor1\\bitget-btc-ai\\infra\\observability\\alertmanager.yml.example",
+      "alerts_file": "C:\\Users\\Acer\\OneDrive\\Documents\\Cursor1\\bitget-btc-ai\\infra\\observability\\prometheus-alerts.yml",
+      "receivers_count": 9,
+      "subroutes_count": 9,
+      "env_var_refs": 21,
+      "unresolved_alertmanager_env": 21
+    }
+  },
+  "alert_delivery_evidence": {
+    "assessment_status": "FAIL",
+    "blockers": [
+      "drill_started_at_missing",
+      "drill_completed_at_missing",
+      "git_sha_missing",
+      "operator_missing",
+      "evidence_reference_missing",
+      "delivery_channel_missing",
+      "delivery_proof_reference_missing",
+      "p0_route_not_verified",
+      "p1_route_not_verified",
+      "kill_switch_alert_not_delivered",
+      "reconcile_alert_not_delivered",
+      "market_data_stale_alert_not_delivered",
+      "gateway_auth_alert_not_delivered",
+      "human_ack_missing",
+      "dedupe_not_verified",
+      "runbook_link_not_verified",
+      "main_console_alert_state_not_verified",
+      "alert_payload_secret_safety_not_verified",
+      "ack_latency_seconds_missing"
+    ],
+    "warnings": [
+      "owner_signoff_missing_external_required"
+    ],
+    "secret_surface": [],
+    "ok_strict": false
+  },
+  "observability_ops_evidence": {
+    "status": "FAIL",
+    "external_required": true,
+    "failures": [
+      "status_nicht_verified",
+      "reviewed_by_fehlt_oder_template",
+      "reviewed_at_fehlt_oder_template",
+      "environment_fehlt_oder_template",
+      "git_sha_fehlt_oder_template",
+      "grafana_ops_dashboard_uri_fehlt",
+      "grafana_sli_dashboard_uri_fehlt",
+      "grafana_baseline_nicht_belegt",
+      "slo_gateway_fehlt",
+      "slo_system_health_p95_fehlt",
+      "slo_data_freshness_fehlt",
+      "slo_live_safety_fehlt",
+      "on_call_nicht_dokumentiert",
+      "runbook_peer_review_fehlt",
+      "incident_drill_ref_fehlt",
+      "owner_signoff_fehlt"
+    ]
+  },
+  "internal_issues": [],
+  "external_required": [
+    "Staging-/Shadow-Alert-Drill mit Zustellnachweis: siehe alert_routing_evidence.template.json und verify_alert_routing --evidence-json.",
+    "Grafana/SLI-Baseline und SLO-Betriebsreview: siehe observability_slos_evidence.template.json.",
+    "Owner-Signoff fuer On-Call-Pfad und Incident-Response vor privatem Live-Go."
+  ],
+  "recommended_commands": [
+    "python tools/verify_alert_routing.py --strict",
+    "python tools/verify_alert_routing.py --evidence-json docs/production_10_10/alert_routing_evidence.template.json --strict",
+    "pytest tests/unit/monitor_engine -q"
+  ],
+  "notes": [
+    "Dieser Report fasst repo-lokale Pruefungen zusammen; kein Ersatz fuer echte Staging-Metrik-Baselines.",
+    "private_live_allowed bleibt NO_GO bis verified externe Evidence und Matrix-Kategorien verified sind."
+  ]
+}

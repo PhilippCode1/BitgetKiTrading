@@ -405,6 +405,9 @@ def _settings(monkeypatch: pytest.MonkeyPatch, **extra: str) -> LiveBrokerSettin
         "PRODUCTION": "false",
         "DATABASE_URL": "postgresql://test:test@127.0.0.1:5432/test",
         "REDIS_URL": "redis://127.0.0.1:6379/0",
+        # Ohne laufende Postgres/Redis: keine echten Netz-Timeouts in Unit-Tests.
+        "LIVE_BROKER_REQUIRE_COMMERCIAL_GATES": "false",
+        "LIVE_ENABLE_PRE_FLIGHT_LIQUIDITY_GUARD": "false",
         "EXECUTION_MODE": "live",
         "STRATEGY_EXEC_MODE": "manual",
         "LIVE_BROKER_ENABLED": "true",

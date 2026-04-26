@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from shared_py.bitget.exchange_readiness import (
+    assess_external_key_evidence,
     assess_permissions,
     assert_readonly_request,
     classify_http_status,
@@ -17,6 +18,53 @@ def test_withdrawal_permission_fails() -> None:
     assert assessment.status == "blocker"
     assert "withdrawal_permission_present" in assessment.blockers
     assert readiness_verdict(assessment.blockers, assessment.warnings) == "FAIL"
+
+
+def test_external_key_evidence_blocks_withdrawal_permission() -> None:
+    assessment = assess_external_key_evidence(
+        {
+            "schema_version": "bitget-exchange-readiness-v1",
+            "environment": "production",
+            "account_mode": "live_candidate",
+            "read_permission": True,
+            "trade_permission": True,
+            "withdrawal_permission": True,
+            "ip_allowlist_enabled": True,
+            "account_protection_enabled": True,
+            "api_version": "v2",
+            "instrument_scope": "USDT-FUTURES",
+            "reviewed_by": "external-security-review",
+            "reviewed_at": "2026-04-26T00:00:00Z",
+            "evidence_reference": "external-ticket-123",
+            "owner_signoff": True,
+        }
+    )
+    assert assessment.status == "FAIL"
+    assert "withdrawal_permission_not_false" in assessment.blockers
+
+
+def test_external_key_evidence_requires_owner_signoff_warning() -> None:
+    assessment = assess_external_key_evidence(
+        {
+            "schema_version": "bitget-exchange-readiness-v1",
+            "environment": "production",
+            "account_mode": "live_candidate",
+            "read_permission": True,
+            "trade_permission": True,
+            "withdrawal_permission": False,
+            "ip_allowlist_enabled": True,
+            "account_protection_enabled": True,
+            "api_version": "v2",
+            "instrument_scope": "USDT-FUTURES",
+            "reviewed_by": "external-security-review",
+            "reviewed_at": "2026-04-26T00:00:00Z",
+            "evidence_reference": "external-ticket-123",
+            "owner_signoff": False,
+        }
+    )
+    assert assessment.status == "PASS_WITH_WARNINGS"
+    assert assessment.blockers == []
+    assert "owner_signoff_missing_external_required" in assessment.warnings
 
 
 def test_unclear_permission_blocks_live_with_warning() -> None:

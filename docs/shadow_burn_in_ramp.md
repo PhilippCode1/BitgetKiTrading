@@ -119,6 +119,24 @@ Wichtige Flags:
 
 **Ausgabe:** Markdown auf stdout und optional Dateien. **stderr** kurz `[PASS/GO]`, `[NO-GO/FAIL]`, oder `[NO_EVIDENCE]`. Nicht ersetzen: **Kalender-/Kohortenmatrix** und ENV-Nachweis; das Skript liefert **DB-Evidenz** dazu.
 
+### Certificate-Contract fuer Live-Freigabe
+
+Der DB-Report wird fuer `private_live_allowed` durch einen externen,
+secret-freien Certificate-Contract ergaenzt:
+
+```text
+python scripts/verify_shadow_burn_in.py \
+  --certificate-json docs/production_10_10/shadow_burn_in_certificate.template.json \
+  --strict \
+  --output-md reports/shadow_burn_in_certificate.md \
+  --output-json reports/shadow_burn_in_certificate.json
+```
+
+Das Repo-Template ist absichtlich `FAIL`. Live bleibt `NO_GO`, bis der
+externe Nachweis 14 Kalendertage, 3 Session-Cluster, Stress-/Event-Tag,
+`report_sha256`, Runtime-ENV-Snapshot, Shadow-Gates, Audit-/Forensics-Stichprobe,
+Review und Owner-Signoff belegt.
+
 ## Harte Freigabekriterien vor Echtgeld-Mirror
 
 Alle Kriterien muessen gleichzeitig gruen sein. Sonst bleibt das System **shadow-only**.

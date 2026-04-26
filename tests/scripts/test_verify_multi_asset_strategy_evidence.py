@@ -48,3 +48,28 @@ def test_script_generates_report_with_german_blockgruende(tmp_path: Path) -> Non
     payload = json.loads(out_json.read_text(encoding="utf-8"))
     assert "summary" in payload
     assert payload["summary"]["FAIL"] >= 1
+
+
+def test_script_can_generate_fail_closed_report_without_failing_cli(tmp_path: Path) -> None:
+    out_md = tmp_path / "report.md"
+    out_json = tmp_path / "report.json"
+    proc = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--input-json",
+            str(FIXTURE),
+            "--output-md",
+            str(out_md),
+            "--output-json",
+            str(out_json),
+            "--allow-failures",
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    payload = json.loads(out_json.read_text(encoding="utf-8"))
+    assert payload["summary"]["FAIL"] >= 1

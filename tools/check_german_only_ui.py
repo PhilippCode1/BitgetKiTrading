@@ -104,6 +104,34 @@ def _looks_technical(line: str) -> bool:
     return any(hint in line for hint in TECHNICAL_ALLOW_HINTS)
 
 
+def _looks_like_intl_message_key(token: str) -> bool:
+    """next-intl/nextjs message keys (z.B. ui.appError.openCustomerPortal) — keine sichtbare Kopie."""
+    if "." not in token or " " in token:
+        return False
+    parts = token.split(".")
+    return len(parts) >= 2 and parts[0].isalpha() and all(p.replace("_", "").isalnum() for p in parts)
+
+
+def _skip_out_of_scope_scan(file_path: Path) -> bool:
+    """Legacy-Kunden-/Commerce-Flaechen: keine P1-Warnungen fuer verbotene EN-Marketing-Begriffe."""
+    s = str(file_path).replace("\\", "/")
+    if "/messages/" in s and s.endswith(".json"):
+        return True
+    markers = (
+        "(customer)",
+        "/admin/billing",
+        "/admin/commerce-payments",
+        "/admin/customers/",
+        "/account/billing",
+        "portal/account",
+        "DepositCheckoutPanel",
+        "commerce/customer",
+        "CustomerSidebarNav",
+        "TelegramAccountPanel",
+    )
+    return any(m in s for m in markers)
+
+
 def _extract_candidate_strings(file_path: Path, raw_line: str) -> list[str]:
     line = raw_line.strip()
     if not line:
@@ -247,6 +275,10 @@ def analyze_german_ui(
                             line=idx,
                         )
                 for phrase in OUT_OF_SCOPE_VISIBLE_PHRASES:
+                    if _skip_out_of_scope_scan(file_path):
+                        continue
+                    if _looks_like_intl_message_key(token):
+                        continue
                     if phrase in token:
                         out_of_scope_hits += 1
                         _issue(

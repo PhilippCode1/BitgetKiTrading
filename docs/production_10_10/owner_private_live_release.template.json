@@ -1,0 +1,6 @@
+{
+  "_comment": "Nur operativ nutzen: Kopie nach reports/owner_private_live_release.json (gitignored). Keine Secrets. Nach echter Owner-Freigabe owner_private_live_go auf true setzen; signoff_reference = Ticket/Audit-ID (mind. 8 Zeichen).",
+  "owner_private_live_go": false,
+  "recorded_at": "2026-04-26T00:00:00Z",
+  "signoff_reference": "CHANGE_ME_owner_audit_ref_min_8_chars"
+}

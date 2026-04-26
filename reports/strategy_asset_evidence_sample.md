@@ -1,6 +1,6 @@
 # Strategy-Asset-Evidence Report
 
-- Generiert: 2026-04-25T17:38:03Z
+- Generiert: 2026-04-25T23:19:37Z
 
 ## trend_follow_v2 / BTCUSDT
 - Version: 2.3.1

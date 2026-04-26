@@ -29,6 +29,7 @@ def _openapi_test_env_value(name: str) -> str:
 
 def main() -> int:
     root = Path(__file__).resolve().parents[1]
+    sys.path.insert(0, str(root))
     sys.path.insert(0, str(root / "shared" / "python" / "src"))
 
     from config.required_secrets import required_env_names_for_env_file_profile

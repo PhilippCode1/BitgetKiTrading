@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "status": "external_required",
+  "reviewed_by": "CHANGE_ME_OWNER",
+  "reviewed_at": "CHANGE_ME_ISO8601",
+  "environment": "CHANGE_ME_SHADOW_OR_STAGING",
+  "git_sha": "CHANGE_ME_GIT_SHA",
+  "checks": {
+    "staging_or_shadow_smoke_pass": false,
+    "api_integration_smoke_or_equivalent": false,
+    "disallow_loopback_gateway_for_deploy_profile": false,
+    "compose_runtime_effective_env_reviewed": false
+  },
+  "artifacts": {
+    "smoke_log_uri": "CHANGE_ME_URI",
+    "docker_compose_effective_excerpt_uri": "CHANGE_ME_URI"
+  },
+  "safety": {
+    "no_secrets_in_logs": true,
+    "owner_signoff": false
+  }
+}

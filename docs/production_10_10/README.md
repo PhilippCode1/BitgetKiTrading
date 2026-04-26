@@ -82,6 +82,7 @@ Zusaetzlich je nach Bereich:
 python tools/check_10_10_evidence.py --strict
 python tools/check_10_10_evidence.py --json
 python tools/check_10_10_evidence.py --write-report docs/production_10_10/evidence_status_report.md
+python tools/check_10_10_evidence.py --check-report docs/production_10_10/evidence_status_report.md
 python tools/production_readiness_audit.py
 python tools/production_readiness_audit.py --strict
 python tools/inventory_secret_surfaces.py

@@ -1,6 +1,11 @@
 from __future__ import annotations
 
-from shared_py.readiness_scorecard import REQUIRED_CATEGORIES, build_readiness_scorecard
+from shared_py.readiness_scorecard import (
+    REQUIRED_CATEGORIES,
+    asset_preflight_fixture_evidence_ok,
+    build_readiness_scorecard,
+    owner_private_live_release_payload_ok,
+)
 
 
 def _matrix(status: str = "verified", overrides: dict[str, str] | None = None) -> dict[str, object]:
@@ -30,6 +35,8 @@ def _all_reports() -> list[str]:
         "dr_restore_test.md",
         "shadow_burn_in.md",
         "live_safety_drill.md",
+        "branch_protection_ci_evidence.md",
+        "asset_preflight_evidence.md",
         "production_readiness_scorecard.md",
     ]
 
@@ -72,13 +79,106 @@ def test_missing_asset_data_quality_blocks_live_for_asset() -> None:
     assert "asset_data_quality_for_concrete_assets_missing" in scorecard.asset_blockers
 
 
+def test_asset_preflight_fixture_evidence_clears_generic_concrete_asset_gap() -> None:
+    payload = {
+        "assets_checked": 1,
+        "live_allowed_count": 0,
+        "private_live_decision": "NO_GO",
+        "assets": [
+            {
+                "symbol": "BTCUSDT",
+                "live_preflight_status": "LIVE_BLOCKED",
+                "block_reasons": ["owner_approval_missing"],
+            }
+        ],
+    }
+    assert asset_preflight_fixture_evidence_ok({"asset_preflight_evidence": payload}) is True
+    scorecard = build_readiness_scorecard(
+        _matrix(status="partial", overrides={"private_owner_scope": "verified"}),
+        report_names=["asset_preflight_evidence.md"],
+        report_payloads={"asset_preflight_evidence": payload},
+    )
+    assert "asset_data_quality_for_concrete_assets_missing" not in scorecard.asset_blockers
+    assert _mode(scorecard, "private_live_allowed") == "NO_GO"
+
+
+def test_asset_preflight_evidence_never_counts_live_allowed_payload() -> None:
+    payload = {
+        "assets_checked": 1,
+        "live_allowed_count": 1,
+        "private_live_decision": "NO_GO",
+        "assets": [
+            {
+                "symbol": "BTCUSDT",
+                "live_preflight_status": "LIVE_ALLOWED",
+                "block_reasons": [],
+            }
+        ],
+    }
+    assert asset_preflight_fixture_evidence_ok({"asset_preflight_evidence": payload}) is False
+
+
 def test_full_autonomous_live_remains_no_go() -> None:
     scorecard = build_readiness_scorecard(
         _matrix(),
         report_names=_all_reports(),
         asset_data_quality_verified=True,
+        owner_private_live_release_confirmed=True,
     )
     assert _mode(scorecard, "full_autonomous_live") == "NO_GO"
+
+
+def test_perfect_matrix_without_owner_release_file_blocks_private_live() -> None:
+    scorecard = build_readiness_scorecard(
+        _matrix(),
+        report_names=_all_reports(),
+        asset_data_quality_verified=True,
+        owner_private_live_release_confirmed=False,
+    )
+    assert _mode(scorecard, "private_live_allowed") == "NO_GO"
+    assert "owner_private_live_release:not_confirmed" in scorecard.private_live_blockers
+
+
+def test_perfect_matrix_with_owner_release_allows_private_live() -> None:
+    scorecard = build_readiness_scorecard(
+        _matrix(),
+        report_names=_all_reports(),
+        asset_data_quality_verified=True,
+        owner_private_live_release_confirmed=True,
+    )
+    assert _mode(scorecard, "private_live_allowed") == "GO"
+    assert "owner_private_live_release:not_confirmed" not in scorecard.private_live_blockers
+
+
+def test_owner_release_payload_rejects_false_go() -> None:
+    assert (
+        owner_private_live_release_payload_ok(
+            {"owner_private_live_go": False, "recorded_at": "2026-01-01T00:00:00Z", "signoff_reference": "x" * 8}
+        )
+        is False
+    )
+
+
+def test_owner_release_payload_requires_reference_length() -> None:
+    assert (
+        owner_private_live_release_payload_ok(
+            {"owner_private_live_go": True, "recorded_at": "2026-01-01T00:00:00Z", "signoff_reference": "short"}
+        )
+        is False
+    )
+
+
+def test_owner_release_payload_accepts_valid() -> None:
+    assert (
+        owner_private_live_release_payload_ok(
+            {
+                "owner_private_live_go": True,
+                "recorded_at": "2026-04-26T12:00:00Z",
+                "signoff_reference": "audit_ticket_ABCDEF12",
+            }
+        )
+        is True
+    )
 
 
 def test_paper_can_go_when_no_live_danger() -> None:

@@ -32,6 +32,231 @@ except ImportError:  # Aufruf ohne venv-Package
 
 _REPO = Path(__file__).resolve().parents[1]
 _DEFAULT_READINESS = _REPO / "READINESS_EVIDENCE.md"
+SHADOW_CERTIFICATE_SCHEMA_VERSION = "shadow-burn-in-certificate-v1"
+DEFAULT_CERTIFICATE_TEMPLATE = (
+    _REPO / "docs" / "production_10_10" / "shadow_burn_in_certificate.template.json"
+)
+SECRET_LIKE_KEYS = ("database_url", "dsn", "password", "secret", "token", "api_key", "private_key")
+
+
+def build_shadow_certificate_template() -> dict[str, Any]:
+    return {
+        "schema_version": SHADOW_CERTIFICATE_SCHEMA_VERSION,
+        "environment": "shadow",
+        "execution_mode": "shadow",
+        "started_at": "",
+        "ended_at": "",
+        "duration_hours": None,
+        "consecutive_calendar_days": 0,
+        "session_clusters_observed": [],
+        "stress_or_event_day_documented": False,
+        "report_verdict": "PENDING",
+        "report_sha256": "",
+        "git_sha": "",
+        "runtime_env_snapshot_sha256": "",
+        "live_trade_enable": False,
+        "shadow_trade_enable": False,
+        "live_broker_enabled": False,
+        "require_shadow_match_before_live": False,
+        "operator_release_required": False,
+        "execution_binding_required": False,
+        "max_leverage": None,
+        "symbols_observed": [],
+        "market_families_observed": [],
+        "playbook_families_observed": [],
+        "candidate_for_live_count": 0,
+        "shadow_only_count": 0,
+        "do_not_trade_count": 0,
+        "p0_incidents": 0,
+        "p1_incidents": 0,
+        "reconcile_failures": 0,
+        "shadow_live_mismatches": 0,
+        "open_critical_alerts": 0,
+        "data_quality_failures": 0,
+        "liquidity_gate_failures": 0,
+        "risk_gate_failures": 0,
+        "audit_sample_reviewed": False,
+        "forensics_sample_reference": "",
+        "reviewed_by": "",
+        "reviewed_at": "",
+        "evidence_reference": "",
+        "owner_signoff": False,
+        "database_url": "[REDACTED]",
+        "notes_de": "Template: echten Shadow-Burn-in extern auswerten; Secrets niemals im Repo speichern.",
+    }
+
+
+def _non_negative_number(data: dict[str, Any], key: str) -> float | None:
+    value = data.get(key)
+    if isinstance(value, bool) or value is None:
+        return None
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed >= 0 else None
+
+
+def _non_negative_int(data: dict[str, Any], key: str) -> int | None:
+    number = _non_negative_number(data, key)
+    return None if number is None else int(number)
+
+
+def _string_list(data: dict[str, Any], key: str) -> list[str]:
+    value = data.get(key)
+    if not isinstance(value, list):
+        return []
+    return [str(item).strip() for item in value if str(item).strip()]
+
+
+def certificate_secret_surface_issues(data: dict[str, Any]) -> list[str]:
+    issues: list[str] = []
+    for key, value in data.items():
+        lowered = str(key).lower()
+        if any(fragment in lowered for fragment in SECRET_LIKE_KEYS):
+            if value not in (None, "", "[REDACTED]", "REDACTED", "not_stored_in_repo"):
+                issues.append(f"secret_like_field_not_redacted:{key}")
+    return issues
+
+
+def assess_shadow_certificate(data: dict[str, Any] | None) -> tuple[str, list[str], list[str]]:
+    if not data:
+        return "FAIL", ["shadow_certificate_missing"], []
+    blockers: list[str] = []
+    warnings: list[str] = []
+    if data.get("schema_version") != SHADOW_CERTIFICATE_SCHEMA_VERSION:
+        blockers.append("schema_version_mismatch")
+    if data.get("environment") not in {"shadow", "staging_shadow", "production_shadow"}:
+        blockers.append("environment_invalid")
+    if data.get("execution_mode") != "shadow":
+        blockers.append("execution_mode_not_shadow")
+    if not str(data.get("started_at") or "").strip():
+        blockers.append("started_at_missing")
+    if not str(data.get("ended_at") or "").strip():
+        blockers.append("ended_at_missing")
+    duration = _non_negative_number(data, "duration_hours")
+    if duration is None:
+        blockers.append("duration_hours_missing")
+    elif duration < 336:
+        blockers.append("duration_less_than_14_days")
+    days = _non_negative_int(data, "consecutive_calendar_days")
+    if days is None or days < 14:
+        blockers.append("consecutive_calendar_days_less_than_14")
+    if len(set(_string_list(data, "session_clusters_observed"))) < 3:
+        blockers.append("session_clusters_less_than_3")
+    if data.get("stress_or_event_day_documented") is not True:
+        blockers.append("stress_or_event_day_not_documented")
+    if data.get("report_verdict") != "PASS":
+        blockers.append("report_verdict_not_pass")
+    if not str(data.get("report_sha256") or "").strip():
+        blockers.append("report_sha256_missing")
+    if not str(data.get("git_sha") or "").strip():
+        blockers.append("git_sha_missing")
+    if not str(data.get("runtime_env_snapshot_sha256") or "").strip():
+        blockers.append("runtime_env_snapshot_sha256_missing")
+    required_flags = (
+        ("live_trade_enable", False, "live_trade_enable_not_false"),
+        ("shadow_trade_enable", True, "shadow_trade_enable_not_true"),
+        ("live_broker_enabled", True, "live_broker_enabled_not_true"),
+        ("require_shadow_match_before_live", True, "require_shadow_match_before_live_not_true"),
+        ("operator_release_required", True, "operator_release_required_not_true"),
+        ("execution_binding_required", True, "execution_binding_required_not_true"),
+    )
+    for key, expected, code in required_flags:
+        if data.get(key) is not expected:
+            blockers.append(code)
+    leverage = _non_negative_number(data, "max_leverage")
+    if leverage is None:
+        blockers.append("max_leverage_missing")
+    elif leverage > 7:
+        blockers.append("max_leverage_above_ramp_limit")
+    for key, code in (
+        ("symbols_observed", "symbols_observed_missing"),
+        ("market_families_observed", "market_families_observed_missing"),
+        ("playbook_families_observed", "playbook_families_observed_missing"),
+    ):
+        if not _string_list(data, key):
+            blockers.append(code)
+    for key, code in (
+        ("candidate_for_live_count", "candidate_for_live_missing"),
+        ("shadow_only_count", "shadow_only_missing"),
+        ("do_not_trade_count", "do_not_trade_missing"),
+    ):
+        value = _non_negative_int(data, key)
+        if value is None or value < 1:
+            blockers.append(code)
+    zero_required = (
+        ("p0_incidents", "p0_incidents_present"),
+        ("p1_incidents", "p1_incidents_present"),
+        ("reconcile_failures", "reconcile_failures_present"),
+        ("shadow_live_mismatches", "shadow_live_mismatches_present"),
+        ("open_critical_alerts", "open_critical_alerts_present"),
+        ("data_quality_failures", "data_quality_failures_present"),
+        ("liquidity_gate_failures", "liquidity_gate_failures_present"),
+        ("risk_gate_failures", "risk_gate_failures_present"),
+    )
+    for key, code in zero_required:
+        value = _non_negative_int(data, key)
+        if value is None or value > 0:
+            blockers.append(code)
+    if data.get("audit_sample_reviewed") is not True:
+        blockers.append("audit_sample_not_reviewed")
+    if not str(data.get("forensics_sample_reference") or "").strip():
+        blockers.append("forensics_sample_reference_missing")
+    if not str(data.get("reviewed_by") or "").strip():
+        blockers.append("reviewer_missing")
+    if not str(data.get("reviewed_at") or "").strip():
+        blockers.append("reviewed_at_missing")
+    if not str(data.get("evidence_reference") or "").strip():
+        blockers.append("evidence_reference_missing")
+    if data.get("owner_signoff") is not True:
+        warnings.append("owner_signoff_missing_external_required")
+    status = "FAIL" if blockers else ("PASS_WITH_WARNINGS" if warnings else "PASS")
+    return status, blockers, warnings
+
+
+def _certificate_markdown(data: dict[str, Any], status: str, blockers: list[str], warnings: list[str], secret_issues: list[str]) -> str:
+    lines = [
+        "# Shadow Burn-in Certificate Check",
+        "",
+        "Status: prueft externen Shadow-Burn-in-Nachweis ohne echte Secrets.",
+        "",
+        "## Summary",
+        "",
+        f"- Schema: `{data.get('schema_version')}`",
+        f"- Environment: `{data.get('environment')}`",
+        f"- Execution Mode: `{data.get('execution_mode')}`",
+        f"- Dauer Stunden: `{data.get('duration_hours')}`",
+        f"- Kalendertage: `{data.get('consecutive_calendar_days')}`",
+        f"- Session-Cluster: `{', '.join(_string_list(data, 'session_clusters_observed')) or 'missing'}`",
+        f"- Report Verdict: `{data.get('report_verdict')}`",
+        f"- Report SHA256: `{data.get('report_sha256') or 'missing'}`",
+        f"- Ergebnis: `{status}`",
+        "",
+        "## Blocker",
+    ]
+    lines.extend(f"- `{item}`" for item in blockers)
+    if not blockers:
+        lines.append("- Keine technischen Blocker.")
+    lines.extend(["", "## Warnings"])
+    lines.extend(f"- `{item}`" for item in warnings)
+    if not warnings:
+        lines.append("- Keine Warnings.")
+    lines.extend(["", "## Secret-Surface"])
+    lines.extend(f"- `{item}`" for item in secret_issues)
+    if not secret_issues:
+        lines.append("- Keine unredigierten Secret-Felder erkannt.")
+    lines.extend(
+        [
+            "",
+            "## Einordnung",
+            "",
+            "- Fixture- oder Dry-run-PASS reicht nicht fuer private Live-Freigabe.",
+            "- Live bleibt `NO_GO`, bis ein echter Shadow-Burn-in mit 14 Tagen, Sessions, Report-SHA, Review und Owner-Signoff vorliegt.",
+            "",
+        ]
+    )
+    return "\n".join(lines)
 
 
 def _fixture_verdict(data: dict[str, Any]) -> tuple[str, list[str], list[str]]:
@@ -1515,12 +1740,45 @@ def main() -> int:
     ap.add_argument("--output-json", type=Path, default=None, dest="outjson")
     ap.add_argument("--dry-run", action="store_true", help="Kein DB-Zugriff; erzeugt sicheren Beispiel-/Warnreport.")
     ap.add_argument("--input-json", type=Path, default=None, help="Fixture-basierte Burn-in-Bewertung ohne DB.")
+    ap.add_argument("--certificate-json", type=Path, default=None, help="Externer Shadow-Burn-in-Certificate-Contract ohne DB.")
+    ap.add_argument("--write-certificate-template", type=Path, default=None, help="Schreibt ein secret-freies Certificate-Template.")
     ap.add_argument(
         "--strict",
         action="store_true",
         help="Fehlende/ leere Kernevidence -> NO_EVIDENCE (Exitcde 2), kein stilles PASS.",
     )
     args = ap.parse_args()
+    if args.write_certificate_template is not None:
+        args.write_certificate_template.parent.mkdir(parents=True, exist_ok=True)
+        args.write_certificate_template.write_text(
+            json.dumps(build_shadow_certificate_template(), indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        print(f"wrote template: {args.write_certificate_template}")
+        return 0
+    if args.certificate_json is not None:
+        loaded = json.loads(args.certificate_json.read_text(encoding="utf-8"))
+        if not isinstance(loaded, dict):
+            raise ValueError("Certificate root muss ein JSON-Objekt sein.")
+        status, blockers, warnings = assess_shadow_certificate(loaded)
+        secret_issues = certificate_secret_surface_issues(loaded)
+        payload = {
+            "ok": status == "PASS" and not secret_issues,
+            "status": status,
+            "blockers": blockers + secret_issues,
+            "warnings": warnings,
+        }
+        if args.outmd is not None:
+            args.outmd.parent.mkdir(parents=True, exist_ok=True)
+            args.outmd.write_text(
+                _certificate_markdown(loaded, status, blockers, warnings, secret_issues),
+                encoding="utf-8",
+            )
+        if args.outjson is not None:
+            args.outjson.parent.mkdir(parents=True, exist_ok=True)
+            args.outjson.write_text(json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False), encoding="utf-8")
+        print(_certificate_markdown(loaded, status, blockers, warnings, secret_issues), end="")
+        return 1 if args.strict and not payload["ok"] else 0
     if args.dry_run or args.input_json is not None:
         return _run_fixture_or_dry_run(
             input_json=args.input_json,

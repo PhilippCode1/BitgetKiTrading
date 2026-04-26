@@ -53,6 +53,46 @@ Exchange-Wahrheit je Asset abgeglichen werden.
 Reconcile-Entscheidungen muessen mit Status, Gruenden und per-Asset-Zustand
 auditierbar sein, ohne Secrets zu loggen.
 
+## Externer Reconcile-/Idempotency-Contract
+
+Der simulierte Drill ist Code-Evidence, aber keine Live-Freigabe. Fuer private
+Live-Evidence muss ein echter Staging-/Shadow-Drill als secret-freies JSON gegen
+den Contract geprueft werden:
+
+```bash
+python scripts/reconcile_truth_drill.py \
+  --evidence-json docs/production_10_10/reconcile_idempotency_evidence.template.json \
+  --strict \
+  --output-md reports/reconcile_idempotency_evidence.md \
+  --output-json reports/reconcile_idempotency_evidence.json
+```
+
+Das Repo-Template bleibt absichtlich `FAIL`, bis echte Evidence vorliegt. Fuer
+Live muss mindestens belegt sein:
+
+- Drill-Start/-Ende, Git-SHA, Operator und Evidence-Referenz
+- Exchange-Truth-Quelle dokumentiert
+- `reconcile_status=ok`
+- frischer Reconcile-Snapshot
+- Reconcile pro Asset `ok`
+- keine offene Drift, unknown order states, Position-/Fill-Mismatches oder
+  fehlende Exchange-Acks
+- Retry ohne Reconcile blockiert
+- Duplicate `client_oid` blockiert
+- Idempotency-Key ist Pflicht
+- Timeout fuehrt zu `unknown_submit_state`
+- Unknown submit state blockiert neue Openings
+- DB-Fehler nach Submit erzwingt Reconcile
+- ungeloeste Duplicate-Recovery armt Safety-Latch
+- Audit-Trail, Alert-Zustellung und Main-Console-Reconcile-State verifiziert
+- `live_write_allowed_during_drill=false`
+- `real_exchange_order_sent=false`
+- Owner-Signoff separat vorhanden
+
+Felder mit Secret-Bezug wie `database_url`, `dsn`, `password`, `secret`,
+`token`, `api_key`, `private_key` oder `authorization` duerfen keine echten Werte
+enthalten.
+
 ## Referenzen
 
 - `services/live-broker/README.md`

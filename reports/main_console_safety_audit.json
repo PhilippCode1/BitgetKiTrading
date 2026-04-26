@@ -1,0 +1,118 @@
+{
+  "generated_at": "2026-04-25T22:59:46.575808+00:00",
+  "git_sha": "84d7b66",
+  "private_live_decision": "NO_GO",
+  "full_autonomous_live": "NO_GO",
+  "scenario_count": 5,
+  "audit_valid_count": 5,
+  "secret_safe": true,
+  "missing_visible_gates": [],
+  "blocking_failures": [],
+  "scenarios": [
+    {
+      "id": "reconcile_unknown",
+      "visible_gate_states": {
+        "reconcile": "unknown",
+        "exchange_truth": "vorhanden",
+        "kill_switch": "inactive",
+        "safety_latch": "inactive",
+        "backend": "connected"
+      },
+      "real_orders_possible": false,
+      "private_live_allowed": "NO_GO",
+      "blocked_by_safety_center": true,
+      "blocking_reasons": [
+        "reconcile_status_blocks_live"
+      ],
+      "reason_text_de": "Reconcile ist unklar oder fehlerhaft; Live bleibt verboten.",
+      "audit_valid": true,
+      "audit_errors": [],
+      "forensic_summary_de": "Entscheidung fuer ALL: do_not_trade. Grund: Reconcile ist unklar oder fehlerhaft; Live bleibt verboten. (reconcile_status_blocks_live)."
+    },
+    {
+      "id": "exchange_truth_missing",
+      "visible_gate_states": {
+        "reconcile": "ok",
+        "exchange_truth": "fehlt",
+        "kill_switch": "inactive",
+        "safety_latch": "inactive",
+        "backend": "connected"
+      },
+      "real_orders_possible": false,
+      "private_live_allowed": "NO_GO",
+      "blocked_by_safety_center": true,
+      "blocking_reasons": [
+        "exchange_truth_blocks_live"
+      ],
+      "reason_text_de": "Exchange-Truth fehlt oder ist stale; Live bleibt verboten.",
+      "audit_valid": true,
+      "audit_errors": [],
+      "forensic_summary_de": "Entscheidung fuer ALL: do_not_trade. Grund: Exchange-Truth fehlt oder ist stale; Live bleibt verboten. (exchange_truth_blocks_live)."
+    },
+    {
+      "id": "kill_switch_active",
+      "visible_gate_states": {
+        "reconcile": "ok",
+        "exchange_truth": "vorhanden",
+        "kill_switch": "active",
+        "safety_latch": "inactive",
+        "backend": "connected"
+      },
+      "real_orders_possible": false,
+      "private_live_allowed": "NO_GO",
+      "blocked_by_safety_center": true,
+      "blocking_reasons": [
+        "kill_switch_blocks_live"
+      ],
+      "reason_text_de": "Kill-Switch ist aktiv; echte Orders sind gesperrt.",
+      "audit_valid": true,
+      "audit_errors": [],
+      "forensic_summary_de": "Entscheidung fuer ALL: do_not_trade. Grund: Kill-Switch ist aktiv; echte Orders sind gesperrt. (kill_switch_blocks_live)."
+    },
+    {
+      "id": "safety_latch_active",
+      "visible_gate_states": {
+        "reconcile": "ok",
+        "exchange_truth": "vorhanden",
+        "kill_switch": "inactive",
+        "safety_latch": "active",
+        "backend": "connected"
+      },
+      "real_orders_possible": false,
+      "private_live_allowed": "NO_GO",
+      "blocked_by_safety_center": true,
+      "blocking_reasons": [
+        "safety_latch_blocks_live"
+      ],
+      "reason_text_de": "Safety-Latch ist aktiv; Submit/Replace bleibt gesperrt.",
+      "audit_valid": true,
+      "audit_errors": [],
+      "forensic_summary_de": "Entscheidung fuer ALL: do_not_trade. Grund: Safety-Latch ist aktiv; Submit/Replace bleibt gesperrt. (safety_latch_blocks_live)."
+    },
+    {
+      "id": "backend_unavailable",
+      "visible_gate_states": {
+        "reconcile": "ok",
+        "exchange_truth": "vorhanden",
+        "kill_switch": "inactive",
+        "safety_latch": "inactive",
+        "backend": "unavailable"
+      },
+      "real_orders_possible": false,
+      "private_live_allowed": "NO_GO",
+      "blocked_by_safety_center": true,
+      "blocking_reasons": [
+        "backend_unavailable_blocks_live"
+      ],
+      "reason_text_de": "Backend ist nicht verbunden; Safety-State ist nicht belastbar und Live bleibt verboten.",
+      "audit_valid": true,
+      "audit_errors": [],
+      "forensic_summary_de": "Entscheidung fuer ALL: do_not_trade. Grund: Backend ist nicht verbunden; Safety-State ist nicht belastbar und Live bleibt verboten. (backend_unavailable_blocks_live)."
+    }
+  ],
+  "notes": [
+    "Synthetische Repo-Evidence ohne echte Orders und ohne Secrets.",
+    "Main Console muss Live-Verbote, blockierende Gates und deutsche Forensics-Texte sichtbar machen.",
+    "Dieser Report ersetzt keine externe Shadow-, Bitget-, Alert- oder Owner-Signoff-Evidence."
+  ]
+}

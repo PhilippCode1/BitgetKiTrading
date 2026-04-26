@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "status": "external_required",
+  "reviewed_by": "CHANGE_ME_OWNER_OR_SECURITY",
+  "reviewed_at": "CHANGE_ME_ISO8601",
+  "git_sha": "CHANGE_ME_GIT_SHA",
+  "ci": {
+    "last_pip_audit_gate_pass": false,
+    "last_pnpm_audit_high_gate_pass": false,
+    "ci_run_uri": "CHANGE_ME_CI_RUN"
+  },
+  "findings": {
+    "open_high_or_critical_supplier_issues": null,
+    "last_sbom_or_export_uri": "CHANGE_ME_SBOM_URI"
+  },
+  "safety": {
+    "no_tokens_in_report_exports": true,
+    "owner_signoff": false
+  }
+}

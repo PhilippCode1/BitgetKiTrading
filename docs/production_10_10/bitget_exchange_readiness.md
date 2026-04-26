@@ -46,6 +46,30 @@ keine automatische Live-Freigabe.
 Withdrawal-Permission ist ein P0-Blocker. Ein Key mit Withdrawal-Rechten darf
 nicht fuer diese private Trading-App verwendet werden.
 
+## 6.1) Externe Key-Permission-Evidence
+
+Echte Key-Permissions, IP-Allowlist und Account-Schutz duerfen nicht durch Repo-
+Fixtures als `verified` gelten. Die technische Pruefstruktur liegt in
+`tools/check_bitget_key_permission_evidence.py`; das Template liegt in
+`docs/production_10_10/bitget_key_permission_evidence.template.json`.
+
+Bis ein extern erzeugtes, secret-freies Evidence-JSON die folgenden Punkte
+belegt, bleibt Live `NO_GO`:
+
+- `withdrawal_permission=false`
+- `read_permission=true`
+- `trade_permission=true`
+- `ip_allowlist_enabled=true`
+- `account_protection_enabled=true`
+- `api_version=v2`
+- klarer `instrument_scope`
+- externer `evidence_reference`
+- Owner-Signoff separat vorhanden
+
+Der Validator blockiert unredigierte Secret-Felder wie `api_key`, `api_secret`,
+`passphrase`, `token` oder `password`. Solche Werte muessen immer
+`[REDACTED]` oder `not_stored_in_repo` sein.
+
 ## 7) Server-Time
 
 Server-Time-Skew wird gegen ein hartes Budget geprueft. Unbekannte oder zu
@@ -85,6 +109,7 @@ Audit-Trail.
 
 ```bash
 python scripts/bitget_readiness_check.py --env-file .env.production.example --mode dry-run
+python tools/check_bitget_key_permission_evidence.py --evidence-json docs/production_10_10/bitget_key_permission_evidence.template.json --strict
 python tools/check_bitget_exchange_readiness.py --strict
 pytest tests/scripts/test_bitget_readiness_check.py -q
 pytest tests/security/test_bitget_exchange_readiness_contracts.py -q

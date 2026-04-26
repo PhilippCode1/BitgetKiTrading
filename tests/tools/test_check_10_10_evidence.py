@@ -7,6 +7,8 @@ from pathlib import Path
 
 import yaml
 
+from shared_py.readiness_scorecard import REQUIRED_CATEGORIES
+
 from tools.check_10_10_evidence import (
     FORBIDDEN_REQUIRED_CATEGORY_IDS,
     REQUIRED_CATEGORY_IDS,
@@ -100,6 +102,45 @@ def test_json_output_is_parseable() -> None:
     assert "live_blockers" in parsed
 
 
+def test_check_report_passes_for_committed_report() -> None:
+    report = ROOT / "docs" / "production_10_10" / "evidence_status_report.md"
+    result = subprocess.run(
+        [sys.executable, str(TOOL), "--check-report", str(report)],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+
+
+def test_check_report_fails_on_drift(tmp_path: Path) -> None:
+    stale = tmp_path / "stale.md"
+    stale.write_text("# Evidence Status Report\n\nveraltet\n", encoding="utf-8")
+    result = subprocess.run(
+        [sys.executable, str(TOOL), "--check-report", str(stale)],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode == 1
+    assert "evidence_report_drift" in result.stderr
+
+
+def test_check_report_fails_if_missing(tmp_path: Path) -> None:
+    missing = tmp_path / "nosuch.md"
+    result = subprocess.run(
+        [sys.executable, str(TOOL), "--check-report", str(missing)],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode == 1
+    assert "check_report_missing" in result.stderr
+
+
 def test_report_is_created(tmp_path: Path) -> None:
     report = tmp_path / "report.md"
     result = subprocess.run(
@@ -145,3 +186,15 @@ def test_german_only_ui_is_required_category() -> None:
 
 def test_main_console_information_architecture_is_required_category() -> None:
     assert "main_console_information_architecture" in REQUIRED_CATEGORY_IDS
+
+
+def test_required_category_ids_match_readiness_scorecard() -> None:
+    """Kein Drift zwischen Evidence-Matrix-Checker und Production-Readiness-Scorecard."""
+    from_scorecard = {cid for cid, _ in REQUIRED_CATEGORIES}
+    from_checker = set(REQUIRED_CATEGORY_IDS)
+    assert from_scorecard == from_checker, (
+        "REQUIRED_CATEGORY_IDS (check_10_10_evidence) und REQUIRED_CATEGORIES "
+        f"(readiness_scorecard) weichen ab: only_in_checker="
+        f"{sorted(from_checker - from_scorecard)} only_in_scorecard="
+        f"{sorted(from_scorecard - from_checker)}"
+    )

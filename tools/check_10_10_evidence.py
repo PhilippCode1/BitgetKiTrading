@@ -70,6 +70,7 @@ REQUIRED_CATEGORY_IDS = (
     "admin_access_single_owner",
     "deployment_parity",
     "supply_chain_security",
+    "branch_protection_ci",
     "final_go_no_go_scorecard",
 )
 
@@ -326,6 +327,11 @@ def render_text(summary: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def _normalize_report_text(text: str) -> str:
+    """Vergleich robust gegen CRLF/LF und finales Newline."""
+    return "\n".join(text.replace("\r\n", "\n").replace("\r", "\n").splitlines()).rstrip() + "\n"
+
+
 def render_markdown(data: dict[str, Any], summary: dict[str, Any]) -> str:
     lines = [
         "# Evidence Status Report",
@@ -414,6 +420,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--strict", action="store_true")
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--write-report", type=Path)
+    parser.add_argument(
+        "--check-report",
+        type=Path,
+        help=(
+            "Vergleicht die Datei mit dem aus der Matrix gerenderten Report; "
+            "Exit 1 bei Abweichung (haelt evidence_status_report.md synchron)."
+        ),
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -447,10 +461,26 @@ def main(argv: list[str] | None = None) -> int:
 
     issues = validate_matrix(data, root=ROOT)
     summary = build_summary(data, issues)
+    rendered_report = render_markdown(data, summary)
 
     if args.write_report:
         args.write_report.parent.mkdir(parents=True, exist_ok=True)
-        args.write_report.write_text(render_markdown(data, summary), encoding="utf-8")
+        args.write_report.write_text(rendered_report, encoding="utf-8")
+
+    if args.check_report:
+        if not args.check_report.is_file():
+            print(f"ERROR check_report_missing: {args.check_report}", file=sys.stderr)
+            return 1
+        on_disk = args.check_report.read_text(encoding="utf-8")
+        if _normalize_report_text(on_disk) != _normalize_report_text(rendered_report):
+            print(
+                "ERROR evidence_report_drift: "
+                f"{args.check_report} weicht von der Matrix ab. "
+                "Ausfuehren: python tools/check_10_10_evidence.py "
+                f"--write-report {args.check_report}",
+                file=sys.stderr,
+            )
+            return 1
 
     if args.json:
         print(json.dumps({"categories": _categories(data), **summary}, indent=2, sort_keys=True))

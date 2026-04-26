@@ -47,6 +47,7 @@ export const LIVE_SSE_STREAMS = [
   "events:trade_opened",
   "events:trade_updated",
   "events:trade_closed",
+  "events:market_feed_health",
 ] as const;
 
 export type LiveSseStream = (typeof LIVE_SSE_STREAMS)[number];

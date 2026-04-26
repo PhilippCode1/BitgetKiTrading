@@ -44,3 +44,21 @@ Vorgeschrieben: `docs/shadow_burn_in_ramp.md`, Launch-Checkliste, Gap-Register.
 2. `python scripts/verify_shadow_burn_in.py --hours 72 --strict --output-md reports/sbi.md --output-json reports/sbi.json`
 3. JSON und Markdown in Release-Archiv; **Signoff** referenziert `report_sha256` und Durchführungszeit.
 4. Für Live-Mirror: siehe Launch-Checkliste (archivierter Report mit `PASS` und SHA-Referenz).
+
+## Certificate-Contract fuer Live-Freigabe
+
+Ein 72h-DB-Report allein reicht nicht fuer `private_live_allowed`. Vor Live muss
+ein externes Certificate-JSON gegen das Repo-Template
+`docs/production_10_10/shadow_burn_in_certificate.template.json` geprueft
+werden:
+
+```bash
+python scripts/verify_shadow_burn_in.py \
+  --certificate-json docs/production_10_10/shadow_burn_in_certificate.template.json \
+  --strict \
+  --output-md reports/shadow_burn_in_certificate.md \
+  --output-json reports/shadow_burn_in_certificate.json
+```
+
+Das Template bleibt `FAIL`, bis echte 14-Tage-/Session-/Stress-Tag-/ENV-/
+Report-SHA-/Audit-/Review- und Owner-Evidence vorliegt.

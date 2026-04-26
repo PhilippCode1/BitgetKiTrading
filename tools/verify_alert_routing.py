@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import sys
@@ -16,6 +17,159 @@ except ImportError as e:  # pragma: no cover
     raise SystemExit("PyYAML fehlt: pip install PyYAML (requirements-dev.txt)") from e
 
 _REPO = Path(__file__).resolve().parents[1]
+ALERT_EVIDENCE_SCHEMA_VERSION = "alert-routing-evidence-v1"
+DEFAULT_EVIDENCE_TEMPLATE = _REPO / "docs" / "production_10_10" / "alert_routing_evidence.template.json"
+SECRET_LIKE_KEYS = ("webhook", "url", "token", "secret", "password", "api_key", "authorization", "routing_key")
+
+
+def build_evidence_template() -> dict[str, Any]:
+    return {
+        "schema_version": ALERT_EVIDENCE_SCHEMA_VERSION,
+        "environment": "staging",
+        "drill_started_at": "",
+        "drill_completed_at": "",
+        "git_sha": "",
+        "operator": "",
+        "evidence_reference": "",
+        "test_alert_label": "test_alert=true",
+        "p0_route_verified": False,
+        "p1_route_verified": False,
+        "kill_switch_alert_delivered": False,
+        "reconcile_alert_delivered": False,
+        "market_data_stale_alert_delivered": False,
+        "gateway_auth_alert_delivered": False,
+        "delivery_channel": "",
+        "delivery_proof_reference": "",
+        "acknowledged_by_human": False,
+        "ack_latency_seconds": None,
+        "ack_latency_budget_seconds": 900,
+        "dedupe_verified": False,
+        "runbook_link_verified": False,
+        "main_console_alert_state_verified": False,
+        "no_secret_in_alert_payload": False,
+        "owner_signoff": False,
+        "webhook_url": "[REDACTED]",
+        "routing_key": "[REDACTED]",
+        "authorization": "[REDACTED]",
+        "notes_de": "Template: echten Staging-Alert-Drill extern ausfuehren; Secrets niemals im Repo speichern.",
+    }
+
+
+def secret_surface_issues(payload: dict[str, Any]) -> list[str]:
+    issues: list[str] = []
+    for key, value in payload.items():
+        lowered = str(key).lower()
+        # Boolean-Compliance-Flag; kein Geheimnis (Schluessel enthaelt 'secret' als Wort).
+        if lowered == "no_secret_in_alert_payload":
+            continue
+        if any(fragment in lowered for fragment in SECRET_LIKE_KEYS):
+            if value not in (None, "", "[REDACTED]", "REDACTED", "not_stored_in_repo"):
+                issues.append(f"secret_like_field_not_redacted:{key}")
+    return issues
+
+
+def _non_negative_number(payload: dict[str, Any], key: str) -> float | None:
+    value = payload.get(key)
+    if isinstance(value, bool) or value is None:
+        return None
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed >= 0 else None
+
+
+def assess_delivery_evidence(payload: dict[str, Any] | None) -> tuple[str, list[str], list[str]]:
+    if not payload:
+        return "FAIL", ["alert_delivery_evidence_missing"], []
+    blockers: list[str] = []
+    warnings: list[str] = []
+    if payload.get("schema_version") != ALERT_EVIDENCE_SCHEMA_VERSION:
+        blockers.append("schema_version_mismatch")
+    if payload.get("environment") not in {"staging", "shadow", "production_shadow"}:
+        blockers.append("environment_invalid")
+    for key, code in (
+        ("drill_started_at", "drill_started_at_missing"),
+        ("drill_completed_at", "drill_completed_at_missing"),
+        ("git_sha", "git_sha_missing"),
+        ("operator", "operator_missing"),
+        ("evidence_reference", "evidence_reference_missing"),
+        ("test_alert_label", "test_alert_label_missing"),
+        ("delivery_channel", "delivery_channel_missing"),
+        ("delivery_proof_reference", "delivery_proof_reference_missing"),
+    ):
+        if not str(payload.get(key) or "").strip():
+            blockers.append(code)
+    required_true = (
+        ("p0_route_verified", "p0_route_not_verified"),
+        ("p1_route_verified", "p1_route_not_verified"),
+        ("kill_switch_alert_delivered", "kill_switch_alert_not_delivered"),
+        ("reconcile_alert_delivered", "reconcile_alert_not_delivered"),
+        ("market_data_stale_alert_delivered", "market_data_stale_alert_not_delivered"),
+        ("gateway_auth_alert_delivered", "gateway_auth_alert_not_delivered"),
+        ("acknowledged_by_human", "human_ack_missing"),
+        ("dedupe_verified", "dedupe_not_verified"),
+        ("runbook_link_verified", "runbook_link_not_verified"),
+        ("main_console_alert_state_verified", "main_console_alert_state_not_verified"),
+        ("no_secret_in_alert_payload", "alert_payload_secret_safety_not_verified"),
+    )
+    for key, code in required_true:
+        if payload.get(key) is not True:
+            blockers.append(code)
+    latency = _non_negative_number(payload, "ack_latency_seconds")
+    budget = _non_negative_number(payload, "ack_latency_budget_seconds")
+    if latency is None:
+        blockers.append("ack_latency_seconds_missing")
+    if budget is None:
+        blockers.append("ack_latency_budget_seconds_missing")
+    if latency is not None and budget is not None and latency > budget:
+        blockers.append("ack_latency_budget_exceeded")
+    if payload.get("owner_signoff") is not True:
+        warnings.append("owner_signoff_missing_external_required")
+    status = "FAIL" if blockers else ("PASS_WITH_WARNINGS" if warnings else "PASS")
+    return status, blockers, warnings
+
+
+def _render_evidence_md(payload: dict[str, Any], status: str, blockers: list[str], warnings: list[str], secret_issues: list[str]) -> str:
+    lines = [
+        "# Alert Routing Delivery Evidence Check",
+        "",
+        "Status: prueft externen Alert-Zustellnachweis ohne echte Secrets.",
+        "",
+        "## Summary",
+        "",
+        f"- Schema: `{payload.get('schema_version')}`",
+        f"- Environment: `{payload.get('environment')}`",
+        f"- Git SHA: `{payload.get('git_sha') or 'missing'}`",
+        f"- Operator: `{payload.get('operator') or 'missing'}`",
+        f"- Kanal: `{payload.get('delivery_channel') or 'missing'}`",
+        f"- Ack-Latenz Sekunden: `{payload.get('ack_latency_seconds')}` / Budget `{payload.get('ack_latency_budget_seconds')}`",
+        f"- Ergebnis: `{status}`",
+        "",
+        "## Blocker",
+    ]
+    lines.extend(f"- `{item}`" for item in blockers)
+    if not blockers:
+        lines.append("- Keine technischen Blocker.")
+    lines.extend(["", "## Warnings"])
+    lines.extend(f"- `{item}`" for item in warnings)
+    if not warnings:
+        lines.append("- Keine Warnings.")
+    lines.extend(["", "## Secret-Surface"])
+    lines.extend(f"- `{item}`" for item in secret_issues)
+    if not secret_issues:
+        lines.append("- Keine unredigierten Secret-Felder erkannt.")
+    lines.extend(
+        [
+            "",
+            "## Einordnung",
+            "",
+            "- YAML-Strukturtests ersetzen keinen echten Zustellnachweis.",
+            "- Live bleibt `NO_GO`, bis P0/P1-Routen, menschliche Quittierung, Runbook-Link, Main-Console-State und Owner-Signoff extern belegt sind.",
+            "",
+        ]
+    )
+    return "\n".join(lines)
 
 
 # Mindest-Abdeckung: Teilstrings in Route-Matchern (siehe prometheus-alerts.yml)
@@ -318,12 +472,45 @@ def main() -> int:
     )
     ap.add_argument("--env-file", type=Path, default=None)
     ap.add_argument("--report-md", type=Path, default=None, dest="report")
+    ap.add_argument("--evidence-json", type=Path, default=None)
+    ap.add_argument("--write-template", type=Path, default=None)
+    ap.add_argument("--output-json", type=Path, default=None)
     ap.add_argument(
         "--dry-run",
         action="store_true",
         help="Nur parsen, Exit 0 bei lesbarer YAML (kein Inhaltscheck).",
     )
     args = ap.parse_args()
+    if args.write_template is not None:
+        args.write_template.parent.mkdir(parents=True, exist_ok=True)
+        args.write_template.write_text(
+            json.dumps(build_evidence_template(), indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        print(f"wrote template: {args.write_template}")
+        return 0
+    if args.evidence_json is not None:
+        loaded = json.loads(args.evidence_json.read_text(encoding="utf-8"))
+        if not isinstance(loaded, dict):
+            raise ValueError("Evidence root muss ein JSON-Objekt sein.")
+        status, blockers, warnings = assess_delivery_evidence(loaded)
+        secret_issues = secret_surface_issues(loaded)
+        payload = {
+            "ok": status == "PASS" and not secret_issues,
+            "status": status,
+            "blockers": blockers + secret_issues,
+            "warnings": warnings,
+        }
+        text = _render_evidence_md(loaded, status, blockers, warnings, secret_issues)
+        if args.report:
+            args.report.parent.mkdir(parents=True, exist_ok=True)
+            args.report.write_text(text, encoding="utf-8")
+        if args.output_json:
+            args.output_json.parent.mkdir(parents=True, exist_ok=True)
+            args.output_json.write_text(json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False), encoding="utf-8")
+        if not args.report:
+            print(text)
+        return 1 if args.strict and not payload["ok"] else 0
 
     env: dict[str, str] = {k: v for k, v in os.environ.items()}
     if args.env_file and args.env_file.is_file():

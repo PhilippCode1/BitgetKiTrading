@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# ruff: noqa: E501
 """
 Validiert .env-Dateien gegen Profil-Pflichtvariablen (keine <SET_ME> / leer).
 Nutzt config/required_secrets_matrix.json plus bedingte Regeln (LLM, Telegram, Live-Trading).
@@ -85,6 +86,25 @@ _ENV_VALUE_HINTS: dict[str, str] = {
     ),
 }
 
+_PROD_LIVE_FAIL_CLOSED_BOOL_KEYS: tuple[tuple[str, str], ...] = (
+    (
+        "LIVE_BROKER_BLOCK_LIVE_WITHOUT_EXCHANGE_TRUTH",
+        "Live-Submit muss ohne frische Exchange-Truth fail-closed blockieren.",
+    ),
+    (
+        "LIVE_BLOCK_SUBMIT_ON_RECONCILE_FAIL",
+        "Reconcile-Fail muss Submit blockieren.",
+    ),
+    (
+        "LIVE_ENABLE_PRE_FLIGHT_LIQUIDITY_GUARD",
+        "Liquidity-/Slippage-Preflight muss vor Market-Submit aktiv sein.",
+    ),
+    (
+        "LIVE_LIQUIDITY_GUARD_STRICT_NO_CACHE",
+        "Fehlender Orderbook-Cache darf in prod-aehnlichen Profilen nicht als Warnung durchgehen.",
+    ),
+)
+
 
 def load_dotenv(path: Path) -> dict[str, str]:
     out: dict[str, str] = {}
@@ -110,7 +130,12 @@ def _bad(val: str) -> bool:
     if not t:
         return True
     u = t.upper()
-    if "<SET_ME>" in u or u == "SET_ME" or u == "CHANGE_ME":
+    normalized = u.strip("<>")
+    if (
+        "<SET_ME>" in u
+        or normalized in {"SET_ME", "CHANGE_ME", "CHANGEME"}
+        or normalized.startswith("YOUR_")
+    ):
         return True
     return False
 
@@ -150,7 +175,7 @@ def llm_gateway_base_issues(env: dict[str, str], profile: str) -> list[str]:
     ]
 
 
-def conditional_env_issues(env: dict[str, str], profile: str) -> list[str]:
+def conditional_env_issues(env: dict[str, str], profile: str, *, template: bool = False) -> list[str]:
     """Zusaetzliche Regeln, die von Feature-Flags abhaengen."""
     issues: list[str] = []
     prod_like = profile in ("staging", "shadow", "production")
@@ -163,7 +188,9 @@ def conditional_env_issues(env: dict[str, str], profile: str) -> list[str]:
                 "LLM_USE_FAKE_PROVIDER=true ist fuer PRODUCTION/shadow/staging nicht erlaubt "
                 "(echter OpenAI-Pfad im Orchestrator). Siehe config/settings.py und 03_ENV_SECRETS_AUTH_MATRIX.md §2.5."
             )
-        if _bad(env.get("OPENAI_API_KEY", "")):
+        if _bad(env.get("OPENAI_API_KEY", "")) and not (
+            template and "OPENAI_API_KEY" in env
+        ):
             issues.append(
                 "OPENAI_API_KEY fehlt oder ist Platzhalter: Ohne Fake-Provider muss der Key im llm-orchestrator "
                 "gesetzt sein (PRODUCTION/shadow/staging). Setze einen echten Provider-Key oder nur lokal "
@@ -179,12 +206,14 @@ def conditional_env_issues(env: dict[str, str], profile: str) -> list[str]:
                 )
 
     if _truthy(env.get("COMMERCIAL_TELEGRAM_REQUIRED_FOR_CONSOLE", "")):
-        if _bad(env.get("TELEGRAM_BOT_TOKEN", "")):
+        if _bad(env.get("TELEGRAM_BOT_TOKEN", "")) and not (
+            template and "TELEGRAM_BOT_TOKEN" in env
+        ):
             issues.append("TELEGRAM_BOT_TOKEN Pflicht wenn COMMERCIAL_TELEGRAM_REQUIRED_FOR_CONSOLE=true")
 
     if _truthy(env.get("LIVE_TRADE_ENABLE", "")) and not _truthy(env.get("BITGET_DEMO_ENABLED", "")):
         for key in ("BITGET_API_KEY", "BITGET_API_SECRET", "BITGET_API_PASSPHRASE"):
-            if _bad(env.get(key, "")):
+            if _bad(env.get(key, "")) and not (template and key in env):
                 issues.append(f"{key} Pflicht wenn LIVE_TRADE_ENABLE=true und kein Demo-Modus")
                 break
 
@@ -195,6 +224,23 @@ def conditional_env_issues(env: dict[str, str], profile: str) -> list[str]:
             "Siehe docs/migrations.md (Demo-SQL)."
         )
 
+    if prod_like or production_flag:
+        for key, reason in _PROD_LIVE_FAIL_CLOSED_BOOL_KEYS:
+            if key not in env:
+                issues.append(f"{key} fehlt: {reason}")
+                continue
+            if not _truthy(env.get(key, "")):
+                issues.append(f"{key}=true Pflicht: {reason}")
+
+    return issues
+
+
+def bootstrap_issues(env: dict[str, str], profile: str, *, template: bool = False) -> list[str]:
+    issues = bootstrap_env_consistency_issues(env, profile=profile)
+    if not template:
+        return issues
+    if _bad(env.get("INTERNAL_API_KEY", "")):
+        issues = [issue for issue in issues if "INTERNAL_API_KEY:" not in issue]
     return issues
 
 
@@ -210,6 +256,11 @@ def main() -> int:
         "--with-dashboard-operator",
         action="store_true",
         help="Erzwingt DASHBOARD_GATEWAY_AUTHORIZATION (nach mint_dashboard_gateway_jwt, nur sinnvoll fuer profile=local).",
+    )
+    p.add_argument(
+        "--template",
+        action="store_true",
+        help="Validiert Beispiel-/Template-Dateien: Pflichtschluessel muessen existieren, Platzhalterwerte sind erlaubt.",
     )
     args = p.parse_args()
     if not args.env_file.is_file():
@@ -244,17 +295,22 @@ def main() -> int:
     problems: list[str] = []
     for key in required:
         val = env.get(key, "")
-        if _bad(val):
+        if key not in env:
+            problems.append(f"  {key}: fehlt im Template")
+            continue
+        if _bad(val) and not args.template:
             hint = _ENV_VALUE_HINTS.get(key, "")
             line = f"  {key}: leer oder Platzhalter"
             if hint:
                 line += f" - {hint}"
             problems.append(line)
 
-    problems.extend(f"  {m}" for m in conditional_env_issues(env, args.profile))
+    problems.extend(
+        f"  {m}" for m in conditional_env_issues(env, args.profile, template=args.template)
+    )
     problems.extend(f"  {m}" for m in next_public_secret_key_issues(env))
     problems.extend(llm_gateway_base_issues(env, args.profile))
-    problems.extend(bootstrap_env_consistency_issues(env, profile=args.profile))
+    problems.extend(bootstrap_issues(env, args.profile, template=args.template))
 
     if problems:
         msg = f"validate_env_profile: {args.profile} - {args.env_file}"
@@ -264,7 +320,7 @@ def main() -> int:
         print("", file=sys.stderr)
         print(f"Dokumentation: {_DOC_BASE}", file=sys.stderr)
         return 1
-    if args.profile == "production":
+    if args.profile == "production" and not args.template:
         child_env = {k: str(v) for k, v in os.environ.items() if v is not None}
         for k, v in env.items():
             if (v is not None) and str(v).strip():

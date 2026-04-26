@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "description": "Gemeinsame Payload-Faelle fuer Python und TypeScript (owner_private_live_release). Keine Secrets.",
+  "expect_true": [
+    {
+      "id": "minimal_valid",
+      "payload": {
+        "owner_private_live_go": true,
+        "recorded_at": "2026-04-26T12:00:00Z",
+        "signoff_reference": "audit_ticket_ABCDEF12"
+      }
+    }
+  ],
+  "expect_false": [
+    { "id": "null_payload", "payload": null },
+    { "id": "empty_object", "payload": {} },
+    {
+      "id": "go_false",
+      "payload": {
+        "owner_private_live_go": false,
+        "recorded_at": "2026-01-01T00:00:00Z",
+        "signoff_reference": "12345678"
+      }
+    },
+    {
+      "id": "short_reference",
+      "payload": {
+        "owner_private_live_go": true,
+        "recorded_at": "2026-01-01T00:00:00Z",
+        "signoff_reference": "short"
+      }
+    },
+    {
+      "id": "short_recorded_at",
+      "payload": {
+        "owner_private_live_go": true,
+        "recorded_at": "2026-04-2",
+        "signoff_reference": "12345678"
+      }
+    },
+    {
+      "id": "wrong_types",
+      "payload": {
+        "owner_private_live_go": "true",
+        "recorded_at": "2026-01-01T00:00:00Z",
+        "signoff_reference": "12345678"
+      }
+    }
+  ]
+}

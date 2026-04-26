@@ -18,14 +18,30 @@ ALLOWED_ENV_FILES: dict[str, set[str] | str] = {
         "NODE_ENV",
     },
     "lib/server-env.ts": {
+        "ALLOW_API_GATEWAY_LOOPBACK_IN_PRODUCTION",
         "API_GATEWAY_URL",
         "COMMERCIAL_TELEGRAM_REQUIRED_FOR_CONSOLE",
         "DASHBOARD_GATEWAY_AUTHORIZATION",
+        "GATEWAY_JWT_SECRET",
         "LOG_FORMAT",
         "LOG_LEVEL",
         "NEXT_PUBLIC_API_BASE_URL",
         "NODE_ENV",
         "PAYMENT_MOCK_WEBHOOK_SECRET",
+    },
+    "middleware.ts": {
+        "NEXT_PUBLIC_ENABLE_ADMIN",
+    },
+    "lib/evidence-console.ts": {
+        "GIT_COMMIT_SHA",
+        "VERCEL_GIT_COMMIT_SHA",
+    },
+    "lib/operator-jwt.ts": {
+        "DASHBOARD_GATEWAY_AUTHORIZATION",
+        "GATEWAY_JWT_SECRET",
+    },
+    "lib/portal-persona.ts": {
+        "GATEWAY_JWT_SECRET",
     },
 }
 
@@ -35,6 +51,9 @@ def test_dashboard_process_env_usage_is_restricted_to_env_modules() -> None:
 
     for path in DASHBOARD_SRC.rglob("*.ts"):
         rel = path.relative_to(DASHBOARD_SRC).as_posix()
+        # Jest/Vitest: process.env-Zuweisungen fuer Temp-Roots; Produktions-Env-Grenzen gelten fuer App-Code.
+        if "/__tests__/" in rel or rel.endswith(".test.ts"):
+            continue
         env_names = PROCESS_ENV_PATTERN.findall(path.read_text(encoding="utf-8"))
         if not env_names:
             continue

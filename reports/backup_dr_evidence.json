@@ -1,0 +1,107 @@
+{
+  "generated_at": "2026-04-25T22:50:03.649271+00:00",
+  "git_sha": "84d7b66",
+  "private_live_decision": "NO_GO",
+  "full_autonomous_live": "NO_GO",
+  "restore_template": {
+    "path": "docs\\production_10_10\\postgres_restore_evidence.template.json",
+    "status": "FAIL",
+    "blockers": [
+      "backup_label_missing",
+      "backup_storage_encryption_not_confirmed",
+      "backup_artifact_sha256_missing",
+      "restore_status_not_pass",
+      "restore_target_missing",
+      "git_sha_missing",
+      "rto_seconds_missing",
+      "rpo_seconds_missing",
+      "checksum_not_verified",
+      "migration_smoke_not_passed",
+      "live_broker_read_smoke_not_passed",
+      "reconcile_state_not_validated",
+      "audit_trail_not_restored",
+      "safety_latch_default_not_blocked",
+      "alert_route_not_verified",
+      "reviewer_missing",
+      "reviewed_at_missing",
+      "evidence_reference_missing"
+    ],
+    "warnings": [
+      "owner_signoff_missing_external_required"
+    ],
+    "secret_surface_issues": [],
+    "missing_required_blockers": []
+  },
+  "safety_template": {
+    "path": "docs\\production_10_10\\live_safety_drill.template.json",
+    "status": "FAIL",
+    "blockers": [
+      "drill_started_at_missing",
+      "drill_completed_at_missing",
+      "git_sha_missing",
+      "operator_missing",
+      "evidence_reference_missing",
+      "kill_switch_arm_not_verified",
+      "kill_switch_opening_submit_not_blocked",
+      "kill_switch_release_not_operator_gated",
+      "safety_latch_arm_not_verified",
+      "safety_latch_submit_not_blocked",
+      "safety_latch_replace_not_blocked",
+      "safety_latch_release_reason_not_required",
+      "emergency_flatten_not_tested",
+      "emergency_flatten_not_reduce_only",
+      "emergency_flatten_exchange_truth_not_checked",
+      "emergency_flatten_no_increase_not_confirmed",
+      "cancel_all_not_tested",
+      "audit_trail_not_verified",
+      "alert_delivery_not_verified",
+      "main_console_state_not_verified",
+      "reconcile_after_drill_not_ok"
+    ],
+    "warnings": [
+      "owner_signoff_missing_external_required"
+    ],
+    "secret_surface_issues": [],
+    "missing_required_blockers": []
+  },
+  "local_dry_runs": {
+    "postgres_restore": {
+      "status": "DRY_RUN",
+      "generated_at": "2026-04-25T22:50:03.566468+00:00",
+      "git_sha": "84d7b66",
+      "dry_run": true,
+      "database_url_redacted": "",
+      "rto_seconds": 0.0,
+      "rpo_seconds": 0.0,
+      "live_ready": false,
+      "message": "Dry-run: keine DB-Mutation. Echter Restore-Report mit RTO/RPO bleibt Pflicht."
+    },
+    "live_safety_drill": {
+      "generated_at": "2026-04-25T22:50:03.609480+00:00",
+      "git_sha": "84d7b66",
+      "mode": "simulated",
+      "kill_switch_active": true,
+      "safety_latch_active": true,
+      "opening_order_blocked_by_kill_switch": true,
+      "opening_order_blocked_by_safety_latch": true,
+      "emergency_flatten_reduce_only": true,
+      "emergency_flatten_safe": true,
+      "audit_expected": true,
+      "alert_expected": true,
+      "go_no_go": "NO_GO",
+      "live_write_allowed": false
+    }
+  },
+  "external_required": [
+    "real_staging_or_clone_postgres_restore_pass_missing",
+    "rto_rpo_restore_budget_evidence_missing",
+    "disaster_recovery_drill_with_reconcile_audit_alert_missing",
+    "owner_signed_restore_dr_acceptance_missing"
+  ],
+  "failures": [],
+  "notes": [
+    "Dieser Report beweist nur repo-lokale Contracts und Fail-Closed-Verhalten.",
+    "Ein Template-PASS ohne externen Nachweis waere ein Fehler; die Templates muessen im Repo blockieren.",
+    "Private Live bleibt verboten, bis echter Restore/DR-Drill mit Evidence-Referenz und Owner-Signoff vorliegt."
+  ]
+}

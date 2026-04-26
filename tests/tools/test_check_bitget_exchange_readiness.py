@@ -25,9 +25,12 @@ def _write_minimal_repo(tmp_path: Path, doc_text: str) -> None:
                 "docs/production_10_10/bitget_exchange_readiness.md",
                 "scripts/bitget_readiness_check.py",
                 "tools/check_bitget_exchange_readiness.py",
+                "tools/check_bitget_key_permission_evidence.py",
+                "docs/production_10_10/bitget_key_permission_evidence.template.json",
                 "tests/scripts/test_bitget_readiness_check.py",
                 "tests/security/test_bitget_exchange_readiness_contracts.py",
                 "tests/tools/test_check_bitget_exchange_readiness.py",
+                "tests/tools/test_check_bitget_key_permission_evidence.py",
             ]
         ),
         encoding="utf-8",
@@ -35,9 +38,12 @@ def _write_minimal_repo(tmp_path: Path, doc_text: str) -> None:
     for rel in (
         "scripts/bitget_readiness_check.py",
         "tools/check_bitget_exchange_readiness.py",
+        "tools/check_bitget_key_permission_evidence.py",
+        "docs/production_10_10/bitget_key_permission_evidence.template.json",
         "tests/scripts/test_bitget_readiness_check.py",
         "tests/security/test_bitget_exchange_readiness_contracts.py",
         "tests/tools/test_check_bitget_exchange_readiness.py",
+        "tests/tools/test_check_bitget_key_permission_evidence.py",
     ):
         path = tmp_path / rel
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -97,3 +103,11 @@ def test_strict_passes_repository_surface() -> None:
         check=False,
     )
     assert completed.returncode == 0, completed.stdout + completed.stderr
+
+
+def test_validate_reporoot_no_issues_default_and_strict() -> None:
+    """Regression: vollstaendiger Gate-Lauf auf dem echten Repo ohne Subprocess-Overhead."""
+    d = validate(ROOT, strict=False)
+    s = validate(ROOT, strict=True)
+    assert not d, [f"{i.code}: {i.message}" for i in d]
+    assert not s, [f"{i.code}: {i.message}" for i in s]

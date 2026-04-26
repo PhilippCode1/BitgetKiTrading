@@ -1,0 +1,91 @@
+{
+  "generated_at": "2026-04-25T23:38:07Z",
+  "git_sha": "84d7b66",
+  "private_live_decision": "NO_GO",
+  "full_autonomous_live": "NO_GO",
+  "doc_surface": {
+    "ok": true,
+    "missing": []
+  },
+  "validate_env_examples": {
+    "ok": true,
+    "runs": [
+      {
+        "env_file": ".env.local.example",
+        "profile": "local",
+        "ok": true,
+        "exit_code": 0
+      },
+      {
+        "env_file": ".env.shadow.example",
+        "profile": "shadow",
+        "ok": true,
+        "exit_code": 0
+      },
+      {
+        "env_file": ".env.production.example",
+        "profile": "production",
+        "ok": true,
+        "exit_code": 0
+      }
+    ]
+  },
+  "docker_compose_config": {
+    "ok": true,
+    "exit_code": 0,
+    "stderr_tail": ""
+  },
+  "release_sanity_checks": {
+    "ok": true,
+    "exit_code": 0
+  },
+  "pip_audit_supply_chain": null,
+  "deployment_evidence_assessment": {
+    "status": "FAIL",
+    "failures": [
+      "status",
+      "reviewed_by",
+      "reviewed_at",
+      "environment",
+      "git_sha",
+      "smoke",
+      "api_smoke",
+      "loopback",
+      "compose_review",
+      "smoke_log_uri",
+      "docker_compose_effective_excerpt_uri",
+      "owner_signoff"
+    ]
+  },
+  "supply_chain_evidence_assessment": {
+    "status": "FAIL",
+    "failures": [
+      "status",
+      "reviewed_by",
+      "reviewed_at",
+      "git_sha",
+      "pip_audit_gate",
+      "pnpm_audit_gate",
+      "ci_run_uri",
+      "supplier_issues_unknown",
+      "sbom_uri",
+      "owner_signoff"
+    ]
+  },
+  "internal_issues": [],
+  "external_required": [
+    "Echter Staging-/Shadow-Smoke mit Logs und ohne Secrets (deployment_staging_parity_evidence).",
+    "CI-Nachweis zu pip-/pnpm-Audit und SBOM-Export (supply_chain_release_audit_evidence)."
+  ],
+  "recommended_commands": [
+    "python tools/validate_env_profile.py --env-file .env.local.example --profile local",
+    "python tools/validate_env_profile.py --env-file .env.shadow.example --profile shadow --template",
+    "python tools/validate_env_profile.py --env-file .env.production.example --profile production --template",
+    "docker compose config --quiet",
+    "python tools/release_sanity_checks.py",
+    "python tools/pip_audit_supply_chain_gate.py"
+  ],
+  "notes": [
+    "Standardlauf prueft Repo-Artefakte; pip-audit nutzt Netzwerk (OSV) — optional mit --with-pip-audit."
+  ]
+}

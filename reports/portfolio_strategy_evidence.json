@@ -1,0 +1,741 @@
+{
+  "generated_at": "2026-04-25T23:19:36Z",
+  "git_sha": "84d7b66",
+  "private_live_decision": "NO_GO",
+  "full_autonomous_live": "NO_GO",
+  "portfolio_scenarios": [
+    {
+      "id": "missing_snapshot",
+      "blocks_live": true,
+      "block_reasons": [
+        "portfolio_snapshot_fehlt"
+      ],
+      "cap_reasons": [],
+      "portfolio_result": {
+        "total_exposure": 0.0,
+        "margin_usage": 0.0,
+        "open_positions_count": 0,
+        "pending_orders_count": 0,
+        "pending_live_candidates_count": 0,
+        "net_long_exposure": 0.0,
+        "net_short_exposure": 0.0,
+        "family_exposure": {},
+        "correlation_stress": 1.0,
+        "funding_concentration": 0.0,
+        "basis_risk": 0.0,
+        "largest_position_risk": 0.0,
+        "block_reasons": [
+          "portfolio_snapshot_fehlt"
+        ],
+        "cap_reasons": [],
+        "allows_next_gate_only": false
+      },
+      "summary_de": "Portfolio-Risiko blockiert Live-Opening: portfolio_snapshot_fehlt. Portfolio-Go/No-Go: NO_GO.",
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "portfolio_risk_not_safe"
+        ],
+        "missing_gates": []
+      }
+    },
+    {
+      "id": "stale_snapshot",
+      "blocks_live": true,
+      "block_reasons": [
+        "portfolio_snapshot_stale"
+      ],
+      "cap_reasons": [],
+      "portfolio_result": {
+        "total_exposure": 4000.0,
+        "margin_usage": 0.2,
+        "open_positions_count": 1,
+        "pending_orders_count": 0,
+        "pending_live_candidates_count": 0,
+        "net_long_exposure": 4000.0,
+        "net_short_exposure": 0.0,
+        "family_exposure": {
+          "futures": 4000.0
+        },
+        "correlation_stress": 0.3,
+        "funding_concentration": 0.001,
+        "basis_risk": 5.0,
+        "largest_position_risk": 0.01,
+        "block_reasons": [
+          "portfolio_snapshot_stale"
+        ],
+        "cap_reasons": [],
+        "allows_next_gate_only": false
+      },
+      "summary_de": "Portfolio-Risiko blockiert Live-Opening: portfolio_snapshot_stale. Portfolio-Go/No-Go: NO_GO.",
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "portfolio_risk_not_safe"
+        ],
+        "missing_gates": []
+      }
+    },
+    {
+      "id": "invalid_equity",
+      "blocks_live": true,
+      "block_reasons": [
+        "account_equity_ungueltig",
+        "margin_usage_ueber_limit"
+      ],
+      "cap_reasons": [],
+      "portfolio_result": {
+        "total_exposure": 4000.0,
+        "margin_usage": 1.0,
+        "open_positions_count": 1,
+        "pending_orders_count": 0,
+        "pending_live_candidates_count": 0,
+        "net_long_exposure": 4000.0,
+        "net_short_exposure": 0.0,
+        "family_exposure": {
+          "futures": 4000.0
+        },
+        "correlation_stress": 0.3,
+        "funding_concentration": 0.001,
+        "basis_risk": 5.0,
+        "largest_position_risk": 0.01,
+        "block_reasons": [
+          "account_equity_ungueltig",
+          "margin_usage_ueber_limit"
+        ],
+        "cap_reasons": [],
+        "allows_next_gate_only": false
+      },
+      "summary_de": "Portfolio-Risiko blockiert Live-Opening: account_equity_ungueltig, margin_usage_ueber_limit. Portfolio-Go/No-Go: NO_GO.",
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "portfolio_risk_not_safe"
+        ],
+        "missing_gates": []
+      }
+    },
+    {
+      "id": "total_exposure_over_limit",
+      "blocks_live": true,
+      "block_reasons": [
+        "total_exposure_ueber_limit",
+        "net_long_exposure_ueber_limit",
+        "family_exposure_zu_hoch"
+      ],
+      "cap_reasons": [],
+      "portfolio_result": {
+        "total_exposure": 30000.0,
+        "margin_usage": 0.2,
+        "open_positions_count": 1,
+        "pending_orders_count": 0,
+        "pending_live_candidates_count": 0,
+        "net_long_exposure": 30000.0,
+        "net_short_exposure": 0.0,
+        "family_exposure": {
+          "futures": 30000.0
+        },
+        "correlation_stress": 0.3,
+        "funding_concentration": 0.001,
+        "basis_risk": 5.0,
+        "largest_position_risk": 0.01,
+        "block_reasons": [
+          "total_exposure_ueber_limit",
+          "net_long_exposure_ueber_limit",
+          "family_exposure_zu_hoch"
+        ],
+        "cap_reasons": [],
+        "allows_next_gate_only": false
+      },
+      "summary_de": "Portfolio-Risiko blockiert Live-Opening: total_exposure_ueber_limit, net_long_exposure_ueber_limit, family_exposure_zu_hoch. Portfolio-Go/No-Go: NO_GO.",
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "portfolio_risk_not_safe"
+        ],
+        "missing_gates": []
+      }
+    },
+    {
+      "id": "margin_usage_over_limit",
+      "blocks_live": true,
+      "block_reasons": [
+        "margin_usage_ueber_limit"
+      ],
+      "cap_reasons": [],
+      "portfolio_result": {
+        "total_exposure": 4000.0,
+        "margin_usage": 0.7,
+        "open_positions_count": 1,
+        "pending_orders_count": 0,
+        "pending_live_candidates_count": 0,
+        "net_long_exposure": 4000.0,
+        "net_short_exposure": 0.0,
+        "family_exposure": {
+          "futures": 4000.0
+        },
+        "correlation_stress": 0.3,
+        "funding_concentration": 0.001,
+        "basis_risk": 5.0,
+        "largest_position_risk": 0.01,
+        "block_reasons": [
+          "margin_usage_ueber_limit"
+        ],
+        "cap_reasons": [],
+        "allows_next_gate_only": false
+      },
+      "summary_de": "Portfolio-Risiko blockiert Live-Opening: margin_usage_ueber_limit. Portfolio-Go/No-Go: NO_GO.",
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "portfolio_risk_not_safe"
+        ],
+        "missing_gates": []
+      }
+    },
+    {
+      "id": "largest_position_risk_over_limit",
+      "blocks_live": true,
+      "block_reasons": [
+        "largest_position_risk_ueber_limit"
+      ],
+      "cap_reasons": [],
+      "portfolio_result": {
+        "total_exposure": 3000.0,
+        "margin_usage": 0.2,
+        "open_positions_count": 1,
+        "pending_orders_count": 0,
+        "pending_live_candidates_count": 0,
+        "net_long_exposure": 3000.0,
+        "net_short_exposure": 0.0,
+        "family_exposure": {
+          "futures": 3000.0
+        },
+        "correlation_stress": 0.3,
+        "funding_concentration": 0.001,
+        "basis_risk": 5.0,
+        "largest_position_risk": 0.08,
+        "block_reasons": [
+          "largest_position_risk_ueber_limit"
+        ],
+        "cap_reasons": [],
+        "allows_next_gate_only": false
+      },
+      "summary_de": "Portfolio-Risiko blockiert Live-Opening: largest_position_risk_ueber_limit. Portfolio-Go/No-Go: NO_GO.",
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "portfolio_risk_not_safe"
+        ],
+        "missing_gates": []
+      }
+    },
+    {
+      "id": "max_concurrent_positions",
+      "blocks_live": true,
+      "block_reasons": [
+        "max_concurrent_positions_ueberschritten"
+      ],
+      "cap_reasons": [],
+      "portfolio_result": {
+        "total_exposure": 4000.0,
+        "margin_usage": 0.2,
+        "open_positions_count": 4,
+        "pending_orders_count": 0,
+        "pending_live_candidates_count": 0,
+        "net_long_exposure": 4000.0,
+        "net_short_exposure": 0.0,
+        "family_exposure": {
+          "futures": 4000.0
+        },
+        "correlation_stress": 0.3,
+        "funding_concentration": 0.001,
+        "basis_risk": 5.0,
+        "largest_position_risk": 0.01,
+        "block_reasons": [
+          "max_concurrent_positions_ueberschritten"
+        ],
+        "cap_reasons": [],
+        "allows_next_gate_only": false
+      },
+      "summary_de": "Portfolio-Risiko blockiert Live-Opening: max_concurrent_positions_ueberschritten. Portfolio-Go/No-Go: NO_GO.",
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "portfolio_risk_not_safe"
+        ],
+        "missing_gates": []
+      }
+    },
+    {
+      "id": "pending_orders_over_limit",
+      "blocks_live": true,
+      "block_reasons": [
+        "zu_viele_pending_orders"
+      ],
+      "cap_reasons": [],
+      "portfolio_result": {
+        "total_exposure": 5500.0,
+        "margin_usage": 0.2,
+        "open_positions_count": 1,
+        "pending_orders_count": 3,
+        "pending_live_candidates_count": 0,
+        "net_long_exposure": 5500.0,
+        "net_short_exposure": 0.0,
+        "family_exposure": {
+          "futures": 5500.0
+        },
+        "correlation_stress": 0.3,
+        "funding_concentration": 0.001,
+        "basis_risk": 5.0,
+        "largest_position_risk": 0.01,
+        "block_reasons": [
+          "zu_viele_pending_orders"
+        ],
+        "cap_reasons": [],
+        "allows_next_gate_only": false
+      },
+      "summary_de": "Portfolio-Risiko blockiert Live-Opening: zu_viele_pending_orders. Portfolio-Go/No-Go: NO_GO.",
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "portfolio_risk_not_safe"
+        ],
+        "missing_gates": []
+      }
+    },
+    {
+      "id": "pending_live_candidates_over_limit",
+      "blocks_live": true,
+      "block_reasons": [
+        "zu_viele_pending_live_candidates"
+      ],
+      "cap_reasons": [],
+      "portfolio_result": {
+        "total_exposure": 5000.0,
+        "margin_usage": 0.2,
+        "open_positions_count": 1,
+        "pending_orders_count": 0,
+        "pending_live_candidates_count": 2,
+        "net_long_exposure": 5000.0,
+        "net_short_exposure": 0.0,
+        "family_exposure": {
+          "futures": 5000.0
+        },
+        "correlation_stress": 0.3,
+        "funding_concentration": 0.001,
+        "basis_risk": 5.0,
+        "largest_position_risk": 0.01,
+        "block_reasons": [
+          "zu_viele_pending_live_candidates"
+        ],
+        "cap_reasons": [],
+        "allows_next_gate_only": false
+      },
+      "summary_de": "Portfolio-Risiko blockiert Live-Opening: zu_viele_pending_live_candidates. Portfolio-Go/No-Go: NO_GO.",
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "portfolio_risk_not_safe"
+        ],
+        "missing_gates": []
+      }
+    },
+    {
+      "id": "net_long_exposure_over_limit",
+      "blocks_live": true,
+      "block_reasons": [
+        "net_long_exposure_ueber_limit"
+      ],
+      "cap_reasons": [],
+      "portfolio_result": {
+        "total_exposure": 13000.0,
+        "margin_usage": 0.2,
+        "open_positions_count": 1,
+        "pending_orders_count": 0,
+        "pending_live_candidates_count": 0,
+        "net_long_exposure": 13000.0,
+        "net_short_exposure": 0.0,
+        "family_exposure": {
+          "futures": 13000.0
+        },
+        "correlation_stress": 0.3,
+        "funding_concentration": 0.001,
+        "basis_risk": 5.0,
+        "largest_position_risk": 0.01,
+        "block_reasons": [
+          "net_long_exposure_ueber_limit"
+        ],
+        "cap_reasons": [],
+        "allows_next_gate_only": false
+      },
+      "summary_de": "Portfolio-Risiko blockiert Live-Opening: net_long_exposure_ueber_limit. Portfolio-Go/No-Go: NO_GO.",
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "portfolio_risk_not_safe"
+        ],
+        "missing_gates": []
+      }
+    },
+    {
+      "id": "net_short_exposure_over_limit",
+      "blocks_live": true,
+      "block_reasons": [
+        "net_short_exposure_ueber_limit"
+      ],
+      "cap_reasons": [],
+      "portfolio_result": {
+        "total_exposure": 13000.0,
+        "margin_usage": 0.2,
+        "open_positions_count": 1,
+        "pending_orders_count": 0,
+        "pending_live_candidates_count": 0,
+        "net_long_exposure": 0.0,
+        "net_short_exposure": 13000.0,
+        "family_exposure": {
+          "futures": 13000.0
+        },
+        "correlation_stress": 0.3,
+        "funding_concentration": 0.001,
+        "basis_risk": 5.0,
+        "largest_position_risk": 0.01,
+        "block_reasons": [
+          "net_short_exposure_ueber_limit"
+        ],
+        "cap_reasons": [],
+        "allows_next_gate_only": false
+      },
+      "summary_de": "Portfolio-Risiko blockiert Live-Opening: net_short_exposure_ueber_limit. Portfolio-Go/No-Go: NO_GO.",
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "portfolio_risk_not_safe"
+        ],
+        "missing_gates": []
+      }
+    },
+    {
+      "id": "correlation_stress_over_limit",
+      "blocks_live": true,
+      "block_reasons": [
+        "correlation_stress_zu_hoch"
+      ],
+      "cap_reasons": [],
+      "portfolio_result": {
+        "total_exposure": 4000.0,
+        "margin_usage": 0.2,
+        "open_positions_count": 1,
+        "pending_orders_count": 0,
+        "pending_live_candidates_count": 0,
+        "net_long_exposure": 4000.0,
+        "net_short_exposure": 0.0,
+        "family_exposure": {
+          "futures": 4000.0
+        },
+        "correlation_stress": 0.9,
+        "funding_concentration": 0.001,
+        "basis_risk": 5.0,
+        "largest_position_risk": 0.01,
+        "block_reasons": [
+          "correlation_stress_zu_hoch"
+        ],
+        "cap_reasons": [],
+        "allows_next_gate_only": false
+      },
+      "summary_de": "Portfolio-Risiko blockiert Live-Opening: correlation_stress_zu_hoch. Portfolio-Go/No-Go: NO_GO.",
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "portfolio_risk_not_safe"
+        ],
+        "missing_gates": []
+      }
+    },
+    {
+      "id": "funding_concentration_over_limit",
+      "blocks_live": true,
+      "block_reasons": [
+        "funding_konzentration_zu_hoch"
+      ],
+      "cap_reasons": [],
+      "portfolio_result": {
+        "total_exposure": 1000.0,
+        "margin_usage": 0.2,
+        "open_positions_count": 1,
+        "pending_orders_count": 0,
+        "pending_live_candidates_count": 0,
+        "net_long_exposure": 1000.0,
+        "net_short_exposure": 0.0,
+        "family_exposure": {
+          "futures": 1000.0
+        },
+        "correlation_stress": 0.3,
+        "funding_concentration": 0.04,
+        "basis_risk": 5.0,
+        "largest_position_risk": 0.01,
+        "block_reasons": [
+          "funding_konzentration_zu_hoch"
+        ],
+        "cap_reasons": [],
+        "allows_next_gate_only": false
+      },
+      "summary_de": "Portfolio-Risiko blockiert Live-Opening: funding_konzentration_zu_hoch. Portfolio-Go/No-Go: NO_GO.",
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "portfolio_risk_not_safe"
+        ],
+        "missing_gates": []
+      }
+    },
+    {
+      "id": "family_exposure_over_limit",
+      "blocks_live": true,
+      "block_reasons": [
+        "net_long_exposure_ueber_limit",
+        "family_exposure_zu_hoch"
+      ],
+      "cap_reasons": [],
+      "portfolio_result": {
+        "total_exposure": 16000.0,
+        "margin_usage": 0.2,
+        "open_positions_count": 1,
+        "pending_orders_count": 0,
+        "pending_live_candidates_count": 0,
+        "net_long_exposure": 16000.0,
+        "net_short_exposure": 0.0,
+        "family_exposure": {
+          "futures": 16000.0
+        },
+        "correlation_stress": 0.3,
+        "funding_concentration": 0.001,
+        "basis_risk": 5.0,
+        "largest_position_risk": 0.01,
+        "block_reasons": [
+          "net_long_exposure_ueber_limit",
+          "family_exposure_zu_hoch"
+        ],
+        "cap_reasons": [],
+        "allows_next_gate_only": false
+      },
+      "summary_de": "Portfolio-Risiko blockiert Live-Opening: net_long_exposure_ueber_limit, family_exposure_zu_hoch. Portfolio-Go/No-Go: NO_GO.",
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "portfolio_risk_not_safe"
+        ],
+        "missing_gates": []
+      }
+    }
+  ],
+  "strategy_asset_scenarios": [
+    {
+      "strategy_id": "trend_follow_v2",
+      "strategy_version": "2.3.1",
+      "asset_symbol": "BTCUSDT",
+      "asset_class": "top_liquid_futures",
+      "market_family": "futures",
+      "evidence_status": "shadow_passed",
+      "blocks_live": false,
+      "block_reasons": [],
+      "summary_de": "Strategie trend_follow_v2 v2.3.1 fuer BTCUSDT/top_liquid_futures hat Evidence-Status shadow_passed und darf nur den naechsten Gate-Schritt erreichen.",
+      "preflight": {
+        "submit_allowed": true,
+        "blocking_reasons": [],
+        "missing_gates": []
+      }
+    },
+    {
+      "strategy_id": "trend_follow_v2",
+      "strategy_version": "2.3.1",
+      "asset_symbol": "ALTUSDT",
+      "asset_class": "unknown",
+      "market_family": "futures",
+      "evidence_status": "backtest_available",
+      "blocks_live": true,
+      "block_reasons": [
+        "asset_class_unknown",
+        "strategy_evidence_expired",
+        "risk_tier_mismatch",
+        "data_quality_mismatch",
+        "strategy_scope_mismatch"
+      ],
+      "summary_de": "Strategie trend_follow_v2 v2.3.1 fuer ALTUSDT/unknown blockiert: asset_class_unknown, strategy_evidence_expired, risk_tier_mismatch, data_quality_mismatch, strategy_scope_mismatch.",
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "strategy_evidence_missing_or_invalid"
+        ],
+        "missing_gates": []
+      }
+    },
+    {
+      "strategy_id": "synthetic_research_only_guard",
+      "strategy_version": "0.1.0",
+      "asset_symbol": "ETHUSDT",
+      "asset_class": "mid_liquidity",
+      "market_family": "futures",
+      "evidence_status": "research_only",
+      "blocks_live": true,
+      "block_reasons": [
+        "evidence_status_nicht_live_faehig"
+      ],
+      "summary_de": "Strategie synthetic_research_only_guard v0.1.0 fuer ETHUSDT/mid_liquidity blockiert: evidence_status_nicht_live_faehig.",
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "strategy_evidence_missing_or_invalid"
+        ],
+        "missing_gates": []
+      }
+    }
+  ],
+  "multi_asset_strategy_scenarios": [
+    {
+      "strategy_id": "strat_major_momentum",
+      "strategy_version": "1.2.0",
+      "asset_symbol": "BTCUSDT",
+      "asset_class": "major_high_liquidity",
+      "market_family": "futures",
+      "verdict": "PASS",
+      "blocks_live": false,
+      "block_reasons_de": [],
+      "summary_de": "Strategie strat_major_momentum für BTCUSDT/major_high_liquidity: Eignung ausreichend (PASS).",
+      "preflight": {
+        "submit_allowed": true,
+        "blocking_reasons": [],
+        "missing_gates": []
+      }
+    },
+    {
+      "strategy_id": "strat_new_listing_guard",
+      "strategy_version": "0.9.1",
+      "asset_symbol": "NEWCOINUSDT",
+      "asset_class": "new_listing",
+      "market_family": "futures",
+      "verdict": "FAIL",
+      "blocks_live": true,
+      "block_reasons_de": [
+        "Asset-Klasse ist für Live gesperrt/quarantänepflichtig.",
+        "Walk-forward-Evidence fehlt.",
+        "Slippage/Fees/Funding-Evidence fehlt.",
+        "Out-of-sample-Evidence fehlt.",
+        "Shadow-Burn-in-Evidence fehlt.",
+        "Drawdown-Regel verletzt.",
+        "Regime-Breakdown unzureichend.",
+        "Asset-Klassen-Breakdown unzureichend.",
+        "No-Trade-Qualität unzureichend.",
+        "Datenqualität nicht ausreichend.",
+        "Negative oder null Expectancy nach Kosten.",
+        "Max-Drawdown über 20%.",
+        "Extrem geringe Trade-Anzahl.",
+        "Zu wenige Trades für robuste Aussage."
+      ],
+      "summary_de": "Strategie strat_new_listing_guard für NEWCOINUSDT/new_listing: Asset-Klasse ist für Live gesperrt/quarantänepflichtig.; Walk-forward-Evidence fehlt.; Slippage/Fees/Funding-Evidence fehlt.; Out-of-sample-Evidence fehlt.; Shadow-Burn-in-Evidence fehlt.; Drawdown-Regel verletzt.; Regime-Breakdown unzureichend.; Asset-Klassen-Breakdown unzureichend.; No-Trade-Qualität unzureichend.; Datenqualität nicht ausreichend.; Negative oder null Expectancy nach Kosten.; Max-Drawdown über 20%.; Extrem geringe Trade-Anzahl.",
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "strategy_evidence_missing_or_invalid"
+        ],
+        "missing_gates": []
+      }
+    }
+  ],
+  "external_evidence_assessment": {
+    "status": "FAIL",
+    "external_required": true,
+    "failures": [
+      "external_status_nicht_verified",
+      "evidence_environment_template",
+      "git_sha_template",
+      "owner_limits_signed_by_fehlt",
+      "owner_limits_signed_at_fehlt",
+      "owner_limits_max_total_notional_fehlt",
+      "owner_limits_max_margin_usage_fehlt",
+      "owner_limits_max_family_exposure_fehlt",
+      "owner_limits_max_net_directional_exposure_fehlt",
+      "owner_limits_max_correlation_stress_fehlt",
+      "owner_limits_document_uri_fehlt",
+      "portfolio_drill_runtime_snapshot_fresh_nicht_belegt",
+      "portfolio_drill_missing_snapshot_blocks_live_nicht_belegt",
+      "portfolio_drill_stale_snapshot_blocks_live_nicht_belegt",
+      "portfolio_drill_exposure_limit_blocks_live_nicht_belegt",
+      "portfolio_drill_correlation_unknown_blocks_live_nicht_belegt",
+      "portfolio_drill_family_exposure_blocks_live_nicht_belegt",
+      "portfolio_drill_pending_orders_counted_in_exposure_nicht_belegt",
+      "strategy_asset_classes_covered_fehlt",
+      "strategy_validation_backtest_reports_present_nicht_belegt",
+      "strategy_validation_walk_forward_reports_present_nicht_belegt",
+      "strategy_validation_paper_reports_present_nicht_belegt",
+      "strategy_validation_shadow_reports_present_nicht_belegt",
+      "strategy_validation_slippage_fees_funding_included_nicht_belegt",
+      "strategy_validation_drawdown_limits_passed_nicht_belegt",
+      "strategy_validation_no_trade_quality_checked_nicht_belegt",
+      "strategy_validation_lineage_documented_nicht_belegt",
+      "shadow_burn_in_nicht_passed",
+      "shadow_burn_in_real_shadow_period_started_at_fehlt",
+      "shadow_burn_in_real_shadow_period_ended_at_fehlt",
+      "shadow_burn_in_divergence_report_uri_fehlt",
+      "operator_approval_record_uri_template"
+    ]
+  },
+  "covered_portfolio_block_reasons": [
+    "account_equity_ungueltig",
+    "correlation_stress_zu_hoch",
+    "family_exposure_zu_hoch",
+    "funding_konzentration_zu_hoch",
+    "largest_position_risk_ueber_limit",
+    "margin_usage_ueber_limit",
+    "max_concurrent_positions_ueberschritten",
+    "net_long_exposure_ueber_limit",
+    "net_short_exposure_ueber_limit",
+    "portfolio_snapshot_fehlt",
+    "portfolio_snapshot_stale",
+    "total_exposure_ueber_limit",
+    "zu_viele_pending_live_candidates",
+    "zu_viele_pending_orders"
+  ],
+  "missing_portfolio_block_reasons": [],
+  "covered_strategy_block_reasons": [
+    "asset_class_unknown",
+    "data_quality_mismatch",
+    "evidence_status_nicht_live_faehig",
+    "risk_tier_mismatch",
+    "strategy_evidence_expired",
+    "strategy_scope_mismatch"
+  ],
+  "missing_strategy_block_reasons": [],
+  "covered_multi_asset_strategy_reasons": [
+    "Asset-Klasse ist für Live gesperrt/quarantänepflichtig.",
+    "Asset-Klassen-Breakdown unzureichend.",
+    "Datenqualität nicht ausreichend.",
+    "Drawdown-Regel verletzt.",
+    "Extrem geringe Trade-Anzahl.",
+    "Max-Drawdown über 20%.",
+    "Negative oder null Expectancy nach Kosten.",
+    "No-Trade-Qualität unzureichend.",
+    "Out-of-sample-Evidence fehlt.",
+    "Regime-Breakdown unzureichend.",
+    "Shadow-Burn-in-Evidence fehlt.",
+    "Slippage/Fees/Funding-Evidence fehlt.",
+    "Walk-forward-Evidence fehlt.",
+    "Zu wenige Trades für robuste Aussage."
+  ],
+  "missing_multi_asset_strategy_reasons": [],
+  "covered_live_preflight_reasons": [
+    "portfolio_risk_not_safe",
+    "strategy_evidence_missing_or_invalid"
+  ],
+  "missing_live_preflight_reasons": [],
+  "external_required": [
+    "Owner-signierte Portfolio-Limits mit Git-SHA und Umgebung.",
+    "Staging-/Shadow-Portfolio-Drill mit fehlendem/stalem Snapshot, Exposure-, Korrelation- und Family-Limit.",
+    "Backtest-, Walk-forward-, Paper-, Shadow- und Slippage/Funding-Reports pro Asset-Klasse.",
+    "Shadow-Burn-in-Report mit Divergenz-Auswertung und Operator-/Owner-Freigabe."
+  ],
+  "notes": [
+    "Dieser Report erzeugt synthetische Repo-Evidence ohne echte Orders und ohne Secrets.",
+    "Implementierte Gates sind nicht gleich verified; private Live bleibt bis externer Evidence NO_GO."
+  ]
+}

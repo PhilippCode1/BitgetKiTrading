@@ -30,6 +30,10 @@ export const MAIN_CONSOLE_PRIMARY_SECTIONS: readonly MainConsoleNavSection[] = [
       },
       { href: `${CONSOLE_BASE}/risk`, messageKey: "console.nav.risk_portfolio" },
       {
+        href: `${CONSOLE_BASE}/shadow-live`,
+        messageKey: "console.nav.readiness_modes",
+      },
+      {
         href: `${CONSOLE_BASE}/live-broker`,
         messageKey: "console.nav.live_broker_safety",
       },
@@ -38,6 +42,10 @@ export const MAIN_CONSOLE_PRIMARY_SECTIONS: readonly MainConsoleNavSection[] = [
         messageKey: "console.nav.bitget_demo",
       },
       { href: `${CONSOLE_BASE}/safety-center`, messageKey: "console.nav.safety_center" },
+      {
+        href: `${CONSOLE_BASE}/incidents`,
+        messageKey: "console.nav.incidents",
+      },
       {
         href: `${CONSOLE_BASE}/system-health-map`,
         messageKey: "console.nav.system_alerts",

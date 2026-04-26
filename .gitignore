@@ -85,6 +85,9 @@ pip-wheel-metadata/
 build/
 *.egg
 
+# Operative Owner-Freigabe (nicht committen; Template: docs/production_10_10/owner_private_live_release.template.json)
+reports/owner_private_live_release.json
+
 # Logs / ad-hoc Output
 *.log
 logs/

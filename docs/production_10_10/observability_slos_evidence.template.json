@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "status": "external_required",
+  "reviewed_by": "CHANGE_ME_EXTERNAL_OR_OWNER",
+  "reviewed_at": "CHANGE_ME_ISO8601",
+  "environment": "CHANGE_ME_STAGING_OR_SHADOW",
+  "git_sha": "CHANGE_ME_GIT_SHA",
+  "grafana": {
+    "ops_dashboard_uri": "CHANGE_ME_GRAFANA_URI",
+    "sli_dashboard_uri": "CHANGE_ME_GRAFANA_URI",
+    "baseline_captured": false
+  },
+  "slos": {
+    "gateway_availability_slo_verified": false,
+    "system_health_p95_slo_verified": false,
+    "data_freshness_slo_verified": false,
+    "live_safety_exposure_slo_verified": false
+  },
+  "operations": {
+    "on_call_path_documented": false,
+    "incident_response_drill_reference": "CHANGE_ME_DRILL_URI",
+    "runbook_links_peer_reviewed": false
+  },
+  "safety": {
+    "no_metrics_secrets_in_repo": true,
+    "owner_signoff": false
+  }
+}

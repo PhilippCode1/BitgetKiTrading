@@ -1,6 +1,6 @@
 # Asset Governance Report
 
-- Datum/Zeit: `2026-04-25T17:11:24.892629+00:00`
+- Datum/Zeit: `2026-04-25T23:07:37.105960+00:00`
 - Projekt: `bitget-btc-ai`
 
 ## Anzahl Assets je Zustand

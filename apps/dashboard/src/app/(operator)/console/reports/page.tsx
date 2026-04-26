@@ -2,12 +2,18 @@ import Link from "next/link";
 
 import { Header } from "@/components/layout/Header";
 import { consolePath } from "@/lib/console-paths";
-import { buildEvidenceCards } from "@/lib/evidence-console";
+import {
+  buildEvidenceCards,
+  readOwnerPrivateLiveReleaseGate,
+  resolveDashboardRepoRoot,
+} from "@/lib/evidence-console";
 
 export const dynamic = "force-dynamic";
 
 export default async function ReportsPage() {
-  const cards = buildEvidenceCards();
+  const repoRoot = resolveDashboardRepoRoot();
+  const cards = buildEvidenceCards({ rootDir: repoRoot });
+  const ownerGate = readOwnerPrivateLiveReleaseGate(repoRoot);
   const liveBlockers = cards.filter((c) => c.blocksLive);
 
   return (
@@ -26,6 +32,30 @@ export default async function ReportsPage() {
         </p>
         <p className="muted small">
           Kein 10/10 ohne verifizierten Nachweis. Fehlende Reports bleiben fail-closed.
+        </p>
+      </div>
+
+      <div className="panel">
+        <h2>Maschinelle Owner-Freigabe (Private Live)</h2>
+        <p>
+          Datei: <span className="mono-small">{ownerGate.fileRelative}</span> (gitignored,
+          nicht committen)
+        </p>
+        <p>
+          Status:{" "}
+          <strong>
+            {ownerGate.payloadValid
+              ? "Gültige lokale Freigabe"
+              : ownerGate.filePresent
+                ? "Datei ungültig"
+                : "Datei fehlt"}
+          </strong>
+          {ownerGate.scorecardBlocksPrivateLive ? " — blockiert private_live_allowed" : ""}
+        </p>
+        <p className="muted small">{ownerGate.summaryDe}</p>
+        <p className="muted small">
+          Template: <span className="mono-small">{ownerGate.templateRelative}</span> — Ausführung:{" "}
+          <span className="mono-small">scripts/production_readiness_scorecard.py</span>
         </p>
       </div>
 

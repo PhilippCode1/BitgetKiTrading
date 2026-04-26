@@ -1,0 +1,45 @@
+{
+  "generated_at": "2026-04-25T23:19:39Z",
+  "items": [
+    {
+      "asset_class": "major_high_liquidity",
+      "asset_symbol": "BTCUSDT",
+      "blockgruende_de": [],
+      "entscheidung_de": "Strategie strat_major_momentum für BTCUSDT/major_high_liquidity: Eignung ausreichend (PASS).",
+      "market_family": "futures",
+      "strategy_id": "strat_major_momentum",
+      "strategy_version": "1.2.0",
+      "verdict": "PASS"
+    },
+    {
+      "asset_class": "new_listing",
+      "asset_symbol": "NEWCOINUSDT",
+      "blockgruende_de": [
+        "Asset-Klasse ist für Live gesperrt/quarantänepflichtig.",
+        "Walk-forward-Evidence fehlt.",
+        "Slippage/Fees/Funding-Evidence fehlt.",
+        "Out-of-sample-Evidence fehlt.",
+        "Shadow-Burn-in-Evidence fehlt.",
+        "Drawdown-Regel verletzt.",
+        "Regime-Breakdown unzureichend.",
+        "Asset-Klassen-Breakdown unzureichend.",
+        "No-Trade-Qualität unzureichend.",
+        "Datenqualität nicht ausreichend.",
+        "Negative oder null Expectancy nach Kosten.",
+        "Max-Drawdown über 20%.",
+        "Extrem geringe Trade-Anzahl.",
+        "Zu wenige Trades für robuste Aussage."
+      ],
+      "entscheidung_de": "Strategie strat_new_listing_guard für NEWCOINUSDT/new_listing: Asset-Klasse ist für Live gesperrt/quarantänepflichtig.; Walk-forward-Evidence fehlt.; Slippage/Fees/Funding-Evidence fehlt.; Out-of-sample-Evidence fehlt.; Shadow-Burn-in-Evidence fehlt.; Drawdown-Regel verletzt.; Regime-Breakdown unzureichend.; Asset-Klassen-Breakdown unzureichend.; No-Trade-Qualität unzureichend.; Datenqualität nicht ausreichend.; Negative oder null Expectancy nach Kosten.; Max-Drawdown über 20%.; Extrem geringe Trade-Anzahl.",
+      "market_family": "futures",
+      "strategy_id": "strat_new_listing_guard",
+      "strategy_version": "0.9.1",
+      "verdict": "FAIL"
+    }
+  ],
+  "summary": {
+    "FAIL": 1,
+    "PASS": 1,
+    "PASS_WITH_WARNINGS": 0
+  }
+}

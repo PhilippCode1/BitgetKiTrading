@@ -7,7 +7,6 @@ import argparse
 import json
 import subprocess
 import sys
-from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
@@ -20,9 +19,11 @@ for import_path in (ROOT, SHARED_SRC):
         sys.path.insert(0, str(import_path))
 
 from shared_py.readiness_scorecard import (  # noqa: E402
+    OWNER_PRIVATE_LIVE_RELEASE_FILENAME,
     PROJECT_NAME,
     ReadinessScorecard,
     build_readiness_scorecard,
+    owner_private_live_release_payload_ok,
     scorecard_to_console_payload,
 )
 
@@ -59,6 +60,30 @@ def detect_report_names(reports_dir: Path = REPORTS_DIR) -> list[str]:
     return sorted(path.name for path in reports_dir.glob("*.md"))
 
 
+def load_report_payloads(reports_dir: Path = REPORTS_DIR) -> dict[str, Any]:
+    payloads: dict[str, Any] = {}
+    asset_preflight = reports_dir / "asset_preflight_evidence.json"
+    if asset_preflight.is_file():
+        try:
+            loaded = json.loads(asset_preflight.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            loaded = None
+        if isinstance(loaded, dict):
+            payloads["asset_preflight_evidence"] = loaded
+    return payloads
+
+
+def load_owner_private_live_release_confirmed(reports_dir: Path = REPORTS_DIR) -> bool:
+    path = reports_dir / OWNER_PRIVATE_LIVE_RELEASE_FILENAME
+    if not path.is_file():
+        return False
+    try:
+        loaded = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    return owner_private_live_release_payload_ok(loaded)
+
+
 def scorecard_to_markdown(scorecard: ReadinessScorecard) -> str:
     lines = [
         "# Production Readiness Scorecard",
@@ -76,9 +101,10 @@ def scorecard_to_markdown(scorecard: ReadinessScorecard) -> str:
         lines.append(f"- `{item.mode}`: `{item.decision}` - {item.reason}")
     lines.extend(["", "## Kategorieuebersicht", ""])
     for category in scorecard.categories:
+        lb = str(category.blocks_live_trading).lower()
         lines.append(
-            f"- `{category.id}`: `{category.status}` / `{category.decision}` "
-            f"/ severity `{category.severity}` / live_blocker `{str(category.blocks_live_trading).lower()}`"
+            f"- `{category.id}`: `{category.status}` / `{category.decision}` / "
+            f"severity `{category.severity}` / live_blocker `{lb}`"
         )
     lines.extend(["", "## Live-Blocker", ""])
     lines.extend(f"- `{item}`" for item in scorecard.live_blockers)
@@ -92,6 +118,15 @@ def scorecard_to_markdown(scorecard: ReadinessScorecard) -> str:
     lines.extend(f"- {item}" for item in scorecard.next_steps)
     lines.extend(
         [
+            "",
+            "## Maschinelle Owner-Freigabe (Private Live)",
+            "",
+            "- `owner_private_live_release_confirmed`: "
+            f"`{str(scorecard.owner_private_live_release_confirmed).lower()}`",
+            "- Erwartete lokale Datei (gitignored): "
+            f"`reports/{OWNER_PRIVATE_LIVE_RELEASE_FILENAME}`",
+            "- Template: "
+            "`docs/production_10_10/owner_private_live_release.template.json`",
             "",
             "## Owner-Signoff",
             "",
@@ -107,11 +142,15 @@ def scorecard_to_markdown(scorecard: ReadinessScorecard) -> str:
 def build_from_repo() -> ReadinessScorecard:
     matrix = load_evidence_matrix()
     reports = detect_report_names()
+    payloads = load_report_payloads()
+    owner_ok = load_owner_private_live_release_confirmed()
     return build_readiness_scorecard(
         matrix,
         git_sha=git_sha(),
         report_names=reports,
         asset_data_quality_verified=False,
+        report_payloads=payloads,
+        owner_private_live_release_confirmed=owner_ok,
     )
 
 
@@ -129,18 +168,26 @@ def main(argv: list[str] | None = None) -> int:
         args.output_md.write_text(scorecard_to_markdown(scorecard), encoding="utf-8")
 
     if args.json:
-        print(json.dumps(scorecard_to_console_payload(scorecard), indent=2, sort_keys=True, ensure_ascii=False))
+        payload = scorecard_to_console_payload(scorecard)
+        print(json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False))
     else:
         suffix = " dry_run=true" if args.dry_run else ""
+        n_lb = len(scorecard.live_blockers)
+        n_ab = len(scorecard.asset_blockers)
         print(
             f"production_readiness_scorecard: project={PROJECT_NAME} "
-            f"overall={scorecard.overall_status} live_blockers={len(scorecard.live_blockers)} "
-            f"asset_blockers={len(scorecard.asset_blockers)}{suffix}"
+            f"overall={scorecard.overall_status} live_blockers={n_lb} "
+            f"asset_blockers={n_ab}{suffix}"
         )
-        private_live = next(item for item in scorecard.mode_decisions if item.mode == "private_live_allowed")
+        private_live = next(
+            item
+            for item in scorecard.mode_decisions
+            if item.mode == "private_live_allowed"
+        )
         print(f"private_live_allowed={private_live.decision}")
 
-    if args.strict_live and (scorecard.live_blockers or scorecard.private_live_blockers):
+    has_blockers = scorecard.live_blockers or scorecard.private_live_blockers
+    if args.strict_live and has_blockers:
         return 1
     return 0
 

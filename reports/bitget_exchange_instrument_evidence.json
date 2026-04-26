@@ -1,0 +1,451 @@
+{
+  "generated_at": "2026-04-25T23:27:31Z",
+  "git_sha": "84d7b66",
+  "private_live_decision": "NO_GO",
+  "full_autonomous_live": "NO_GO",
+  "readiness_dry_run": {
+    "contract_version": "bitget-exchange-readiness-v1",
+    "generated_at": "2026-04-25T23:27:31.795883+00:00",
+    "git_sha": "84d7b66",
+    "mode": "dry-run",
+    "env_profile": "production",
+    "credential_type": "none",
+    "credential_summary": {
+      "live_key": "missing_or_placeholder",
+      "live_secret": "missing_or_placeholder",
+      "live_passphrase": "missing_or_placeholder",
+      "demo_key": "missing_or_placeholder",
+      "demo_secret": "missing_or_placeholder",
+      "demo_passphrase": "missing_or_placeholder"
+    },
+    "api_version_paths": [
+      "/api/v2/public/time",
+      "/api/v2/spot/public/symbols",
+      "/api/v2/mix/market/contracts",
+      "/api/v2/spot/account/assets",
+      "/api/v2/mix/account/accounts"
+    ],
+    "public_api_status": {
+      "status": "unavailable",
+      "detail": "dry-run: no network calls",
+      "http_status": null,
+      "classification": null
+    },
+    "private_readonly_status": {
+      "status": "unavailable",
+      "detail": "dry-run: private read-only not executed",
+      "http_status": null,
+      "classification": null
+    },
+    "permission_status": {
+      "status": "degraded",
+      "detail": "permission evidence missing; live write remains blocked",
+      "http_status": null,
+      "classification": null
+    },
+    "instrument_universe_status": {
+      "status": "unavailable",
+      "detail": "dry-run: instrument discovery not executed",
+      "http_status": null,
+      "classification": null
+    },
+    "product_mapping_status": {
+      "status": "ready",
+      "detail": "productType=USDT-FUTURES; marginCoin=USDT",
+      "http_status": null,
+      "classification": null
+    },
+    "rate_limit_status": {
+      "status": "ready",
+      "detail": "no rate limit observed in dry-run",
+      "http_status": null,
+      "classification": null
+    },
+    "blockers": [],
+    "warnings": [
+      "api_version_v2_paths_documented_v1_usage_is_risk",
+      "dry_run_no_public_network_evidence",
+      "dry_run_no_private_auth_evidence",
+      "dry_run_no_instrument_universe_evidence",
+      "permission_evidence_missing_live_write_blocked"
+    ],
+    "result": "PASS_WITH_WARNINGS",
+    "live_write_allowed": false
+  },
+  "key_permission_assessment": {
+    "status": "FAIL",
+    "blockers": [
+      "ip_allowlist_not_confirmed",
+      "account_protection_not_confirmed",
+      "instrument_scope_missing",
+      "reviewer_missing",
+      "reviewed_at_missing",
+      "evidence_reference_missing"
+    ],
+    "warnings": [
+      "owner_signoff_missing_external_required"
+    ]
+  },
+  "external_evidence_assessment": {
+    "status": "FAIL",
+    "external_required": true,
+    "failures": [
+      "external_status_nicht_verified",
+      "environment_fehlt",
+      "git_sha_fehlt",
+      "reviewed_at_fehlt",
+      "reviewed_by_fehlt",
+      "key_permissions_ip_allowlist_enabled_nicht_belegt",
+      "key_permissions_account_protection_enabled_nicht_belegt",
+      "key_permissions_evidence_reference_fehlt",
+      "readonly_discovery_public_time_checked_nicht_belegt",
+      "readonly_discovery_public_instruments_checked_nicht_belegt",
+      "readonly_discovery_private_readonly_checked_nicht_belegt",
+      "readonly_discovery_server_time_skew_unbelegt_oder_zu_hoch",
+      "readonly_discovery_report_uri_fehlt",
+      "instrument_metadata_asset_universe_checked_nicht_belegt",
+      "instrument_metadata_all_symbols_v2_format_nicht_belegt",
+      "instrument_metadata_product_type_margin_coin_checked_nicht_belegt",
+      "instrument_metadata_precision_tick_lot_min_qty_checked_nicht_belegt",
+      "instrument_metadata_unknown_or_delisted_assets_block_live_nicht_belegt",
+      "instrument_metadata_metadata_fresh_nicht_belegt",
+      "instrument_metadata_instrument_count_fehlt",
+      "instrument_metadata_report_uri_fehlt",
+      "safety_owner_signoff_fehlt"
+    ]
+  },
+  "asset_universe_summary": {
+    "total_assets": 2,
+    "active_assets": 1,
+    "blocked_assets": 2,
+    "quarantined_assets": 1,
+    "shadow_allowed_assets": 1,
+    "live_allowed_assets": 0,
+    "market_family_counts": {
+      "futures": 2
+    }
+  },
+  "asset_universe_reasons": [
+    "datenqualitaet_nicht_ok",
+    "exchange_status_suspended",
+    "futures_margin_coin_fehlt",
+    "futures_product_type_fehlt",
+    "lot_size_fehlt",
+    "neues_asset_nicht_automatisch_live",
+    "risk_tier_unbekannt",
+    "shadow_nicht_freigegeben",
+    "tick_size_fehlt"
+  ],
+  "live_allowed_fixture_assets": [],
+  "instrument_scenarios": [
+    {
+      "id": "unknown_status",
+      "symbol": "ETHUSDT",
+      "is_live_allowed": false,
+      "block_reasons": [
+        "status_unknown",
+        "tier_1_requires_live_candidate_status"
+      ],
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "asset_not_in_catalog"
+        ],
+        "missing_gates": []
+      }
+    },
+    {
+      "id": "delisted_status",
+      "symbol": "ETHUSDT",
+      "is_live_allowed": false,
+      "block_reasons": [
+        "status_delisted",
+        "tier_1_requires_live_candidate_status"
+      ],
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "asset_status_not_ok"
+        ],
+        "missing_gates": []
+      }
+    },
+    {
+      "id": "suspended_status",
+      "symbol": "ETHUSDT",
+      "is_live_allowed": false,
+      "block_reasons": [
+        "status_suspended",
+        "tier_1_requires_live_candidate_status"
+      ],
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "asset_status_not_ok"
+        ],
+        "missing_gates": []
+      }
+    },
+    {
+      "id": "missing_futures_product_type",
+      "symbol": "ETHUSDT",
+      "is_live_allowed": false,
+      "block_reasons": [
+        "missing_product_type_for_futures"
+      ],
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "instrument_contract_missing"
+        ],
+        "missing_gates": []
+      }
+    },
+    {
+      "id": "missing_futures_margin_coin",
+      "symbol": "ETHUSDT",
+      "is_live_allowed": false,
+      "block_reasons": [
+        "missing_margin_coin_for_futures"
+      ],
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "instrument_contract_missing"
+        ],
+        "missing_gates": []
+      }
+    },
+    {
+      "id": "missing_precision",
+      "symbol": "ETHUSDT",
+      "is_live_allowed": false,
+      "block_reasons": [
+        "missing_precision"
+      ],
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "instrument_contract_missing"
+        ],
+        "missing_gates": []
+      }
+    },
+    {
+      "id": "missing_min_qty",
+      "symbol": "ETHUSDT",
+      "is_live_allowed": false,
+      "block_reasons": [
+        "missing_min_qty"
+      ],
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "instrument_contract_missing"
+        ],
+        "missing_gates": []
+      }
+    },
+    {
+      "id": "missing_min_notional",
+      "symbol": "ETHUSDT",
+      "is_live_allowed": false,
+      "block_reasons": [
+        "missing_min_notional"
+      ],
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "instrument_contract_missing"
+        ],
+        "missing_gates": []
+      }
+    },
+    {
+      "id": "missing_data_quality",
+      "symbol": "ETHUSDT",
+      "is_live_allowed": false,
+      "block_reasons": [
+        "missing_data_quality_gate"
+      ],
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "instrument_metadata_stale"
+        ],
+        "missing_gates": []
+      }
+    },
+    {
+      "id": "missing_liquidity",
+      "symbol": "ETHUSDT",
+      "is_live_allowed": false,
+      "block_reasons": [
+        "missing_liquidity_gate"
+      ],
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "instrument_metadata_stale"
+        ],
+        "missing_gates": []
+      }
+    },
+    {
+      "id": "missing_risk_tier",
+      "symbol": "ETHUSDT",
+      "is_live_allowed": false,
+      "block_reasons": [
+        "missing_risk_tier_gate"
+      ],
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "instrument_metadata_stale"
+        ],
+        "missing_gates": []
+      }
+    },
+    {
+      "id": "missing_strategy_evidence",
+      "symbol": "ETHUSDT",
+      "is_live_allowed": false,
+      "block_reasons": [
+        "missing_strategy_evidence_gate"
+      ],
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "instrument_metadata_stale"
+        ],
+        "missing_gates": []
+      }
+    },
+    {
+      "id": "missing_owner_approval",
+      "symbol": "ETHUSDT",
+      "is_live_allowed": false,
+      "block_reasons": [
+        "missing_owner_approval"
+      ],
+      "preflight": {
+        "submit_allowed": true,
+        "blocking_reasons": [],
+        "missing_gates": []
+      }
+    },
+    {
+      "id": "tier_0",
+      "symbol": "ETHUSDT",
+      "is_live_allowed": false,
+      "block_reasons": [
+        "tier_0_blocked"
+      ],
+      "preflight": {
+        "submit_allowed": true,
+        "blocking_reasons": [],
+        "missing_gates": []
+      }
+    },
+    {
+      "id": "tier_4_shadow_only",
+      "symbol": "ETHUSDT",
+      "is_live_allowed": false,
+      "block_reasons": [
+        "tier_4_shadow_only"
+      ],
+      "preflight": {
+        "submit_allowed": true,
+        "blocking_reasons": [],
+        "missing_gates": []
+      }
+    },
+    {
+      "id": "tier_5",
+      "symbol": "ETHUSDT",
+      "is_live_allowed": false,
+      "block_reasons": [
+        "tier_5_blocked"
+      ],
+      "preflight": {
+        "submit_allowed": true,
+        "blocking_reasons": [],
+        "missing_gates": []
+      }
+    },
+    {
+      "id": "tier_1_active_not_candidate",
+      "symbol": "ETHUSDT",
+      "is_live_allowed": false,
+      "block_reasons": [
+        "tier_1_requires_live_candidate_status"
+      ],
+      "preflight": {
+        "submit_allowed": true,
+        "blocking_reasons": [],
+        "missing_gates": []
+      }
+    }
+  ],
+  "exchange_preflight_scenarios": [
+    {
+      "id": "key_permission_template_missing_external",
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "bitget_readiness_not_ok"
+        ],
+        "missing_gates": []
+      }
+    },
+    {
+      "id": "readiness_dry_run_no_external_network",
+      "preflight": {
+        "submit_allowed": false,
+        "blocking_reasons": [
+          "bitget_readiness_not_ok"
+        ],
+        "missing_gates": []
+      }
+    }
+  ],
+  "covered_instrument_block_reasons": [
+    "missing_data_quality_gate",
+    "missing_liquidity_gate",
+    "missing_margin_coin_for_futures",
+    "missing_min_notional",
+    "missing_min_qty",
+    "missing_owner_approval",
+    "missing_precision",
+    "missing_product_type_for_futures",
+    "missing_risk_tier_gate",
+    "missing_strategy_evidence_gate",
+    "status_delisted",
+    "status_suspended",
+    "status_unknown",
+    "tier_0_blocked",
+    "tier_1_requires_live_candidate_status",
+    "tier_4_shadow_only",
+    "tier_5_blocked"
+  ],
+  "missing_instrument_block_reasons": [],
+  "missing_asset_universe_block_reasons": [],
+  "covered_live_preflight_reasons": [
+    "asset_not_in_catalog",
+    "asset_status_not_ok",
+    "bitget_readiness_not_ok",
+    "instrument_contract_missing",
+    "instrument_metadata_stale"
+  ],
+  "missing_live_preflight_reasons": [],
+  "external_required": [
+    "Bitget-Key-Permission-Review mit read/trade=true, withdrawal=false, IP-Allowlist und Account-Schutz.",
+    "Read-only Bitget-Discovery-Run mit Server-Time, Public Instruments und Private Read-only Account ohne Write-Endpunkte.",
+    "Instrument-Metadata-Report mit v2-Symbolen, ProductType, MarginCoin, Precision, Tick/Lot/MinQty und Frischefenster.",
+    "Owner-Signoff fuer Asset-Universe und Instrumentenkatalog vor Private-Live-Candidate."
+  ],
+  "notes": [
+    "Dieser Report nutzt nur Dry-run-/Fixture-/Template-Daten und sendet keine Orders.",
+    "Echte Bitget-Readiness bleibt external_required; private Live bleibt NO_GO."
+  ]
+}

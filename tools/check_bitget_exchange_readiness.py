@@ -14,6 +14,8 @@ ROOT = Path(__file__).resolve().parents[1]
 DOC = Path("docs/production_10_10/bitget_exchange_readiness.md")
 SCRIPT = Path("scripts/bitget_readiness_check.py")
 TOOL = Path("tools/check_bitget_exchange_readiness.py")
+KEY_PERMISSION_TOOL = Path("tools/check_bitget_key_permission_evidence.py")
+KEY_PERMISSION_TEMPLATE = Path("docs/production_10_10/bitget_key_permission_evidence.template.json")
 SCRIPT_TEST = Path("tests/scripts/test_bitget_readiness_check.py")
 SECURITY_TEST = Path("tests/security/test_bitget_exchange_readiness_contracts.py")
 TOOL_TEST = Path("tests/tools/test_check_bitget_exchange_readiness.py")
@@ -62,7 +64,7 @@ def _read(path: Path) -> str:
 
 def validate(root: Path = ROOT, *, strict: bool = False) -> list[CheckIssue]:
     issues: list[CheckIssue] = []
-    required = (DOC, SCRIPT, TOOL, SCRIPT_TEST, SECURITY_TEST, TOOL_TEST)
+    required = (DOC, SCRIPT, TOOL, KEY_PERMISSION_TOOL, KEY_PERMISSION_TEMPLATE, SCRIPT_TEST, SECURITY_TEST, TOOL_TEST)
     for rel in required:
         if not (root / rel).is_file():
             _issue(issues, "required_file_missing", f"missing {rel.as_posix()}")
@@ -96,9 +98,12 @@ def validate(root: Path = ROOT, *, strict: bool = False) -> list[CheckIssue]:
             "docs/production_10_10/bitget_exchange_readiness.md",
             "scripts/bitget_readiness_check.py",
             "tools/check_bitget_exchange_readiness.py",
+            "tools/check_bitget_key_permission_evidence.py",
+            "docs/production_10_10/bitget_key_permission_evidence.template.json",
             "tests/scripts/test_bitget_readiness_check.py",
             "tests/security/test_bitget_exchange_readiness_contracts.py",
             "tests/tools/test_check_bitget_exchange_readiness.py",
+            "tests/tools/test_check_bitget_key_permission_evidence.py",
         ):
             if ref not in evidence:
                 _issue(issues, "evidence_reference_missing", f"evidence matrix missing {ref}")

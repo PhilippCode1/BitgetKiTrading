@@ -1,6 +1,90 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 
+const MATRIX_REL = "docs/production_10_10/evidence_matrix.yaml";
+
+/** Gleiche Mindestregeln wie shared_py.owner_private_live_release_payload_ok (ohne Secrets). */
+export function ownerPrivateLiveReleasePayloadOk(payload: unknown): boolean {
+  if (payload === null || typeof payload !== "object") return false;
+  const o = payload as Record<string, unknown>;
+  if (o.owner_private_live_go !== true) return false;
+  const ref = o.signoff_reference;
+  if (typeof ref !== "string" || ref.trim().length < 8) return false;
+  const rec = o.recorded_at;
+  if (typeof rec !== "string" || rec.trim().length < 10) return false;
+  return true;
+}
+
+/**
+ * Monorepo-Wurzel finden (Dashboard laeuft unter apps/dashboard).
+ * Optional: BITGET_BTC_AI_REPO_ROOT oder REPO_ROOT setzen.
+ */
+export function resolveDashboardRepoRoot(): string {
+  for (const key of ["BITGET_BTC_AI_REPO_ROOT", "REPO_ROOT"] as const) {
+    const v = process.env[key];
+    if (v && existsSync(resolve(v, MATRIX_REL))) {
+      return resolve(v);
+    }
+  }
+  const twoUp = resolve(process.cwd(), "..", "..");
+  if (existsSync(resolve(twoUp, MATRIX_REL))) {
+    return twoUp;
+  }
+  const oneUp = resolve(process.cwd(), "..");
+  if (existsSync(resolve(oneUp, MATRIX_REL))) {
+    return oneUp;
+  }
+  return process.cwd();
+}
+
+const OWNER_RELEASE_REL = "reports/owner_private_live_release.json";
+
+export type OwnerPrivateLiveReleaseGate = {
+  fileRelative: string;
+  filePresent: boolean;
+  payloadValid: boolean;
+  /** Entspricht Scorecard: ohne gueltige Datei kein private_live_allowed. */
+  scorecardBlocksPrivateLive: boolean;
+  summaryDe: string;
+  templateRelative: string;
+};
+
+export function readOwnerPrivateLiveReleaseGate(rootDir: string): OwnerPrivateLiveReleaseGate {
+  const abs = resolve(rootDir, OWNER_RELEASE_REL);
+  const filePresent = existsSync(abs);
+  let payloadValid = false;
+  if (filePresent) {
+    try {
+      const raw = readFileSync(abs, "utf-8");
+      payloadValid = ownerPrivateLiveReleasePayloadOk(JSON.parse(raw) as unknown);
+    } catch {
+      payloadValid = false;
+    }
+  }
+  const scorecardBlocksPrivateLive = !payloadValid;
+  let summaryDe: string;
+  if (!filePresent) {
+    summaryDe =
+      "Lokale Datei fehlt — Scorecard setzt private_live_allowed auf NO_GO " +
+      "(zusaetzlich zu Matrix/Evidence). Template: docs/production_10_10/owner_private_live_release.template.json";
+  } else if (!payloadValid) {
+    summaryDe =
+      "Datei vorhanden, aber JSON ungueltig (owner_private_live_go, signoff_reference mind. 8 Zeichen, recorded_at). " +
+      "private_live_allowed bleibt NO_GO.";
+  } else {
+    summaryDe =
+      "Maschinelle Owner-Freigabe lokal gueltig. Live bleibt weiterhin durch Matrix und alle anderen Gates blockiert, bis verified.";
+  }
+  return {
+    fileRelative: OWNER_RELEASE_REL,
+    filePresent,
+    payloadValid,
+    scorecardBlocksPrivateLive,
+    summaryDe,
+    templateRelative: "docs/production_10_10/owner_private_live_release.template.json",
+  };
+}
+
 export type EvidenceStatusCode =
   | "missing"
   | "partial"
@@ -139,9 +223,8 @@ export function buildEvidenceCards(params?: {
   matrixPath?: string;
   gitSha?: string | null;
 }): EvidenceCard[] {
-  const rootDir = params?.rootDir ?? process.cwd();
-  const matrixPath =
-    params?.matrixPath ?? resolve(rootDir, "docs/production_10_10/evidence_matrix.yaml");
+  const rootDir = params?.rootDir ?? resolveDashboardRepoRoot();
+  const matrixPath = params?.matrixPath ?? resolve(rootDir, MATRIX_REL);
   const gitSha =
     params?.gitSha ??
     process.env.VERCEL_GIT_COMMIT_SHA ??

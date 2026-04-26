@@ -91,13 +91,20 @@ def test_replay_trace_stabilizes_event_id_and_ingest_from_dedupe_key() -> None:
         "source": "learning_engine.replay",
         "determinism": {"replay_session_id": "00000000-0000-5000-8000-000000000001"},
     }
+    ohlc = {
+        "start_ts_ms": 1700000000000,
+        "open": 1.0,
+        "high": 1.0,
+        "low": 1.0,
+        "close": 1.0,
+    }
     env_a = EventEnvelope(
         event_type="candle_close",
         symbol="BTCUSDT",
         timeframe="1m",
         exchange_ts_ms=ex_ms,
         dedupe_key=dk,
-        payload={"close": "1"},
+        payload=ohlc,
         trace=trace,
     )
     env_b = EventEnvelope(
@@ -106,7 +113,7 @@ def test_replay_trace_stabilizes_event_id_and_ingest_from_dedupe_key() -> None:
         timeframe="1m",
         exchange_ts_ms=ex_ms,
         dedupe_key=dk,
-        payload={"close": "1"},
+        payload=dict(ohlc),
         trace=trace,
     )
     want_id = stable_stream_event_id(stream=STREAM_CANDLE_CLOSE, dedupe_key=dk)
@@ -146,6 +153,28 @@ def test_envelope_top_level_field_order_invariant_hash() -> None:
     )
 
 
+def _ensure_payload_schema_minima(event_type: str, payload: dict, rng: random.Random) -> None:
+    """Pflichtfelder fuer jsonschema-Validierung (EventEnvelope fail-fast)."""
+    if event_type == "candle_close":
+        ts = int(payload.get("start_ts_ms") or rng.randrange(0, 1_800_000_000_000))
+        px = float(payload.get("close") or (rng.random() * 1e5 + 1.0))
+        payload.setdefault("start_ts_ms", ts)
+        payload.setdefault("open", px)
+        payload.setdefault("high", px)
+        payload.setdefault("low", px)
+        payload.setdefault("close", px)
+    elif event_type in ("trade_opened", "trade_updated", "trade_closed"):
+        payload.setdefault("trade_id", f"t-{rng.randrange(1, 1_000_000_000)}")
+    elif event_type == "signal_created":
+        payload.setdefault("signal_id", f"s-{rng.randrange(1, 1_000_000_000)}")
+        payload.setdefault("direction", rng.choice(["long", "short"]))
+    elif event_type == "market_feed_health":
+        payload.setdefault("ok", True)
+        payload.setdefault("ws_connected", True)
+        sym = payload.get("symbol")
+        payload.setdefault("symbol", sym if isinstance(sym, str) and sym else "BTCUSDT")
+
+
 def _random_envelope(seed: int) -> EventEnvelope:
     rng = random.Random(seed * 10009)
     event_type: EventType = rng.choice(_EVENT_TYPES)  # type: ignore[assignment]
@@ -167,6 +196,7 @@ def _random_envelope(seed: int) -> EventEnvelope:
     trace: dict = {}
     if rng.random() > 0.4:
         trace["r"] = str(uuid.uuid4())
+    _ensure_payload_schema_minima(event_type, payload, rng)
     return EventEnvelope(
         event_type=event_type,
         symbol=symbol,

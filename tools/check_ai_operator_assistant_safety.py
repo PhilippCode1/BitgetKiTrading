@@ -7,6 +7,65 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
+SCHEMAS_EXEC_AUTH_NONE: tuple[tuple[str, Path], ...] = (
+    ("assistant_turn.schema.json", ROOT / "shared" / "contracts" / "schemas" / "assistant_turn.schema.json"),
+    ("operator_explain.schema.json", ROOT / "shared" / "contracts" / "schemas" / "operator_explain.schema.json"),
+)
+
+
+def _schema_requires_execution_authority_none(label: str, path: Path) -> list[dict[str, str]]:
+    out: list[dict[str, str]] = []
+    if not path.is_file():
+        out.append(
+            {
+                "severity": "error",
+                "code": "llm_schema_missing",
+                "message": f"Contract-Schema fehlt ({label}).",
+                "path": str(path),
+            }
+        )
+        return out
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        out.append(
+            {
+                "severity": "error",
+                "code": "llm_schema_json_invalid",
+                "message": f"Schema nicht parsebar ({label}): {exc}",
+                "path": str(path),
+            }
+        )
+        return out
+    req = data.get("required")
+    if not isinstance(req, list) or "execution_authority" not in req:
+        out.append(
+            {
+                "severity": "error",
+                "code": "llm_schema_execution_authority_not_required",
+                "message": f"Schema muss execution_authority als required haben ({label}).",
+                "path": str(path),
+            }
+        )
+    props = data.get("properties")
+    spec = props.get("execution_authority") if isinstance(props, dict) else None
+    if (
+        not isinstance(spec, dict)
+        or spec.get("type") != "string"
+        or spec.get("const") != "none"
+    ):
+        out.append(
+            {
+                "severity": "error",
+                "code": "llm_schema_execution_authority_const_invalid",
+                "message": (
+                    f"execution_authority muss type=string und const=none sein ({label})."
+                ),
+                "path": str(path),
+            }
+        )
+    return out
+
 
 def analyze() -> dict[str, object]:
     issues: list[dict[str, str]] = []
@@ -57,6 +116,9 @@ def analyze() -> dict[str, object]:
             )
     else:
         issues.append({"severity": "error", "code": "safety_guard_missing", "message": "safety-diagnosis-errors.ts fehlt.", "path": str(saf_err)})
+
+    for label, schema_path in SCHEMAS_EXEC_AUTH_NONE:
+        issues.extend(_schema_requires_execution_authority_none(label, schema_path))
 
     degraded_phrase = "aiAssistantDegradedSafe"
     for panel, code in ((op_panel, "operator_panel_degraded_missing"), (saf_panel, "safety_panel_degraded_missing")):

@@ -160,6 +160,9 @@ def test_hybrid_decision_abstains_when_allowed_leverage_falls_below_minimum(
 
 def _signal_row(**overrides: object) -> dict[str, object]:
     row: dict[str, object] = {
+        "symbol": "BTCUSDT",
+        "asset_risk_tier": "RISK_TIER_1_MAJOR_LIQUID",
+        "asset_volatility_0_1": 0.12,
         "direction": "long",
         "market_regime": "trend",
         "regime_bias": "long",

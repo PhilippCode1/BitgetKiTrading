@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "status": "external_required",
+  "reviewed_by": "CHANGE_ME_OWNER",
+  "reviewed_at": "CHANGE_ME_ISO8601",
+  "environment": "CHANGE_ME_STAGING_OR_LOCAL",
+  "git_sha": "CHANGE_ME_GIT_SHA",
+  "main_console": {
+    "all_visible_labels_german_or_documented": false,
+    "no_english_marketing_phrases_in_operator_flow": false,
+    "legacy_commerce_routes_acknowledged": false
+  },
+  "spot_checks": {
+    "navigation_matches_policy": false,
+    "safety_states_readable_de": false,
+    "error_messages_not_english_only": false
+  },
+  "safety": {
+    "no_secrets_in_screenshots": true,
+    "owner_signoff": false
+  }
+}

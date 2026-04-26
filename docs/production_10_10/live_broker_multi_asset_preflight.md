@@ -66,6 +66,48 @@ Pro Live-Kandidat muss spaeter sichtbar sein:
 - Contract-Tests fuer gruenen Preflight-Pfad ohne echten Submit.
 - Checker-Tests fuer Doku-/Test-/No-Go-Konsistenz.
 
+## Externer Fail-Closed-Contract
+
+Die synthetische Preflight-Matrix ist Code-Evidence, aber keine Live-Freigabe.
+Fuer private Live-Evidence muss ein echter Staging-/Shadow-Drill als
+secret-freies JSON gegen den Contract geprueft werden:
+
+```bash
+python tools/check_live_broker_preflight.py \
+  --evidence-json docs/production_10_10/live_broker_fail_closed_evidence.template.json \
+  --strict \
+  --write-report reports/live_broker_fail_closed_evidence.md \
+  --output-json reports/live_broker_fail_closed_evidence.json
+```
+
+Das Repo-Template bleibt absichtlich `FAIL`, bis echte Evidence vorliegt. Fuer
+Live muss mindestens belegt sein:
+
+- Preflight-Matrix `PASS` und alle Pflicht-Blockgruende abgedeckt
+- Providerfehler blockieren Submit
+- fehlendes Redis blockiert Live
+- fehlende DB blockiert Live
+- fehlende Exchange-Truth blockiert Submit
+- Public-/Private-API-Timeouts blockieren Submit
+- stale Market Data blockiert Submit
+- unknown Instrument blockiert Submit
+- fehlender Risk-Kontext blockiert Submit
+- fehlende Operator-Freigabe blockiert Submit
+- fehlender Shadow-Match blockiert Submit
+- Reconcile-Fail blockiert Submit
+- Kill-Switch und Safety-Latch blockieren Submit
+- fehlende Idempotency und fehlender Audit-Context blockieren Submit
+- Warnings blockieren standardmaessig Live
+- All-green-Kontrollfall sendet keine echte Exchange-Order
+- Audit-Trail, Alert-Zustellung und Main-Console-Gate-State verifiziert
+- `live_write_allowed_during_drill=false`
+- `real_exchange_order_sent=false`
+- Owner-Signoff separat vorhanden
+
+Felder mit Secret-Bezug wie `database_url`, `redis_url`, `authorization`,
+`token`, `secret`, `password` oder `api_key` duerfen keine echten Werte
+enthalten.
+
 ## No-Go
 
 Ohne vollstaendigen Multi-Asset-Preflight kein Live-Opening.

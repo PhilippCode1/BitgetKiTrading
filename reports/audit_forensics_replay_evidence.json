@@ -1,0 +1,95 @@
+{
+  "generated_at": "2026-04-25T23:30:46Z",
+  "git_sha": "84d7b66",
+  "private_live_decision": "NO_GO",
+  "full_autonomous_live": "NO_GO",
+  "private_audit_forensics_surface": {
+    "ok": true,
+    "doc_exists": true,
+    "contract_exists": true,
+    "replay_summary_exists": true,
+    "issues": [],
+    "error_count": 0,
+    "warning_count": 0
+  },
+  "main_console_safety_embed": {
+    "private_live_decision": "NO_GO",
+    "missing_visible_gates": [],
+    "blocking_failures": [],
+    "secret_safe": true
+  },
+  "admin_gateway_security_embed": {
+    "private_live_decision": "NO_GO",
+    "missing_required_scenarios": [],
+    "failures": [],
+    "secret_safe": true
+  },
+  "minimal_order_audit_validation": {
+    "valid": true,
+    "errors": []
+  },
+  "replay_scenarios": {
+    "complete": {
+      "schema_version": "private-replay-summary-v1",
+      "replay_sufficient": true,
+      "missing_steps": [],
+      "warnings": [],
+      "summary_text_de": "Replay ist ausreichend: Signal-, Risk- und Exchange-Schritte sind vorhanden."
+    },
+    "incomplete": {
+      "schema_version": "private-replay-summary-v1",
+      "replay_sufficient": false,
+      "missing_steps": [
+        "risk",
+        "exchange"
+      ],
+      "warnings": [],
+      "summary_text_de": "Replay ist unvollstaendig: fehlende Schritte risk, exchange."
+    },
+    "llm_explanation_flag": {
+      "schema_version": "private-replay-summary-v1",
+      "replay_sufficient": true,
+      "missing_steps": [],
+      "warnings": [
+        "llm_explanation_not_audit_truth"
+      ],
+      "summary_text_de": "Replay ist ausreichend: Signal-, Risk- und Exchange-Schritte sind vorhanden."
+    }
+  },
+  "external_evidence_assessment": {
+    "status": "FAIL",
+    "external_required": true,
+    "failures": [
+      "external_status_nicht_verified",
+      "reviewed_by_fehlt",
+      "reviewed_at_fehlt",
+      "environment_fehlt",
+      "git_sha_fehlt",
+      "staging_replay_nicht_durchgefuehrt",
+      "signal_risk_exchange_chain_nicht_belegt",
+      "staging_replay_window_start_fehlt",
+      "staging_replay_window_end_fehlt",
+      "staging_replay_report_uri_fehlt",
+      "trace_ids_sampled_fehlt",
+      "ledger_storage_durable_nicht_belegt",
+      "ledger_append_only_policy_nicht_belegt",
+      "ledger_retention_fehlt",
+      "ledger_export_uri_fehlt",
+      "forensics_searchable_by_trace_fehlt",
+      "forensics_operator_summary_de_fehlt",
+      "forensics_incident_drill_fehlt",
+      "safety_owner_signoff_fehlt"
+    ]
+  },
+  "internal_issues": [],
+  "external_required": [
+    "Staging-/Shadow-Replay mit nachvollziehbarer Signal-Risk-Exchange-Kette und ohne Live-Orders.",
+    "Dauerhaftes Audit-Ledger mit Retention, Export und Tamper-Nachweis extern.",
+    "Forensics-Suche nach trace_id/correlation_id und deutscher Operator-Zusammenfassung in Incidents.",
+    "Owner-Signoff fuer Audit-/Replay-Prozess vor privatem Live-Go."
+  ],
+  "notes": [
+    "Dieser Report bündelt nur repo-lokale, synthetische Checks; kein echter Staging- oder Prod-Lauf.",
+    "private_live_allowed bleibt NO_GO, bis externe verified Evidence und Owner-Signoff vorliegen."
+  ]
+}

@@ -91,8 +91,8 @@ def evaluate_live_block_reasons(entry: BitgetAssetCatalogEntry) -> list[str]:
         reasons.append("datenqualitaet_nicht_ok")
     if not entry.shadow_allowed:
         reasons.append("shadow_nicht_freigegeben")
-    # Default fail-closed: neue Assets bleiben blockiert.
-    if entry.status_on_exchange == "active" and "neu" in entry.operator_note_de.lower() and entry.live_allowed:
+    # Default fail-closed: neue Assets bleiben blockiert, unabhaengig vom eingehenden live_allowed-Flag.
+    if entry.status_on_exchange == "active" and "neu" in entry.operator_note_de.lower():
         reasons.append("neues_asset_nicht_automatisch_live")
     return list(dict.fromkeys(reasons))
 

@@ -17,6 +17,10 @@ for candidate in (REPO_ROOT, LIVE_BROKER_SRC, SHARED_SRC):
     if s not in sys.path:
         sys.path.insert(0, s)
 
+from tests.unit.live_broker.commercial_gate_db_mocks import (
+    live_mode_conn_execute_sequence,
+)
+
 from live_broker.config import LiveBrokerSettings
 from live_broker.exceptions import SecurityException
 from live_broker.execution.models import ExecutionIntentRequest
@@ -123,7 +127,7 @@ def test_evaluate_intent_no_exchange_calls_when_tenant_contract_missing(
     ex_c = MagicMock()
     ex_g.fetchone.return_value = _row_live_ok()
     ex_c.fetchone.return_value = None
-    conn.execute.side_effect = [ex_g, ex_c]
+    conn.execute.side_effect = live_mode_conn_execute_sequence(ex_g, ex_c)
 
     now_ms = int(time.time() * 1000)
     intent = ExecutionIntentRequest(
@@ -162,7 +166,9 @@ def test_evaluate_intent_no_exchange_calls_when_tenant_contract_missing(
 def test_evaluate_intent_proceeds_when_contract_and_gates_ok(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from tests.unit.live_broker.test_execution_service import _repo_with_clean_live_snapshots
+    from tests.unit.live_broker.test_execution_service import (
+        _repo_with_clean_live_snapshots,
+    )
 
     settings = _settings_live(monkeypatch)
     ex = _SpyExchangeClient()
@@ -173,7 +179,7 @@ def test_evaluate_intent_proceeds_when_contract_and_gates_ok(
     ex_c = MagicMock()
     ex_g.fetchone.return_value = _row_live_ok()
     ex_c.fetchone.return_value = (1,)
-    conn.execute.side_effect = [ex_g, ex_c]
+    conn.execute.side_effect = live_mode_conn_execute_sequence(ex_g, ex_c)
     now_ms = int(time.time() * 1000)
     intent = ExecutionIntentRequest(
         source_service="signal-engine",
@@ -232,7 +238,7 @@ def test_evaluate_intent_no_bitget_when_live_trading_forbidden_in_db(
     ex_c = MagicMock()
     ex_g.fetchone.return_value = _row_live_gates_demo_only()
     ex_c.fetchone.return_value = (1,)
-    conn.execute.side_effect = [ex_g, ex_c]
+    conn.execute.side_effect = live_mode_conn_execute_sequence(ex_g, ex_c)
     now_ms = int(time.time() * 1000)
     intent = ExecutionIntentRequest(
         source_service="signal-engine",

@@ -8,7 +8,9 @@
   "paths": {
     "/v1/deploy/edge-readiness": {
       "get": {
-        "tags": ["deploy"],
+        "tags": [
+          "deploy"
+        ],
         "summary": "Deploy Edge Readiness",
         "description": "Checkliste fuer Single-Host / Reverse-Proxy-Betrieb.\nNutzt nur konfigurierte Flags und eingehende Forward-Header \u2014 keine Geheimnisse.",
         "operationId": "deploy_edge_readiness_v1_deploy_edge_readiness_get",
@@ -29,7 +31,9 @@
     },
     "/v1/meta/surface": {
       "get": {
-        "tags": ["meta"],
+        "tags": [
+          "meta"
+        ],
         "summary": "Oeffentliche Laufzeit-Kontur",
         "description": "Keine Tokens/Keys. Nutzbar fuer Release-Evidenz und Operator-Dashboards. Siehe scripts/collect_release_evidence.ps1.",
         "operationId": "public_runtime_surface_v1_meta_surface_get",
@@ -50,7 +54,9 @@
     },
     "/v1/auth/sse-cookie": {
       "post": {
-        "tags": ["auth"],
+        "tags": [
+          "auth"
+        ],
         "summary": "Issue Sse Session Cookie",
         "description": "Stellt ein kurzlebiges HttpOnly-Cookie aus \u2014 fuer Browser-EventSource ohne Authorization-Header.",
         "operationId": "issue_sse_session_cookie_v1_auth_sse_cookie_post",
@@ -118,7 +124,9 @@
     },
     "/v1/auth/manual-action/mint": {
       "post": {
-        "tags": ["auth"],
+        "tags": [
+          "auth"
+        ],
         "summary": "Mint Manual Action Route",
         "description": "Kurzlebiger Token fuer POST /v1/live-broker/safety/* und operator-release.\nPayload muss byte-identisch zur spaeteren Mutation sein (inkl. Sortierung der Keys im Fingerprint).\noperator_release: payload enthaelt `_execution_id` (UUID-String) plus optionale audit-Felder.",
         "operationId": "mint_manual_action_route_v1_auth_manual_action_mint_post",
@@ -209,7 +217,9 @@
     },
     "/v1/commerce/plans": {
       "get": {
-        "tags": ["commerce"],
+        "tags": [
+          "commerce"
+        ],
         "summary": "List Plans",
         "operationId": "list_plans_v1_commerce_plans_get",
         "parameters": [
@@ -273,7 +283,9 @@
     },
     "/v1/commerce/usage/summary": {
       "get": {
-        "tags": ["commerce"],
+        "tags": [
+          "commerce"
+        ],
         "summary": "Usage Summary",
         "operationId": "usage_summary_v1_commerce_usage_summary_get",
         "parameters": [
@@ -353,7 +365,9 @@
     },
     "/v1/commerce/usage/ledger": {
       "get": {
-        "tags": ["commerce"],
+        "tags": [
+          "commerce"
+        ],
         "summary": "Usage Ledger",
         "operationId": "usage_ledger_v1_commerce_usage_ledger_get",
         "parameters": [
@@ -443,7 +457,9 @@
     },
     "/v1/commerce/invoice-preview": {
       "get": {
-        "tags": ["commerce"],
+        "tags": [
+          "commerce"
+        ],
         "summary": "Invoice Preview",
         "description": "Aggregat aus Ledger (kein externes Billing); fuer Owner-Transparenz.",
         "operationId": "invoice_preview_v1_commerce_invoice_preview_get",
@@ -524,7 +540,9 @@
     },
     "/v1/commerce/internal/usage": {
       "post": {
-        "tags": ["commerce"],
+        "tags": [
+          "commerce"
+        ],
         "summary": "Internal Record Usage",
         "operationId": "internal_record_usage_v1_commerce_internal_usage_post",
         "parameters": [
@@ -582,7 +600,9 @@
     },
     "/v1/commerce/internal/billing/run-daily": {
       "post": {
-        "tags": ["commerce"],
+        "tags": [
+          "commerce"
+        ],
         "summary": "Internal Billing Run Daily",
         "operationId": "internal_billing_run_daily_v1_commerce_internal_billing_run_daily_post",
         "parameters": [
@@ -638,9 +658,71 @@
         }
       }
     },
+    "/v1/commerce/internal/billing/run-daily-subscription": {
+      "post": {
+        "tags": [
+          "commerce"
+        ],
+        "summary": "Internal Billing Run Daily Subscription",
+        "operationId": "internal_billing_run_daily_subscription_v1_commerce_internal_billing_run_daily_subscription_post",
+        "parameters": [
+          {
+            "name": "X-Commercial-Meter-Secret",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Commercial-Meter-Secret"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InternalBillingRunBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Internal Billing Run Daily Subscription V1 Commerce Internal Billing Run Daily Subscription Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/commerce/customer/me": {
       "get": {
-        "tags": ["commerce-customer"],
+        "tags": [
+          "commerce-customer"
+        ],
         "summary": "Kundenprofil und Berechtigungen",
         "description": "Tenant, Plan, Telegram-Zusammenfassung, access_matrix \u2014 JWT/billing:read.",
         "operationId": "customer_me_v1_commerce_customer_me_get",
@@ -703,7 +785,9 @@
         }
       },
       "patch": {
-        "tags": ["commerce-customer"],
+        "tags": [
+          "commerce-customer"
+        ],
         "summary": "Anzeigename aktualisieren",
         "operationId": "customer_me_patch_v1_commerce_customer_me_patch",
         "parameters": [
@@ -777,7 +861,9 @@
     },
     "/v1/commerce/customer/security/summary": {
       "get": {
-        "tags": ["commerce-customer"],
+        "tags": [
+          "commerce-customer"
+        ],
         "summary": "Konto-Sicherheit (Flags, keine Secrets)",
         "description": "E-Mail-Verifikation, MFA- und Passwort-Login-Status je Tenant; Migration 606. Vollstaendige Flows (Reset, Session, OTP) werden angebunden.",
         "operationId": "customer_security_summary_v1_commerce_customer_security_summary_get",
@@ -840,9 +926,94 @@
         }
       }
     },
+    "/v1/commerce/customer/audit-report/download": {
+      "get": {
+        "tags": [
+          "commerce-customer"
+        ],
+        "summary": "Regulatorischer Pruefbericht (Forensik-PDF)",
+        "description": "PDF aus app.apex_trade_forensics (Zeitraege, KI, Risiko, Fills, Hash-Nachweis).",
+        "operationId": "download_apex_regulatory_audit_pdf_v1_commerce_customer_audit_report_download_get",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Untergrenze inkl. (timestamptz / ISO-8601)",
+              "title": "From"
+            },
+            "description": "Untergrenze inkl. (timestamptz / ISO-8601)"
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Obergrenze inkl. (timestamptz / ISO-8601)",
+              "title": "To"
+            },
+            "description": "Obergrenze inkl. (timestamptz / ISO-8601)"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Gateway-Internal-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Gateway-Internal-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/commerce/customer/lifecycle/me": {
       "get": {
-        "tags": ["commerce-customer"],
+        "tags": [
+          "commerce-customer"
+        ],
         "summary": "Kundenlebenszyklus (Prompt 11)",
         "description": "Status, Trial-Fenster, deutschsprachiger Titel, Capabilities und Gate-Vorschau. Trial-Ablauf wird lazy nach DB-Zeit ausgewertet und bei Bedarf persistiert.",
         "operationId": "customer_lifecycle_me_v1_commerce_customer_lifecycle_me_get",
@@ -907,7 +1078,9 @@
     },
     "/v1/commerce/customer/lifecycle/audit": {
       "get": {
-        "tags": ["commerce-customer"],
+        "tags": [
+          "commerce-customer"
+        ],
         "summary": "Lifecycle-Audit (letzte Eintraege)",
         "operationId": "customer_lifecycle_audit_v1_commerce_customer_lifecycle_audit_get",
         "parameters": [
@@ -981,7 +1154,9 @@
     },
     "/v1/commerce/customer/lifecycle/start-trial": {
       "post": {
-        "tags": ["commerce-customer"],
+        "tags": [
+          "commerce-customer"
+        ],
         "summary": "21-Tage-Trial starten",
         "description": "Nur aus `registered` mit verifizierter E-Mail; setzt trial_started_at / trial_ends_at.",
         "operationId": "customer_lifecycle_start_trial_v1_commerce_customer_lifecycle_start_trial_post",
@@ -1046,7 +1221,9 @@
     },
     "/v1/commerce/customer/lifecycle/open-contract": {
       "post": {
-        "tags": ["commerce-customer"],
+        "tags": [
+          "commerce-customer"
+        ],
         "summary": "Vertragsprozess oeffnen",
         "description": "Von aktiver oder abgelaufener Probephase in `contract_pending` (Prompt 11).",
         "operationId": "customer_lifecycle_open_contract_v1_commerce_customer_lifecycle_open_contract_post",
@@ -1111,7 +1288,9 @@
     },
     "/v1/commerce/customer/lifecycle/ack-contract-signed": {
       "post": {
-        "tags": ["commerce-customer"],
+        "tags": [
+          "commerce-customer"
+        ],
         "summary": "Vertragsunterzeichnung bestaetigen (Legacy-Stub)",
         "description": "Uebergang contract_pending -> contract_signed_waiting_admin ohne PDF/E-Sign. Deaktiviert wenn COMMERCIAL_CONTRACT_ENFORCE_SIGNING_WORKFLOW=true oder in Production mit gesetztem COMMERCIAL_CONTRACT_WEBHOOK_SECRET.",
         "operationId": "customer_lifecycle_ack_contract_signed_v1_commerce_customer_lifecycle_ack_contract_signed_post",
@@ -1176,7 +1355,9 @@
     },
     "/v1/commerce/customer/integrations": {
       "get": {
-        "tags": ["commerce-customer"],
+        "tags": [
+          "commerce-customer"
+        ],
         "summary": "Integrations-Snapshot (Telegram, Broker-Hinweise)",
         "operationId": "customer_integrations_v1_commerce_customer_integrations_get",
         "parameters": [
@@ -1240,7 +1421,9 @@
     },
     "/v1/commerce/customer/integrations/telegram/start-link": {
       "post": {
-        "tags": ["commerce-customer"],
+        "tags": [
+          "commerce-customer"
+        ],
         "summary": "Telegram Deep-Link ausstellen",
         "description": "Erfordert TELEGRAM_BOT_USERNAME; liefert link_<token> Start-Payload.",
         "operationId": "customer_telegram_start_link_v1_commerce_customer_integrations_telegram_start_link_post",
@@ -1305,7 +1488,9 @@
     },
     "/v1/commerce/customer/integrations/telegram/test": {
       "post": {
-        "tags": ["commerce-customer"],
+        "tags": [
+          "commerce-customer"
+        ],
         "summary": "Testnachricht an gebundenen Telegram-Chat",
         "operationId": "customer_telegram_test_message_v1_commerce_customer_integrations_telegram_test_post",
         "parameters": [
@@ -1369,7 +1554,9 @@
     },
     "/v1/commerce/customer/integrations/telegram/notify-prefs": {
       "get": {
-        "tags": ["commerce-customer"],
+        "tags": [
+          "commerce-customer"
+        ],
         "summary": "Telegram: Benachrichtigungsarten (Lesen)",
         "description": "Fehlende DB-Zeile = Server-Defaults; Trial-Kunden gleicher Endpunkt.",
         "operationId": "customer_telegram_notify_prefs_get_v1_commerce_customer_integrations_telegram_notify_prefs_get",
@@ -1432,7 +1619,9 @@
         }
       },
       "patch": {
-        "tags": ["commerce-customer"],
+        "tags": [
+          "commerce-customer"
+        ],
         "summary": "Telegram: Benachrichtigungsarten (Teil-Update)",
         "operationId": "customer_telegram_notify_prefs_patch_v1_commerce_customer_integrations_telegram_notify_prefs_patch",
         "parameters": [
@@ -1506,7 +1695,9 @@
     },
     "/v1/commerce/customer/balance": {
       "get": {
-        "tags": ["commerce-customer"],
+        "tags": [
+          "commerce-customer"
+        ],
         "summary": "Guthaben und Verbrauch (Monat UTC)",
         "operationId": "customer_balance_v1_commerce_customer_balance_get",
         "parameters": [
@@ -1570,7 +1761,9 @@
     },
     "/v1/commerce/customer/payments": {
       "get": {
-        "tags": ["commerce-customer"],
+        "tags": [
+          "commerce-customer"
+        ],
         "summary": "Zahlungsereignisse (maskiert)",
         "operationId": "customer_payments_v1_commerce_customer_payments_get",
         "parameters": [
@@ -1644,7 +1837,9 @@
     },
     "/v1/commerce/customer/payments/capabilities": {
       "get": {
-        "tags": ["commerce-customer"],
+        "tags": [
+          "commerce-customer"
+        ],
         "summary": "Zahlungsfaehigkeiten (Sandbox/Live, Methoden)",
         "description": "Keine Secrets; gleiche Logik wie Dashboard-Einzahlungsseite.",
         "operationId": "customer_payments_capabilities_v1_commerce_customer_payments_capabilities_get",
@@ -1709,7 +1904,9 @@
     },
     "/v1/commerce/customer/payments/deposit/checkout": {
       "post": {
-        "tags": ["commerce-customer"],
+        "tags": [
+          "commerce-customer"
+        ],
         "summary": "Einzahlungs-Checkout starten",
         "description": "Idempotency-Key Header; provider mock|stripe.",
         "operationId": "customer_deposit_checkout_v1_commerce_customer_payments_deposit_checkout_post",
@@ -1793,7 +1990,9 @@
     },
     "/v1/commerce/customer/payments/deposit/resume": {
       "post": {
-        "tags": ["commerce-customer"],
+        "tags": [
+          "commerce-customer"
+        ],
         "summary": "Stripe Checkout Session fortsetzen",
         "operationId": "customer_deposit_resume_v1_commerce_customer_payments_deposit_resume_post",
         "parameters": [
@@ -1867,7 +2066,9 @@
     },
     "/v1/commerce/customer/payments/deposit/intents/{intent_id}": {
       "get": {
-        "tags": ["commerce-customer"],
+        "tags": [
+          "commerce-customer"
+        ],
         "summary": "Deposit-Intent Status",
         "operationId": "customer_deposit_intent_get_v1_commerce_customer_payments_deposit_intents__intent_id__get",
         "parameters": [
@@ -1941,7 +2142,9 @@
     },
     "/v1/commerce/customer/history": {
       "get": {
-        "tags": ["commerce-customer"],
+        "tags": [
+          "commerce-customer"
+        ],
         "summary": "Verbrauchs- und Portal-Audit-Auszug",
         "operationId": "customer_history_v1_commerce_customer_history_get",
         "parameters": [
@@ -2025,7 +2228,9 @@
     },
     "/v1/commerce/customer/performance": {
       "get": {
-        "tags": ["commerce-customer"],
+        "tags": [
+          "commerce-customer"
+        ],
         "summary": "Performance: Demo (Paper) und mandantenbezogene Live-/Gebuehr-KPIs",
         "operationId": "customer_performance_get_v1_commerce_customer_performance_get",
         "parameters": [
@@ -2118,7 +2323,9 @@
     },
     "/v1/commerce/customer/performance/export": {
       "get": {
-        "tags": ["commerce-customer"],
+        "tags": [
+          "commerce-customer"
+        ],
         "summary": "Performance-Export (CSV)",
         "operationId": "customer_performance_export_csv_v1_commerce_customer_performance_export_get",
         "parameters": [
@@ -2202,7 +2409,9 @@
     },
     "/v1/commerce/customer/performance/report.pdf": {
       "get": {
-        "tags": ["commerce-customer"],
+        "tags": [
+          "commerce-customer"
+        ],
         "summary": "Kurzbericht Demo-Performance (PDF)",
         "operationId": "customer_performance_report_pdf_v1_commerce_customer_performance_report_pdf_get",
         "parameters": [
@@ -2275,7 +2484,9 @@
     },
     "/v1/commerce/admin/customer/lifecycle/transition": {
       "post": {
-        "tags": ["commerce-admin-customer"],
+        "tags": [
+          "commerce-admin-customer"
+        ],
         "summary": "Admin Lifecycle Transition",
         "operationId": "admin_lifecycle_transition_v1_commerce_admin_customer_lifecycle_transition_post",
         "parameters": [
@@ -2349,7 +2560,9 @@
     },
     "/v1/commerce/admin/customer/lifecycle/set-email-verified": {
       "post": {
-        "tags": ["commerce-admin-customer"],
+        "tags": [
+          "commerce-admin-customer"
+        ],
         "summary": "Admin Lifecycle Set Email Verified",
         "operationId": "admin_lifecycle_set_email_verified_v1_commerce_admin_customer_lifecycle_set_email_verified_post",
         "parameters": [
@@ -2423,7 +2636,9 @@
     },
     "/v1/commerce/admin/customer/payment": {
       "post": {
-        "tags": ["commerce-admin-customer"],
+        "tags": [
+          "commerce-admin-customer"
+        ],
         "summary": "Admin Record Payment",
         "operationId": "admin_record_payment_v1_commerce_admin_customer_payment_post",
         "parameters": [
@@ -2497,7 +2712,9 @@
     },
     "/v1/commerce/admin/customer/wallet/adjust": {
       "post": {
-        "tags": ["commerce-admin-customer"],
+        "tags": [
+          "commerce-admin-customer"
+        ],
         "summary": "Admin Wallet Adjust",
         "operationId": "admin_wallet_adjust_v1_commerce_admin_customer_wallet_adjust_post",
         "parameters": [
@@ -2571,7 +2788,9 @@
     },
     "/v1/commerce/admin/customer/integrations": {
       "patch": {
-        "tags": ["commerce-admin-customer"],
+        "tags": [
+          "commerce-admin-customer"
+        ],
         "summary": "Admin Integrations Patch",
         "operationId": "admin_integrations_patch_v1_commerce_admin_customer_integrations_patch",
         "parameters": [
@@ -2645,7 +2864,9 @@
     },
     "/v1/commerce/payments/webhooks/stripe": {
       "post": {
-        "tags": ["commerce-payments"],
+        "tags": [
+          "commerce-payments"
+        ],
         "summary": "Stripe Payment Webhook",
         "operationId": "stripe_payment_webhook_v1_commerce_payments_webhooks_stripe_post",
         "responses": {
@@ -2665,7 +2886,9 @@
     },
     "/v1/commerce/payments/webhooks/mock": {
       "post": {
-        "tags": ["commerce-payments"],
+        "tags": [
+          "commerce-payments"
+        ],
         "summary": "Mock Payment Webhook",
         "operationId": "mock_payment_webhook_v1_commerce_payments_webhooks_mock_post",
         "parameters": [
@@ -2723,7 +2946,9 @@
     },
     "/v1/commerce/payments/webhooks/wise": {
       "post": {
-        "tags": ["commerce-payments"],
+        "tags": [
+          "commerce-payments"
+        ],
         "summary": "Wise Payment Webhook",
         "description": "Rohbody; HMAC-SHA256 hex in X-Wise-Signature (PAYMENT_WISE_WEBHOOK_SECRET).",
         "operationId": "wise_payment_webhook_v1_commerce_payments_webhooks_wise_post",
@@ -2772,7 +2997,9 @@
     },
     "/v1/commerce/payments/webhooks/paypal": {
       "post": {
-        "tags": ["commerce-payments"],
+        "tags": [
+          "commerce-payments"
+        ],
         "summary": "Paypal Stub Payment Webhook",
         "description": "Dev-/Test-Stub bis PayPal Commerce/Subscriptions produktiv angebunden sind.",
         "operationId": "paypal_stub_payment_webhook_v1_commerce_payments_webhooks_paypal_post",
@@ -2821,7 +3048,9 @@
     },
     "/v1/commerce/admin/payments/diagnostics": {
       "get": {
-        "tags": ["commerce-payments"],
+        "tags": [
+          "commerce-payments"
+        ],
         "summary": "Admin Payments Diagnostics",
         "description": "Admin: Capabilities-Kurzform, Webhook-Failure-Log, Rail-Inbox-Zaehler.",
         "operationId": "admin_payments_diagnostics_v1_commerce_admin_payments_diagnostics_get",
@@ -2886,7 +3115,9 @@
     },
     "/v1/commerce/customer/contracts/templates": {
       "get": {
-        "tags": ["commerce-customer"],
+        "tags": [
+          "commerce-customer"
+        ],
         "summary": "Aktive Vertragsvorlagen",
         "operationId": "customer_contract_templates_v1_commerce_customer_contracts_templates_get",
         "parameters": [
@@ -2950,7 +3181,9 @@
     },
     "/v1/commerce/customer/contracts": {
       "get": {
-        "tags": ["commerce-customer"],
+        "tags": [
+          "commerce-customer"
+        ],
         "summary": "Eigene Vertragsinstanzen",
         "operationId": "customer_contract_list_v1_commerce_customer_contracts_get",
         "parameters": [
@@ -3014,7 +3247,9 @@
     },
     "/v1/commerce/customer/contracts/start": {
       "post": {
-        "tags": ["commerce-customer"],
+        "tags": [
+          "commerce-customer"
+        ],
         "summary": "Neue Vertragsinstanz starten",
         "operationId": "customer_contract_start_v1_commerce_customer_contracts_start_post",
         "parameters": [
@@ -3088,7 +3323,9 @@
     },
     "/v1/commerce/customer/contracts/{contract_id}": {
       "get": {
-        "tags": ["commerce-customer"],
+        "tags": [
+          "commerce-customer"
+        ],
         "summary": "Vertragsinstanz",
         "operationId": "customer_contract_get_v1_commerce_customer_contracts__contract_id__get",
         "parameters": [
@@ -3162,7 +3399,9 @@
     },
     "/v1/commerce/customer/contracts/{contract_id}/documents": {
       "get": {
-        "tags": ["commerce-customer"],
+        "tags": [
+          "commerce-customer"
+        ],
         "summary": "Dokument-Metadaten",
         "operationId": "customer_contract_documents_v1_commerce_customer_contracts__contract_id__documents_get",
         "parameters": [
@@ -3236,7 +3475,9 @@
     },
     "/v1/commerce/customer/contracts/{contract_id}/documents/{document_id}/download": {
       "get": {
-        "tags": ["commerce-customer"],
+        "tags": [
+          "commerce-customer"
+        ],
         "summary": "PDF-Download",
         "operationId": "customer_contract_document_download_v1_commerce_customer_contracts__contract_id__documents__document_id__download_get",
         "parameters": [
@@ -3317,7 +3558,9 @@
     },
     "/v1/commerce/customer/contracts/{contract_id}/signing-session": {
       "post": {
-        "tags": ["commerce-customer"],
+        "tags": [
+          "commerce-customer"
+        ],
         "summary": "E-Sign-Session (Mock)",
         "operationId": "customer_contract_signing_session_v1_commerce_customer_contracts__contract_id__signing_session_post",
         "parameters": [
@@ -3391,7 +3634,9 @@
     },
     "/v1/commerce/customer/contracts/{contract_id}/mock-complete-sign": {
       "post": {
-        "tags": ["commerce-customer"],
+        "tags": [
+          "commerce-customer"
+        ],
         "summary": "Mock-Signatur abschliessen (nur Dev)",
         "operationId": "customer_contract_mock_complete_sign_v1_commerce_customer_contracts__contract_id__mock_complete_sign_post",
         "parameters": [
@@ -3465,7 +3710,9 @@
     },
     "/v1/commerce/admin/contracts/review-queue": {
       "get": {
-        "tags": ["commerce-admin-customer"],
+        "tags": [
+          "commerce-admin-customer"
+        ],
         "summary": "Vertragspruefung (Warteschlange)",
         "operationId": "admin_contract_review_queue_v1_commerce_admin_contracts_review_queue_get",
         "parameters": [
@@ -3545,7 +3792,9 @@
     },
     "/v1/commerce/admin/contracts/review-queue/{queue_id}": {
       "patch": {
-        "tags": ["commerce-admin-customer"],
+        "tags": [
+          "commerce-admin-customer"
+        ],
         "summary": "Queue-Eintrag aktualisieren",
         "operationId": "admin_contract_review_queue_patch_v1_commerce_admin_contracts_review_queue__queue_id__patch",
         "parameters": [
@@ -3629,7 +3878,9 @@
     },
     "/v1/commerce/webhooks/contract-esign": {
       "post": {
-        "tags": ["commerce-contracts"],
+        "tags": [
+          "commerce-contracts"
+        ],
         "summary": "E-Sign-Webhook (HMAC)",
         "operationId": "contract_esign_webhook_v1_commerce_webhooks_contract_esign_post",
         "responses": {
@@ -3649,7 +3900,9 @@
     },
     "/v1/commerce/customer/billing/plans": {
       "get": {
-        "tags": ["commerce-billing"],
+        "tags": [
+          "commerce-billing"
+        ],
         "summary": "Abo-Preisliste (netto/USt/brutto)",
         "operationId": "customer_billing_plans_v1_commerce_customer_billing_plans_get",
         "parameters": [
@@ -3713,7 +3966,9 @@
     },
     "/v1/commerce/customer/billing/subscription": {
       "get": {
-        "tags": ["commerce-billing"],
+        "tags": [
+          "commerce-billing"
+        ],
         "summary": "Eigenes Abo und Mahnstatus",
         "operationId": "customer_billing_subscription_v1_commerce_customer_billing_subscription_get",
         "parameters": [
@@ -3777,7 +4032,9 @@
     },
     "/v1/commerce/customer/billing/invoices": {
       "get": {
-        "tags": ["commerce-billing"],
+        "tags": [
+          "commerce-billing"
+        ],
         "summary": "Rechnungen und Gutschriften",
         "operationId": "customer_billing_invoices_v1_commerce_customer_billing_invoices_get",
         "parameters": [
@@ -3841,7 +4098,9 @@
     },
     "/v1/commerce/customer/billing/invoices/{invoice_id}/lines": {
       "get": {
-        "tags": ["commerce-billing"],
+        "tags": [
+          "commerce-billing"
+        ],
         "summary": "Positionen zu einer Rechnung",
         "operationId": "customer_billing_invoice_lines_v1_commerce_customer_billing_invoices__invoice_id__lines_get",
         "parameters": [
@@ -3915,7 +4174,9 @@
     },
     "/v1/commerce/customer/billing/ledger": {
       "get": {
-        "tags": ["commerce-billing"],
+        "tags": [
+          "commerce-billing"
+        ],
         "summary": "Finanz-Journal (Kunde)",
         "operationId": "customer_billing_ledger_v1_commerce_customer_billing_ledger_get",
         "parameters": [
@@ -3979,7 +4240,9 @@
     },
     "/v1/commerce/admin/billing/tenant/{tenant_id}/snapshot": {
       "get": {
-        "tags": ["commerce-billing"],
+        "tags": [
+          "commerce-billing"
+        ],
         "summary": "Abo + Rechnungen + Ledger",
         "operationId": "admin_billing_tenant_snapshot_v1_commerce_admin_billing_tenant__tenant_id__snapshot_get",
         "parameters": [
@@ -4052,7 +4315,9 @@
     },
     "/v1/commerce/admin/billing/subscriptions": {
       "get": {
-        "tags": ["commerce-billing"],
+        "tags": [
+          "commerce-billing"
+        ],
         "summary": "Alle Mandanten-Abos (Admin)",
         "operationId": "admin_billing_subscriptions_v1_commerce_admin_billing_subscriptions_get",
         "parameters": [
@@ -4126,7 +4391,9 @@
     },
     "/v1/commerce/admin/billing/invoices/issue": {
       "post": {
-        "tags": ["commerce-billing"],
+        "tags": [
+          "commerce-billing"
+        ],
         "summary": "Rechnung aus Plan ausstellen",
         "operationId": "admin_billing_issue_invoice_v1_commerce_admin_billing_invoices_issue_post",
         "parameters": [
@@ -4200,7 +4467,9 @@
     },
     "/v1/commerce/admin/billing/invoices/credit": {
       "post": {
-        "tags": ["commerce-billing"],
+        "tags": [
+          "commerce-billing"
+        ],
         "summary": "Volle Gutschrift zu Rechnung",
         "operationId": "admin_billing_credit_invoice_v1_commerce_admin_billing_invoices_credit_post",
         "parameters": [
@@ -4274,7 +4543,9 @@
     },
     "/v1/commerce/admin/billing/tenant/{tenant_id}/dunning": {
       "patch": {
-        "tags": ["commerce-billing"],
+        "tags": [
+          "commerce-billing"
+        ],
         "summary": "Mahnstufe setzen",
         "operationId": "admin_billing_dunning_v1_commerce_admin_billing_tenant__tenant_id__dunning_patch",
         "parameters": [
@@ -4357,7 +4628,9 @@
     },
     "/v1/commerce/admin/billing/tenant/{tenant_id}/plan": {
       "post": {
-        "tags": ["commerce-billing"],
+        "tags": [
+          "commerce-billing"
+        ],
         "summary": "Abo-Plan zuweisen/aendern",
         "operationId": "admin_billing_assign_plan_v1_commerce_admin_billing_tenant__tenant_id__plan_post",
         "parameters": [
@@ -4440,7 +4713,9 @@
     },
     "/v1/commerce/admin/billing/tenant/{tenant_id}/cancel": {
       "post": {
-        "tags": ["commerce-billing"],
+        "tags": [
+          "commerce-billing"
+        ],
         "summary": "Kuendigung",
         "operationId": "admin_billing_cancel_v1_commerce_admin_billing_tenant__tenant_id__cancel_post",
         "parameters": [
@@ -4523,7 +4798,9 @@
     },
     "/v1/commerce/admin/billing/tenant/{tenant_id}/renewal": {
       "post": {
-        "tags": ["commerce-billing"],
+        "tags": [
+          "commerce-billing"
+        ],
         "summary": "Verlaengerung protokollieren",
         "operationId": "admin_billing_renewal_v1_commerce_admin_billing_tenant__tenant_id__renewal_post",
         "parameters": [
@@ -4606,7 +4883,9 @@
     },
     "/v1/commerce/admin/billing/payments/allocate": {
       "post": {
-        "tags": ["commerce-billing"],
+        "tags": [
+          "commerce-billing"
+        ],
         "summary": "Zahlungszuordnung (Journal)",
         "operationId": "admin_billing_payment_allocate_v1_commerce_admin_billing_payments_allocate_post",
         "parameters": [
@@ -4680,7 +4959,9 @@
     },
     "/v1/commerce/customer/profit-fee/summary": {
       "get": {
-        "tags": ["commerce-profit-fee"],
+        "tags": [
+          "commerce-profit-fee"
+        ],
         "summary": "HWM und Statements (Kunde)",
         "operationId": "customer_profit_fee_summary_v1_commerce_customer_profit_fee_summary_get",
         "parameters": [
@@ -4744,7 +5025,9 @@
     },
     "/v1/commerce/customer/profit-fee/statements/{statement_id}/acknowledge": {
       "post": {
-        "tags": ["commerce-profit-fee"],
+        "tags": [
+          "commerce-profit-fee"
+        ],
         "summary": "Statement zur Kenntnis nehmen (vor Admin-Freigabe)",
         "operationId": "customer_ack_statement_v1_commerce_customer_profit_fee_statements__statement_id__acknowledge_post",
         "parameters": [
@@ -4828,7 +5111,9 @@
     },
     "/v1/commerce/customer/profit-fee/statements/{statement_id}/dispute": {
       "post": {
-        "tags": ["commerce-profit-fee"],
+        "tags": [
+          "commerce-profit-fee"
+        ],
         "summary": "Streitfall melden",
         "operationId": "customer_dispute_statement_v1_commerce_customer_profit_fee_statements__statement_id__dispute_post",
         "parameters": [
@@ -4912,7 +5197,9 @@
     },
     "/v1/commerce/admin/profit-fee/preview": {
       "post": {
-        "tags": ["commerce-profit-fee"],
+        "tags": [
+          "commerce-profit-fee"
+        ],
         "summary": "Berechnung Trockenlauf",
         "operationId": "admin_profit_fee_preview_v1_commerce_admin_profit_fee_preview_post",
         "parameters": [
@@ -4986,7 +5273,9 @@
     },
     "/v1/commerce/admin/profit-fee/statements/draft": {
       "post": {
-        "tags": ["commerce-profit-fee"],
+        "tags": [
+          "commerce-profit-fee"
+        ],
         "summary": "Statement-Entwurf anlegen",
         "operationId": "admin_create_draft_statement_v1_commerce_admin_profit_fee_statements_draft_post",
         "parameters": [
@@ -5060,7 +5349,9 @@
     },
     "/v1/commerce/admin/profit-fee/statements/{statement_id}/issue": {
       "post": {
-        "tags": ["commerce-profit-fee"],
+        "tags": [
+          "commerce-profit-fee"
+        ],
         "summary": "Entwurf veroeffentlichen",
         "operationId": "admin_issue_statement_v1_commerce_admin_profit_fee_statements__statement_id__issue_post",
         "parameters": [
@@ -5134,7 +5425,9 @@
     },
     "/v1/commerce/admin/profit-fee/statements/{statement_id}/approve": {
       "post": {
-        "tags": ["commerce-profit-fee"],
+        "tags": [
+          "commerce-profit-fee"
+        ],
         "summary": "Freigabe und HWM-Update",
         "operationId": "admin_approve_statement_v1_commerce_admin_profit_fee_statements__statement_id__approve_post",
         "parameters": [
@@ -5218,7 +5511,9 @@
     },
     "/v1/commerce/admin/profit-fee/statements/{statement_id}/void": {
       "post": {
-        "tags": ["commerce-profit-fee"],
+        "tags": [
+          "commerce-profit-fee"
+        ],
         "summary": "Statement stornieren",
         "operationId": "admin_void_statement_route_v1_commerce_admin_profit_fee_statements__statement_id__void_post",
         "parameters": [
@@ -5302,7 +5597,9 @@
     },
     "/v1/commerce/admin/profit-fee/statements/{statement_id}/resolve-dispute": {
       "post": {
-        "tags": ["commerce-profit-fee"],
+        "tags": [
+          "commerce-profit-fee"
+        ],
         "summary": "Streitfall schliessen, wieder issued",
         "operationId": "admin_resolve_dispute_v1_commerce_admin_profit_fee_statements__statement_id__resolve_dispute_post",
         "parameters": [
@@ -5386,7 +5683,9 @@
     },
     "/v1/commerce/admin/profit-fee/statements": {
       "get": {
-        "tags": ["commerce-profit-fee"],
+        "tags": [
+          "commerce-profit-fee"
+        ],
         "summary": "Statements filtern",
         "operationId": "admin_list_statements_v1_commerce_admin_profit_fee_statements_get",
         "parameters": [
@@ -5492,7 +5791,9 @@
     },
     "/v1/commerce/admin/treasury/configs": {
       "get": {
-        "tags": ["commerce-settlement"],
+        "tags": [
+          "commerce-settlement"
+        ],
         "summary": "Treasury-Konfigurationen",
         "operationId": "admin_list_treasury_configs_v1_commerce_admin_treasury_configs_get",
         "parameters": [
@@ -5556,7 +5857,9 @@
     },
     "/v1/commerce/admin/treasury/configs/{config_id}": {
       "patch": {
-        "tags": ["commerce-settlement"],
+        "tags": [
+          "commerce-settlement"
+        ],
         "summary": "Treasury-Config anpassen",
         "operationId": "admin_patch_treasury_config_v1_commerce_admin_treasury_configs__config_id__patch",
         "parameters": [
@@ -5640,7 +5943,9 @@
     },
     "/v1/commerce/admin/settlements/from-statement/{statement_id}": {
       "post": {
-        "tags": ["commerce-settlement"],
+        "tags": [
+          "commerce-settlement"
+        ],
         "summary": "Settlement aus freigegebenem Statement",
         "operationId": "admin_create_settlement_from_statement_v1_commerce_admin_settlements_from_statement__statement_id__post",
         "parameters": [
@@ -5724,7 +6029,9 @@
     },
     "/v1/commerce/admin/settlements/{settlement_id}/treasury-approve": {
       "post": {
-        "tags": ["commerce-settlement"],
+        "tags": [
+          "commerce-settlement"
+        ],
         "summary": "Zweite Treasury-Freigabe",
         "operationId": "admin_settlement_treasury_approve_v1_commerce_admin_settlements__settlement_id__treasury_approve_post",
         "parameters": [
@@ -5798,7 +6105,9 @@
     },
     "/v1/commerce/admin/settlements/{settlement_id}/record-payout": {
       "post": {
-        "tags": ["commerce-settlement"],
+        "tags": [
+          "commerce-settlement"
+        ],
         "summary": "Manuelle Ausfuehrung dokumentieren",
         "operationId": "admin_settlement_record_payout_v1_commerce_admin_settlements__settlement_id__record_payout_post",
         "parameters": [
@@ -5882,7 +6191,9 @@
     },
     "/v1/commerce/admin/settlements/{settlement_id}/confirm-settled": {
       "post": {
-        "tags": ["commerce-settlement"],
+        "tags": [
+          "commerce-settlement"
+        ],
         "summary": "Settlement abschliessen",
         "operationId": "admin_settlement_confirm_v1_commerce_admin_settlements__settlement_id__confirm_settled_post",
         "parameters": [
@@ -5966,7 +6277,9 @@
     },
     "/v1/commerce/admin/settlements/{settlement_id}/cancel": {
       "post": {
-        "tags": ["commerce-settlement"],
+        "tags": [
+          "commerce-settlement"
+        ],
         "summary": "Settlement abbrechen",
         "operationId": "admin_settlement_cancel_v1_commerce_admin_settlements__settlement_id__cancel_post",
         "parameters": [
@@ -6050,7 +6363,9 @@
     },
     "/v1/commerce/admin/settlements/{settlement_id}/fail": {
       "post": {
-        "tags": ["commerce-settlement"],
+        "tags": [
+          "commerce-settlement"
+        ],
         "summary": "Settlement fehlgeschlagen",
         "operationId": "admin_settlement_fail_v1_commerce_admin_settlements__settlement_id__fail_post",
         "parameters": [
@@ -6134,7 +6449,9 @@
     },
     "/v1/commerce/admin/settlements": {
       "get": {
-        "tags": ["commerce-settlement"],
+        "tags": [
+          "commerce-settlement"
+        ],
         "summary": "Settlements filtern",
         "operationId": "admin_list_settlements_v1_commerce_admin_settlements_get",
         "parameters": [
@@ -6240,7 +6557,9 @@
     },
     "/v1/commerce/admin/settlements/{settlement_id}": {
       "get": {
-        "tags": ["commerce-settlement"],
+        "tags": [
+          "commerce-settlement"
+        ],
         "summary": "Settlement Detail",
         "operationId": "admin_get_settlement_v1_commerce_admin_settlements__settlement_id__get",
         "parameters": [
@@ -6314,7 +6633,9 @@
     },
     "/v1/commerce/admin/settlements/{settlement_id}/audit": {
       "get": {
-        "tags": ["commerce-settlement"],
+        "tags": [
+          "commerce-settlement"
+        ],
         "summary": "Settlement Audit-Trail",
         "operationId": "admin_settlement_audit_v1_commerce_admin_settlements__settlement_id__audit_get",
         "parameters": [
@@ -6398,7 +6719,9 @@
     },
     "/db/health": {
       "get": {
-        "tags": ["db"],
+        "tags": [
+          "db"
+        ],
         "summary": "Db Health",
         "operationId": "db_health_db_health_get",
         "responses": {
@@ -6418,7 +6741,9 @@
     },
     "/db/schema": {
       "get": {
-        "tags": ["db"],
+        "tags": [
+          "db"
+        ],
         "summary": "Db Schema",
         "operationId": "db_schema_db_schema_get",
         "parameters": [
@@ -6482,7 +6807,9 @@
     },
     "/events/health": {
       "get": {
-        "tags": ["events"],
+        "tags": [
+          "events"
+        ],
         "summary": "Events Health",
         "operationId": "events_health_events_health_get",
         "responses": {
@@ -6502,7 +6829,9 @@
     },
     "/events/tail": {
       "get": {
-        "tags": ["events"],
+        "tags": [
+          "events"
+        ],
         "summary": "Tail Events",
         "operationId": "tail_events_events_tail_get",
         "parameters": [
@@ -6593,7 +6922,9 @@
     },
     "/events/dlq": {
       "get": {
-        "tags": ["events"],
+        "tags": [
+          "events"
+        ],
         "summary": "Tail Dlq",
         "operationId": "tail_dlq_events_dlq_get",
         "parameters": [
@@ -6673,9 +7004,105 @@
         }
       }
     },
+    "/v1/apex-trace/by-signal": {
+      "get": {
+        "tags": [
+          "apex-trace"
+        ],
+        "summary": "Apex Trace By Signal",
+        "operationId": "apex_trace_by_signal_v1_apex_trace_by_signal_get",
+        "parameters": [
+          {
+            "name": "signal_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2000,
+              "title": "Signal Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Gateway-Internal-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Gateway-Internal-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/correlation/matrix": {
+      "get": {
+        "tags": [
+          "correlation"
+        ],
+        "summary": "Correlation Matrix",
+        "description": "Proxy zur feature-engine: Apex-Korrelationsmatrix (TradFi vs Krypto).",
+        "operationId": "correlation_matrix_v1_correlation_matrix_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/live/state": {
       "get": {
-        "tags": ["live"],
+        "tags": [
+          "live"
+        ],
         "summary": "Live State",
         "operationId": "live_state_v1_live_state_get",
         "parameters": [
@@ -6694,6 +7121,60 @@
               ],
               "title": "Symbol"
             }
+          },
+          {
+            "name": "market_family",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "spot | margin | futures \u2014 Default aus DASHBOARD_DEFAULT_MARKET_FAMILY",
+              "title": "Market Family"
+            },
+            "description": "spot | margin | futures \u2014 Default aus DASHBOARD_DEFAULT_MARKET_FAMILY"
+          },
+          {
+            "name": "product_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Futures: USDT-FUTURES etc.; Default aus BITGET_FUTURES_DEFAULT_PRODUCT_TYPE",
+              "title": "Product Type"
+            },
+            "description": "Futures: USDT-FUTURES etc.; Default aus BITGET_FUTURES_DEFAULT_PRODUCT_TYPE"
+          },
+          {
+            "name": "margin_account_mode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "margin: isolated | crossed (Default isolated)",
+              "title": "Margin Account Mode"
+            },
+            "description": "margin: isolated | crossed (Default isolated)"
           },
           {
             "name": "timeframe",
@@ -6778,7 +7259,9 @@
     },
     "/v1/live/stream": {
       "get": {
-        "tags": ["live"],
+        "tags": [
+          "live"
+        ],
         "summary": "Live Stream",
         "operationId": "live_stream_v1_live_stream_get",
         "parameters": [
@@ -6867,7 +7350,9 @@
     },
     "/v1/live-broker/runtime": {
       "get": {
-        "tags": ["live-broker"],
+        "tags": [
+          "live-broker"
+        ],
         "summary": "Live Broker Runtime",
         "operationId": "live_broker_runtime_v1_live_broker_runtime_get",
         "parameters": [
@@ -6928,7 +7413,9 @@
     },
     "/v1/live-broker/executions/{execution_id}/forensic-timeline": {
       "get": {
-        "tags": ["live-broker"],
+        "tags": [
+          "live-broker"
+        ],
         "summary": "Live Broker Execution Forensic Timeline",
         "description": "Aggregierte Trade-/Execution-Forensik (keine Roh-Secrets; verschachtelte JSON redacted).",
         "operationId": "live_broker_execution_forensic_timeline_v1_live_broker_executions__execution_id__forensic_timeline_get",
@@ -6998,9 +7485,85 @@
         }
       }
     },
+    "/v1/live-broker/executions/{execution_id}/ops-risk-assist-context": {
+      "get": {
+        "tags": [
+          "live-broker"
+        ],
+        "summary": "Live Broker Ops Risk Assist Context",
+        "description": "Kompakter Assist-Kontext (Policy vs. Metrik, Golden Record) \u2014 gleiche Sichtbarkeit wie Forensik.",
+        "operationId": "live_broker_ops_risk_assist_context_v1_live_broker_executions__execution_id__ops_risk_assist_context_get",
+        "parameters": [
+          {
+            "name": "execution_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Execution Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Gateway-Internal-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Gateway-Internal-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/live-broker/decisions/recent": {
       "get": {
-        "tags": ["live-broker"],
+        "tags": [
+          "live-broker"
+        ],
         "summary": "Live Broker Decisions Recent",
         "operationId": "live_broker_decisions_recent_v1_live_broker_decisions_recent_get",
         "parameters": [
@@ -7061,7 +7624,9 @@
     },
     "/v1/live-broker/reference/paper": {
       "get": {
-        "tags": ["live-broker"],
+        "tags": [
+          "live-broker"
+        ],
         "summary": "Live Broker Paper Reference",
         "operationId": "live_broker_paper_reference_v1_live_broker_reference_paper_get",
         "parameters": [
@@ -7122,7 +7687,9 @@
     },
     "/v1/live-broker/orders/recent": {
       "get": {
-        "tags": ["live-broker"],
+        "tags": [
+          "live-broker"
+        ],
         "summary": "Live Broker Orders Recent",
         "operationId": "live_broker_orders_recent_v1_live_broker_orders_recent_get",
         "parameters": [
@@ -7183,7 +7750,9 @@
     },
     "/v1/live-broker/fills/recent": {
       "get": {
-        "tags": ["live-broker"],
+        "tags": [
+          "live-broker"
+        ],
         "summary": "Live Broker Fills Recent",
         "operationId": "live_broker_fills_recent_v1_live_broker_fills_recent_get",
         "parameters": [
@@ -7244,7 +7813,9 @@
     },
     "/v1/live-broker/orders/actions/recent": {
       "get": {
-        "tags": ["live-broker"],
+        "tags": [
+          "live-broker"
+        ],
         "summary": "Live Broker Order Actions Recent",
         "operationId": "live_broker_order_actions_recent_v1_live_broker_orders_actions_recent_get",
         "parameters": [
@@ -7305,7 +7876,9 @@
     },
     "/v1/live-broker/kill-switch/active": {
       "get": {
-        "tags": ["live-broker"],
+        "tags": [
+          "live-broker"
+        ],
         "summary": "Live Broker Kill Switch Active",
         "operationId": "live_broker_kill_switch_active_v1_live_broker_kill_switch_active_get",
         "parameters": [
@@ -7366,7 +7939,9 @@
     },
     "/v1/live-broker/kill-switch/events/recent": {
       "get": {
-        "tags": ["live-broker"],
+        "tags": [
+          "live-broker"
+        ],
         "summary": "Live Broker Kill Switch Events Recent",
         "operationId": "live_broker_kill_switch_events_recent_v1_live_broker_kill_switch_events_recent_get",
         "parameters": [
@@ -7427,7 +8002,9 @@
     },
     "/v1/live-broker/audit/recent": {
       "get": {
-        "tags": ["live-broker"],
+        "tags": [
+          "live-broker"
+        ],
         "summary": "Live Broker Audit Recent",
         "operationId": "live_broker_audit_recent_v1_live_broker_audit_recent_get",
         "parameters": [
@@ -7502,9 +8079,641 @@
         }
       }
     },
+    "/api/demo/status": {
+      "get": {
+        "tags": [
+          "demo"
+        ],
+        "summary": "Demo Status",
+        "operationId": "demo_status_api_demo_status_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Gateway-Internal-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Gateway-Internal-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/demo/readiness": {
+      "get": {
+        "tags": [
+          "demo"
+        ],
+        "summary": "Demo Readiness",
+        "operationId": "demo_readiness_api_demo_readiness_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Gateway-Internal-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Gateway-Internal-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/demo/assets": {
+      "get": {
+        "tags": [
+          "demo"
+        ],
+        "summary": "Demo Assets",
+        "operationId": "demo_assets_api_demo_assets_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Gateway-Internal-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Gateway-Internal-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/demo/balance": {
+      "get": {
+        "tags": [
+          "demo"
+        ],
+        "summary": "Demo Balance",
+        "operationId": "demo_balance_api_demo_balance_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Gateway-Internal-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Gateway-Internal-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/demo/positions": {
+      "get": {
+        "tags": [
+          "demo"
+        ],
+        "summary": "Demo Positions",
+        "operationId": "demo_positions_api_demo_positions_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Gateway-Internal-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Gateway-Internal-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/demo/open-orders": {
+      "get": {
+        "tags": [
+          "demo"
+        ],
+        "summary": "Demo Open Orders",
+        "operationId": "demo_open_orders_api_demo_open_orders_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Gateway-Internal-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Gateway-Internal-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/demo/order-history": {
+      "get": {
+        "tags": [
+          "demo"
+        ],
+        "summary": "Demo Order History",
+        "operationId": "demo_order_history_api_demo_order_history_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Gateway-Internal-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Gateway-Internal-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/demo/order/preview": {
+      "post": {
+        "tags": [
+          "demo"
+        ],
+        "summary": "Demo Order Preview",
+        "operationId": "demo_order_preview_api_demo_order_preview_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Gateway-Internal-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Gateway-Internal-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/demo/order/submit": {
+      "post": {
+        "tags": [
+          "demo"
+        ],
+        "summary": "Demo Order Submit Blocked",
+        "operationId": "demo_order_submit_blocked_api_demo_order_submit_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Gateway-Internal-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Gateway-Internal-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/demo/order/cancel": {
+      "post": {
+        "tags": [
+          "demo"
+        ],
+        "summary": "Demo Order Cancel Blocked",
+        "operationId": "demo_order_cancel_blocked_api_demo_order_cancel_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Gateway-Internal-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Gateway-Internal-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/live-broker/executions/{execution_id}/operator-release": {
       "post": {
-        "tags": ["live-broker-operator"],
+        "tags": [
+          "live-broker-operator"
+        ],
         "summary": "Live Broker Operator Release",
         "operationId": "live_broker_operator_release_v1_live_broker_executions__execution_id__operator_release_post",
         "parameters": [
@@ -7619,7 +8828,9 @@
     },
     "/v1/live-broker/safety/kill-switch/arm": {
       "post": {
-        "tags": ["live-broker-safety"],
+        "tags": [
+          "live-broker-safety"
+        ],
         "summary": "Safety Kill Switch Arm",
         "operationId": "safety_kill_switch_arm_v1_live_broker_safety_kill_switch_arm_post",
         "parameters": [
@@ -7724,7 +8935,9 @@
     },
     "/v1/live-broker/safety/kill-switch/release": {
       "post": {
-        "tags": ["live-broker-safety"],
+        "tags": [
+          "live-broker-safety"
+        ],
         "summary": "Safety Kill Switch Release",
         "operationId": "safety_kill_switch_release_v1_live_broker_safety_kill_switch_release_post",
         "parameters": [
@@ -7829,7 +9042,9 @@
     },
     "/v1/live-broker/safety/orders/cancel-all": {
       "post": {
-        "tags": ["live-broker-safety"],
+        "tags": [
+          "live-broker-safety"
+        ],
         "summary": "Safety Orders Cancel All",
         "operationId": "safety_orders_cancel_all_v1_live_broker_safety_orders_cancel_all_post",
         "parameters": [
@@ -7934,7 +9149,9 @@
     },
     "/v1/live-broker/safety/orders/emergency-flatten": {
       "post": {
-        "tags": ["live-broker-safety"],
+        "tags": [
+          "live-broker-safety"
+        ],
         "summary": "Safety Emergency Flatten",
         "operationId": "safety_emergency_flatten_v1_live_broker_safety_orders_emergency_flatten_post",
         "parameters": [
@@ -8039,7 +9256,9 @@
     },
     "/v1/live-broker/safety/safety-latch/release": {
       "post": {
-        "tags": ["live-broker-safety"],
+        "tags": [
+          "live-broker-safety"
+        ],
         "summary": "Safety Latch Release",
         "operationId": "safety_latch_release_v1_live_broker_safety_safety_latch_release_post",
         "parameters": [
@@ -8144,7 +9363,9 @@
     },
     "/v1/monitor/alerts/open": {
       "get": {
-        "tags": ["monitor"],
+        "tags": [
+          "monitor"
+        ],
         "summary": "Offene Monitor-Alerts",
         "description": "Liste aus ops.alerts (state=open). HTTP 200 mit Envelope; kein 500 bei leerer DB-Tabelle.",
         "operationId": "monitor_alerts_open_v1_monitor_alerts_open_get",
@@ -8206,7 +9427,9 @@
     },
     "/v1/alerts/outbox/recent": {
       "get": {
-        "tags": ["alerts"],
+        "tags": [
+          "alerts"
+        ],
         "summary": "Alerts Outbox Recent",
         "operationId": "alerts_outbox_recent_v1_alerts_outbox_recent_get",
         "parameters": [
@@ -8267,7 +9490,9 @@
     },
     "/v1/signals/facets": {
       "get": {
-        "tags": ["signals"],
+        "tags": [
+          "signals"
+        ],
         "summary": "Signals Facets",
         "operationId": "signals_facets_v1_signals_facets_get",
         "parameters": [
@@ -8344,7 +9569,9 @@
     },
     "/v1/signals/recent": {
       "get": {
-        "tags": ["signals"],
+        "tags": [
+          "signals"
+        ],
         "summary": "Signals Recent",
         "operationId": "signals_recent_v1_signals_recent_get",
         "parameters": [
@@ -8685,7 +9912,9 @@
     },
     "/v1/signals/{signal_id}/explain": {
       "get": {
-        "tags": ["signals"],
+        "tags": [
+          "signals"
+        ],
         "summary": "Signal Explain",
         "operationId": "signal_explain_v1_signals__signal_id__explain_get",
         "parameters": [
@@ -8756,7 +9985,9 @@
     },
     "/v1/signals/{signal_id}": {
       "get": {
-        "tags": ["signals"],
+        "tags": [
+          "signals"
+        ],
         "summary": "Signal Detail",
         "operationId": "signal_detail_v1_signals__signal_id__get",
         "parameters": [
@@ -8827,7 +10058,9 @@
     },
     "/v1/paper/positions/open": {
       "get": {
-        "tags": ["paper"],
+        "tags": [
+          "paper"
+        ],
         "summary": "Paper Positions Open",
         "operationId": "paper_positions_open_v1_paper_positions_open_get",
         "parameters": [
@@ -8904,7 +10137,9 @@
     },
     "/v1/paper/trades/recent": {
       "get": {
-        "tags": ["paper"],
+        "tags": [
+          "paper"
+        ],
         "summary": "Paper Trades Recent",
         "operationId": "paper_trades_recent_v1_paper_trades_recent_get",
         "parameters": [
@@ -8997,7 +10232,9 @@
     },
     "/v1/paper/metrics/summary": {
       "get": {
-        "tags": ["paper"],
+        "tags": [
+          "paper"
+        ],
         "summary": "Paper Metrics Summary",
         "operationId": "paper_metrics_summary_v1_paper_metrics_summary_get",
         "parameters": [
@@ -9058,7 +10295,9 @@
     },
     "/v1/paper/ledger/recent": {
       "get": {
-        "tags": ["paper"],
+        "tags": [
+          "paper"
+        ],
         "summary": "Paper Ledger Recent",
         "operationId": "paper_ledger_recent_v1_paper_ledger_recent_get",
         "parameters": [
@@ -9151,7 +10390,9 @@
     },
     "/v1/paper/journal/recent": {
       "get": {
-        "tags": ["paper"],
+        "tags": [
+          "paper"
+        ],
         "summary": "Paper Journal Recent",
         "operationId": "paper_journal_recent_v1_paper_journal_recent_get",
         "parameters": [
@@ -9260,7 +10501,9 @@
     },
     "/v1/news/scored": {
       "get": {
-        "tags": ["news"],
+        "tags": [
+          "news"
+        ],
         "summary": "News Scored",
         "operationId": "news_scored_v1_news_scored_get",
         "parameters": [
@@ -9365,7 +10608,9 @@
     },
     "/v1/news/{news_id}": {
       "get": {
-        "tags": ["news"],
+        "tags": [
+          "news"
+        ],
         "summary": "News Detail",
         "operationId": "news_detail_v1_news__news_id__get",
         "parameters": [
@@ -9436,7 +10681,9 @@
     },
     "/v1/registry/strategies": {
       "get": {
-        "tags": ["registry"],
+        "tags": [
+          "registry"
+        ],
         "summary": "Registry Strategies",
         "operationId": "registry_strategies_v1_registry_strategies_get",
         "parameters": [
@@ -9497,7 +10744,9 @@
     },
     "/v1/registry/strategies/{strategy_id}/status": {
       "get": {
-        "tags": ["registry"],
+        "tags": [
+          "registry"
+        ],
         "summary": "Registry Strategy Status",
         "operationId": "registry_strategy_status_v1_registry_strategies__strategy_id__status_get",
         "parameters": [
@@ -9566,9 +10815,188 @@
         }
       }
     },
+    "/v1/registry/strategies/{strategy_id}/versions": {
+      "post": {
+        "tags": [
+          "registry"
+        ],
+        "summary": "Registry Add Strategy Version",
+        "operationId": "registry_add_strategy_version_v1_registry_strategies__strategy_id__versions_post",
+        "parameters": [
+          {
+            "name": "strategy_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Strategy Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Gateway-Internal-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Gateway-Internal-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddStrategyVersionBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/registry/strategies/{strategy_id}/versions/{strategy_version_id}": {
+      "patch": {
+        "tags": [
+          "registry"
+        ],
+        "summary": "Registry Patch Strategy Version",
+        "description": "In-place-PATCH abgelehnt; live_champion liefert 409.",
+        "operationId": "registry_patch_strategy_version_v1_registry_strategies__strategy_id__versions__strategy_version_id__patch",
+        "parameters": [
+          {
+            "name": "strategy_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Strategy Id"
+            }
+          },
+          {
+            "name": "strategy_version_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Strategy Version Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Gateway-Internal-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Gateway-Internal-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchStrategyVersionBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/registry/strategies/{strategy_id}": {
       "get": {
-        "tags": ["registry"],
+        "tags": [
+          "registry"
+        ],
         "summary": "Registry Strategy Detail",
         "operationId": "registry_strategy_detail_v1_registry_strategies__strategy_id__get",
         "parameters": [
@@ -9639,7 +11067,9 @@
     },
     "/v1/market-universe/status": {
       "get": {
-        "tags": ["market-universe"],
+        "tags": [
+          "market-universe"
+        ],
         "summary": "Market Universe Status",
         "operationId": "market_universe_status_v1_market_universe_status_get",
         "parameters": [
@@ -9698,9 +11128,155 @@
         }
       }
     },
+    "/v1/market-universe/candles": {
+      "get": {
+        "tags": [
+          "market-universe"
+        ],
+        "summary": "Market Universe Candles",
+        "description": "Kerzen-Historie aus `tsdb.candles` (Hydration neben SSE) \u2014 `symbol` ist verpflichtend\n(kein BTCUSDT-Implizit-Default in dieser Route).",
+        "operationId": "market_universe_candles_v1_market_universe_candles_get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Kanonisches Bitget-Symbol (z. B. ETHUSDT); kein Server-Default \u2014 aus URL/Client setzen.",
+              "title": "Symbol"
+            },
+            "description": "Kanonisches Bitget-Symbol (z. B. ETHUSDT); kein Server-Default \u2014 aus URL/Client setzen."
+          },
+          {
+            "name": "timeframe",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "5m",
+              "title": "Timeframe"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 500,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "market_family",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Market Family"
+            }
+          },
+          {
+            "name": "product_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Product Type"
+            }
+          },
+          {
+            "name": "margin_account_mode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Margin Account Mode"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Gateway-Internal-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Gateway-Internal-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/learning/models/registry-v2": {
       "get": {
-        "tags": ["learning"],
+        "tags": [
+          "learning"
+        ],
         "summary": "Learning Model Registry V2",
         "operationId": "learning_model_registry_v2_v1_learning_models_registry_v2_get",
         "parameters": [
@@ -9761,7 +11337,9 @@
     },
     "/v1/learning/metrics/strategies": {
       "get": {
-        "tags": ["learning"],
+        "tags": [
+          "learning"
+        ],
         "summary": "Learning Metrics Strategies",
         "operationId": "learning_metrics_strategies_v1_learning_metrics_strategies_get",
         "parameters": [
@@ -9822,7 +11400,9 @@
     },
     "/v1/learning/patterns/top": {
       "get": {
-        "tags": ["learning"],
+        "tags": [
+          "learning"
+        ],
         "summary": "Learning Patterns Top",
         "operationId": "learning_patterns_top_v1_learning_patterns_top_get",
         "parameters": [
@@ -9883,7 +11463,9 @@
     },
     "/v1/learning/recommendations/recent": {
       "get": {
-        "tags": ["learning"],
+        "tags": [
+          "learning"
+        ],
         "summary": "Learning Recommendations Recent",
         "operationId": "learning_recommendations_recent_v1_learning_recommendations_recent_get",
         "parameters": [
@@ -9944,7 +11526,9 @@
     },
     "/v1/learning/drift/recent": {
       "get": {
-        "tags": ["learning"],
+        "tags": [
+          "learning"
+        ],
         "summary": "Drift-Events (recent)",
         "description": "Letzte Eintraege aus learn.drift_events. Payload siehe docs/PRODUCTION_READINESS_AND_API_CONTRACTS.md.",
         "operationId": "learning_drift_recent_v1_learning_drift_recent_get",
@@ -10006,7 +11590,9 @@
     },
     "/v1/learning/model-ops/report": {
       "get": {
-        "tags": ["learning"],
+        "tags": [
+          "learning"
+        ],
         "summary": "Learning Model Ops Report",
         "operationId": "learning_model_ops_report_v1_learning_model_ops_report_get",
         "parameters": [
@@ -10077,7 +11663,9 @@
     },
     "/v1/learning/drift/online-state": {
       "get": {
-        "tags": ["learning"],
+        "tags": [
+          "learning"
+        ],
         "summary": "Online-Drift-Zustand",
         "description": "Zeile aus learn.online_drift_state oder item=null. HTTP 200; leerer State ist erwartbar vor Evaluator-Lauf.",
         "operationId": "learning_drift_online_state_v1_learning_drift_online_state_get",
@@ -10139,7 +11727,9 @@
     },
     "/v1/backtests/runs": {
       "get": {
-        "tags": ["backtests"],
+        "tags": [
+          "backtests"
+        ],
         "summary": "Backtest Runs",
         "operationId": "backtest_runs_v1_backtests_runs_get",
         "parameters": [
@@ -10200,7 +11790,9 @@
     },
     "/v1/operator/ai-strategy-proposal-drafts/generate-and-store": {
       "post": {
-        "tags": ["operator-ai-strategy-drafts"],
+        "tags": [
+          "operator-ai-strategy-drafts"
+        ],
         "summary": "Ai Strategy Proposal Generate And Store",
         "operationId": "ai_strategy_proposal_generate_and_store_v1_operator_ai_strategy_proposal_drafts_generate_and_store_post",
         "parameters": [
@@ -10274,7 +11866,9 @@
     },
     "/v1/operator/ai-strategy-proposal-drafts": {
       "get": {
-        "tags": ["operator-ai-strategy-drafts"],
+        "tags": [
+          "operator-ai-strategy-drafts"
+        ],
         "summary": "List Ai Strategy Proposal Drafts",
         "operationId": "list_ai_strategy_proposal_drafts_v1_operator_ai_strategy_proposal_drafts_get",
         "parameters": [
@@ -10364,7 +11958,9 @@
     },
     "/v1/operator/ai-strategy-proposal-drafts/{draft_id}": {
       "get": {
-        "tags": ["operator-ai-strategy-drafts"],
+        "tags": [
+          "operator-ai-strategy-drafts"
+        ],
         "summary": "Get Ai Strategy Proposal Draft",
         "operationId": "get_ai_strategy_proposal_draft_v1_operator_ai_strategy_proposal_drafts__draft_id__get",
         "parameters": [
@@ -10438,7 +12034,9 @@
     },
     "/v1/operator/ai-strategy-proposal-drafts/{draft_id}/validate-deterministic": {
       "post": {
-        "tags": ["operator-ai-strategy-drafts"],
+        "tags": [
+          "operator-ai-strategy-drafts"
+        ],
         "summary": "Validate Ai Strategy Proposal Draft",
         "operationId": "validate_ai_strategy_proposal_draft_v1_operator_ai_strategy_proposal_drafts__draft_id__validate_deterministic_post",
         "parameters": [
@@ -10512,7 +12110,9 @@
     },
     "/v1/operator/ai-strategy-proposal-drafts/{draft_id}/request-promotion": {
       "post": {
-        "tags": ["operator-ai-strategy-drafts"],
+        "tags": [
+          "operator-ai-strategy-drafts"
+        ],
         "summary": "Request Promotion Ai Strategy Proposal Draft",
         "operationId": "request_promotion_ai_strategy_proposal_draft_v1_operator_ai_strategy_proposal_drafts__draft_id__request_promotion_post",
         "parameters": [
@@ -10596,7 +12196,9 @@
     },
     "/v1/llm/operator/explain": {
       "post": {
-        "tags": ["llm-operator"],
+        "tags": [
+          "llm-operator"
+        ],
         "summary": "Llm Operator Explain",
         "description": "Operator-Hilfe: Frage (DE) + optionaler Readonly-Kontext \u2192 strukturierte Erklaerung.\nWeiterleitung zum LLM-Orchestrator (interner API-Key, kein OpenAI-Key im Gateway).",
         "operationId": "llm_operator_explain_v1_llm_operator_explain_post",
@@ -10671,7 +12273,9 @@
     },
     "/v1/llm/operator/safety-incident-diagnosis": {
       "post": {
-        "tags": ["llm-operator"],
+        "tags": [
+          "llm-operator"
+        ],
         "summary": "Llm Operator Safety Incident Diagnosis",
         "description": "Sicherheits-Diagnose: Readonly Health/Alerts-Kontext + Frage \u2192 strukturierte Ursachen/Plaene.\nKeine Ausfuehrungshoheit \u2014 nur Analyse (Orchestrator, execution_authority none).",
         "operationId": "llm_operator_safety_incident_diagnosis_v1_llm_operator_safety_incident_diagnosis_post",
@@ -10746,7 +12350,9 @@
     },
     "/v1/llm/operator/strategy-signal-explain": {
       "post": {
-        "tags": ["llm-operator"],
+        "tags": [
+          "llm-operator"
+        ],
         "summary": "Llm Operator Strategy Signal Explain",
         "description": "Strategie-/Signal-Erklaerung: Readonly-Snapshot (JSON) + optionale Fokusfrage \u2192 strukturierte Antwort.\nForward zum LLM-Orchestrator (interner API-Key).",
         "operationId": "llm_operator_strategy_signal_explain_v1_llm_operator_strategy_signal_explain_post",
@@ -10821,7 +12427,9 @@
     },
     "/v1/llm/operator/ai-strategy-proposal-draft": {
       "post": {
-        "tags": ["llm-operator"],
+        "tags": [
+          "llm-operator"
+        ],
         "summary": "Llm Operator Ai Strategy Proposal Draft",
         "description": "KI-Strategie-/Szenario-Entwurf (strukturiert, execution_authority none).\nPersistenz: POST /v1/operator/ai-strategy-proposal-drafts/generate-and-store.",
         "operationId": "llm_operator_ai_strategy_proposal_draft_v1_llm_operator_ai_strategy_proposal_draft_post",
@@ -10894,9 +12502,103 @@
         }
       }
     },
+    "/v1/llm/assist/ops-risk/turn": {
+      "post": {
+        "tags": [
+          "llm-assist"
+        ],
+        "summary": "Llm Assist Ops Risk Turn",
+        "operationId": "llm_assist_ops_risk_turn_v1_llm_assist_ops_risk_turn_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Gateway-Internal-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Gateway-Internal-Key"
+            }
+          },
+          {
+            "name": "X-Admin-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Admin-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssistTurnPublicBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Llm Assist Ops Risk Turn V1 Llm Assist Ops Risk Turn Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/llm/assist/admin-operations/turn": {
       "post": {
-        "tags": ["llm-assist"],
+        "tags": [
+          "llm-assist"
+        ],
         "summary": "Llm Assist Admin Operations Turn",
         "operationId": "llm_assist_admin_operations_turn_v1_llm_assist_admin_operations_turn_post",
         "parameters": [
@@ -10986,7 +12688,9 @@
     },
     "/v1/llm/assist/strategy-signal/turn": {
       "post": {
-        "tags": ["llm-assist"],
+        "tags": [
+          "llm-assist"
+        ],
         "summary": "Llm Assist Strategy Signal Turn",
         "operationId": "llm_assist_strategy_signal_turn_v1_llm_assist_strategy_signal_turn_post",
         "parameters": [
@@ -11060,7 +12764,9 @@
     },
     "/v1/llm/assist/customer-onboarding/turn": {
       "post": {
-        "tags": ["llm-assist"],
+        "tags": [
+          "llm-assist"
+        ],
         "summary": "Llm Assist Customer Onboarding Turn",
         "operationId": "llm_assist_customer_onboarding_turn_v1_llm_assist_customer_onboarding_turn_post",
         "parameters": [
@@ -11134,7 +12840,9 @@
     },
     "/v1/llm/assist/support-billing/turn": {
       "post": {
-        "tags": ["llm-assist"],
+        "tags": [
+          "llm-assist"
+        ],
         "summary": "Llm Assist Support Billing Turn",
         "operationId": "llm_assist_support_billing_turn_v1_llm_assist_support_billing_turn_post",
         "parameters": [
@@ -11206,9 +12914,109 @@
         }
       }
     },
+    "/v1/ops/self-healing/status": {
+      "get": {
+        "tags": [
+          "ops-self-healing"
+        ],
+        "summary": "Self Healing Status Get",
+        "operationId": "self_healing_status_get_v1_ops_self_healing_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Self Healing Status Get V1 Ops Self Healing Status Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/ops/self-healing/restart": {
+      "post": {
+        "tags": [
+          "ops-self-healing"
+        ],
+        "summary": "Self Healing Restart",
+        "operationId": "self_healing_restart_v1_ops_self_healing_restart_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Gateway-Internal-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Gateway-Internal-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SelfHealingRestartIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Self Healing Restart V1 Ops Self Healing Restart Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/system/health": {
       "get": {
-        "tags": ["system"],
+        "tags": [
+          "system"
+        ],
         "summary": "System Health",
         "operationId": "system_health_v1_system_health_get",
         "parameters": [
@@ -11272,7 +13080,9 @@
     },
     "/v1/system/health/operator-report.pdf": {
       "get": {
-        "tags": ["system"],
+        "tags": [
+          "system"
+        ],
         "summary": "System Health Operator Report Pdf",
         "description": "PDF-Export fuer Operator/KI: Warnungen, Massnahmen, machine-JSON, Alerts, Outbox.\nGleiche Autorisierung wie GET /v1/system/health.",
         "operationId": "system_health_operator_report_pdf_v1_system_health_operator_report_pdf_get",
@@ -11334,7 +13144,9 @@
     },
     "/v1/admin/llm-governance": {
       "get": {
-        "tags": ["admin"],
+        "tags": [
+          "admin"
+        ],
         "summary": "Admin Llm Governance Get",
         "description": "KI-Governance: Prompt-Versionen, Modellzuordnung, Eval-Hinweis (Orchestrator).",
         "operationId": "admin_llm_governance_get_v1_admin_llm_governance_get",
@@ -11415,7 +13227,9 @@
     },
     "/v1/admin/performance-overview": {
       "get": {
-        "tags": ["admin"],
+        "tags": [
+          "admin"
+        ],
         "summary": "Aggregierte Paper-/Live-Kennzahlen (Prompt 20, ohne Mandanten-PII)",
         "operationId": "admin_performance_overview_v1_admin_performance_overview_get",
         "parameters": [
@@ -11495,7 +13309,9 @@
     },
     "/v1/admin/telegram-customer-delivery": {
       "get": {
-        "tags": ["admin"],
+        "tags": [
+          "admin"
+        ],
         "summary": "Kunden-Telegram: Outbox, Fehler, letzte Bot-Befehle (Prompt 19)",
         "operationId": "admin_telegram_customer_delivery_v1_admin_telegram_customer_delivery_get",
         "parameters": [
@@ -11575,7 +13391,9 @@
     },
     "/v1/admin/console-overview": {
       "get": {
-        "tags": ["admin"],
+        "tags": [
+          "admin"
+        ],
         "summary": "Admin-Cockpit: Lebenszyklus, Abo, Vertraege, Integrationen",
         "description": "Aggregierte Kennzahlen fuer das zentrale Admin-Dashboard (ohne Schreibpfade).",
         "operationId": "admin_console_overview_v1_admin_console_overview_get",
@@ -11656,7 +13474,9 @@
     },
     "/v1/admin/rules": {
       "get": {
-        "tags": ["admin"],
+        "tags": [
+          "admin"
+        ],
         "summary": "Admin Rules Get",
         "operationId": "admin_rules_get_v1_admin_rules_get",
         "parameters": [
@@ -11734,7 +13554,9 @@
         }
       },
       "post": {
-        "tags": ["admin"],
+        "tags": [
+          "admin"
+        ],
         "summary": "Admin Rules Post",
         "operationId": "admin_rules_post_v1_admin_rules_post",
         "parameters": [
@@ -11824,7 +13646,9 @@
     },
     "/v1/admin/strategy-status": {
       "post": {
-        "tags": ["admin"],
+        "tags": [
+          "admin"
+        ],
         "summary": "Admin Strategy Status",
         "operationId": "admin_strategy_status_v1_admin_strategy_status_post",
         "parameters": [
@@ -11914,7 +13738,9 @@
     },
     "/v1/admin/paper/account/deposit-demo": {
       "post": {
-        "tags": ["admin-paper"],
+        "tags": [
+          "admin-paper"
+        ],
         "summary": "Admin Paper Deposit Demo",
         "operationId": "admin_paper_deposit_demo_v1_admin_paper_account_deposit_demo_post",
         "parameters": [
@@ -12004,7 +13830,9 @@
     },
     "/v1/admin/paper/account/adjust": {
       "post": {
-        "tags": ["admin-paper"],
+        "tags": [
+          "admin-paper"
+        ],
         "summary": "Admin Paper Adjust",
         "operationId": "admin_paper_adjust_v1_admin_paper_account_adjust_post",
         "parameters": [
@@ -12094,7 +13922,9 @@
     },
     "/v1/admin/paper/account/reset-demo": {
       "post": {
-        "tags": ["admin-paper"],
+        "tags": [
+          "admin-paper"
+        ],
         "summary": "Admin Paper Reset Demo",
         "operationId": "admin_paper_reset_demo_v1_admin_paper_account_reset_demo_post",
         "parameters": [
@@ -12249,6 +14079,33 @@
   },
   "components": {
     "schemas": {
+      "AddStrategyVersionBody": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Version"
+          },
+          "definition": {
+            "type": "object",
+            "title": "Definition"
+          },
+          "parameters": {
+            "type": "object",
+            "title": "Parameters"
+          },
+          "risk_profile": {
+            "type": "object",
+            "title": "Risk Profile"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version"
+        ],
+        "title": "AddStrategyVersionBody"
+      },
       "AdminApproveBody": {
         "properties": {
           "force_without_customer_ack": {
@@ -12270,7 +14127,9 @@
           }
         },
         "type": "object",
-        "required": ["plan_code"],
+        "required": [
+          "plan_code"
+        ],
         "title": "AdminAssignPlanBody"
       },
       "AdminCancelBody": {
@@ -12294,7 +14153,10 @@
           },
           "trading_mode": {
             "type": "string",
-            "enum": ["paper", "live"],
+            "enum": [
+              "paper",
+              "live"
+            ],
             "title": "Trading Mode"
           },
           "period_start": {
@@ -12381,7 +14243,10 @@
           }
         },
         "type": "object",
-        "required": ["tenant_id", "credits_invoice_id"],
+        "required": [
+          "tenant_id",
+          "credits_invoice_id"
+        ],
         "title": "AdminCreditInvoiceBody"
       },
       "AdminDunningBody": {
@@ -12394,7 +14259,9 @@
           }
         },
         "type": "object",
-        "required": ["dunning_stage"],
+        "required": [
+          "dunning_stage"
+        ],
         "title": "AdminDunningBody"
       },
       "AdminIntegrationBody": {
@@ -12443,7 +14310,11 @@
           }
         },
         "type": "object",
-        "required": ["tenant_id", "telegram_state", "broker_state"],
+        "required": [
+          "tenant_id",
+          "telegram_state",
+          "broker_state"
+        ],
         "title": "AdminIntegrationBody"
       },
       "AdminIssueInvoiceBody": {
@@ -12474,7 +14345,10 @@
           }
         },
         "type": "object",
-        "required": ["tenant_id", "plan_code"],
+        "required": [
+          "tenant_id",
+          "plan_code"
+        ],
         "title": "AdminIssueInvoiceBody"
       },
       "AdminLifecycleEmailBody": {
@@ -12492,7 +14366,9 @@
           }
         },
         "type": "object",
-        "required": ["tenant_id"],
+        "required": [
+          "tenant_id"
+        ],
         "title": "AdminLifecycleEmailBody"
       },
       "AdminLifecycleTransitionBody": {
@@ -12523,7 +14399,10 @@
           }
         },
         "type": "object",
-        "required": ["tenant_id", "to_status"],
+        "required": [
+          "tenant_id",
+          "to_status"
+        ],
         "title": "AdminLifecycleTransitionBody"
       },
       "AdminPaymentAllocateBody": {
@@ -12560,7 +14439,10 @@
           }
         },
         "type": "object",
-        "required": ["tenant_id", "amount_gross_cents"],
+        "required": [
+          "tenant_id",
+          "amount_gross_cents"
+        ],
         "title": "AdminPaymentAllocateBody"
       },
       "AdminPaymentBody": {
@@ -12620,7 +14502,11 @@
           }
         },
         "type": "object",
-        "required": ["tenant_id", "amount_list_usd", "status"],
+        "required": [
+          "tenant_id",
+          "amount_list_usd",
+          "status"
+        ],
         "title": "AdminPaymentBody"
       },
       "AdminPreviewBody": {
@@ -12633,7 +14519,10 @@
           },
           "trading_mode": {
             "type": "string",
-            "enum": ["paper", "live"],
+            "enum": [
+              "paper",
+              "live"
+            ],
             "title": "Trading Mode"
           },
           "cumulative_realized_pnl_cents": {
@@ -12691,7 +14580,9 @@
           }
         },
         "type": "object",
-        "required": ["resolution_note"],
+        "required": [
+          "resolution_note"
+        ],
         "title": "AdminResolveDisputeBody"
       },
       "AdminRulesUpsert": {
@@ -12719,7 +14610,9 @@
           }
         },
         "type": "object",
-        "required": ["reason"],
+        "required": [
+          "reason"
+        ],
         "title": "AdminVoidBody"
       },
       "AdminWalletAdjustBody": {
@@ -12742,7 +14635,11 @@
           }
         },
         "type": "object",
-        "required": ["tenant_id", "delta_list_usd", "reason_code"],
+        "required": [
+          "tenant_id",
+          "delta_list_usd",
+          "reason_code"
+        ],
         "title": "AdminWalletAdjustBody"
       },
       "AiStrategyProposalDraftGatewayBody": {
@@ -12787,7 +14684,10 @@
           }
         },
         "type": "object",
-        "required": ["conversation_id", "user_message_de"],
+        "required": [
+          "conversation_id",
+          "user_message_de"
+        ],
         "title": "AssistTurnPublicBody"
       },
       "CancelBody": {
@@ -12800,7 +14700,9 @@
           }
         },
         "type": "object",
-        "required": ["reason"],
+        "required": [
+          "reason"
+        ],
         "title": "CancelBody"
       },
       "ConfirmSettledBody": {
@@ -12825,7 +14727,9 @@
           }
         },
         "type": "object",
-        "required": ["confirmation_ref"],
+        "required": [
+          "confirmation_ref"
+        ],
         "title": "ConfirmSettledBody"
       },
       "CreateSettlementBody": {
@@ -12874,7 +14778,9 @@
           }
         },
         "type": "object",
-        "required": ["reason"],
+        "required": [
+          "reason"
+        ],
         "title": "CustomerDisputeBody"
       },
       "CustomerMePatch": {
@@ -12918,7 +14824,9 @@
           }
         },
         "type": "object",
-        "required": ["amount_list_usd"],
+        "required": [
+          "amount_list_usd"
+        ],
         "title": "DepositCheckoutBody"
       },
       "DepositResumeBody": {
@@ -12931,7 +14839,9 @@
           }
         },
         "type": "object",
-        "required": ["idempotency_key"],
+        "required": [
+          "idempotency_key"
+        ],
         "title": "DepositResumeBody"
       },
       "FailBody": {
@@ -12944,7 +14854,9 @@
           }
         },
         "type": "object",
-        "required": ["reason"],
+        "required": [
+          "reason"
+        ],
         "title": "FailBody"
       },
       "GenerateAndStoreBody": {
@@ -13081,7 +14993,12 @@
           }
         },
         "type": "object",
-        "required": ["tenant_id", "event_type", "quantity", "unit"],
+        "required": [
+          "tenant_id",
+          "event_type",
+          "quantity",
+          "unit"
+        ],
         "title": "InternalUsageBody"
       },
       "ManualActionMintRequest": {
@@ -13098,7 +15015,9 @@
           }
         },
         "type": "object",
-        "required": ["route_key"],
+        "required": [
+          "route_key"
+        ],
         "title": "ManualActionMintRequest"
       },
       "MockWebhookBody": {
@@ -13110,7 +15029,9 @@
           }
         },
         "type": "object",
-        "required": ["intent_id"],
+        "required": [
+          "intent_id"
+        ],
         "title": "MockWebhookBody"
       },
       "OperatorExplainGatewayBody": {
@@ -13127,7 +15048,9 @@
           }
         },
         "type": "object",
-        "required": ["question_de"],
+        "required": [
+          "question_de"
+        ],
         "title": "OperatorExplainGatewayBody"
       },
       "PaperAdjustBody": {
@@ -13160,7 +15083,9 @@
           }
         },
         "type": "object",
-        "required": ["delta_usdt"],
+        "required": [
+          "delta_usdt"
+        ],
         "title": "PaperAdjustBody"
       },
       "PaperDepositBody": {
@@ -13194,7 +15119,9 @@
           }
         },
         "type": "object",
-        "required": ["amount_usdt"],
+        "required": [
+          "amount_usdt"
+        ],
         "title": "PaperDepositBody"
       },
       "PaperResetBody": {
@@ -13233,8 +15160,50 @@
           }
         },
         "type": "object",
-        "required": ["new_initial_equity_usdt"],
+        "required": [
+          "new_initial_equity_usdt"
+        ],
         "title": "PaperResetBody"
+      },
+      "PatchStrategyVersionBody": {
+        "properties": {
+          "definition": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Definition"
+          },
+          "parameters": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parameters"
+          },
+          "risk_profile": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Risk Profile"
+          }
+        },
+        "type": "object",
+        "title": "PatchStrategyVersionBody",
+        "description": "In-place-Mutation ungueltig; nur Contract / Fehlerspektrum."
       },
       "PromotionRequestBody": {
         "properties": {
@@ -13254,7 +15223,9 @@
           }
         },
         "type": "object",
-        "required": ["promotion_target"],
+        "required": [
+          "promotion_target"
+        ],
         "title": "PromotionRequestBody"
       },
       "RecordPayoutBody": {
@@ -13279,7 +15250,9 @@
           }
         },
         "type": "object",
-        "required": ["external_submission_ref"],
+        "required": [
+          "external_submission_ref"
+        ],
         "title": "RecordPayoutBody"
       },
       "ReviewQueuePatchBody": {
@@ -13339,8 +15312,25 @@
           }
         },
         "type": "object",
-        "required": ["question_de"],
+        "required": [
+          "question_de"
+        ],
         "title": "SafetyIncidentDiagnosisGatewayBody"
+      },
+      "SelfHealingRestartIn": {
+        "properties": {
+          "service_name": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 2,
+            "title": "Service Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "service_name"
+        ],
+        "title": "SelfHealingRestartIn"
       },
       "StartContractBody": {
         "properties": {
@@ -13364,7 +15354,9 @@
           }
         },
         "type": "object",
-        "required": ["template_key"],
+        "required": [
+          "template_key"
+        ],
         "title": "StartContractBody"
       },
       "StrategySignalExplainGatewayBody": {
@@ -13418,7 +15410,10 @@
           }
         },
         "type": "object",
-        "required": ["strategy_id", "new_status"],
+        "required": [
+          "strategy_id",
+          "new_status"
+        ],
         "title": "StrategyStatusBody"
       },
       "TelegramNotifyPrefsPatch": {
@@ -13488,6 +15483,31 @@
               }
             ],
             "title": "Notify Ai Tip"
+          },
+          "notify_signal_high_leverage": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notify Signal High Leverage"
+          },
+          "signal_type_prefs_json": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "boolean"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signal Type Prefs Json"
           }
         },
         "type": "object",
@@ -13612,7 +15632,11 @@
           }
         },
         "type": "object",
-        "required": ["loc", "msg", "type"],
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
         "title": "ValidationError"
       }
     }

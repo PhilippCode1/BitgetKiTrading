@@ -44,3 +44,46 @@ def test_clean_template_passes(tmp_path: Path) -> None:
         check=False,
     )
     assert r.returncode == 0, (r.stdout, r.stderr)
+
+
+def test_api_auth_mode_none_fails(tmp_path: Path) -> None:
+    bad = tmp_path / "noauth.env"
+    bad.write_text("API_AUTH_MODE=none\n", encoding="utf-8")
+    r = subprocess.run(
+        [sys.executable, str(SCRIPT), str(bad)],
+        cwd=str(REPO),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert r.returncode == 1
+    assert "API_AUTH_MODE" in (r.stderr or "")
+
+
+def test_bitget_demo_enabled_true_fails(tmp_path: Path) -> None:
+    bad = tmp_path / "demo_on.env"
+    bad.write_text("BITGET_DEMO_ENABLED=true\n", encoding="utf-8")
+    r = subprocess.run(
+        [sys.executable, str(SCRIPT), str(bad)],
+        cwd=str(REPO),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert r.returncode == 1
+    assert "BITGET_DEMO_ENABLED" in (r.stderr or "")
+
+
+def test_dangerous_mock_substring_fails(tmp_path: Path) -> None:
+    bad = tmp_path / "mock.env"
+    bad.write_text("X_LEGACY_HINT=old_prod_ex_only_value\n", encoding="utf-8")
+    r = subprocess.run(
+        [sys.executable, str(SCRIPT), str(bad)],
+        cwd=str(REPO),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert r.returncode == 1
+    err = (r.stderr or "").lower()
+    assert "prod_ex_only" in err or "mock-teilfolge" in err

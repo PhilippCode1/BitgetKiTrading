@@ -6,7 +6,6 @@ import subprocess
 import sys
 import uuid
 from pathlib import Path
-
 from typing import Any
 
 REPO = Path(__file__).resolve().parents[3]
@@ -51,6 +50,19 @@ def test_offline_pass_strict_0(tmp_path: Path) -> None:
     assert c == 0, (j, j.get("status"))
     assert j.get("status") == "PASS"
     assert j.get("release_approval_check_present", True) is not False
+    assert not (j.get("missing_for_ci_yml") or [])
+
+
+def test_offline_pass_display_names_only_strict_0(tmp_path: Path) -> None:
+    """GitHub-typisch: Status-Check = Workflow-Name / jobs.<id>.name"""
+    c, j = _run(
+        "--offline-fixture",
+        str(FX / "branch_protection_pass_display_names.json"),
+        "--strict",
+        jpath=tmp_path / "j_display.json",
+    )
+    assert c == 0, (j, j.get("status"))
+    assert j.get("status") == "PASS"
     assert not (j.get("missing_for_ci_yml") or [])
 
 

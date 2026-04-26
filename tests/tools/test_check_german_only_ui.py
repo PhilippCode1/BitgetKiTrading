@@ -82,6 +82,21 @@ def test_billing_pricing_visible_text_detected(tmp_path: Path) -> None:
     assert any(issue["code"] == "out_of_scope_visible_phrase" for issue in summary["issues"])
 
 
+def test_intl_message_key_with_customer_substring_not_out_of_scope(tmp_path: Path) -> None:
+    dashboard_src, messages_dir, policy, glossary = _fixture(tmp_path)
+    _write(
+        dashboard_src / "components" / "T.tsx",
+        'export function T(){return <Link>{t("ui.appError.openCustomerPortal")}</Link>}\n',
+    )
+    summary = analyze_german_ui(
+        dashboard_src=dashboard_src,
+        messages_dir=messages_dir,
+        policy_doc=policy,
+        glossary_doc=glossary,
+    )
+    assert not any(issue["code"] == "out_of_scope_visible_phrase" for issue in summary["issues"])
+
+
 def test_german_labels_are_accepted(tmp_path: Path) -> None:
     dashboard_src, messages_dir, policy, glossary = _fixture(tmp_path)
     _write(

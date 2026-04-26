@@ -81,6 +81,12 @@ def test_new_asset_not_automatically_live_allowed() -> None:
     assert "neues_asset_nicht_automatisch_live" in entry.live_block_reasons
 
 
+def test_new_asset_blocks_even_when_input_live_flag_is_false() -> None:
+    entry = _entry(operator_note_de="Neu aufgenommen, vorerst shadow-only.", live_allowed=False).with_evaluated_live_gate()
+    assert entry.live_allowed is False
+    assert "neues_asset_nicht_automatisch_live" in entry.live_block_reasons
+
+
 def test_asset_without_tick_size_live_blocked() -> None:
     reasons = evaluate_live_block_reasons(_entry(tick_size=None))
     assert "tick_size_fehlt" in reasons

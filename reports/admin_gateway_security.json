@@ -1,0 +1,146 @@
+{
+  "generated_at": "2026-04-25T22:42:51.722874+00:00",
+  "git_sha": "84d7b66",
+  "private_live_decision": "NO_GO",
+  "full_autonomous_live": "NO_GO",
+  "scenario_count": 9,
+  "covered_scenarios": [
+    "auth_errors_are_redacted",
+    "customer_portal_cannot_admin",
+    "emergency_role_requires_manual_action_for_flatten",
+    "legacy_admin_token_forbidden_in_production",
+    "missing_auth_blocks_admin",
+    "operator_role_requires_manual_action_for_release",
+    "public_secret_env_blocked",
+    "read_role_cannot_mutate_live_broker",
+    "single_admin_subject_mismatch_blocks"
+  ],
+  "missing_required_scenarios": [],
+  "failures": [],
+  "audit_valid_count": 9,
+  "secret_safe": true,
+  "scenarios": [
+    {
+      "id": "missing_auth_blocks_admin",
+      "passed": true,
+      "private_live_allowed": "NO_GO",
+      "blocks_sensitive_action": true,
+      "manual_action_required": false,
+      "reason_codes": [
+        "auth_missing_blocks_sensitive_action"
+      ],
+      "audit_valid": true,
+      "audit_errors": [],
+      "secret_safe": true
+    },
+    {
+      "id": "single_admin_subject_mismatch_blocks",
+      "passed": true,
+      "private_live_allowed": "NO_GO",
+      "blocks_sensitive_action": true,
+      "manual_action_required": false,
+      "reason_codes": [
+        "single_admin_subject_mismatch"
+      ],
+      "audit_valid": true,
+      "audit_errors": [],
+      "secret_safe": true
+    },
+    {
+      "id": "legacy_admin_token_forbidden_in_production",
+      "passed": true,
+      "private_live_allowed": "NO_GO",
+      "blocks_sensitive_action": true,
+      "manual_action_required": false,
+      "reason_codes": [
+        "legacy_admin_token_forbidden_in_production"
+      ],
+      "audit_valid": true,
+      "audit_errors": [],
+      "secret_safe": true
+    },
+    {
+      "id": "read_role_cannot_mutate_live_broker",
+      "passed": true,
+      "private_live_allowed": "NO_GO",
+      "blocks_sensitive_action": true,
+      "manual_action_required": false,
+      "reason_codes": [
+        "gateway_read_role_cannot_mutate_live_broker"
+      ],
+      "audit_valid": true,
+      "audit_errors": [],
+      "secret_safe": true
+    },
+    {
+      "id": "operator_role_requires_manual_action_for_release",
+      "passed": true,
+      "private_live_allowed": "NO_GO",
+      "blocks_sensitive_action": false,
+      "manual_action_required": true,
+      "reason_codes": [
+        "operator_release_requires_bound_manual_action_token"
+      ],
+      "audit_valid": true,
+      "audit_errors": [],
+      "secret_safe": true
+    },
+    {
+      "id": "emergency_role_requires_manual_action_for_flatten",
+      "passed": true,
+      "private_live_allowed": "NO_GO",
+      "blocks_sensitive_action": false,
+      "manual_action_required": true,
+      "reason_codes": [
+        "emergency_flatten_requires_bound_manual_action_token"
+      ],
+      "audit_valid": true,
+      "audit_errors": [],
+      "secret_safe": true
+    },
+    {
+      "id": "customer_portal_cannot_admin",
+      "passed": true,
+      "private_live_allowed": "NO_GO",
+      "blocks_sensitive_action": true,
+      "manual_action_required": false,
+      "reason_codes": [
+        "customer_portal_jwt_cannot_admin_or_live"
+      ],
+      "audit_valid": true,
+      "audit_errors": [],
+      "secret_safe": true
+    },
+    {
+      "id": "public_secret_env_blocked",
+      "passed": true,
+      "private_live_allowed": "NO_GO",
+      "blocks_sensitive_action": true,
+      "manual_action_required": false,
+      "reason_codes": [
+        "next_public_secret_name_blocked"
+      ],
+      "audit_valid": true,
+      "audit_errors": [],
+      "secret_safe": true
+    },
+    {
+      "id": "auth_errors_are_redacted",
+      "passed": true,
+      "private_live_allowed": "NO_GO",
+      "blocks_sensitive_action": false,
+      "manual_action_required": false,
+      "reason_codes": [
+        "auth_error_redaction_verified"
+      ],
+      "audit_valid": true,
+      "audit_errors": [],
+      "secret_safe": true
+    }
+  ],
+  "notes": [
+    "Synthetische Repo-Evidence ohne echte Tokens, echte Secrets oder echte Live-Aktionen.",
+    "Mutationsrollen allein sind keine Live-Freigabe; sensible Aktionen brauchen Owner-Kontext, Auth und gebundene Manual-Action-Evidence.",
+    "Externe Owner-Signoff- und Runtime-Auth-Evidence bleibt fuer private Live erforderlich."
+  ]
+}

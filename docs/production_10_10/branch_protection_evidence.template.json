@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "status": "external_required",
+  "reviewed_by": "CHANGE_ME_OWNER",
+  "reviewed_at": "CHANGE_ME_ISO8601",
+  "git_host": "github",
+  "repository": "CHANGE_ME_OWNER/CHANGE_ME_REPO",
+  "default_branch": "main",
+  "github_settings": {
+    "required_status_checks_include_release_approval_gate": false,
+    "required_pull_request_reviews_min_1": false,
+    "no_force_push": false,
+    "no_branch_deletion": false,
+    "admin_enforce_or_documented_exception": false
+  },
+  "artifacts": {
+    "settings_export_or_screenshot_uri": "CHANGE_ME_URI",
+    "ci_workflow_run_green_reference": "CHANGE_ME_URI"
+  },
+  "safety": {
+    "no_secrets_in_export": true,
+    "owner_signoff": false
+  }
+}

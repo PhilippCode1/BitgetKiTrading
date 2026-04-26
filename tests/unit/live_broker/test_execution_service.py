@@ -85,6 +85,9 @@ class _FakeRepo:
     def record_shadow_live_assessment(self, **kwargs: object) -> None:
         return None
 
+    def record_execution_journal(self, record: dict[str, object]) -> None:
+        return None
+
     def record_audit_trail(self, record: dict[str, object]) -> dict[str, object]:
         d = dict(record)
         self.audit_trails.append(d)
@@ -552,6 +555,7 @@ def test_evaluate_intent_shadow_live_gate_blocks_high_signal_divergence(
         STRATEGY_EXEC_MODE="auto",
         SHADOW_TRADE_ENABLE="false",
         REQUIRE_SHADOW_MATCH_BEFORE_LIVE="true",
+        RISK_GOVERNOR_LIVE_RAMP_MAX_LEVERAGE="12",
     )
     repo = _repo_with_clean_live_snapshots()
     service = LiveExecutionService(settings, _FakeExchangeClient(), repo)  # type: ignore[arg-type]
@@ -605,6 +609,7 @@ def test_evaluate_intent_shadow_live_allows_when_aligned_with_gate(
         STRATEGY_EXEC_MODE="auto",
         SHADOW_TRADE_ENABLE="false",
         REQUIRE_SHADOW_MATCH_BEFORE_LIVE="true",
+        RISK_GOVERNOR_LIVE_RAMP_MAX_LEVERAGE="12",
     )
     repo = _repo_with_clean_live_snapshots()
     service = LiveExecutionService(settings, _FakeExchangeClient(), repo)  # type: ignore[arg-type]
@@ -718,6 +723,7 @@ def test_evaluate_intent_shadow_live_mismatch_without_gate_still_live_candidate(
         STRATEGY_EXEC_MODE="auto",
         SHADOW_TRADE_ENABLE="false",
         REQUIRE_SHADOW_MATCH_BEFORE_LIVE="false",
+        RISK_GOVERNOR_LIVE_RAMP_MAX_LEVERAGE="12",
     )
     repo = _repo_with_clean_live_snapshots()
     service = LiveExecutionService(settings, _FakeExchangeClient(), repo)  # type: ignore[arg-type]
@@ -843,6 +849,7 @@ def test_paper_broker_outage_blocks_live_no_redis_shadow_match_latch(
         STRATEGY_EXEC_MODE="auto",
         SHADOW_TRADE_ENABLE="false",
         REQUIRE_SHADOW_MATCH_BEFORE_LIVE="true",
+        RISK_GOVERNOR_LIVE_RAMP_MAX_LEVERAGE="12",
     )
     repo = _repo_with_clean_live_snapshots()
     service = LiveExecutionService(settings, _FakeExchangeClient(), repo)  # type: ignore[arg-type]

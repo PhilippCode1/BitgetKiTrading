@@ -125,14 +125,15 @@ def main() -> int:
         )
         if r_prod.returncode != 0:
             print(
-                "FAIL: db_production_hardening under APP_ENV=production "
-                "(Schema-Hash, LIVE_APP_SCHEMA, Seeds; siehe config/schema_master.hash)",
+                "FAIL: db_production_hardening under APP_ENV=production (Schema-Hash, "
+                "LIVE_APP_SCHEMA, Seeds; siehe config/schema_master.hash)",
                 flush=True,
             )
             return r_prod.returncode
     elif _prod_like_requires_database_url():
         print(
-            "==> db_production_hardening (Schema-Hash, Seed-Lock; prod-aehnliches Profil)",
+            "==> db_production_hardening (Schema-Hash, Seed-Lock; "
+            "prod-aehnliches Profil)",
             flush=True,
         )
         r_h = subprocess.run(

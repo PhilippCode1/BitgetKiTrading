@@ -1,0 +1,50 @@
+{
+  "generated_at": "2026-04-25T23:35:13Z",
+  "git_sha": "84d7b66",
+  "private_live_decision": "NO_GO",
+  "full_autonomous_live": "NO_GO",
+  "german_only_scan": {
+    "ok": true,
+    "files_scanned": 374,
+    "error_count": 0,
+    "warning_count": 0
+  },
+  "german_ui_language": {
+    "ok": true,
+    "error_count": 0,
+    "warning_count": 0
+  },
+  "owner_uat_assessment": {
+    "status": "FAIL",
+    "external_required": true,
+    "failures": [
+      "status_nicht_verified",
+      "reviewed_by_fehlt",
+      "reviewed_at_fehlt",
+      "environment_fehlt",
+      "git_sha_fehlt",
+      "main_console_labels",
+      "main_console_marketing_en",
+      "legacy_ack",
+      "nav_policy",
+      "safety_de",
+      "errors_de",
+      "owner_signoff"
+    ]
+  },
+  "internal_issues": [],
+  "external_required": [
+    "Owner-UAT der Hauptkonsole (sichtbare Texte, Safety-Labels, kein reines Englisch im Operatorfluss).",
+    "UAT-JSON mit status=verified und Signoff, ohne Screenshots mit Secrets."
+  ],
+  "recommended_commands": [
+    "python tools/check_german_only_ui.py --strict",
+    "python tools/check_german_ui_language.py --strict",
+    "pytest tests/tools/test_check_german_only_ui.py -q",
+    "pytest tests/tools/test_check_german_ui_language.py -q"
+  ],
+  "notes": [
+    "Repo-Scanner ersetzen keine manuelle Prüfung von Dynamic Content und leeren Zuständen.",
+    "Legacy-Commerce-Routen sind im Scanner von Out-of-Scope-Warnungen ausgenommen; Hauptkonsole bleibt Regelfläche."
+  ]
+}

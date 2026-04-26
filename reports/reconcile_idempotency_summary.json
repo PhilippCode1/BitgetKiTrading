@@ -1,0 +1,87 @@
+{
+  "generated_at": "2026-04-25T22:55:28.848443+00:00",
+  "git_sha": "84d7b66",
+  "private_live_decision": "NO_GO",
+  "full_autonomous_live": "NO_GO",
+  "external_template": {
+    "path": "docs\\production_10_10\\reconcile_idempotency_evidence.template.json",
+    "status": "FAIL",
+    "blockers": [
+      "drill_started_at_missing",
+      "drill_completed_at_missing",
+      "git_sha_missing",
+      "operator_missing",
+      "evidence_reference_missing",
+      "exchange_truth_source_missing",
+      "reconcile_status_not_ok",
+      "reconcile_snapshot_not_fresh",
+      "per_asset_reconcile_missing",
+      "open_drift_present",
+      "unknown_order_state_present",
+      "position_mismatch_present",
+      "fill_mismatch_present",
+      "missing_exchange_ack_present",
+      "retry_without_reconcile_not_blocked",
+      "duplicate_client_oid_not_blocked",
+      "idempotency_key_not_required",
+      "timeout_unknown_state_not_set",
+      "unknown_submit_state_not_blocking",
+      "db_failure_reconcile_not_required",
+      "safety_latch_not_armed_on_unresolved_duplicate",
+      "audit_trail_not_verified",
+      "alert_delivery_not_verified",
+      "main_console_reconcile_state_not_verified"
+    ],
+    "warnings": [
+      "owner_signoff_missing_external_required"
+    ],
+    "secret_surface_issues": [],
+    "missing_required_blockers": []
+  },
+  "risk_execution": {
+    "scenario_counts": {
+      "portfolio": 3,
+      "order_idempotency": 6,
+      "reconcile": 9
+    },
+    "covered_live_preflight_reasons": [
+      "idempotency_key_missing",
+      "portfolio_risk_not_safe",
+      "reconcile_not_ok",
+      "safety_latch_active",
+      "unknown_order_state_active"
+    ],
+    "required_live_preflight_reasons": [
+      "portfolio_risk_not_safe",
+      "reconcile_not_ok",
+      "unknown_order_state_active",
+      "idempotency_key_missing",
+      "safety_latch_active"
+    ],
+    "missing_required_live_preflight_reasons": [],
+    "private_live_decision": "NO_GO"
+  },
+  "order_idempotency_assertions": {
+    "expected_count": 6,
+    "scenario_count": 6,
+    "missing_assertions": []
+  },
+  "reconcile_assertions": {
+    "expected_count": 9,
+    "scenario_count": 9,
+    "missing_assertions": []
+  },
+  "external_required": [
+    "real_exchange_truth_reconcile_drill_missing",
+    "staging_duplicate_client_oid_drill_missing",
+    "timeout_and_db_failure_reconcile_drill_missing",
+    "audit_alert_main_console_reconcile_evidence_missing",
+    "owner_signed_reconcile_idempotency_acceptance_missing"
+  ],
+  "failures": [],
+  "notes": [
+    "Dieser Report kombiniert externe Template-Pruefung und synthetische Live-Preflight-Coverage.",
+    "Ein PASS des Repo-Templates ohne echte Staging-/Shadow-Evidence waere ein Fehler.",
+    "Private Live bleibt blockiert, bis Exchange-Truth, Retry-/Duplicate-Pfade, Audit, Alert und Owner-Signoff extern belegt sind."
+  ]
+}

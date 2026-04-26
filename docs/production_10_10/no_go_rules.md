@@ -100,6 +100,9 @@ aufgeweicht werden. Solche Flows sind kein Produktziel.
     stale Reconcile-Zustand oder unbekanntem Order-State pro Asset/Position.
 52. Kein Echtgeld-Live bei unknown submit state, Duplicate-Order-Risiko,
     Retry ohne Reconcile oder unsicherem Exit-/Emergency-Flatten-Verhalten.
+53. Kein Echtgeld-Live ohne maschinenlesbare Owner-Freigabe
+    (`reports/owner_private_live_release.json`, gitignored) mit gueltiger
+    Struktur; die Datei darf niemals ins Repository committet werden.
 
 ## Evidence-Anforderungen pro Freigabe
 
@@ -116,6 +119,8 @@ Ein Live-Go/No-Go-Paket muss mindestens enthalten:
 - Secret-Scanner-/Vault-/KMS-Nachweis
 - Secret Rotation Report mit Owner, Environment, Ablaufstatus und Revoke-Nachweis
 - Operator-Approval-Protokoll
+- lokale maschinelle Owner-Freigabe (`reports/owner_private_live_release.json`,
+  nicht im Git-Index; Template unter `docs/production_10_10/`)
 - Risk-Governance-Signoff
 - Asset-, Datenqualitaets-, Liquiditaets- und Owner-Freigabe
 - Compliance-/Legal-Signoff

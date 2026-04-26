@@ -30,6 +30,13 @@ class PermissionAssessment:
     warnings: list[str] = field(default_factory=list)
 
 
+@dataclass(frozen=True)
+class ExternalKeyEvidenceAssessment:
+    status: ReadinessVerdict
+    blockers: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+
+
 def readiness_verdict(blockers: list[str], warnings: list[str]) -> ReadinessVerdict:
     if blockers:
         return "FAIL"
@@ -84,6 +91,49 @@ def assess_permissions(permissions: dict[str, Any] | None) -> PermissionAssessme
     if warnings:
         return PermissionAssessment(status="warning", warnings=warnings)
     return PermissionAssessment(status="ok")
+
+
+def assess_external_key_evidence(evidence: dict[str, Any] | None) -> ExternalKeyEvidenceAssessment:
+    if not evidence:
+        return ExternalKeyEvidenceAssessment(
+            status="FAIL",
+            blockers=["external_key_evidence_missing"],
+        )
+    blockers: list[str] = []
+    warnings: list[str] = []
+    if evidence.get("schema_version") != READINESS_CONTRACT_VERSION:
+        blockers.append("schema_version_mismatch")
+    if evidence.get("environment") not in {"demo", "shadow", "production"}:
+        blockers.append("environment_invalid")
+    if evidence.get("account_mode") not in {"demo", "read_only", "live_candidate"}:
+        blockers.append("account_mode_invalid")
+    if evidence.get("withdrawal_permission") is not False:
+        blockers.append("withdrawal_permission_not_false")
+    if evidence.get("trade_permission") is not True:
+        blockers.append("trade_permission_not_confirmed")
+    if evidence.get("read_permission") is not True:
+        blockers.append("read_permission_not_confirmed")
+    if evidence.get("ip_allowlist_enabled") is not True:
+        blockers.append("ip_allowlist_not_confirmed")
+    if evidence.get("account_protection_enabled") is not True:
+        blockers.append("account_protection_not_confirmed")
+    if evidence.get("api_version") != "v2":
+        blockers.append("api_version_not_v2")
+    if not str(evidence.get("instrument_scope") or "").strip():
+        blockers.append("instrument_scope_missing")
+    if not str(evidence.get("reviewed_by") or "").strip():
+        blockers.append("reviewer_missing")
+    if not str(evidence.get("reviewed_at") or "").strip():
+        blockers.append("reviewed_at_missing")
+    if not str(evidence.get("evidence_reference") or "").strip():
+        blockers.append("evidence_reference_missing")
+    if evidence.get("owner_signoff") is not True:
+        warnings.append("owner_signoff_missing_external_required")
+    return ExternalKeyEvidenceAssessment(
+        status=readiness_verdict(blockers, warnings),
+        blockers=blockers,
+        warnings=warnings,
+    )
 
 
 def server_time_skew_blockers(offset_ms: int | None, *, max_skew_ms: int = MAX_SERVER_TIME_SKEW_MS) -> list[str]:

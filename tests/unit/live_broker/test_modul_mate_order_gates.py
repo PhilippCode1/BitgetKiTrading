@@ -16,6 +16,10 @@ for candidate in (REPO_ROOT, LIVE_BROKER_SRC, SHARED_SRC):
     if s not in sys.path:
         sys.path.insert(0, s)
 
+from tests.unit.live_broker.commercial_gate_db_mocks import (
+    live_mode_conn_execute_sequence,
+)
+
 from live_broker.config import LiveBrokerSettings
 from live_broker.orders.service import LiveBrokerOrderService
 from live_broker.private_rest import BitgetRestError
@@ -142,7 +146,7 @@ def test_live_broker_require_commercial_gates_without_modul_mate_flag(monkeypatc
     ex_c = MagicMock()
     ex_g.fetchone.return_value = _row(admin_live=True, contract=True, subscription=True)
     ex_c.fetchone.return_value = (1,)
-    conn.execute.side_effect = [ex_g, ex_c]
+    conn.execute.side_effect = live_mode_conn_execute_sequence(ex_g, ex_c)
     with patch(
         "live_broker.orders.service.psycopg.connect",
         return_value=_pg_context(conn),
@@ -190,7 +194,7 @@ def test_modul_mate_live_blocked_for_demo_only_gates(monkeypatch: pytest.MonkeyP
     ex_c = MagicMock()
     ex_g.fetchone.return_value = _row(admin_live=False, contract=True)
     ex_c.fetchone.return_value = (1,)
-    conn.execute.side_effect = [ex_g, ex_c]
+    conn.execute.side_effect = live_mode_conn_execute_sequence(ex_g, ex_c)
     with patch(
         "live_broker.orders.service.psycopg.connect",
         return_value=_pg_context(conn),
@@ -219,7 +223,7 @@ def test_modul_mate_live_ok_when_fully_granted(monkeypatch: pytest.MonkeyPatch) 
     ex_c = MagicMock()
     ex_g.fetchone.return_value = _row(admin_live=True, contract=True, subscription=True)
     ex_c.fetchone.return_value = (1,)
-    conn.execute.side_effect = [ex_g, ex_c]
+    conn.execute.side_effect = live_mode_conn_execute_sequence(ex_g, ex_c)
     with patch(
         "live_broker.orders.service.psycopg.connect",
         return_value=_pg_context(conn),
@@ -243,7 +247,7 @@ def test_modul_mate_live_blocked_without_tenant_contract_admin_complete(
     ex_c = MagicMock()
     ex_g.fetchone.return_value = _row(admin_live=True, contract=True, subscription=True)
     ex_c.fetchone.return_value = None
-    conn.execute.side_effect = [ex_g, ex_c]
+    conn.execute.side_effect = live_mode_conn_execute_sequence(ex_g, ex_c)
     with patch(
         "live_broker.orders.service.psycopg.connect",
         return_value=_pg_context(conn),

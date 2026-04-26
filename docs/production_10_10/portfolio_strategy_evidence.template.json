@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "status": "external_required",
+  "evidence_environment": "CHANGE_ME_STAGING_OR_SHADOW",
+  "git_sha": "CHANGE_ME_GIT_SHA",
+  "generated_at": "CHANGE_ME_ISO8601",
+  "owner_limits": {
+    "signed_by": "CHANGE_ME_OWNER_PHILIPP",
+    "signed_at": "CHANGE_ME_ISO8601",
+    "max_total_notional": null,
+    "max_margin_usage": null,
+    "max_family_exposure": null,
+    "max_net_directional_exposure": null,
+    "max_correlation_stress": null,
+    "document_uri": "CHANGE_ME_OWNER_SIGNED_LIMITS_URI"
+  },
+  "portfolio_drill": {
+    "runtime_snapshot_fresh": false,
+    "missing_snapshot_blocks_live": false,
+    "stale_snapshot_blocks_live": false,
+    "exposure_limit_blocks_live": false,
+    "correlation_unknown_blocks_live": false,
+    "family_exposure_blocks_live": false,
+    "pending_orders_counted_in_exposure": false,
+    "live_orders_submitted_during_drill": false,
+    "report_uri": "CHANGE_ME_PORTFOLIO_DRILL_REPORT_URI"
+  },
+  "strategy_validation": {
+    "asset_classes_covered": [],
+    "backtest_reports_present": false,
+    "walk_forward_reports_present": false,
+    "paper_reports_present": false,
+    "shadow_reports_present": false,
+    "slippage_fees_funding_included": false,
+    "drawdown_limits_passed": false,
+    "no_trade_quality_checked": false,
+    "lineage_documented": false,
+    "report_uri": "CHANGE_ME_STRATEGY_VALIDATION_REPORT_URI"
+  },
+  "shadow_burn_in": {
+    "real_shadow_period_started_at": "CHANGE_ME_ISO8601",
+    "real_shadow_period_ended_at": "CHANGE_ME_ISO8601",
+    "shadow_passed": false,
+    "divergence_report_uri": "CHANGE_ME_SHADOW_DIVERGENCE_REPORT_URI"
+  },
+  "safety": {
+    "secrets_redacted": true,
+    "real_orders_possible": false,
+    "operator_approval_record_uri": "CHANGE_ME_OPERATOR_APPROVAL_URI"
+  }
+}

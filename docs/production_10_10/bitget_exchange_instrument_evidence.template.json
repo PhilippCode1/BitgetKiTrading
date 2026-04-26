@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "status": "external_required",
+  "environment": "CHANGE_ME_STAGING_OR_SHADOW",
+  "git_sha": "CHANGE_ME_GIT_SHA",
+  "reviewed_at": "CHANGE_ME_ISO8601",
+  "reviewed_by": "CHANGE_ME_EXTERNAL_OR_OWNER_REVIEWER",
+  "key_permissions": {
+    "read_permission": true,
+    "trade_permission": true,
+    "withdrawal_permission": false,
+    "ip_allowlist_enabled": false,
+    "account_protection_enabled": false,
+    "api_version": "v2",
+    "evidence_reference": "CHANGE_ME_KEY_PERMISSION_EVIDENCE_URI"
+  },
+  "readonly_discovery": {
+    "public_time_checked": false,
+    "server_time_skew_ms": null,
+    "public_instruments_checked": false,
+    "private_readonly_checked": false,
+    "write_endpoints_called": false,
+    "rate_limit_observed": false,
+    "report_uri": "CHANGE_ME_READONLY_DISCOVERY_REPORT_URI"
+  },
+  "instrument_metadata": {
+    "asset_universe_checked": false,
+    "instrument_count": 0,
+    "all_symbols_v2_format": false,
+    "product_type_margin_coin_checked": false,
+    "precision_tick_lot_min_qty_checked": false,
+    "unknown_or_delisted_assets_block_live": false,
+    "metadata_fresh": false,
+    "report_uri": "CHANGE_ME_INSTRUMENT_METADATA_REPORT_URI"
+  },
+  "safety": {
+    "secrets_redacted": true,
+    "real_orders_possible": false,
+    "owner_signoff": false
+  }
+}

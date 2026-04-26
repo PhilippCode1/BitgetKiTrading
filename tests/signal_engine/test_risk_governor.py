@@ -37,6 +37,9 @@ def signal_settings(monkeypatch: pytest.MonkeyPatch) -> SignalEngineSettings:
 
 def _row(**kwargs: object) -> dict[str, object]:
     base: dict[str, object] = {
+        "symbol": "BTCUSDT",
+        "asset_risk_tier": "RISK_TIER_1_MAJOR_LIQUID",
+        "asset_volatility_0_1": 0.12,
         "direction": "long",
         "market_regime": "trend",
         "regime_bias": "long",
@@ -253,6 +256,14 @@ def test_live_ramp_caps_candidate_lane(signal_settings: SignalEngineSettings) ->
 
 
 def test_live_ramp_lifted_with_escalation_flags(signal_settings: SignalEngineSettings) -> None:
+    snap = _row()["source_snapshot_json"]
+    assert isinstance(snap, dict)
+    feat = snap["feature_snapshot"]
+    assert isinstance(feat, dict)
+    primary = dict(feat["primary_tf"])  # type: ignore[arg-type]
+    # Niedrigere ATR-%: sonst Volatility-Clamp auf eff. 7x -> Eskalation kann Ramp nicht „ueber“ zeigen.
+    primary["atrp_14"] = 0.01
+    primary["atrp_14_ema_24h"] = 0.01
     row = _row(
         signal_class="gross",
         take_trade_prob=0.81,
@@ -261,7 +272,8 @@ def test_live_ramp_lifted_with_escalation_flags(signal_settings: SignalEngineSet
         expected_mfe_bps=34.0,
         model_uncertainty_0_1=0.14,
         source_snapshot_json={
-            **_row()["source_snapshot_json"],  # type: ignore[arg-type]
+            **snap,
+            "feature_snapshot": {**feat, "primary_tf": primary},
             "risk_account_snapshot": {
                 "leverage_escalation_approved": True,
                 "measurably_stable_for_escalation": True,
@@ -275,6 +287,13 @@ def test_live_ramp_lifted_with_escalation_flags(signal_settings: SignalEngineSet
 
 
 def test_paper_lane_not_live_ramped(signal_settings: SignalEngineSettings) -> None:
+    snap = _row()["source_snapshot_json"]
+    assert isinstance(snap, dict)
+    feat = snap["feature_snapshot"]
+    assert isinstance(feat, dict)
+    primary = dict(feat["primary_tf"])  # type: ignore[arg-type]
+    primary["atrp_14"] = 0.01
+    primary["atrp_14_ema_24h"] = 0.01
     row = _row(
         risk_score_0_100=40.0,
         take_trade_prob=0.74,
@@ -282,6 +301,10 @@ def test_paper_lane_not_live_ramped(signal_settings: SignalEngineSettings) -> No
         expected_mae_bps=24.0,
         expected_mfe_bps=34.0,
         model_uncertainty_0_1=0.20,
+        source_snapshot_json={
+            **snap,
+            "feature_snapshot": {**feat, "primary_tf": primary},
+        },
     )
     out = assess_hybrid_decision(settings=signal_settings, signal_row=row)
     assert out["meta_trade_lane"] == "paper_only"

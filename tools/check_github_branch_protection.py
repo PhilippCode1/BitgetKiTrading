@@ -3,7 +3,9 @@
 Branch-Protection gegen erwartete CI-Checks: Workflow `ci` in .github/workflows/ci.yml,
 Job-Ids python, dashboard, compose_healthcheck, release-approval-gate.
 
-Kontexte: typisch "ci / <job_id>" (GitHub Status-Check-Name).
+Kontexte: GitHub nutzt ``ci / <jobs.*.name>`` wenn gesetzt, sonst die Job-Id.
+Das Tool akzeptiert fuer jede MANDATORY-Id sowohl die Id als auch den Namen aus
+``.github/workflows/ci.yml`` (Fallback: nur Id).
 
 Auth: GITHUB_TOKEN, GH_TOKEN, oder `gh auth token`. Ohne Auth:
 UNKNOWN_NO_GITHUB_AUTH (in --strict: fehlgeschlagen).
@@ -35,6 +37,8 @@ MANDATORY: Final[tuple[str, ...]] = (
 DEFAULT_REPO: Final[str] = "PhilippCode1/BitgetKiTrading"
 GH_VERSION: Final[str] = "2022-11-28"
 _UA: Final[str] = "bitget-ki-branch-protect/1.0"
+_REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[1]
+_DEFAULT_CI_YML: Final[Path] = _REPO_ROOT / ".github" / "workflows" / "ci.yml"
 
 
 @dataclass
@@ -129,17 +133,51 @@ def _boolf(d: dict[str, Any], k: str) -> bool | None:
     return None
 
 
-def _job_match(job: str, contexts: list[str]) -> bool:
-    p = re.compile(
-        re.escape(_WF) + r"\s*/\s*" + re.escape(job) + r"\s*\Z", re.IGNORECASE
+def _mandatory_check_suffixes(ci_yml: Path | None = None) -> dict[str, frozenset[str]]:
+    """Erlaubte Texte nach ``ci /`` pro Job-Id (Id + optional jobs.<id>.name)."""
+    path = ci_yml or _DEFAULT_CI_YML
+    out: dict[str, set[str]] = {jid: {jid} for jid in MANDATORY}
+    if not path.is_file():
+        return {k: frozenset(v) for k, v in out.items()}
+    try:
+        import yaml
+
+        raw = yaml.safe_load(path.read_text(encoding="utf-8"))
+        jobs = raw.get("jobs") if isinstance(raw, dict) else None
+        if isinstance(jobs, dict):
+            for jid in MANDATORY:
+                spec = jobs.get(jid)
+                if isinstance(spec, dict):
+                    name = spec.get("name")
+                    if isinstance(name, str) and name.strip():
+                        out[jid].add(name.strip())
+    except Exception:
+        pass
+    return {k: frozenset(v) for k, v in out.items()}
+
+
+def _job_match(
+    job_id: str,
+    contexts: list[str],
+    suffixes_by_job: dict[str, frozenset[str]],
+) -> bool:
+    suffixes = suffixes_by_job.get(job_id, frozenset({job_id}))
+    wf_pat = re.compile(
+        re.escape(_WF) + r"\s*/\s*(.+)\s*\Z",
+        re.IGNORECASE,
     )
     for c in contexts:
-        if p.search(c.strip()):
+        m = wf_pat.match(c.strip())
+        if not m:
+            continue
+        rest = m.group(1).strip()
+        if any(rest.lower() == s.lower() for s in suffixes):
             return True
     return False
 
 
-def evaluate(data: dict[str, Any]) -> EvalResult:
+def evaluate(data: dict[str, Any], *, ci_yml: Path | None = None) -> EvalResult:
+    suffixes = _mandatory_check_suffixes(ci_yml)
     rsc = data.get("required_status_checks")
     ctx = _contexts(data)
     if (rsc is None or (isinstance(rsc, dict) and not (rsc.get("contexts") or rsc.get("checks")))) and len(ctx) == 0:  # noqa: E501
@@ -164,8 +202,8 @@ def evaluate(data: dict[str, Any]) -> EvalResult:
     if not has and len(ctx) > 0:
         has = True
 
-    m = [j for j in MANDATORY if not _job_match(j, ctx)]
-    rel = _job_match("release-approval-gate", ctx)
+    m = [j for j in MANDATORY if not _job_match(j, ctx, suffixes)]
+    rel = _job_match("release-approval-gate", ctx, suffixes)
     prq = _pr_req(data)
     afp = _boolf(data, "allow_force_pushes")
     adel = _boolf(data, "allow_deletions")

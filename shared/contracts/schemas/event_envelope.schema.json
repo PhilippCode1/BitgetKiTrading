@@ -57,7 +57,8 @@
             "orderflow_toxicity",
             "social_sentiment_update",
             "intermarket_correlation_update",
-            "regime_divergence_detected"
+            "regime_divergence_detected",
+            "drift_event"
           ]
         },
         "symbol": {
@@ -623,6 +624,28 @@
         "properties": {
           "payload": {
             "$ref": "https://bitget-btc-ai.local/schemas/payload_regime_divergence_detected.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "type": "object",
+        "required": [
+          "event_type"
+        ],
+        "properties": {
+          "event_type": {
+            "type": "string",
+            "const": "drift_event"
+          }
+        }
+      },
+      "then": {
+        "type": "object",
+        "properties": {
+          "payload": {
+            "$ref": "https://bitget-btc-ai.local/schemas/payload_drift_event.schema.json"
           }
         }
       }

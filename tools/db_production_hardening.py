@@ -211,7 +211,8 @@ def main() -> int:
         if not ok:
             return 1
         print(
-            "OK: --migrations-fingerprint-only (Repo-SQL vs. schema_master.hash MIGRATIONS:)",
+            "OK: --migrations-fingerprint-only "
+            "(Repo-SQL vs. schema_master.hash MIGRATIONS:)",
             flush=True,
         )
         return 0

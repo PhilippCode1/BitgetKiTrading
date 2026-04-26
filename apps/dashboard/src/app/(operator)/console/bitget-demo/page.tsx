@@ -9,12 +9,12 @@ function asBool(value: unknown): boolean {
 
 export default async function BitgetDemoPage() {
   const [status, readiness, assets] = await Promise.all([
-    fetchDemoStatus().catch(() => ({})),
-    fetchDemoReadiness().catch(() => ({})),
-    fetchDemoAssets().catch(() => ({})),
+    fetchDemoStatus().catch((): Record<string, unknown> => ({})),
+    fetchDemoReadiness().catch((): Record<string, unknown> => ({})),
+    fetchDemoAssets().catch((): Record<string, unknown> => ({})),
   ]);
 
-  const mode = (status.demo_mode ?? {}) as Record<string, unknown>;
+  const mode = (status["demo_mode"] ?? {}) as Record<string, unknown>;
   const rows = Array.isArray(assets.items) ? assets.items : [];
 
   return (

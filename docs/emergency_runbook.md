@@ -43,6 +43,27 @@ Gateway-Mutationen erfordern **sichere Auth** (`audited_sensitive` / `live_broke
 - **Kill-Switch** verlangt **release** pro Scope/Key.
 - Kombination mit Modusmodell: siehe `docs/execution_modes.md`.
 
+## Drill-Evidence vor Live
+
+Simulierte Checks reichen nicht fuer `private_live_allowed`. Vor Live muss der
+secret-freie Contract in
+`docs/production_10_10/live_safety_drill.template.json` mit echter
+Staging-/Shadow-Evidence befuellt und strict geprueft werden:
+
+```bash
+python scripts/live_safety_drill.py \
+  --evidence-json docs/production_10_10/live_safety_drill.template.json \
+  --strict \
+  --output-md reports/live_safety_drill.md \
+  --output-json reports/live_safety_drill.json
+```
+
+Der Nachweis muss Kill-Switch-Arm/Release, Safety-Latch-Submit/Replace-Block,
+Emergency-Flatten reduce-only, Exchange-Truth, Cancel-All, Audit, Alert,
+Main-Console-State und Reconcile `ok` nach dem Drill belegen. Echte
+Exchange-Orders im Drill sind fuer dieses Repo kein Freigabegrund, sondern ein
+Blocker.
+
 ## ENV
 
 - `LIVE_SAFETY_LATCH_ON_RECONCILE_FAIL` (default `true`) — Latch bei Reconcile `fail` + aktivem Live-Submit.

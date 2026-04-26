@@ -55,6 +55,12 @@ jobs:
           sed 's/<SET_ME>/ci_repeatable_secret_min_32_chars_x/g' .env.local.example > /tmp/ci.env.local
           python3 tools/validate_env_profile.py --env-file /tmp/ci.env.local --profile local
 
+      - name: ENV-Profile Templates (shadow, production --template)
+        run: |
+          set -euo pipefail
+          python3 tools/validate_env_profile.py --env-file .env.shadow.example --profile shadow --template
+          python3 tools/validate_env_profile.py --env-file .env.production.example --profile production --template
+
       - name: Shell scripts (Syntax)
         run: >-
           bash -n scripts/start_all.sh scripts/healthcheck.sh scripts/deploy.sh
@@ -93,13 +99,18 @@ jobs:
 
       - name: Ruff (tests, tools, integration inkl. fixtures)
         run: >-
-          ruff check tests/unit tests/unit/scripts tests/integration tests/signal_engine tests/shared
+          ruff check tests/unit tests/unit/scripts tests/config tests/integration tests/signal_engine tests/shared
+          tests/docs/test_no_go_rules_contract.py
+          tests/security/test_owner_release_gitignore_contract.py
+          tests/tools/test_ci_workflow_evidence_gates.py
+          tests/tools/test_ci_yml_mandatory_jobs_contract.py
           tests/paper_broker tests/fixtures tests/conftest.py
           tests/integration/fixtures config/required_secrets.py config/bootstrap.py
           tools/check_schema.py tools/check_contracts.py
           tools/check_coverage_gates.py tools/release_sanity_checks.py
           tools/validate_env_profile.py tools/pip_audit_supply_chain_gate.py
           tools/check_production_env_template_security.py
+          tools/check_ai_operator_assistant_safety.py
           tools/modul_mate_selfcheck.py tools/production_selfcheck.py
           scripts/release_gate.py
           tools/local_stack_doctor.py
@@ -107,6 +118,7 @@ jobs:
           tools/validate_eval_baseline.py
           tools/check_release_approval_gates.py
           tools/check_github_branch_protection.py
+          scripts/branch_protection_ci_evidence_report.py
           tools/dr_postgres_restore_drill.py
           tools/verify_alert_routing.py
           scripts/verify_shadow_burn_in.py
@@ -128,6 +140,7 @@ jobs:
           tools/validate_eval_baseline.py
           tools/check_release_approval_gates.py
           tools/check_github_branch_protection.py
+          scripts/branch_protection_ci_evidence_report.py
           tools/dr_postgres_restore_drill.py
           tools/verify_alert_routing.py
           scripts/verify_shadow_burn_in.py
@@ -153,6 +166,14 @@ jobs:
 
       - name: Shared contracts (Katalog, Envelope-Schema, shared_py)
         run: python tools/check_contracts.py
+
+      - name: Evidence-Matrix 10/10 + Status-Report-Sync (Schema, keine Drift)
+        run: >-
+          python tools/check_10_10_evidence.py
+          --check-report docs/production_10_10/evidence_status_report.md
+
+      - name: Live-Broker Preflight-Matrix (strikt, repo-lokal)
+        run: python tools/check_live_broker_preflight.py --strict
 
       - name: DB migrations (infra/migrate.py)
         env:
@@ -206,6 +227,19 @@ jobs:
         run: |
           python -m pip install pip-audit==2.7.3 cvss==3.2
           python tools/pip_audit_supply_chain_gate.py
+
+      - name: Branch-Protection + CI-Pflichtjobs (strikt, lokales Repo)
+        run: |
+          set -euo pipefail
+          python3 scripts/branch_protection_ci_evidence_report.py --strict \
+            --output-md reports/branch_protection_ci_evidence.md \
+            --output-json reports/branch_protection_ci_evidence.json
+
+      - name: Alert-Routing (Alertmanager-Beispiel + Prometheus-Regeln, strikt)
+        run: |
+          set -euo pipefail
+          python3 tools/verify_alert_routing.py --strict \
+            --report-md reports/alert_routing_verify.md
 
       - name: Branch-Protection-Tool (informativ, kein blockierendes Grün ohne API)
         run: python3 tools/check_github_branch_protection.py --repo "${{ github.repository }}"

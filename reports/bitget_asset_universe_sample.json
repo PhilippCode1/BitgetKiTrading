@@ -1,14 +1,14 @@
 {
-  "generated_at": "2026-04-25T17:07:52.037787+00:00",
+  "generated_at": "2026-04-25T23:27:33.409755+00:00",
   "project": "bitget-btc-ai",
   "mode": "fixture_or_readonly",
   "summary": {
     "total_assets": 2,
     "active_assets": 1,
-    "blocked_assets": 1,
+    "blocked_assets": 2,
     "quarantined_assets": 1,
     "shadow_allowed_assets": 1,
-    "live_allowed_assets": 1,
+    "live_allowed_assets": 0,
     "market_family_counts": {
       "futures": 2
     }
@@ -26,8 +26,10 @@
       "trading_available": true,
       "paper_allowed": true,
       "shadow_allowed": true,
-      "live_allowed": true,
-      "live_block_reasons": [],
+      "live_allowed": false,
+      "live_block_reasons": [
+        "neues_asset_nicht_automatisch_live"
+      ],
       "tick_size": "0.1",
       "lot_size": "0.001",
       "min_qty": "0.001",
@@ -42,7 +44,9 @@
       "liquidity_tier": "LIQUIDITY_TIER_1",
       "data_quality_status": "data_ok",
       "operator_note_de": "Neu aufgenommen, vorerst shadow-only bis Owner-Freigabe.",
-      "live_block_reasons_de": []
+      "live_block_reasons_de": [
+        "Neue Assets sind nie automatisch live freigegeben."
+      ]
     },
     {
       "symbol": "ALTUSDT",

@@ -6,8 +6,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from shared_py.modul_mate_db_gates import assert_m604_table_and_policies
-from shared_py.modul_mate_db_gates import fetch_tenant_modul_mate_gates
+from shared_py.modul_mate_db_gates import (
+    assert_m604_table_and_policies,
+    fetch_tenant_modul_mate_gates,
+)
 from shared_py.product_policy import (
     CustomerCommercialGates,
     demo_trading_allowed,

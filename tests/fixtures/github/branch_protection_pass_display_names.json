@@ -1,0 +1,47 @@
+{
+  "fixture_version": 1,
+  "raw_note": "Wie GitHub bei jobs.*.name: Required-Checks nutzen den Anzeigenamen, nicht die Job-Id",
+  "data": {
+    "required_status_checks": {
+      "strict": true,
+      "checks": [
+        {
+          "context": "ci / Python (Ruff, pytest, contracts, modul_mate, pip-audit, …)",
+          "app_id": 12345
+        },
+        {
+          "context": "ci / Dashboard (types, Jest, build, pnpm audit)",
+          "app_id": 12345
+        },
+        {
+          "context": "ci / Docker Compose + Health + KI-Smoke + Playwright E2E",
+          "app_id": 12345
+        },
+        {
+          "context": "ci / Unified Release Gate (all jobs + FREEZE + version lock)",
+          "app_id": 12345
+        }
+      ],
+      "contexts": [
+        "ci / Python (Ruff, pytest, contracts, modul_mate, pip-audit, …)",
+        "ci / Dashboard (types, Jest, build, pnpm audit)",
+        "ci / Docker Compose + Health + KI-Smoke + Playwright E2E",
+        "ci / Unified Release Gate (all jobs + FREEZE + version lock)"
+      ]
+    },
+    "required_pull_request_reviews": {
+      "required_approving_review_count": 1
+    },
+    "enforce_admins": {
+      "enabled": true,
+      "url": "https://api.github.com/"
+    },
+    "restrictions": null,
+    "allow_force_pushes": {
+      "enabled": false
+    },
+    "allow_deletions": {
+      "enabled": false
+    }
+  }
+}

@@ -83,6 +83,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--input-json", default="tests/fixtures/multi_asset_strategy_evidence_sample.json")
     parser.add_argument("--output-md")
     parser.add_argument("--output-json")
+    parser.add_argument("--allow-failures", action="store_true")
     args = parser.parse_args(argv)
 
     if args.dry_run:
@@ -102,6 +103,8 @@ def main(argv: list[str] | None = None) -> int:
         out_json.parent.mkdir(parents=True, exist_ok=True)
         out_json.write_text(json.dumps(report, indent=2, ensure_ascii=False, sort_keys=True), encoding="utf-8")
 
+    if args.allow_failures:
+        return 0
     return 0 if report["summary"]["FAIL"] == 0 else 1
 
 

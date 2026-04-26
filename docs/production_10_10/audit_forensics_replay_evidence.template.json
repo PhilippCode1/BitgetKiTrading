@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "status": "external_required",
+  "reviewed_by": "CHANGE_ME_EXTERNAL_OR_OWNER",
+  "reviewed_at": "CHANGE_ME_ISO8601",
+  "environment": "CHANGE_ME_STAGING_OR_SHADOW",
+  "git_sha": "CHANGE_ME_GIT_SHA",
+  "staging_replay": {
+    "performed": false,
+    "window_start": "CHANGE_ME_ISO8601",
+    "window_end": "CHANGE_ME_ISO8601",
+    "trace_ids_sampled": [],
+    "signal_risk_exchange_chain_verified": false,
+    "live_orders_during_replay": false,
+    "report_uri": "CHANGE_ME_STAGING_REPLAY_REPORT_URI"
+  },
+  "ledger": {
+    "storage_durable": false,
+    "append_only_policy": false,
+    "retention_days": null,
+    "export_uri": "CHANGE_ME_LEDGER_EXPORT_URI"
+  },
+  "forensics": {
+    "searchable_by_trace": false,
+    "operator_summary_de_available": false,
+    "incident_drill_reference": "CHANGE_ME_INCIDENT_DRILL_URI"
+  },
+  "safety": {
+    "secrets_redacted": true,
+    "owner_signoff": false,
+    "real_orders_possible": false
+  }
+}

@@ -21,6 +21,14 @@ Nach Neustart rekonstruiert der Worker den Runtime-Read-Model-Pfad aus **Orders 
 
 **Automatisierte Evidenz (Schema-Drill, Dump/Restore/Check):** Wiederkehrende und für Release-Evidence prüfbare Läufe: `docs/production_10_10/03_postgres_restore_drill.md` und `tools/dr_postgres_restore_drill.py` (RTO/RPO-Metriken, `PASS`/`FAIL` im Markdown-Bericht). Ergänzt, ersetzt nicht, ein vollständiges Stunden-Backup-`pg_restore` in eine Klon-DB (unten).
 
+**Externe Evidence-Pruefung:** Ein echter Restore-/DR-Nachweis wird mit
+`scripts/dr_postgres_restore_test.py --evidence-json ... --strict` gegen den
+Contract in `docs/production_10_10/postgres_restore_evidence.template.json`
+geprueft. Das Template ist absichtlich `FAIL`: Live bleibt `NO_GO`, bis
+Staging-/Clone-Restore, RTO/RPO, Checksumme, Migration-Smoke,
+Live-Broker-Read-Smoke, Reconcile-State, Audit-Trail, Safety-Latch und
+Alert-Route extern belegt sind.
+
 Vor Echtgeld-Go/Operator-Freigabe: **stündliches** Backup mindestens einmal in eine **Klon-Umgebung** (z. B. Staging) einspielen und Lese-/Write-Pfade (Migrationen, Ops-API, Live-Broker-Read) validieren. App-Instanzen vor dem Einspielen stoppen, die leere Zieldatenbank anlegen oder `DROP/CREATE` (Schema-only nicht ausreichend, wenn Inhalte referenziert werden).
 
 **Custom-Format-Dump (üblich, von `pg_dump -Fc` erzeugt):** Ziel-DSN ersetzen; Host/Port/User aus Geheimnissen (nicht in Git).
@@ -94,6 +102,26 @@ Strukturierte Sicht auf **Journal-Intent**, **lokale Orders** und **Exchange-Sna
 - **Persistenter** `missing_exchange_ack` auf Kernsymbolen trotz frischem REST-Catchup (wahrscheinlich API-/Konto- oder Routing-Fehler).
 - **Gleichzeitig** hohe Order-Drift (`local_only` + `exchange_only`) und fehlende Positions-Snapshots — manueller Abgleich vor neuen Live-Opens.
 - Telegram oder Chat aendert **keine** Strategieparameter; Recovery laeuft nur ueber DB/Exchange/Ops-Routen.
+
+## 6.1 Reconcile-/Idempotency-Evidence vor Live
+
+Simulierte Drills reichen nicht fuer `private_live_allowed`. Vor Live muss der
+secret-freie Contract in
+`docs/production_10_10/reconcile_idempotency_evidence.template.json` mit echter
+Staging-/Shadow-Evidence befuellt und strict geprueft werden:
+
+```bash
+python scripts/reconcile_truth_drill.py \
+  --evidence-json docs/production_10_10/reconcile_idempotency_evidence.template.json \
+  --strict \
+  --output-md reports/reconcile_idempotency_evidence.md \
+  --output-json reports/reconcile_idempotency_evidence.json
+```
+
+Der Nachweis muss Exchange-Truth, frische Snapshots, per-Asset-OK, keine offene
+Drift, Retry-/Timeout-/Duplicate-Client-OID-Blockaden, Audit, Alert,
+Main-Console-State und Owner-Signoff belegen. Echte Exchange-Orders im Drill
+sind kein Freigabegrund, sondern ein Blocker.
 
 ## 7. Verwandte ENV-Variablen
 

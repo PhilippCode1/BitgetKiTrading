@@ -86,6 +86,12 @@ Oder vollstaendiger Stack mit `WITH_OBSERVABILITY=true bash scripts/start_local.
 
 Die Regeln erzeugen Prometheus-Alerts (`ALERTS` Time-Serie). Fuer Produktion **Alertmanager** konfigurieren (Webhook, PagerDuty, Telegram-Bot-Webhook, etc.). Parallel feuert die **monitor-engine** weiterhin **ops.alerts** + `events:system_alert` fuer das integrierte Alert-Engine-Telegram.
 
+Vor `private_live_allowed` muss ein echter Staging-/Shadow-Zustellnachweis
+gegen `docs/production_10_10/alert_routing_evidence.template.json` strict
+geprueft werden. Der Strukturcheck von `tools/verify_alert_routing.py` beweist
+Routing-Konfiguration, aber nicht, dass Philipp oder der Betreiberkanal den
+Alert wirklich erhalten und quittiert hat.
+
 ## Strukturierte Logs
 
 `LOG_FORMAT=json` (siehe `Deploy.md`) fuer zentrale Sammlung; keine Secrets in Log-Feldern.
