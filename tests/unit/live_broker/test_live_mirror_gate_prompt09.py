@@ -17,9 +17,9 @@ for candidate in (REPO_ROOT, LIVE_BROKER_SRC):
         sys.path.insert(0, s)
 
 from tests.unit.live_broker.test_private_rest_client import (
-    InMemoryOrderRepo,
     _UNIT_TEST_CATALOG,
     _UNIT_TEST_METADATA,
+    InMemoryOrderRepo,
     _seed_exchange_long_for_reduce_only_guard,
 )
 
