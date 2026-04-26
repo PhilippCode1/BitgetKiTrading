@@ -28,3 +28,28 @@ def test_render_ci_env_example_replaces_set_me(tmp_path: Path) -> None:
 
     assert completed.returncode == 0, completed.stderr
     assert dst.read_text(encoding="utf-8") == "A=abc123\nB=ok\n"
+
+
+def test_render_ci_env_example_normalizes_crlf(tmp_path: Path) -> None:
+    src = tmp_path / "in.env"
+    dst = tmp_path / "out.env"
+    src.write_bytes(b"A=<SET_ME>\r\nB=ok\r\n")
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "tools/render_ci_env_example.py",
+            "--input",
+            str(src),
+            "--output",
+            str(dst),
+            "--placeholder",
+            "abc123",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert dst.read_text(encoding="utf-8") == "A=abc123\nB=ok\n"

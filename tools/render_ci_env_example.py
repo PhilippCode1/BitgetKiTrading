@@ -13,7 +13,9 @@ def main() -> int:
     args = parser.parse_args()
 
     src = args.input.read_text(encoding="utf-8")
-    rendered = src.replace("<SET_ME>", args.placeholder)
+    # Normalize line endings for Linux CI shells and env parsers.
+    normalized = src.replace("\r\n", "\n").replace("\r", "\n")
+    rendered = normalized.replace("<SET_ME>", args.placeholder)
     args.output.write_text(rendered, encoding="utf-8")
     return 0
 

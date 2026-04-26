@@ -328,7 +328,7 @@ jobs:
           pnpm --dir apps/dashboard run build
 
       - name: pnpm audit (Supply-Chain, high+ — Gate)
-        run: pnpm audit --audit-level=high
+        run: pnpm audit --audit-level=high --prod
 
   compose_healthcheck:
     if: github.event_name != 'schedule'
