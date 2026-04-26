@@ -7,7 +7,7 @@ Status: automatisch erzeugt aus `docs/production_10_10/evidence_matrix.yaml`.
 - Kategorien: 31
 - Live-Blocker nicht verified: 30
 - Schema-Fehler: 0
-- Warnungen: 30
+- Warnungen: 31
 
 ## Status Counts
 
@@ -98,6 +98,7 @@ Status: automatisch erzeugt aus `docs/production_10_10/evidence_matrix.yaml`.
 - WARNING `live_blocker_not_verified` `instrument_catalog`: blocks live trading and is not verified
 - WARNING `live_blocker_not_verified` `asset_quarantine_and_delisting`: blocks live trading and is not verified
 - WARNING `live_blocker_not_verified` `market_data_quality_per_asset`: blocks live trading and is not verified
+- WARNING `missing_evidence_file` `liquidity_spread_slippage_per_asset`: missing evidence file: tests/unit/live_broker/test_liquidity_guard.py
 - WARNING `live_blocker_not_verified` `liquidity_spread_slippage_per_asset`: blocks live trading and is not verified
 - WARNING `live_blocker_not_verified` `asset_risk_tiers`: blocks live trading and is not verified
 - WARNING `live_blocker_not_verified` `multi_asset_order_sizing`: blocks live trading and is not verified
