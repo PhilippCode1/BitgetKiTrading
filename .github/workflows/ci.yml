@@ -51,12 +51,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Env profile validation (Beispiel-ENV mit CI-Platzhalter-Ersatz)
-        run: |
-          set -euo pipefail
-          python3 tools/render_ci_env_example.py --input .env.local.example --output /tmp/ci.env.local
-          python3 tools/validate_env_profile.py --env-file /tmp/ci.env.local --profile local
-
       - name: ENV-Profile Templates (shadow, production --template)
         run: |
           set -euo pipefail
@@ -98,6 +92,12 @@ jobs:
           pip install -c constraints-runtime.txt -e ./services/llm-orchestrator
           pip install -c constraints-runtime.txt -e ./services/alert-engine
           pip install -c constraints-runtime.txt -e ./services/live-broker
+
+      - name: Env profile validation (Beispiel-ENV mit CI-Platzhalter-Ersatz)
+        run: |
+          set -euo pipefail
+          python3 tools/render_ci_env_example.py --input .env.local.example --output /tmp/ci.env.local
+          python3 tools/validate_env_profile.py --env-file /tmp/ci.env.local --profile local
 
       - name: Ruff (tests, tools, integration inkl. fixtures)
         run: >-
