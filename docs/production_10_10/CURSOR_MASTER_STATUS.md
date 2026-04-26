@@ -172,3 +172,4 @@ Status: automatisch aus `docs/production_10_10/evidence_matrix.yaml` und der Pro
   - keine Live-Keys im Demo-Profil
   - Compose-Config-Pruefung via `.env.demo.example`
 - Auswirkung: ENV-/Compose-Regressionen werden bei PR/Push frueh blockiert.
+- Required-check visibility test: no runtime or trading action.
