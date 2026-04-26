@@ -16,7 +16,9 @@ def test_max_stop_budget_at_anchor_and_floor(signal_settings) -> None:
     assert 0.001 < b30 < 0.01
 
 
-def test_assess_leverage_reduced_when_stop_wide_for_high_leverage(signal_settings) -> None:
+def test_assess_leverage_reduced_when_stop_wide_for_high_leverage(
+    signal_settings,
+) -> None:
     """Breiterer Stop als Budget bei hohem L -> Hebel runter bis Budget passt."""
     close = 100_000.0
     drawings = [
@@ -195,7 +197,9 @@ def test_skipped_when_not_allow_trade(signal_settings) -> None:
     a = assess_stop_budget_policy(
         settings=signal_settings,
         signal_row=row,
-        drawings=[{"type": "stop_zone", "geometry": {"price_low": "9", "price_high": "10"}}],
+        drawings=[
+            {"type": "stop_zone", "geometry": {"price_low": "9", "price_high": "10"}}
+        ],
         last_close=100.0,
         primary_feature={},
         instrument_execution=None,

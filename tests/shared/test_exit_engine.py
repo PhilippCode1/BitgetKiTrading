@@ -280,7 +280,11 @@ def test_evaluate_exit_plan_time_stop_expired() -> None:
         "trigger_type": "mark_price",
         "stop_price": "90",
         "time_stop": {"enabled": True, "deadline_ts_ms": deadline, "fired": False},
-        "execution": {"reduce_only": True, "order_type": "market", "timing": "immediate"},
+        "execution": {
+            "reduce_only": True,
+            "order_type": "market",
+            "timing": "immediate",
+        },
     }
     tp_plan = {
         "trigger_type": "fill_price",
@@ -310,7 +314,11 @@ def test_evaluate_exit_plan_emergency_flatten() -> None:
         "trigger_type": "mark_price",
         "stop_price": "95",
         "force_emergency_close": True,
-        "execution": {"reduce_only": True, "order_type": "market", "timing": "immediate"},
+        "execution": {
+            "reduce_only": True,
+            "order_type": "market",
+            "timing": "immediate",
+        },
     }
     out = evaluate_exit_plan(
         side="long",

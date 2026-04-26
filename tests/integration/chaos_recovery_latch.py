@@ -215,9 +215,7 @@ def test_docker_stop_redis_optional_clears_only_via_publish(
     with pytest.raises(
         (redis.exceptions.ConnectionError, redis.exceptions.RedisError, OSError)
     ):
-        redis.Redis.from_url(
-            u, socket_connect_timeout=0.3, socket_timeout=0.3
-        ).ping()
+        redis.Redis.from_url(u, socket_connect_timeout=0.3, socket_timeout=0.3).ping()
     try:
         subprocess.run(
             ["docker", "start", cname], check=True, timeout=90, capture_output=True
@@ -246,15 +244,18 @@ def test_docker_stop_redis_optional_clears_only_via_publish(
     v = r1.get("system:global_halt")
     if v in (None, ""):
         publish_global_halt_state(u, False)
-        pytest.skip("global_halt-Key nach Redis-Restart weg (ohne persistiertes RDB/AOF)")
+        pytest.skip(
+            "global_halt-Key nach Redis-Restart weg (ohne persistiertes RDB/AOF)"
+        )
     assert str(v).strip() not in ("0", "false", "False", "")
     publish_global_halt_state(u, False)
     v2 = r1.get("system:global_halt")
     assert str(v2 or "0").strip().lower() in ("0", "false", "")
 
 
-def test_docker_stops_redis_during_signal_loop_read_status_unavailable(  # noqa: D103
-) -> None:
+def test_docker_stops_redis_during_signal_loop_read_status_unavailable() -> (  # noqa: D103
+    None
+):
     """
     DoD Prompt 72: während laufendem ``ping``-„Signal“-Thread Docker-``stop``,
     danach ``get_shadow_match_latch_read_status`` = ``redis_unavailable``;
@@ -347,4 +348,3 @@ def test_docker_stops_redis_during_signal_loop_read_status_unavailable(  # noqa:
 def test_grpc_chaos_interceptor_built() -> None:
     xs = build_timesfm_chaos_interceptors(every_n=10, delay_sec=6.0)
     assert len(xs) == 1
-

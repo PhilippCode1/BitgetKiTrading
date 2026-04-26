@@ -646,6 +646,8 @@ class BaseServiceSettings(BaseSettings):
     encryption_key: str = Field(default="", alias="ENCRYPTION_KEY")
 
     bitget_demo_enabled: bool = Field(default=False, alias="BITGET_DEMO_ENABLED")
+    bitget_demo_rest_base_url: str = Field(default="", alias="BITGET_DEMO_REST_BASE_URL")
+    bitget_api_base_url: str = Field(default="", alias="BITGET_API_BASE_URL")
     news_fixture_mode: bool = Field(default=False, alias="NEWS_FIXTURE_MODE")
     llm_use_fake_provider: bool = Field(default=False, alias="LLM_USE_FAKE_PROVIDER")
     paper_sim_mode: bool = Field(default=False, alias="PAPER_SIM_MODE")
@@ -689,6 +691,8 @@ class BaseServiceSettings(BaseSettings):
         "live_allowed_product_types",
         "model_ops_registry_uri",
         "model_ops_active_model_tag",
+        "bitget_demo_rest_base_url",
+        "bitget_api_base_url",
         "service_internal_api_key",
         "admin_token",
         "secret_key",

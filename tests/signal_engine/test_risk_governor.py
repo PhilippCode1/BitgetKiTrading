@@ -94,14 +94,28 @@ def test_margin_stress_moves_to_live_execution_not_hybrid_block(
             "risk_account_snapshot": {"margin_utilization_0_1": 0.99},
         }
     )
-    gov = assess_risk_governor(settings=signal_settings, signal_row=row, direction="long")
-    assert "risk_governor_margin_utilization_exceeded" in gov["live_execution_block_reasons_json"]
-    assert "risk_governor_margin_utilization_exceeded" not in gov["hard_block_reasons_json"]
+    gov = assess_risk_governor(
+        settings=signal_settings, signal_row=row, direction="long"
+    )
+    assert (
+        "risk_governor_margin_utilization_exceeded"
+        in gov["live_execution_block_reasons_json"]
+    )
+    assert (
+        "risk_governor_margin_utilization_exceeded"
+        not in gov["hard_block_reasons_json"]
+    )
     assert gov["hard_block_reasons_json"] == []
     out = assess_hybrid_decision(settings=signal_settings, signal_row=row)
     assert out["trade_action"] == "allow_trade"
-    assert "risk_governor_margin_utilization_exceeded" not in out["abstention_reasons_json"]
-    assert "risk_governor_margin_utilization_exceeded" in out["live_execution_block_reasons_json"]
+    assert (
+        "risk_governor_margin_utilization_exceeded"
+        not in out["abstention_reasons_json"]
+    )
+    assert (
+        "risk_governor_margin_utilization_exceeded"
+        in out["live_execution_block_reasons_json"]
+    )
 
 
 def test_margin_utilization_at_config_limit_not_blocked(
@@ -115,19 +129,31 @@ def test_margin_utilization_at_config_limit_not_blocked(
             "risk_account_snapshot": {"margin_utilization_0_1": limit},
         }
     )
-    gov = assess_risk_governor(settings=signal_settings, signal_row=row, direction="long")
-    assert "risk_governor_margin_utilization_exceeded" not in gov["live_execution_block_reasons_json"]
+    gov = assess_risk_governor(
+        settings=signal_settings, signal_row=row, direction="long"
+    )
+    assert (
+        "risk_governor_margin_utilization_exceeded"
+        not in gov["live_execution_block_reasons_json"]
+    )
 
 
-def test_largest_position_risk_breaches_live_block(signal_settings: SignalEngineSettings) -> None:
+def test_largest_position_risk_breaches_live_block(
+    signal_settings: SignalEngineSettings,
+) -> None:
     row = _row(
         source_snapshot_json={
             **_row()["source_snapshot_json"],  # type: ignore[arg-type]
             "risk_account_snapshot": {"largest_position_risk_to_equity_0_1": 0.99},
         }
     )
-    gov = assess_risk_governor(settings=signal_settings, signal_row=row, direction="long")
-    assert "risk_governor_largest_position_risk_exceeded" in gov["live_execution_block_reasons_json"]
+    gov = assess_risk_governor(
+        settings=signal_settings, signal_row=row, direction="long"
+    )
+    assert (
+        "risk_governor_largest_position_risk_exceeded"
+        in gov["live_execution_block_reasons_json"]
+    )
 
 
 def test_margin_utilization_one_epsilon_above_limit_blocks(
@@ -140,8 +166,13 @@ def test_margin_utilization_one_epsilon_above_limit_blocks(
             "risk_account_snapshot": {"margin_utilization_0_1": limit + 1e-9},
         }
     )
-    gov = assess_risk_governor(settings=signal_settings, signal_row=row, direction="long")
-    assert "risk_governor_margin_utilization_exceeded" in gov["live_execution_block_reasons_json"]
+    gov = assess_risk_governor(
+        settings=signal_settings, signal_row=row, direction="long"
+    )
+    assert (
+        "risk_governor_margin_utilization_exceeded"
+        in gov["live_execution_block_reasons_json"]
+    )
 
 
 def test_account_stress_merged_into_hard_when_legacy_mode(
@@ -163,7 +194,9 @@ def test_account_stress_merged_into_hard_when_legacy_mode(
     assert out["trade_action"] == "do_not_trade"
 
 
-def test_portfolio_venue_degraded_live_block(signal_settings: SignalEngineSettings) -> None:
+def test_portfolio_venue_degraded_live_block(
+    signal_settings: SignalEngineSettings,
+) -> None:
     row = _row(
         source_snapshot_json={
             **_row()["source_snapshot_json"],  # type: ignore[arg-type]
@@ -172,7 +205,9 @@ def test_portfolio_venue_degraded_live_block(signal_settings: SignalEngineSettin
             },
         }
     )
-    gov = assess_risk_governor(settings=signal_settings, signal_row=row, direction="long")
+    gov = assess_risk_governor(
+        settings=signal_settings, signal_row=row, direction="long"
+    )
     assert "portfolio_live_venue_degraded" in gov["live_execution_block_reasons_json"]
 
 
@@ -183,9 +218,13 @@ def test_hard_block_exchange_health(signal_settings: SignalEngineSettings) -> No
             "risk_account_snapshot": {"exchange_health_ok": False},
         }
     )
-    gov = assess_risk_governor(settings=signal_settings, signal_row=row, direction="long")
+    gov = assess_risk_governor(
+        settings=signal_settings, signal_row=row, direction="long"
+    )
     assert "risk_governor_exchange_health_bad" in gov["hard_block_reasons_json"]
-    assert "risk_governor_exchange_health_bad" in gov["universal_hard_block_reasons_json"]
+    assert (
+        "risk_governor_exchange_health_bad" in gov["universal_hard_block_reasons_json"]
+    )
 
 
 def test_vpin_toxic_flow_universal_halt(signal_settings: SignalEngineSettings) -> None:
@@ -201,7 +240,9 @@ def test_vpin_toxic_flow_universal_halt(signal_settings: SignalEngineSettings) -
             "feature_snapshot": {**fs, "primary_tf": {**ptf, "market_vpin_score": 0.9}},
         }
     )
-    gov = assess_risk_governor(settings=signal_settings, signal_row=row, direction="long")
+    gov = assess_risk_governor(
+        settings=signal_settings, signal_row=row, direction="long"
+    )
     assert "RISK_VPIN_HALT" in gov["universal_hard_block_reasons_json"]
     assert gov["trade_action_recommendation"] == "do_not_trade"
 
@@ -218,23 +259,36 @@ def test_vpin_moderate_halves_max_exposure_fraction(
     row = _row(
         source_snapshot_json={
             **base_snap,
-            "feature_snapshot": {**fs, "primary_tf": {**ptf, "market_vpin_score": 0.75}},
+            "feature_snapshot": {
+                **fs,
+                "primary_tf": {**ptf, "market_vpin_score": 0.75},
+            },
         }
     )
-    gov = assess_risk_governor(settings=signal_settings, signal_row=row, direction="long")
+    gov = assess_risk_governor(
+        settings=signal_settings, signal_row=row, direction="long"
+    )
     assert "RISK_VPIN_HALT" not in (gov.get("universal_hard_block_reasons_json") or [])
     assert abs(float(gov["max_exposure_fraction_0_1"]) - 0.5) < 1e-9
 
 
-def test_uncertainty_blocked_phase_hard_stop(signal_settings: SignalEngineSettings) -> None:
+def test_uncertainty_blocked_phase_hard_stop(
+    signal_settings: SignalEngineSettings,
+) -> None:
     row = _row(uncertainty_gate_phase="blocked")
-    gov = assess_risk_governor(settings=signal_settings, signal_row=row, direction="long")
+    gov = assess_risk_governor(
+        settings=signal_settings, signal_row=row, direction="long"
+    )
     assert "risk_governor_uncertainty_phase_blocked" in gov["hard_block_reasons_json"]
 
 
-def test_high_uncertainty_lowers_leverage_cap(signal_settings: SignalEngineSettings) -> None:
+def test_high_uncertainty_lowers_leverage_cap(
+    signal_settings: SignalEngineSettings,
+) -> None:
     row = _row(model_uncertainty_0_1=0.70)
-    gov = assess_risk_governor(settings=signal_settings, signal_row=row, direction="long")
+    gov = assess_risk_governor(
+        settings=signal_settings, signal_row=row, direction="long"
+    )
     assert gov["max_leverage_cap"] <= 18
     assert gov["quality_tier"] in {"A", "B", "C", "D"}
 
@@ -251,11 +305,18 @@ def test_live_ramp_caps_candidate_lane(signal_settings: SignalEngineSettings) ->
     out = assess_hybrid_decision(settings=signal_settings, signal_row=row)
     assert out["meta_trade_lane"] == "candidate_for_live"
     assert out["trade_action"] == "allow_trade"
-    assert out["allowed_leverage"] == signal_settings.risk_governor_live_ramp_max_leverage
-    assert out["recommended_leverage"] == signal_settings.risk_governor_live_ramp_max_leverage
+    assert (
+        out["allowed_leverage"] == signal_settings.risk_governor_live_ramp_max_leverage
+    )
+    assert (
+        out["recommended_leverage"]
+        == signal_settings.risk_governor_live_ramp_max_leverage
+    )
 
 
-def test_live_ramp_lifted_with_escalation_flags(signal_settings: SignalEngineSettings) -> None:
+def test_live_ramp_lifted_with_escalation_flags(
+    signal_settings: SignalEngineSettings,
+) -> None:
     snap = _row()["source_snapshot_json"]
     assert isinstance(snap, dict)
     feat = snap["feature_snapshot"]
@@ -283,7 +344,10 @@ def test_live_ramp_lifted_with_escalation_flags(signal_settings: SignalEngineSet
     out = assess_hybrid_decision(settings=signal_settings, signal_row=row)
     assert out["meta_trade_lane"] == "candidate_for_live"
     assert out["recommended_leverage"] is not None
-    assert out["recommended_leverage"] > signal_settings.risk_governor_live_ramp_max_leverage
+    assert (
+        out["recommended_leverage"]
+        > signal_settings.risk_governor_live_ramp_max_leverage
+    )
 
 
 def test_paper_lane_not_live_ramped(signal_settings: SignalEngineSettings) -> None:
@@ -373,7 +437,9 @@ def test_specialist_ensemble_disagreement_adds_universal_block(
             },
         }
     )
-    gov = assess_risk_governor(settings=signal_settings, signal_row=row, direction="long")
+    gov = assess_risk_governor(
+        settings=signal_settings, signal_row=row, direction="long"
+    )
     assert "risk_governor_specialist_ensemble_disagreement" in (
         gov.get("universal_hard_block_reasons_json") or []
     )
@@ -385,7 +451,9 @@ def test_elevated_market_uncertainty_triggers_universal_block_without_ensemble(
     row = _row(
         model_uncertainty_0_1=0.55,
     )
-    gov = assess_risk_governor(settings=signal_settings, signal_row=row, direction="long")
+    gov = assess_risk_governor(
+        settings=signal_settings, signal_row=row, direction="long"
+    )
     assert "risk_governor_elevated_market_uncertainty" in (
         gov.get("universal_hard_block_reasons_json") or []
     )
@@ -407,7 +475,9 @@ def test_market_anomaly_confidence_high_blocks_universal(
         market_anomaly_confidence_0_1=0.85,
         source_snapshot_json={**ss, "feature_snapshot": fs},
     )
-    gov = assess_risk_governor(settings=signal_settings, signal_row=row, direction="long")
+    gov = assess_risk_governor(
+        settings=signal_settings, signal_row=row, direction="long"
+    )
     assert "risk_governor_market_anomaly_confidence_high" in (
         gov.get("universal_hard_block_reasons_json") or []
     )

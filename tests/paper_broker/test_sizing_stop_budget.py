@@ -26,7 +26,5 @@ def test_qty_stop_budget_scales_with_equity(settings: PaperBrokerSettings) -> No
 
 def test_qty_falls_back_without_reference_price(settings: PaperBrokerSettings) -> None:
     sig = {"signal_class": "kern", "direction": "long"}
-    q = qty_with_stop_budget(
-        settings, sig, "kern", context={"account_equity": "10000"}
-    )
+    q = qty_with_stop_budget(settings, sig, "kern", context={"account_equity": "10000"})
     assert q == Decimal(str(settings.strat_base_qty_btc))

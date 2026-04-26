@@ -228,17 +228,11 @@ def _ts_ok_for_json_type(ts_type: str, jtags: list[str]) -> bool:
             ):
                 return True
     for jt in jset - {"any"}:
-        if jt in ("integer", "number") and re.search(
-            r"number", ts_l, re.IGNORECASE
-        ):
+        if jt in ("integer", "number") and re.search(r"number", ts_l, re.IGNORECASE):
             return True
-        if jt == "string" and re.search(
-            r"string", ts_l, re.IGNORECASE
-        ):
+        if jt == "string" and re.search(r"string", ts_l, re.IGNORECASE):
             return True
-        if jt == "boolean" and re.search(
-            r"boolean", ts_l, re.IGNORECASE
-        ):
+        if jt == "boolean" and re.search(r"boolean", ts_l, re.IGNORECASE):
             return True
     return False
 
@@ -275,9 +269,12 @@ def _check_ts_schema_payloads(
             continue
         nprops: dict = sdoc.get("properties", {})
         sreq: list = sdoc.get("required", [])
-        is_loose = sdoc.get("type") == "object" and bool(
-            sdoc.get("additionalProperties", False) is True
-        ) and (not sdoc.get("required")) and (not sdoc.get("properties"))
+        is_loose = (
+            sdoc.get("type") == "object"
+            and bool(sdoc.get("additionalProperties", False) is True)
+            and (not sdoc.get("required"))
+            and (not sdoc.get("properties"))
+        )
         if is_loose:
             inner = block.replace("\n", " ")
             if not re.search(r"\[k: string\]\s*:\s*unknown", inner):
@@ -299,9 +296,7 @@ def _check_ts_schema_payloads(
                 continue
             if pk in tfields:
                 jt = _json_type_tags(psc)
-                if not _ts_ok_for_json_type(
-                    tfields[pk], jt
-                ) and not re.search(
+                if not _ts_ok_for_json_type(tfields[pk], jt) and not re.search(
                     r"unknown",
                     tfields[pk],
                 ):

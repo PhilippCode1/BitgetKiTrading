@@ -179,7 +179,9 @@ def llm_gateway_base_issues(env: dict[str, str], profile: str) -> list[str]:
     ]
 
 
-def conditional_env_issues(env: dict[str, str], profile: str, *, template: bool = False) -> list[str]:
+def conditional_env_issues(
+    env: dict[str, str], profile: str, *, template: bool = False
+) -> list[str]:
     """Zusaetzliche Regeln, die von Feature-Flags abhaengen."""
     issues: list[str] = []
     prod_like = profile in ("staging", "shadow", "production")
@@ -213,15 +215,23 @@ def conditional_env_issues(env: dict[str, str], profile: str, *, template: bool 
         if _bad(env.get("TELEGRAM_BOT_TOKEN", "")) and not (
             template and "TELEGRAM_BOT_TOKEN" in env
         ):
-            issues.append("TELEGRAM_BOT_TOKEN Pflicht wenn COMMERCIAL_TELEGRAM_REQUIRED_FOR_CONSOLE=true")
+            issues.append(
+                "TELEGRAM_BOT_TOKEN Pflicht wenn COMMERCIAL_TELEGRAM_REQUIRED_FOR_CONSOLE=true"
+            )
 
-    if _truthy(env.get("LIVE_TRADE_ENABLE", "")) and not _truthy(env.get("BITGET_DEMO_ENABLED", "")):
+    if _truthy(env.get("LIVE_TRADE_ENABLE", "")) and not _truthy(
+        env.get("BITGET_DEMO_ENABLED", "")
+    ):
         for key in ("BITGET_API_KEY", "BITGET_API_SECRET", "BITGET_API_PASSPHRASE"):
             if _bad(env.get(key, "")) and not (template and key in env):
-                issues.append(f"{key} Pflicht wenn LIVE_TRADE_ENABLE=true und kein Demo-Modus")
+                issues.append(
+                    f"{key} Pflicht wenn LIVE_TRADE_ENABLE=true und kein Demo-Modus"
+                )
                 break
 
-    if _truthy(env.get("BITGET_ALLOW_DEMO_SCHEMA_SEEDS", "")) and (prod_like or production_flag):
+    if _truthy(env.get("BITGET_ALLOW_DEMO_SCHEMA_SEEDS", "")) and (
+        prod_like or production_flag
+    ):
         issues.append(
             "BITGET_ALLOW_DEMO_SCHEMA_SEEDS=true ist fuer shadow/production/staging verboten "
             "(nur lokale optional SQL unter infra/migrations/postgres_demo/). "
@@ -239,7 +249,9 @@ def conditional_env_issues(env: dict[str, str], profile: str, *, template: bool 
     return issues
 
 
-def bootstrap_issues(env: dict[str, str], profile: str, *, template: bool = False) -> list[str]:
+def bootstrap_issues(
+    env: dict[str, str], profile: str, *, template: bool = False
+) -> list[str]:
     issues = bootstrap_env_consistency_issues(env, profile=profile)
     if not template:
         return issues
@@ -248,13 +260,21 @@ def bootstrap_issues(env: dict[str, str], profile: str, *, template: bool = Fals
     return issues
 
 
-def secret_strength_issues(env: dict[str, str], profile: str, *, template: bool = False) -> list[str]:
+def secret_strength_issues(
+    env: dict[str, str], profile: str, *, template: bool = False
+) -> list[str]:
     prod_like = profile in ("staging", "shadow", "production")
     if not prod_like or template:
         return []
     weak_markers = ("password", "changeme", "123", "secret", "test")
     min_len = 16
-    keys = ("INTERNAL_API_KEY", "JWT_SECRET", "SECRET_KEY", "ENCRYPTION_KEY", "ADMIN_TOKEN")
+    keys = (
+        "INTERNAL_API_KEY",
+        "JWT_SECRET",
+        "SECRET_KEY",
+        "ENCRYPTION_KEY",
+        "ADMIN_TOKEN",
+    )
     issues: list[str] = []
     for key in keys:
         value = (env.get(key) or "").strip()
@@ -265,25 +285,45 @@ def secret_strength_issues(env: dict[str, str], profile: str, *, template: bool 
             issues.append(f"{key} zu kurz (mindestens {min_len} Zeichen).")
         lower = value.lower()
         if any(marker in lower for marker in weak_markers):
-            issues.append(f"{key} enthaelt triviales Muster (password/changeme/123/secret/test).")
+            issues.append(
+                f"{key} enthaelt triviales Muster (password/changeme/123/secret/test)."
+            )
     return issues
 
 
-def credential_isolation_issues(env: dict[str, str], profile: str, *, template: bool = False) -> list[str]:
+def credential_isolation_issues(
+    env: dict[str, str], profile: str, *, template: bool = False
+) -> list[str]:
     prod_like = profile in ("staging", "shadow", "production")
     if not prod_like:
         return []
     issues: list[str] = []
-    live_keys = any((env.get(k) or "").strip() and not _bad(env.get(k, "")) for k in ("BITGET_API_KEY", "BITGET_API_SECRET", "BITGET_API_PASSPHRASE"))
-    demo_keys = any((env.get(k) or "").strip() and not _bad(env.get(k, "")) for k in ("BITGET_DEMO_API_KEY", "BITGET_DEMO_API_SECRET", "BITGET_DEMO_API_PASSPHRASE"))
+    live_keys = any(
+        (env.get(k) or "").strip() and not _bad(env.get(k, ""))
+        for k in ("BITGET_API_KEY", "BITGET_API_SECRET", "BITGET_API_PASSPHRASE")
+    )
+    demo_keys = any(
+        (env.get(k) or "").strip() and not _bad(env.get(k, ""))
+        for k in (
+            "BITGET_DEMO_API_KEY",
+            "BITGET_DEMO_API_SECRET",
+            "BITGET_DEMO_API_PASSPHRASE",
+        )
+    )
     demo_enabled = _truthy(env.get("BITGET_DEMO_ENABLED", ""))
     if live_keys and demo_keys:
-        issues.append("Live- und Demo-Bitget-Credentials gleichzeitig gesetzt (verboten).")
+        issues.append(
+            "Live- und Demo-Bitget-Credentials gleichzeitig gesetzt (verboten)."
+        )
     if demo_enabled and live_keys:
         issues.append("BITGET_DEMO_ENABLED=true mit gesetzten Live-Keys (verboten).")
     if profile == "shadow" and _truthy(env.get("LIVE_TRADE_ENABLE", "")):
         issues.append("Shadow-Profil darf LIVE_TRADE_ENABLE=true nicht setzen.")
-    if profile == "production" and _truthy(env.get("LIVE_TRADE_ENABLE", "")) and demo_enabled:
+    if (
+        profile == "production"
+        and _truthy(env.get("LIVE_TRADE_ENABLE", ""))
+        and demo_enabled
+    ):
         issues.append("Production-Live darf keine Demo-Credentials/Flags aktiv haben.")
     if template:
         return [item for item in issues if "gleichzeitig gesetzt" not in item]
@@ -323,7 +363,11 @@ def main() -> int:
         print(f"FEHLT: {args.env_file}", file=sys.stderr)
         return 1
     fname = args.env_file.name.lower()
-    if args.profile == "local" and fname in (".env.production", ".env.shadow", ".env.staging"):
+    if args.profile == "local" and fname in (
+        ".env.production",
+        ".env.shadow",
+        ".env.staging",
+    ):
         print(
             "validate_env_profile: Profil 'local' widerspricht dem Dateinamen "
             f"{args.env_file.name} - nutze --profile staging/shadow/production.",
@@ -362,18 +406,27 @@ def main() -> int:
             problems.append(line)
 
     problems.extend(
-        f"  {m}" for m in conditional_env_issues(env, args.profile, template=args.template)
+        f"  {m}"
+        for m in conditional_env_issues(env, args.profile, template=args.template)
     )
     problems.extend(f"  {m}" for m in next_public_secret_key_issues(env))
     problems.extend(llm_gateway_base_issues(env, args.profile))
     problems.extend(bootstrap_issues(env, args.profile, template=args.template))
-    problems.extend(f"  {m}" for m in secret_strength_issues(env, args.profile, template=args.template))
-    problems.extend(f"  {m}" for m in credential_isolation_issues(env, args.profile, template=args.template))
+    problems.extend(
+        f"  {m}"
+        for m in secret_strength_issues(env, args.profile, template=args.template)
+    )
+    problems.extend(
+        f"  {m}"
+        for m in credential_isolation_issues(env, args.profile, template=args.template)
+    )
 
     has_error = bool(problems)
     if args.strict and args.profile in ("shadow", "production") and args.template:
         if env.get("PRODUCTION", "").strip().lower() != "true":
-            problems.append("  Strikt: Shadow/Production-Template muss PRODUCTION=true enthalten.")
+            problems.append(
+                "  Strikt: Shadow/Production-Template muss PRODUCTION=true enthalten."
+            )
             has_error = True
 
     if has_error:

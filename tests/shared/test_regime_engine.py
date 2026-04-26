@@ -19,10 +19,18 @@ def _base_ctx() -> dict:
     return {
         "timeframe": "5m",
         "analysis_ts_ms": 1_700_000_000_000,
-        "structure_state": {"trend_dir": "RANGE", "compression_flag": False, "breakout_box_json": {}},
+        "structure_state": {
+            "trend_dir": "RANGE",
+            "compression_flag": False,
+            "breakout_box_json": {},
+        },
         "structure_events": [],
         "primary_feature": {},
-        "features_by_tf": {"15m": {"trend_dir": 0}, "1H": {"trend_dir": 0}, "4H": {"trend_dir": 0}},
+        "features_by_tf": {
+            "15m": {"trend_dir": 0},
+            "1H": {"trend_dir": 0},
+            "4H": {"trend_dir": 0},
+        },
         "news_row": None,
         "news_shock_feature_enabled": True,
     }
@@ -66,10 +74,18 @@ def test_trend_to_chop_on_choch_churn() -> None:
         {"type": "CHOCH", "ts_ms": ts - 60_000, "details_json": {}},
     ]
     ctx = _base_ctx()
-    ctx["structure_state"] = {"trend_dir": "UP", "compression_flag": False, "breakout_box_json": {}}
+    ctx["structure_state"] = {
+        "trend_dir": "UP",
+        "compression_flag": False,
+        "breakout_box_json": {},
+    }
     ctx["structure_events"] = events
     ctx["primary_feature"] = {"range_score": 50.0, "atrp_14": 0.08}
-    ctx["features_by_tf"] = {"15m": {"trend_dir": 1}, "1H": {"trend_dir": 1}, "4H": {"trend_dir": 1}}
+    ctx["features_by_tf"] = {
+        "15m": {"trend_dir": 1},
+        "1H": {"trend_dir": 1},
+        "4H": {"trend_dir": 1},
+    }
     inp = RegimeEngineInputs(**ctx)
     r = classify_regime(inp)
     assert r.market_regime == "chop"

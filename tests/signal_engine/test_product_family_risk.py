@@ -58,7 +58,9 @@ def test_spot_ethusdt_1x_not_futures_leverage_minimum(signal_settings) -> None:
     rg = (spot.get("hybrid_decision") or {}).get("risk_governor") or {}
     assert rg.get("version") == RISK_GOVERNOR_VERSION
     assert int(rg.get("max_leverage_cap") or 0) == 1
-    assert "hybrid_allowed_leverage_below_minimum" not in spot["abstention_reasons_json"]
+    assert (
+        "hybrid_allowed_leverage_below_minimum" not in spot["abstention_reasons_json"]
+    )
 
 
 def test_futures_parallel_ethusdt_uses_7x_governor_floor(signal_settings) -> None:
@@ -89,7 +91,10 @@ def test_futures_parallel_ethusdt_uses_7x_governor_floor(signal_settings) -> Non
     assert fut["market_family"] == "futures"
     assert fut["trade_action"] == "allow_trade"
     assert fut["allowed_leverage"] >= 7
-    assert fut["recommended_leverage"] is not None and int(fut["recommended_leverage"]) >= 7
+    assert (
+        fut["recommended_leverage"] is not None
+        and int(fut["recommended_leverage"]) >= 7
+    )
     rg = (fut.get("hybrid_decision") or {}).get("risk_governor") or {}
     assert int(rg.get("max_leverage_cap") or 0) >= 7
 
@@ -103,7 +108,9 @@ def test_margin_maintenance_margin_rate_halt(signal_settings) -> None:
             "regime_state": "trend",
             "regime_confidence_0_1": 0.7,
             "source_snapshot_json": {
-                "feature_snapshot": {"primary_tf": {"spread_bps": 1.0, "depth_to_bar_volume_ratio": 1.0}},
+                "feature_snapshot": {
+                    "primary_tf": {"spread_bps": 1.0, "depth_to_bar_volume_ratio": 1.0}
+                },
                 "instrument": {
                     "market_family": "margin",
                     "symbol": "ETHUSDT",

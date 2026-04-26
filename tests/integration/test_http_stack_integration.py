@@ -94,7 +94,9 @@ def test_gateway_strategy_registry_list_contract(
         pytest.skip("API_GATEWAY_URL / INTEGRATION_GATEWAY_JWT_SECRET")
 
     base = integration_api_gateway_url.rstrip("/")
-    r = httpx.get(f"{base}/v1/registry/strategies", headers=integration_auth_headers, timeout=20.0)
+    r = httpx.get(
+        f"{base}/v1/registry/strategies", headers=integration_auth_headers, timeout=20.0
+    )
     r.raise_for_status()
     data = r.json()
     assert "items" in data
@@ -119,7 +121,9 @@ def test_gateway_strategy_registry_detail_contract(
         pytest.skip("API_GATEWAY_URL / INTEGRATION_GATEWAY_JWT_SECRET")
 
     base = integration_api_gateway_url.rstrip("/")
-    r0 = httpx.get(f"{base}/v1/registry/strategies", headers=integration_auth_headers, timeout=20.0)
+    r0 = httpx.get(
+        f"{base}/v1/registry/strategies", headers=integration_auth_headers, timeout=20.0
+    )
     r0.raise_for_status()
     items = r0.json().get("items") or []
     if not items:

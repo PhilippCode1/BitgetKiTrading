@@ -28,7 +28,9 @@ class _FakeCatalog(BitgetInstrumentCatalog):
 
     def resolve(self, *, symbol: str, market_family: str | None = None, **kwargs):
         for entry in self._snapshot.entries:
-            if entry.symbol == symbol and entry.market_family == (market_family or entry.market_family):
+            if entry.symbol == symbol and entry.market_family == (
+                market_family or entry.market_family
+            ):
                 return entry
         raise LookupError(symbol)
 

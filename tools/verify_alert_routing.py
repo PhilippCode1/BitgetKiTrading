@@ -18,8 +18,19 @@ except ImportError as e:  # pragma: no cover
 
 _REPO = Path(__file__).resolve().parents[1]
 ALERT_EVIDENCE_SCHEMA_VERSION = "alert-routing-evidence-v1"
-DEFAULT_EVIDENCE_TEMPLATE = _REPO / "docs" / "production_10_10" / "alert_routing_evidence.template.json"
-SECRET_LIKE_KEYS = ("webhook", "url", "token", "secret", "password", "api_key", "authorization", "routing_key")
+DEFAULT_EVIDENCE_TEMPLATE = (
+    _REPO / "docs" / "production_10_10" / "alert_routing_evidence.template.json"
+)
+SECRET_LIKE_KEYS = (
+    "webhook",
+    "url",
+    "token",
+    "secret",
+    "password",
+    "api_key",
+    "authorization",
+    "routing_key",
+)
 
 
 def build_evidence_template() -> dict[str, Any]:
@@ -79,7 +90,9 @@ def _non_negative_number(payload: dict[str, Any], key: str) -> float | None:
     return parsed if parsed >= 0 else None
 
 
-def assess_delivery_evidence(payload: dict[str, Any] | None) -> tuple[str, list[str], list[str]]:
+def assess_delivery_evidence(
+    payload: dict[str, Any] | None
+) -> tuple[str, list[str], list[str]]:
     if not payload:
         return "FAIL", ["alert_delivery_evidence_missing"], []
     blockers: list[str] = []
@@ -130,7 +143,13 @@ def assess_delivery_evidence(payload: dict[str, Any] | None) -> tuple[str, list[
     return status, blockers, warnings
 
 
-def _render_evidence_md(payload: dict[str, Any], status: str, blockers: list[str], warnings: list[str], secret_issues: list[str]) -> str:
+def _render_evidence_md(
+    payload: dict[str, Any],
+    status: str,
+    blockers: list[str],
+    warnings: list[str],
+    secret_issues: list[str],
+) -> str:
     lines = [
         "# Alert Routing Delivery Evidence Check",
         "",
@@ -268,7 +287,9 @@ def _count_routes(r: Any) -> int:
     return n
 
 
-def _collect_rule_meta(alerts_path: Path) -> tuple[dict[str, dict[str, Any]], list[str]]:
+def _collect_rule_meta(
+    alerts_path: Path,
+) -> tuple[dict[str, dict[str, Any]], list[str]]:
     if not alerts_path.is_file():
         return {}, [f"Prometheus-Alertdatei fehlt: {alerts_path}"]
     raw = alerts_path.read_text(encoding="utf-8", errors="replace")
@@ -512,7 +533,10 @@ def main() -> int:
             args.report.write_text(text, encoding="utf-8")
         if args.output_json:
             args.output_json.parent.mkdir(parents=True, exist_ok=True)
-            args.output_json.write_text(json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False), encoding="utf-8")
+            args.output_json.write_text(
+                json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False),
+                encoding="utf-8",
+            )
         if not args.report:
             print(text)
         if args.strict_external and not payload["ok"]:

@@ -127,6 +127,12 @@ def build_payload() -> dict[str, Any]:
         "incident_drill.json",
     ]
     missing_runtime_reports = [name for name in required_report_files if not _existing_report(name)]
+    demo_lifecycle = None
+    if _existing_report("demo_lifecycle_evidence.json"):
+        try:
+            demo_lifecycle = json.loads((REPORTS / "demo_lifecycle_evidence.json").read_text(encoding="utf-8"))
+        except Exception:
+            demo_lifecycle = None
 
     owner = _load_owner_release()
     owner_missing = []
@@ -149,6 +155,8 @@ def build_payload() -> dict[str, Any]:
         total=total,
         p0=len(open_p0),
     )
+    if isinstance(demo_lifecycle, dict) and str(demo_lifecycle.get("lifecycle_status") or "") == "DEMO_LIFECYCLE_VERIFIED":
+        evidence_score = min(10, evidence_score + 1)
     private_live_score = 2 if open_p0 else (4 if owner_missing else 8)
     autonomous_score = 1
     overall_score = max(1, round((software_score + evidence_score + private_live_score + autonomous_score) / 4))
@@ -190,6 +198,7 @@ def build_payload() -> dict[str, Any]:
             "external_required wird nie als verified gezaehlt",
             "private_live_allowed bleibt NO bei offenen P0/P1 oder fehlendem Owner-Signoff",
             "full_autonomous_live bleibt NO ohne lange echte Live-Historie",
+            "demo_lifecycle_verified verbessert nur Demo-Evidence, nicht private_live_allowed oder live_verified",
         ],
         "next_steps": [
             "Offene P0/P1 Kategorien mit Runtime-Evidence auf verified bringen",

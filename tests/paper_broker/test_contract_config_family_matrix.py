@@ -36,7 +36,9 @@ def _settings_for_case(case: dict) -> PaperBrokerSettings:
     )
 
 
-@pytest.mark.parametrize("case", FAMILY_RUNTIME_CASES, ids=[c["name"] for c in FAMILY_RUNTIME_CASES])
+@pytest.mark.parametrize(
+    "case", FAMILY_RUNTIME_CASES, ids=[c["name"] for c in FAMILY_RUNTIME_CASES]
+)
 def test_contract_config_parse_matrix_by_family(case: dict) -> None:
     settings = _settings_for_case(case)
     provider = ContractConfigProvider(settings)
@@ -54,7 +56,11 @@ def test_contract_config_parse_matrix_by_family(case: dict) -> None:
 
     view = provider._parse_dict(payload, case["symbol"], entry=entry)
 
-    expected_product = case["product_type"] if case["market_family"] == "futures" else case["market_family"].upper()
+    expected_product = (
+        case["product_type"]
+        if case["market_family"] == "futures"
+        else case["market_family"].upper()
+    )
     assert view.symbol == case["symbol"].upper()
     assert view.product_type == expected_product
     assert view.maker_fee_rate == Decimal(case["maker_fee_rate"])
@@ -116,8 +122,12 @@ def test_futures_btcusdt_resolves_from_named_fixture_file_not_generic_btc() -> N
 
 
 def test_contract_config_defaults_futures_interval_and_spot_leverage() -> None:
-    fut_case = next(case for case in FAMILY_RUNTIME_CASES if case["name"] == "futures_btcusdt_usdt")
-    spot_case = next(case for case in FAMILY_RUNTIME_CASES if case["name"] == "spot_btcusdt")
+    fut_case = next(
+        case for case in FAMILY_RUNTIME_CASES if case["name"] == "futures_btcusdt_usdt"
+    )
+    spot_case = next(
+        case for case in FAMILY_RUNTIME_CASES if case["name"] == "spot_btcusdt"
+    )
 
     fut = ContractConfigProvider(_settings_for_case(fut_case))._parse_dict(
         {"symbol": fut_case["symbol"]},
@@ -136,7 +146,9 @@ def test_contract_config_defaults_futures_interval_and_spot_leverage() -> None:
 
 
 def test_contract_config_live_fetch_falls_back_to_fixture_in_local(monkeypatch) -> None:
-    fut_case = next(case for case in FAMILY_RUNTIME_CASES if case["name"] == "futures_btcusdt_usdt")
+    fut_case = next(
+        case for case in FAMILY_RUNTIME_CASES if case["name"] == "futures_btcusdt_usdt"
+    )
     settings = PaperBrokerSettings.model_construct(
         production=False,
         app_env="local",
@@ -160,14 +172,19 @@ def test_contract_config_live_fetch_falls_back_to_fixture_in_local(monkeypatch) 
         def get(self, *args, **kwargs):
             raise RuntimeError("network down")
 
-    monkeypatch.setattr("paper_broker.engine.contract_config.httpx.Client", lambda *a, **k: _BoomClient())
+    monkeypatch.setattr(
+        "paper_broker.engine.contract_config.httpx.Client",
+        lambda *a, **k: _BoomClient(),
+    )
     provider = ContractConfigProvider(settings)
     view = provider.get(fut_case["symbol"])
     assert view.symbol == fut_case["symbol"]
 
 
 def test_contract_config_live_fetch_fails_closed_in_shadow(monkeypatch) -> None:
-    fut_case = next(case for case in FAMILY_RUNTIME_CASES if case["name"] == "futures_btcusdt_usdt")
+    fut_case = next(
+        case for case in FAMILY_RUNTIME_CASES if case["name"] == "futures_btcusdt_usdt"
+    )
     settings = PaperBrokerSettings.model_construct(
         production=True,
         app_env="shadow",
@@ -191,7 +208,10 @@ def test_contract_config_live_fetch_fails_closed_in_shadow(monkeypatch) -> None:
         def get(self, *args, **kwargs):
             raise RuntimeError("network down")
 
-    monkeypatch.setattr("paper_broker.engine.contract_config.httpx.Client", lambda *a, **k: _BoomClient())
+    monkeypatch.setattr(
+        "paper_broker.engine.contract_config.httpx.Client",
+        lambda *a, **k: _BoomClient(),
+    )
     provider = ContractConfigProvider(settings)
     with pytest.raises(RuntimeError, match="prod-like mode"):
         provider.get(fut_case["symbol"])

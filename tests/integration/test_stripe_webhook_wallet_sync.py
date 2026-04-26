@@ -99,7 +99,12 @@ def _insert_minimal_tenant_and_intent(
 
 
 def _build_checkout_session_event(
-    *, event_id: str, session_id: str, intent_id: UUID, tenant_id: str, amount_minor: int
+    *,
+    event_id: str,
+    session_id: str,
+    intent_id: UUID,
+    tenant_id: str,
+    amount_minor: int,
 ) -> dict[str, Any]:
     return {
         "id": event_id,
@@ -226,7 +231,9 @@ def test_reconcile_second_pass_no_op_without_double_credit(
             return session_d  # type: ignore[return-value]
         return None
 
-    monkeypatch.setattr(sc, "retrieve_checkout_session_for_reconciliation", _mock_retrieve)
+    monkeypatch.setattr(
+        sc, "retrieve_checkout_session_for_reconciliation", _mock_retrieve
+    )
     with conn.transaction():
         n1 = dep.reconcile_stripe_deposits_for_tenant(conn, settings, tenant_id=tid)
     assert n1 == 1

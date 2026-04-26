@@ -16,12 +16,16 @@ def test_signal_weight_news_cannot_exceed_cap(monkeypatch: pytest.MonkeyPatch) -
         SignalEngineSettings()
 
 
-def test_weight_tuple_redistributes_when_news_composite_disabled(signal_settings) -> None:
+def test_weight_tuple_redistributes_when_news_composite_disabled(
+    signal_settings,
+) -> None:
     s = signal_settings.model_copy(update={"signal_news_in_composite_enabled": False})
     t = s.weight_tuple()
     assert t[3] == 0.0
     assert abs(sum(t) - 1.0) < 1e-6
-    assert t[0] == pytest.approx(signal_settings.signal_weight_structure + signal_settings.signal_weight_news)
+    assert t[0] == pytest.approx(
+        signal_settings.signal_weight_structure + signal_settings.signal_weight_news
+    )
 
 
 def test_score_news_ignores_db_when_layer_disabled(signal_settings) -> None:

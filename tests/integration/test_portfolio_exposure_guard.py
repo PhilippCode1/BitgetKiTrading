@@ -76,13 +76,17 @@ class _Repo:
             "positions": [],
         }
         self.reconcile_snapshot: dict[str, object] = {
-            "details_json": {"drift": {"snapshot_health": {"missing_types": [], "stale_types": []}}}
+            "details_json": {
+                "drift": {"snapshot_health": {"missing_types": [], "stale_types": []}}
+            }
         }
 
     def record_execution_decision(self, record: dict[str, object]) -> dict[str, object]:
         return {**record, "execution_id": str(uuid4())}
 
-    def record_execution_risk_snapshot(self, _eid: str, _risk: dict[str, object]) -> None:
+    def record_execution_risk_snapshot(
+        self, _eid: str, _risk: dict[str, object]
+    ) -> None:
         return None
 
     def record_shadow_live_assessment(self, **_: object) -> None:
@@ -97,9 +101,16 @@ class _Repo:
         return items[:limit]
 
     def list_exchange_snapshots_since(
-        self, snapshot_type: str, *, since_ts_ms: int, symbol: str | None = None, limit: int = 5000
+        self,
+        snapshot_type: str,
+        *,
+        since_ts_ms: int,
+        symbol: str | None = None,
+        limit: int = 5000,
     ) -> list[dict[str, object]]:
-        return self.list_latest_exchange_snapshots(snapshot_type, symbol=symbol, limit=limit)
+        return self.list_latest_exchange_snapshots(
+            snapshot_type, symbol=symbol, limit=limit
+        )
 
     def latest_reconcile_snapshot(self) -> dict[str, object] | None:
         return self.reconcile_snapshot
@@ -121,7 +132,9 @@ def _no_db_m604() -> object:
         yield
 
 
-def test_fifth_order_blocked_portfolio_exposure_exceeded(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_fifth_order_blocked_portfolio_exposure_exceeded(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """
     4 grosse offene (DB-)Positionen, Equity 10k, Basislimit 25 %, mit 5 Instrumenten
     sinkt effektiv auf 20 % (Buffer) => Cap 2000. Bestand 4*500 + neue Order-Notional > 2000.

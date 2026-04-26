@@ -57,7 +57,11 @@ def _test_dsn() -> str:
 
 
 def _test_redis_url() -> str:
-    u = (os.getenv("TEST_REDIS_URL") or os.getenv("REDIS_URL") or "redis://127.0.0.1:6379/0").strip()
+    u = (
+        os.getenv("TEST_REDIS_URL")
+        or os.getenv("REDIS_URL")
+        or "redis://127.0.0.1:6379/0"
+    ).strip()
     try:
         r = redis.Redis.from_url(u, socket_connect_timeout=1.0)
         r.ping()

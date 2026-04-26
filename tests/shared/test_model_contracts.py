@@ -208,7 +208,10 @@ def test_build_model_output_snapshot_and_contract_bundle_share_hashes() -> None:
     assert contract_bundle["feature_snapshot"]["schema_hash"] == FEATURE_SCHEMA_HASH
     assert contract_bundle["model_output"]["schema_hash"] == MODEL_OUTPUT_SCHEMA_HASH
     assert contract_bundle["targets"]["schema_hash"] == MODEL_TARGET_SCHEMA_HASH
-    assert contract_bundle["playbook_registry"]["registry_version"] == PLAYBOOK_REGISTRY_VERSION
+    assert (
+        contract_bundle["playbook_registry"]["registry_version"]
+        == PLAYBOOK_REGISTRY_VERSION
+    )
     assert contract_bundle["active_models"][0]["model_name"] == "take_trade_prob"
     assert contract_bundle["active_models"][1]["model_name"] == "expected_return_bps"
     assert contract_bundle["targets"]["fields"] == list(MODEL_TARGET_FIELDS)
@@ -218,7 +221,10 @@ def test_build_model_output_snapshot_and_contract_bundle_share_hashes() -> None:
 
 
 def test_model_contract_bundle_merges_target_labeling_audit() -> None:
-    audit = {"target_evaluation_contract_version": "1.0", "evaluation_window": {"decision_ts_ms": 1}}
+    audit = {
+        "target_evaluation_contract_version": "1.0",
+        "evaluation_window": {"decision_ts_ms": 1},
+    }
     bundle = build_model_contract_bundle(target_labeling_audit=audit)
     assert bundle["target_labeling"] == audit
     bare = build_model_contract_bundle()
