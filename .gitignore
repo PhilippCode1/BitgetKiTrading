@@ -6,6 +6,7 @@
 /.env production/
 !.env.example
 !.env.local.example
+!.env.demo.example
 !.env.staging.example
 !.env.shadow.example
 !.env.production.example
@@ -87,6 +88,12 @@ build/
 
 # Operative Owner-Freigabe (nicht committen; Template: docs/production_10_10/owner_private_live_release.template.json)
 reports/owner_private_live_release.json
+
+# Lokale Demo-/Runtime-Evidence mit privaten Daten nie committen
+reports/*runtime_private*.json
+reports/*owner*.json
+reports/*secret*.json
+reports/*credential*.json
 
 # Logs / ad-hoc Output
 *.log
