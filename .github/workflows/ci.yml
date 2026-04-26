@@ -343,8 +343,11 @@ jobs:
         run: |
           set -euo pipefail
           sed 's/<SET_ME>/ci_repeatable_secret_min_32_chars_x/g' .env.local.example > .env.local
-          # Minimal-Stack startet ohne migrate-Job; Gateway-Lifespan sonst Migrationssonde -> Restart-Loop.
+          # Gateway-Lifespan: Migrationssonde aus (Compose-DB kann frisch sein); migrate-Job laeuft trotzdem fuer LLM/Audit.
           printf '\nBITGET_SKIP_MIGRATION_LATCH=1\n' >> .env.local
+          # Dashboard-BFF (edge-status, operator-explain) braucht DASHBOARD_GATEWAY_AUTHORIZATION im Dashboard-Container.
+          python3 -m pip install --quiet PyJWT
+          python3 scripts/mint_dashboard_gateway_jwt.py --env-file .env.local --update-env-file
       - name: Docker Compose config validate
         run: >-
           docker compose --env-file .env.local -f docker-compose.yml -f docker-compose.local-publish.yml
@@ -352,7 +355,9 @@ jobs:
       - name: Docker Compose (Build + Up)
         run: |
           set -euo pipefail
-          docker compose --env-file .env.local -f docker-compose.yml -f docker-compose.local-publish.yml up -d --build --no-deps postgres redis api-gateway
+          # Kern-DB + Migration, dann Audit-Ledger + LLM (Fake-Provider aus .env.local) fuer Gateway->Orchestrator (Playwright operator-explain).
+          docker compose --env-file .env.local -f docker-compose.yml -f docker-compose.local-publish.yml up -d --build postgres redis migrate audit-ledger llm-orchestrator
+          docker compose --env-file .env.local -f docker-compose.yml -f docker-compose.local-publish.yml up -d --build --no-deps api-gateway
           docker compose --env-file .env.local -f docker-compose.yml -f docker-compose.local-publish.yml up -d --build --no-deps dashboard
       - name: Healthcheck (Minimal-Stack Retry bis API+Dashboard ready)
         shell: bash
@@ -360,7 +365,9 @@ jobs:
           set -euo pipefail
           for i in $(seq 1 40); do
             sleep 10
-            if curl -fsS http://127.0.0.1:8000/health >/dev/null && curl -fsSI http://127.0.0.1:3000 >/dev/null; then
+            if curl -fsS http://127.0.0.1:8000/health >/dev/null \
+              && curl -fsSI http://127.0.0.1:3000 >/dev/null \
+              && curl -fsS http://127.0.0.1:8070/ready >/dev/null; then
               echo "minimal stack healthcheck OK after round $i"
               exit 0
             fi
@@ -373,7 +380,7 @@ jobs:
         if: failure()
         run: |
           docker compose --env-file .env.local -f docker-compose.yml -f docker-compose.local-publish.yml ps || true
-          docker compose --env-file .env.local -f docker-compose.yml -f docker-compose.local-publish.yml logs --tail=200 api-gateway dashboard || true
+          docker compose --env-file .env.local -f docker-compose.yml -f docker-compose.local-publish.yml logs --tail=200 api-gateway dashboard llm-orchestrator audit-ledger migrate || true
       - uses: pnpm/action-setup@v4
         if: success()
       - uses: actions/setup-node@v4

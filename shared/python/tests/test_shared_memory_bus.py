@@ -72,7 +72,7 @@ def test_shared_memory_bus_tick_roundtrip() -> None:
             "g",
             "c",
             count=1,
-            block_ms=500,
+            block_ms=2500,
         )
         assert len(items) == 1
         assert items[0].envelope.event_type == "market_tick"

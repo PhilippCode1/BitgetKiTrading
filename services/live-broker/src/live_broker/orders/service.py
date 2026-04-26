@@ -2750,7 +2750,13 @@ class LiveBrokerOrderService:
                         message=msg,
                         retryable=True,
                     ) from exc
-        elif str(request.order_type or "").lower() == "market":
+        elif (
+            str(request.order_type or "").lower() == "market"
+            and not bool(request.reduce_only)
+        ):
+            # Opening-Market ohne aktivierten Slippage-/Orderbook-Pre-Flight: fail-closed.
+            # Reduce-only Market (Flatten/Close) darf ohne diesen Gate laufen; Slippage-Risiko
+            # ist begrenzt und Emergency-Pfade setzen allow_safety_bypass separat.
             raise BitgetRestError(
                 classification="validation",
                 message="market_order_requires_liquidity_slippage_gate",

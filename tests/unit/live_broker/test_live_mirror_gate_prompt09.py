@@ -18,6 +18,8 @@ for candidate in (REPO_ROOT, LIVE_BROKER_SRC):
 
 from tests.unit.live_broker.test_private_rest_client import (
     InMemoryOrderRepo,
+    _UNIT_TEST_CATALOG,
+    _UNIT_TEST_METADATA,
     _seed_exchange_long_for_reduce_only_guard,
 )
 
@@ -100,6 +102,8 @@ def test_reduce_only_remains_possible_with_safety_latch(monkeypatch: pytest.Monk
         settings,
         repo,  # type: ignore[arg-type]
         BitgetPrivateRestClient(settings, transport=httpx.MockTransport(handler)),
+        catalog=_UNIT_TEST_CATALOG,
+        metadata_service=_UNIT_TEST_METADATA,
     )
     with patch("live_broker.orders.service.verify_execution_liquidity", return_value=None):
         with pytest.raises(BitgetRestError):
@@ -155,6 +159,8 @@ def test_emergency_flatten_remains_possible_for_risk_reduction(
         settings,
         repo,  # type: ignore[arg-type]
         BitgetPrivateRestClient(settings, transport=httpx.MockTransport(handler)),
+        catalog=_UNIT_TEST_CATALOG,
+        metadata_service=_UNIT_TEST_METADATA,
     )
     with patch("live_broker.orders.service.verify_execution_liquidity", return_value=None):
         result = service.emergency_flatten(
