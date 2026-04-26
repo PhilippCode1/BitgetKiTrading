@@ -29,8 +29,8 @@ from live_broker.exceptions import GlobalHaltException
 from live_broker.global_halt_latch import GlobalHaltLatch, publish_global_halt_state
 from live_broker.orders.service import LiveBrokerOrderService
 from live_broker.persistence.repo import LiveBrokerRepository
-from shared_py.chaos.infra_chaos import wrap_redis_with_chaos_latency
 from shared_py.chaos.grpc_chaos import build_timesfm_chaos_interceptors
+from shared_py.chaos.infra_chaos import wrap_redis_with_chaos_latency
 from shared_py.shadow_live_divergence import get_shadow_match_latch_read_status
 
 pytestmark = [pytest.mark.integration, pytest.mark.stack_recovery, pytest.mark.chaos]

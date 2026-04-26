@@ -130,8 +130,9 @@ def test_stripe_checkout_paid_webhook_credits_idempotent(
     if Webhook is None or stripe is None:
         pytest.skip("stripe package required")
     _stash_env(monkeypatch)
-    from config.gateway_settings import GatewaySettings
     from api_gateway.payments.deposit import process_stripe_webhook_payload
+
+    from config.gateway_settings import GatewaySettings
 
     tid = f"itest_stripe_{uuid.uuid4().hex[:10]}"
     iid = uuid.uuid4()
@@ -192,9 +193,10 @@ def test_reconcile_second_pass_no_op_without_double_credit(
     if Webhook is None or stripe is None:
         pytest.skip("stripe package required")
     _stash_env(monkeypatch)
-    from config.gateway_settings import GatewaySettings
     from api_gateway.payments import deposit as dep
     from api_gateway.payments import stripe_checkout as sc
+
+    from config.gateway_settings import GatewaySettings
 
     tid = f"itest_recon_{uuid.uuid4().hex[:10]}"
     iid = uuid.uuid4()

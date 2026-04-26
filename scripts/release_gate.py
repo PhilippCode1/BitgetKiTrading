@@ -21,7 +21,8 @@ Iron Curtain (``--iron-curtain``):
 
 Legacy: siehe ehemaliger Ablauf (Vorgates, selfcheck, Probes, optional E2E).
 
-Siehe CI-Definition in `.github/workflows/ci.yml` und `package.json` (check-types, tests, release scripts).
+Siehe CI-Definition in `.github/workflows/ci.yml` und `package.json`
+(check-types, tests, release scripts).
 """
 from __future__ import annotations
 

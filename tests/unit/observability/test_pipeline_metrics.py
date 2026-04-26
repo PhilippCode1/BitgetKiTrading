@@ -3,7 +3,6 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import pytest
 from prometheus_client import REGISTRY, generate_latest
 
 ROOT = Path(__file__).resolve().parents[3]

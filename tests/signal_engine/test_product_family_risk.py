@@ -13,9 +13,10 @@ for candidate in (SERVICE_SRC, SHARED_SRC):
     if candidate.is_dir() and candidate_str not in sys.path:
         sys.path.insert(0, candidate_str)
 
+from tests.signal_engine.test_hybrid_decision import _signal_row
+
 from signal_engine.hybrid_decision import assess_hybrid_decision
 from signal_engine.risk_governor import RISK_GOVERNOR_VERSION, assess_risk_governor
-from tests.signal_engine.test_hybrid_decision import _signal_row
 
 
 @pytest.fixture

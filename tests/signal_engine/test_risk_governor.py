@@ -399,7 +399,7 @@ def test_market_anomaly_confidence_high_blocks_universal(
     ss = base["source_snapshot_json"]
     assert isinstance(ss, dict)
     fs = dict(ss.get("feature_snapshot") or {})
-    ptf = dict((fs.get("primary_tf") or {}))
+    ptf = dict(fs.get("primary_tf") or {})
     ptf["momentum_score"] = 92.0
     ptf["market_vpin_score"] = 0.4
     fs["primary_tf"] = ptf

@@ -13,9 +13,8 @@ for candidate in (SERVICE_SRC, SHARED_SRC):
     if candidate.is_dir() and candidate_str not in sys.path:
         sys.path.insert(0, candidate_str)
 
-from signal_engine.take_trade_model import TakeTradeModelScorer
-
 from shared_py.model_contracts import build_feature_snapshot
+from signal_engine.take_trade_model import TakeTradeModelScorer
 
 
 class _DummyPredictor:

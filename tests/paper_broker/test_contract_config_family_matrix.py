@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import sys
-from pathlib import Path
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 
@@ -14,9 +14,13 @@ for candidate in (REPO_ROOT, PAPER_BROKER_SRC, SHARED_SRC):
     if candidate.is_dir() and candidate_str not in sys.path:
         sys.path.insert(0, candidate_str)
 
+from tests.fixtures.family_runtime_matrix import (
+    FAMILY_RUNTIME_CASES,
+    catalog_entry_for_case,
+)
+
 from paper_broker.config import PaperBrokerSettings
 from paper_broker.engine.contract_config import ContractConfigProvider
-from tests.fixtures.family_runtime_matrix import FAMILY_RUNTIME_CASES, catalog_entry_for_case
 
 
 def _settings_for_case(case: dict) -> PaperBrokerSettings:

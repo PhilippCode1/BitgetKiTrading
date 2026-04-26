@@ -3,15 +3,15 @@
 from __future__ import annotations
 
 from shared_py.admin_console_contract import (
-    ADMIN_CONSOLE_BASE_PATH,
     ACTION_CONFIRMATION_TIER,
     ACTION_LABELS_DE,
     ACTION_WARNING_LEVEL,
+    ADMIN_CONSOLE_BASE_PATH,
+    EXPLAIN_PLACEHOLDER_TITLE_DE,
+    KPI_LABELS_DE,
     AdminActionId,
     ConfirmationTier,
     CustomerDetailTabId,
-    EXPLAIN_PLACEHOLDER_TITLE_DE,
-    KPI_LABELS_DE,
     UiWarningLevel,
     admin_console_descriptor,
     admin_path,

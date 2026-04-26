@@ -16,14 +16,19 @@ for candidate in (REPO_ROOT, LIVE_BROKER_SRC):
     if s not in sys.path:
         sys.path.insert(0, s)
 
-from live_broker.config import LiveBrokerSettings
-from live_broker.orders.models import EmergencyFlattenRequest, OrderCreateRequest, ReduceOnlyOrderRequest
-from live_broker.orders.service import LiveBrokerOrderService
-from live_broker.private_rest import BitgetPrivateRestClient, BitgetRestError
 from tests.unit.live_broker.test_private_rest_client import (
     InMemoryOrderRepo,
     _seed_exchange_long_for_reduce_only_guard,
 )
+
+from live_broker.config import LiveBrokerSettings
+from live_broker.orders.models import (
+    EmergencyFlattenRequest,
+    OrderCreateRequest,
+    ReduceOnlyOrderRequest,
+)
+from live_broker.orders.service import LiveBrokerOrderService
+from live_broker.private_rest import BitgetPrivateRestClient, BitgetRestError
 
 
 def _settings(monkeypatch: pytest.MonkeyPatch, **extra: str) -> LiveBrokerSettings:

@@ -10,7 +10,10 @@ from shared_py.analysis import (
     sanitize_ticker_snapshot_for_family,
     validate_event_vs_resolved_metadata,
 )
-from shared_py.bitget.instruments import BitgetInstrumentCatalogEntry, BitgetInstrumentIdentity
+from shared_py.bitget.instruments import (
+    BitgetInstrumentCatalogEntry,
+    BitgetInstrumentIdentity,
+)
 
 
 def _identity(**kwargs: object) -> BitgetInstrumentIdentity:

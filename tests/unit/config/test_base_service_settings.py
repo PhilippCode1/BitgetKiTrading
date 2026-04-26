@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pytest
+
 from config.gateway_settings import GatewaySettings, get_gateway_settings
 from config.settings import BaseServiceSettings
 

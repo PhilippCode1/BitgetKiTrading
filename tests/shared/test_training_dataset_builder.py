@@ -9,7 +9,10 @@ SHARED_SRC = ROOT / "shared" / "python" / "src"
 if SHARED_SRC.is_dir() and str(SHARED_SRC) not in sys.path:
     sys.path.insert(0, str(SHARED_SRC))
 
-from shared_py.model_contracts import build_feature_snapshot, build_model_output_snapshot
+from shared_py.model_contracts import (
+    build_feature_snapshot,
+    build_model_output_snapshot,
+)
 from shared_py.training_dataset_builder import (
     TakeTradeDatasetBuildConfig,
     build_take_trade_training_dataset,

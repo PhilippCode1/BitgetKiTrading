@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 
 import pytest
+
 from config.required_secrets import required_env_names_for_env_file_profile
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -58,7 +59,6 @@ def test_committed_openapi_matches_fastapi_export(monkeypatch: pytest.MonkeyPatc
         if mod == "prometheus_client" or mod.startswith("prometheus_client."):
             del sys.modules[mod]
 
-    import prometheus_client  # noqa: PLC0415  # frische Registry nach evtl. frueherem Gateway-Import
 
     import config.gateway_settings as gw_mod
 

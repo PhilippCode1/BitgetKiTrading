@@ -3,9 +3,8 @@ from __future__ import annotations
 import sys
 import time
 from pathlib import Path
-from uuid import uuid4
-
 from unittest.mock import patch
+from uuid import uuid4
 
 import pytest
 
@@ -18,14 +17,17 @@ for candidate in (REPO_ROOT, LIVE_BROKER_SRC, SHARED_SRC):
     if candidate.is_dir() and candidate_str not in sys.path:
         sys.path.insert(0, candidate_str)
 
+from tests.fixtures.family_runtime_matrix import FAMILY_RUNTIME_CASES
+
 from live_broker.config import LiveBrokerSettings
 from live_broker.execution.models import ExecutionIntentRequest
 from live_broker.execution.service import LiveExecutionService
-
 from shared_py.bitget import UnknownInstrumentError
-from shared_py.bitget.instruments import BitgetInstrumentCatalogEntry, BitgetInstrumentCatalogSnapshot
+from shared_py.bitget.instruments import (
+    BitgetInstrumentCatalogEntry,
+    BitgetInstrumentCatalogSnapshot,
+)
 from shared_py.eventbus import EventEnvelope
-from tests.fixtures.family_runtime_matrix import FAMILY_RUNTIME_CASES
 
 
 @pytest.fixture(autouse=True)

@@ -39,7 +39,6 @@ from live_broker.orders.models import OrderCreateRequest
 from live_broker.orders.service import LiveBrokerOrderService
 from live_broker.persistence.repo import LiveBrokerRepository
 from live_broker.private_rest import BitgetRestError
-
 from shared_py.modul_mate_db_gates import assert_execution_allowed
 from shared_py.product_policy import ExecutionPolicyViolationError
 

@@ -536,7 +536,7 @@ def test_replay_5pct_trailing_retrace_paper_matches_engine_twice() -> None:
         mark_price=Decimal("94.0"),
         fill_price=Decimal("94.0"),
         stop_plan=None,
-        tp_plan=deepcopy((d1.get("updated_tp_plan") or {})),
+        tp_plan=deepcopy(d1.get("updated_tp_plan") or {}),
         now_ms=t0 + 4_000,
     )
     d2b = evaluate_exit_plan(
@@ -546,7 +546,7 @@ def test_replay_5pct_trailing_retrace_paper_matches_engine_twice() -> None:
         mark_price=Decimal("94.0"),
         fill_price=Decimal("94.0"),
         stop_plan=None,
-        tp_plan=deepcopy((d1.get("updated_tp_plan") or {})),
+        tp_plan=deepcopy(d1.get("updated_tp_plan") or {}),
         now_ms=t0 + 4_000,
     )
     assert not any(a.get("action") == "close_full" for a in d1.get("actions") or [])

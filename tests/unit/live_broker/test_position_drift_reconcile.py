@@ -17,8 +17,8 @@ for candidate in (REPO_ROOT, LIVE_BROKER_SRC):
         sys.path.insert(0, c)
 
 from live_broker.config import LiveBrokerSettings
-from live_broker.reconcile.position_drift import run_position_drift_once
 from live_broker.private_rest import BitgetRestResponse
+from live_broker.reconcile.position_drift import run_position_drift_once
 
 
 @dataclass

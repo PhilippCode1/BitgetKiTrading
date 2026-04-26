@@ -2,7 +2,8 @@
 """
 LLM-Eval-Regression: pytest tests/llm_eval (gleiche Suite wie CI python-Job).
 
-Mit --write-report werden unter artifacts/llm_eval/ junit.xml und run_summary.json erzeugt
+Mit --write-report werden unter artifacts/llm_eval/
+junit.xml und run_summary.json erzeugt
 (Baseline-Id aus shared/prompts/eval_baseline.json, Exit-Code, Zeitstempel).
 """
 from __future__ import annotations
@@ -11,7 +12,7 @@ import argparse
 import json
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 
@@ -62,7 +63,7 @@ def main() -> int:
 
         summary = {
             "baseline_id": baseline_id,
-            "finished_at_utc": datetime.now(timezone.utc).isoformat(),
+            "finished_at_utc": datetime.now(UTC).isoformat(),
             "exit_code": exit_code,
             "pytest_command": cmd,
             "junit_xml_relative": "artifacts/llm_eval/junit.xml",

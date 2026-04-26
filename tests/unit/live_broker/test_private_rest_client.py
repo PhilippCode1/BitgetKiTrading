@@ -20,6 +20,7 @@ for candidate in (REPO_ROOT, LIVE_BROKER_SRC):
         sys.path.insert(0, candidate_str)
 
 from live_broker.config import LiveBrokerSettings
+from live_broker.exceptions import ShadowDivergenceError
 from live_broker.orders.models import (
     EmergencyFlattenRequest,
     KillSwitchRequest,
@@ -34,7 +35,6 @@ from live_broker.orders.service import (
     LiveBrokerOrderService,
     client_oid_for_internal_order,
 )
-from live_broker.exceptions import ShadowDivergenceError
 from live_broker.private_rest import BitgetPrivateRestClient, BitgetRestError
 
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from api_gateway.payments.capabilities import build_payment_capabilities
+
 from config.gateway_settings import GatewaySettings
 
 

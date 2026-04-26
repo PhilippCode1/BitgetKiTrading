@@ -5,8 +5,8 @@ from __future__ import annotations
 import pytest
 
 from shared_py.shadow_live_divergence import (
-    ShadowLiveThresholds,
     SHADOW_LIVE_DIVERGENCE_PROTOCOL_VERSION,
+    ShadowLiveThresholds,
     assess_shadow_live_divergence,
 )
 

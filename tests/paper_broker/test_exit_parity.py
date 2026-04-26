@@ -3,9 +3,9 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
+
 from paper_broker.config import PaperBrokerSettings
 from paper_broker.risk.tp_planner import build_tp_plan
-
 from shared_py.exit_engine import build_live_exit_plans, evaluate_exit_plan
 
 

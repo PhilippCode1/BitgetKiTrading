@@ -13,9 +13,16 @@ for candidate in (REPO_ROOT, SHARED_SRC):
     if candidate.is_dir() and candidate_str not in sys.path:
         sys.path.insert(0, candidate_str)
 
-from shared_py.bitget import BitgetInstrumentCatalog, BitgetSettings, UnknownInstrumentError
+from shared_py.bitget import (
+    BitgetInstrumentCatalog,
+    BitgetSettings,
+    UnknownInstrumentError,
+)
 from shared_py.bitget.discovery import BitgetMarketDiscoveryClient
-from shared_py.bitget.instruments import BitgetInstrumentCatalogEntry, BitgetInstrumentCatalogSnapshot
+from shared_py.bitget.instruments import (
+    BitgetInstrumentCatalogEntry,
+    BitgetInstrumentCatalogSnapshot,
+)
 
 
 def test_catalog_resolve_uses_canonical_entry() -> None:

@@ -4,7 +4,6 @@ from typing import Any
 
 from shared_py.bitget.instruments import BitgetInstrumentCatalogEntry
 
-
 FAMILY_RUNTIME_CASES: list[dict[str, Any]] = [
     {
         "name": "spot_btcusdt",

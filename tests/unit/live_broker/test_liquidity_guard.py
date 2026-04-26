@@ -4,7 +4,10 @@ from decimal import Decimal
 
 import pytest
 
-from live_broker.execution.liquidity_guard import InsufficientLiquidityError, verify_execution_liquidity
+from live_broker.execution.liquidity_guard import (
+    InsufficientLiquidityError,
+    verify_execution_liquidity,
+)
 
 
 def test_orderbook_staleness_blocks_submit() -> None:

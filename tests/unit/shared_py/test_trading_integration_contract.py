@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from shared_py.product_policy import CustomerCommercialGates
 from shared_py.trading_integration_contract import (
+    DEFAULT_API_RATE_LIMITS,
+    DEFAULT_EXECUTION_RETRY_POLICY,
+    MANDATORY_AUDIT_EVENT_TYPES,
     CommercialExecutionMode,
     ComplianceReviewTag,
-    MANDATORY_AUDIT_EVENT_TYPES,
     OrderConceptStage,
     TelegramIntegrationLevel,
     audit_event_is_mandatory,
-    DEFAULT_API_RATE_LIMITS,
-    DEFAULT_EXECUTION_RETRY_POLICY,
     execution_path_for_order,
     telegram_effective_level,
     trading_integration_descriptor,

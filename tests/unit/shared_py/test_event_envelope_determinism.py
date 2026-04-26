@@ -13,9 +13,9 @@ from shared_py.eventbus import (
     STREAM_CANDLE_CLOSE,
     EventEnvelope,
     EventType,
-    event_envelope_to_canonical_json_text,
     envelope_fingerprint_preimage,
     envelope_fingerprint_sha256,
+    event_envelope_to_canonical_json_text,
     stable_json_dumps,
 )
 from shared_py.replay_determinism import stable_stream_event_id

@@ -8,8 +8,6 @@ import sys
 import uuid
 from pathlib import Path
 
-import pytest
-
 REPO = Path(__file__).resolve().parents[3]
 SCRIPT = REPO / "tools" / "production_readiness_audit.py"
 

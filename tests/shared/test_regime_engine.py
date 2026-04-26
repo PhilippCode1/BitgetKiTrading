@@ -8,7 +8,11 @@ SHARED_SRC = ROOT / "shared" / "python" / "src"
 if SHARED_SRC.is_dir() and str(SHARED_SRC) not in sys.path:
     sys.path.insert(0, str(SHARED_SRC))
 
-from shared_py.regime_engine import REGIME_ENGINE_VERSION, RegimeEngineInputs, classify_regime
+from shared_py.regime_engine import (
+    REGIME_ENGINE_VERSION,
+    RegimeEngineInputs,
+    classify_regime,
+)
 
 
 def _base_ctx() -> dict:

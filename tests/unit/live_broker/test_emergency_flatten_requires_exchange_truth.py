@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from shared_py.main_console_safety import SafetyCenterSnapshot, live_blocked_by_safety_center
+from shared_py.main_console_safety import (
+    SafetyCenterSnapshot,
+    live_blocked_by_safety_center,
+)
 
 
 def test_emergency_flatten_requires_exchange_truth_clean() -> None:

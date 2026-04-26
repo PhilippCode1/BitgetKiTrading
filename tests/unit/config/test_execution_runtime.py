@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pytest
+
 from config.execution_runtime import build_execution_runtime_snapshot
 from config.settings import BaseServiceSettings
 

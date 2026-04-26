@@ -54,7 +54,8 @@ def _service_matches(services: str | list[str], service_name: str) -> bool:
 
 def _matrix_phase_for_boot(settings: BaseServiceSettings) -> str:
     """
-    Matrix-Spalte fuer Service-Boot: local vs. staging (Pre-Prod / APP_ENV=shadow) vs. production.
+    Matrix-Spalte fuer Service-Boot:
+    local vs. staging (Pre-Prod / APP_ENV=shadow) vs. production.
     """
     production = bool(getattr(settings, "production", False))
     app_env = str(getattr(settings, "app_env", "") or "").lower()
@@ -81,7 +82,8 @@ def validate_required_secrets(
     Liest Werte aus os.environ oder aus dem Argument ``environ``.
     """
     envmap = environ if environ is not None else os.environ
-    # Entkoppelter gRPC-Worker: keine volle Gateway-/JWT-Matrix (nur Redis + Modell-ENV).
+    # Entkoppelter gRPC-Worker:
+    # keine volle Gateway-/JWT-Matrix (nur Redis + Modell-ENV).
     if service_name == "inference-server":
         return
     data = _load_matrix()
@@ -121,8 +123,9 @@ def required_env_names_for_env_file_profile(
 
     local → Spalte ``local``; shadow/staging → ``staging``; production → ``production``.
 
-    ``with_dashboard_operator``: erzwingt zusaetzlich ``DASHBOARD_GATEWAY_AUTHORIZATION``
-    fuer **local** (nach JWT-Mint), da die Matrix-Spalte ``local`` dafuer ``optional`` ist.
+    ``with_dashboard_operator``:
+    erzwingt zusaetzlich ``DASHBOARD_GATEWAY_AUTHORIZATION`` fuer **local**
+    (nach JWT-Mint), da die Matrix-Spalte ``local`` dafuer ``optional`` ist.
     """
     data = _load_matrix()
     entries: list[dict[str, Any]] = list(data.get("entries") or [])

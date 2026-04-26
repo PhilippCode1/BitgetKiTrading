@@ -25,7 +25,6 @@ def test_verify_webhook_signature_accepts_signed_body() -> None:
 def test_verify_webhook_signature_rejects_tamper() -> None:
     secret = "test-secret-at-least-long-enough-for-hmac"
     body = {"a": 1, "b": 2}
-    raw = json.dumps(body, separators=(",", ":"), sort_keys=True).encode("utf-8")
     sig = sign_webhook_body(secret, body)
     raw2 = json.dumps({"a": 1, "b": 3}, separators=(",", ":"), sort_keys=True).encode("utf-8")
     assert not verify_webhook_signature(secret, raw2, sig)

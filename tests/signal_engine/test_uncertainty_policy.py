@@ -18,6 +18,7 @@ from deterministic_signal_payloads import (  # noqa: E402
     take_trade_prediction_low_uncertainty,
     target_projection_complete,
 )
+
 from signal_engine.models import ScoringContext  # noqa: E402
 from signal_engine.uncertainty import assess_model_uncertainty  # noqa: E402
 
