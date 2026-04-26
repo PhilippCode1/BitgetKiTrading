@@ -52,7 +52,14 @@ jobs:
       - name: Env profile validation (Beispiel-ENV mit CI-Platzhalter-Ersatz)
         run: |
           set -euo pipefail
-          sed 's/<SET_ME>/ci_repeatable_secret_min_32_chars_x/g' .env.local.example > /tmp/ci.env.local
+          python3 - <<'PY'
+          from pathlib import Path
+          src = Path(".env.local.example").read_text(encoding="utf-8")
+          Path("/tmp/ci.env.local").write_text(
+              src.replace("<SET_ME>", "ci_repeatable_secret_min_32_chars_x"),
+              encoding="utf-8",
+          )
+          PY
           python3 tools/validate_env_profile.py --env-file /tmp/ci.env.local --profile local
 
       - name: ENV-Profile Templates (shadow, production --template)
@@ -262,6 +269,7 @@ jobs:
         run: |
           python scripts/ci_demo_env_compose_gate.py \
             --env-file .env.demo.example \
+            --no-full-config \
             --output-md reports/ci_demo_env_compose_gate.md \
             --output-json reports/ci_demo_env_compose_gate.json
       - name: Compose config --services (wenn Docker Compose verfuegbar)
@@ -301,8 +309,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10.30.1
       - uses: actions/setup-node@v4
         with:
           node-version: "20.19.6"
@@ -334,14 +340,14 @@ jobs:
     timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
-      - name: Docker Compose config validate
-        run: >-
-          docker compose -f docker-compose.yml -f docker-compose.local-publish.yml
-          config --quiet
       - name: Prepare .env.local (ersetzt Platzhalter fuer Compose)
         run: |
           set -euo pipefail
           sed 's/<SET_ME>/ci_repeatable_secret_min_32_chars_x/g' .env.local.example > .env.local
+      - name: Docker Compose config validate
+        run: >-
+          docker compose --env-file .env.local -f docker-compose.yml -f docker-compose.local-publish.yml
+          config --quiet
       - name: Docker Compose (Build + Up)
         run: >-
           docker compose -f docker-compose.yml -f docker-compose.local-publish.yml
@@ -369,8 +375,6 @@ jobs:
           exit 1
       - uses: pnpm/action-setup@v4
         if: success()
-        with:
-          version: 10.30.1
       - uses: actions/setup-node@v4
         if: success()
         with:
