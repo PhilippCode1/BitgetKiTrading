@@ -348,7 +348,7 @@ jobs:
       - name: Docker Compose (Build + Up)
         run: >-
           docker compose --env-file .env.local -f docker-compose.yml -f docker-compose.local-publish.yml
-          up -d --build postgres redis api-gateway dashboard
+          up -d --build --no-deps postgres redis api-gateway dashboard
       - name: Healthcheck (Minimal-Stack Retry bis API+Dashboard ready)
         shell: bash
         run: |
