@@ -39,7 +39,7 @@ def run(
     duration_sec: int,
     include_preview: bool,
     include_submit: bool,
-    allow_demo_money: bool,
+    allow_demo_money: bool = False,
 ) -> SmokeReport:
     start = time.time()
     total = 0
@@ -80,7 +80,6 @@ def run(
                     "Demo-Submit wurde angefordert, aber Sicherheitsflag --i-understand-this-uses-demo-money fehlt."
                 )
             else:
-                demo_money_used = True
                 r = client.post(f"{base_url.rstrip('/')}/api/demo/order/submit")
                 if r.status_code >= 500:
                     failed += 1
@@ -88,10 +87,7 @@ def run(
                 else:
                     body = r.json() if r.content else {}
                     submit_allowed = bool(body.get("allowed"))
-                    # Erlaubt ist beides: blockiert = Safety-First; erlaubt = bewusstes Demo-Geld.
-                    # Fail nur, wenn die Route widerspruechlich antwortet.
-                    if submit_allowed and not allow_demo_money:
-                        blockers.append("Demo-Submit wurde ohne Sicherheitsflag erlaubt.")
+                    demo_money_used = submit_allowed
 
     if failed > 0 or blockers:
         result = "FAIL"
@@ -105,7 +101,7 @@ def run(
         submit_tested=include_submit,
         preview_tested=include_preview,
         submit_allowed=submit_allowed,
-        demo_money_used=demo_money_used and submit_allowed,
+        demo_money_used=demo_money_used,
         blockers=blockers,
     )
 
