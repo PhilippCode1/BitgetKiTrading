@@ -25,6 +25,9 @@ from pathlib import Path
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
+_SHARED_SRC = _REPO_ROOT / "shared" / "python" / "src"
+if _SHARED_SRC.is_dir() and str(_SHARED_SRC) not in sys.path:
+    sys.path.insert(0, str(_SHARED_SRC))
 
 from config.bootstrap_env_checks import bootstrap_env_consistency_issues
 from config.required_secrets import required_env_names_for_env_file_profile

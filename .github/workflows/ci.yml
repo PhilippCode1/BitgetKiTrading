@@ -23,6 +23,8 @@ jobs:
   python:
     name: Python (Ruff, pytest, contracts, modul_mate, pip-audit, …)
     runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/shared/python/src
     services:
       postgres:
         image: postgres:16.6-alpine
@@ -346,9 +348,10 @@ jobs:
           docker compose --env-file .env.local -f docker-compose.yml -f docker-compose.local-publish.yml
           config --quiet
       - name: Docker Compose (Build + Up)
-        run: >-
-          docker compose --env-file .env.local -f docker-compose.yml -f docker-compose.local-publish.yml
-          up -d --build --no-deps postgres redis api-gateway dashboard
+        run: |
+          set -euo pipefail
+          docker compose --env-file .env.local -f docker-compose.yml -f docker-compose.local-publish.yml up -d --build --no-deps postgres redis api-gateway
+          docker compose --env-file .env.local -f docker-compose.yml -f docker-compose.local-publish.yml up -d --build --no-deps dashboard
       - name: Healthcheck (Minimal-Stack Retry bis API+Dashboard ready)
         shell: bash
         run: |
@@ -364,6 +367,11 @@ jobs:
           echo "=== docker compose ps (minimal stack) ==="
           docker compose --env-file .env.local -f docker-compose.yml -f docker-compose.local-publish.yml ps || true
           exit 1
+      - name: Compose diagnostics on failure (api-gateway/dashboard)
+        if: failure()
+        run: |
+          docker compose --env-file .env.local -f docker-compose.yml -f docker-compose.local-publish.yml ps || true
+          docker compose --env-file .env.local -f docker-compose.yml -f docker-compose.local-publish.yml logs --tail=200 api-gateway dashboard || true
       - uses: pnpm/action-setup@v4
         if: success()
       - uses: actions/setup-node@v4
