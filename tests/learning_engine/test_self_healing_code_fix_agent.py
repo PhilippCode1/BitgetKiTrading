@@ -14,13 +14,16 @@ from monitor_engine.config import MonitorEngineSettings
 from shared_py.eventbus.envelope import EventEnvelope
 
 
-def test_monitor_canary_disabled_by_default() -> None:
+def test_monitor_canary_disabled_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Isoliert gegen fremde Prozess-ENV in CI.
+    monkeypatch.setenv("MONITOR_SELF_HEALING_CANARY_ENABLED", "false")
     s = MonitorEngineSettings()
     assert collect_self_healing_canary_alerts(s) == []
 
 
 def test_monitor_canary_contains_wrong_and_expected_path(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("MONITOR_SELF_HEALING_CANARY_ENABLED", "true")
+    monkeypatch.setenv("MONITOR_SYMBOL", "BTCUSDT")
     s = MonitorEngineSettings()
     specs = collect_self_healing_canary_alerts(s)
     assert len(specs) == 1

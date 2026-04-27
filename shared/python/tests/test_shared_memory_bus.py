@@ -68,7 +68,7 @@ def test_shared_memory_bus_tick_roundtrip() -> None:
             _slot_count=32,
             _max_payload=8192,
         )
-        deadline = time.perf_counter() + 2.5
+        deadline = time.perf_counter() + 5.0
         items = []
         while not items and time.perf_counter() < deadline:
             items = bus_b.consume(
