@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import tempfile
+import time
 import uuid
 from multiprocessing import shared_memory
 from pathlib import Path
@@ -9,6 +10,8 @@ from pathlib import Path
 import pytest
 
 pytest.importorskip("pyarrow")
+
+from test_eventbus import StubRedis
 
 from shared_py.eventbus import EventEnvelope
 from shared_py.eventbus.envelope import STREAM_MARKET_TICK
@@ -18,8 +21,6 @@ from shared_py.eventbus.shared_memory import (
     make_stream_bus_from_url,
     region_size,
 )
-
-from test_eventbus import StubRedis
 
 
 def _lock_path_for(name: str) -> str:
@@ -67,13 +68,16 @@ def test_shared_memory_bus_tick_roundtrip() -> None:
             _slot_count=32,
             _max_payload=8192,
         )
-        items = bus_b.consume(
-            STREAM_MARKET_TICK,
-            "g",
-            "c",
-            count=1,
-            block_ms=2500,
-        )
+        deadline = time.perf_counter() + 2.5
+        items = []
+        while not items and time.perf_counter() < deadline:
+            items = bus_b.consume(
+                STREAM_MARKET_TICK,
+                "g",
+                "c",
+                count=1,
+                block_ms=250,
+            )
         assert len(items) == 1
         assert items[0].envelope.event_type == "market_tick"
         assert items[0].envelope.payload["last_pr"] == "70000"

@@ -434,6 +434,7 @@ def test_production_live_max_seven_no_ack_ok(
         LIVE_TRADE_ENABLE="true",
         LIVE_BROKER_ENABLED="true",
         RISK_ALLOWED_LEVERAGE_MAX="7",
+        LEVERAGE_FAMILY_MAX_CAP_MARGIN="7",
         RISK_ELEVATED_LEVERAGE_LIVE_ACK="false",
     )
     s = BaseServiceSettings()
