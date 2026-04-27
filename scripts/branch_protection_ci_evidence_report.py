@@ -89,7 +89,10 @@ def analyze_ci_yml_mandatory_jobs() -> dict[str, Any]:
         spec = jobs.get(job_id)
         if isinstance(spec, dict):
             name = spec.get("name")
-            display_names[job_id] = str(name).strip() if isinstance(name, str) and name.strip() else job_id
+            if isinstance(name, str) and name.strip():
+                display_names[job_id] = str(name).strip()
+            else:
+                display_names[job_id] = job_id
         else:
             display_names[job_id] = job_id
     expected_checks = [f"ci / {display_names[job_id]}" for job_id in MANDATORY]
@@ -247,7 +250,11 @@ def render_md(p: dict[str, Any]) -> str:
             f"ci.yml Pflichtjobs: ok=`{p['ci_workflow_mandatory_jobs']['ok']}`",
             f"Doku/Hints: ok=`{p['branch_protection_doc_surface']['ok']}`",
             f"GitHub-API-Status: `{g['status']}` (meta={g.get('meta')!r})",
-            f"Remote geprueft: `{str(remote['checked_via_api']).lower()}` · Entscheidung: `{remote['decision']}`",
+            (
+                "Remote geprueft: "
+                f"`{str(remote['checked_via_api']).lower()}`"
+                f" · Entscheidung: `{remote['decision']}`"
+            ),
             f"Erwartete Required Checks: `{len(remote['expected_checks'])}`",
             f"Gefundene Required Checks: `{len(remote['found_checks'])}`",
             f"Fehlende Required Checks: `{len(remote['missing_checks'])}`",

@@ -45,8 +45,8 @@ def test_patch_strategy_version_409_for_live_champion() -> None:
     _ = s  # resolve cache
 
     import psycopg
-    from psycopg.rows import dict_row
     from api_gateway.routes_registry_proxy import router
+    from psycopg.rows import dict_row
 
     name = f"immutest_{uuid4().hex[:12]}"
     definition, parameters, risk_profile = {"k": 1}, {}, {"max_leverage": 1}

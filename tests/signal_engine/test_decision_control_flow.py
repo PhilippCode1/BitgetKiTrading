@@ -56,7 +56,10 @@ def _base_row() -> dict:
             "quality_gate": {"passed": True},
             "uncertainty_gate": {},
             "hybrid_decision": {"trade_action": "allow_trade"},
-            "stop_budget_assessment": {"outcome": "skipped", "policy_version": "stop-budget-v2"},
+            "stop_budget_assessment": {
+                "outcome": "skipped",
+                "policy_version": "stop-budget-v2",
+            },
         },
     }
 

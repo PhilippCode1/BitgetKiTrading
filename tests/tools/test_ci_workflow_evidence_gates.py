@@ -67,25 +67,25 @@ def test_ci_validates_shadow_and_production_env_templates() -> None:
     assert "--profile production" in text
 
 
-def test_ci_python_job_runs_production_env_template_security_before_setup_python() -> None:
-    """P0: Prod-/Shadow-Vorlagen duerfen keine DEBUG/demo/fake-Defaults tragen — Gate muss vor gepinnten Deps laufen."""
+def test_ci_python_job_runs_production_env_template_security_after_install_packages() -> None:
+    """P0: Gate muss in echter Repo-Python-Umgebung laufen (nach setup-python + pinned deps)."""
     text = CI_YML.read_text(encoding="utf-8")
     assert "check_production_env_template_security.py" in text
     sec = text.find("check_production_env_template_security.py")
-    sp = text.find("uses: actions/setup-python")
+    install = text.find('name: "Install packages (gepinnt: requirements-dev + editables)"')
     assert sec != -1, "check_production_env_template_security.py muss in ci.yml vorkommen"
-    assert sp != -1, "setup-python muss in ci.yml vorkommen"
-    assert sec < sp, "ENV-Template-Security-Gate soll vor setup-python (Python-Job) stehen"
+    assert install != -1, "Install-Step muss in ci.yml vorkommen"
+    assert sec > install, "ENV-Template-Security-Gate soll nach Install packages (Python-Job) stehen"
 
 
-def test_ci_python_job_release_sanity_before_setup_python() -> None:
-    """Release-Sanity (Secrets/Ballast/Compose) muss frueh laufen, bevor gepinnte Deps installiert werden."""
+def test_ci_python_job_release_sanity_after_install_packages() -> None:
+    """Release-Sanity soll in derselben installierten Repo-Umgebung wie die weiteren Python-Gates laufen."""
     text = CI_YML.read_text(encoding="utf-8")
     rs = text.find("release_sanity_checks.py")
-    sp = text.find("uses: actions/setup-python")
+    install = text.find('name: "Install packages (gepinnt: requirements-dev + editables)"')
     assert rs != -1, "release_sanity_checks.py muss in ci.yml vorkommen"
-    assert sp != -1, "setup-python muss in ci.yml vorkommen"
-    assert rs < sp, "Release-Sanity soll vor setup-python (Python-Job) stehen"
+    assert install != -1, "Install-Step muss in ci.yml vorkommen"
+    assert rs > install, "Release-Sanity soll nach Install packages (Python-Job) stehen"
 
 
 def test_ci_compose_healthcheck_uses_local_publish_overlay() -> None:

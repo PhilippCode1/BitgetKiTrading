@@ -49,7 +49,9 @@ def test_market_stream_ready_retry_simulates_reconnect_window() -> None:
             return
         except (httpx.HTTPError, ValueError) as exc:
             last_exc = exc
-    raise AssertionError(f"market-stream /ready blieb nach Retries unreachable: {last_exc}")
+    raise AssertionError(
+        f"market-stream /ready blieb nach Retries unreachable: {last_exc}"
+    )
 
 
 @pytest.mark.integration
@@ -64,7 +66,9 @@ def test_live_broker_reconcile_latest_shape_after_restart() -> None:
     assert "item" in data
     item = data.get("item")
     if item is None:
-        pytest.skip("Kein reconcile_snapshot in der DB (Worker noch keinen Takt gelaufen)")
+        pytest.skip(
+            "Kein reconcile_snapshot in der DB (Worker noch keinen Takt gelaufen)"
+        )
     assert item.get("status") in ("ok", "degraded", "fail")
     details = _details_json_from_reconcile_item(item)
     assert "drift" in details
@@ -127,8 +131,16 @@ def test_live_broker_evaluate_shadow_vs_live_decision_paths() -> None:
             "signal_trade_action": "allow_trade",
         },
     }
-    shadow_body = {**common, "requested_runtime_mode": "shadow", "signal_id": "prompt35-shadow"}
-    live_body = {**common, "requested_runtime_mode": "live", "signal_id": "prompt35-live"}
+    shadow_body = {
+        **common,
+        "requested_runtime_mode": "shadow",
+        "signal_id": "prompt35-shadow",
+    }
+    live_body = {
+        **common,
+        "requested_runtime_mode": "live",
+        "signal_id": "prompt35-live",
+    }
 
     rs = httpx.post(
         base.rstrip("/") + "/live-broker/executions/evaluate",
@@ -200,7 +212,9 @@ def test_gateway_kill_switch_chaos_arm_then_release_opt_in() -> None:
         timeout=45.0,
     )
     if arm.status_code >= 400:
-        pytest.skip(f"Kill-Switch arm nicht moeglich (Broker/Modus): {arm.status_code} {arm.text[:500]}")
+        pytest.skip(
+            f"Kill-Switch arm nicht moeglich (Broker/Modus): {arm.status_code} {arm.text[:500]}"
+        )
 
     active = httpx.get(
         f"{base}/v1/live-broker/kill-switch/active",
@@ -249,7 +263,9 @@ def test_gateway_feed_stale_warning_when_market_stream_down_optional() -> None:
     )
     r.raise_for_status()
     data = r.json()
-    services = {s.get("name"): s for s in data.get("services", []) if isinstance(s, dict)}
+    services = {
+        s.get("name"): s for s in data.get("services", []) if isinstance(s, dict)
+    }
     ms = services.get("market-stream")
     assert ms is not None
     assert ms.get("status") is not None

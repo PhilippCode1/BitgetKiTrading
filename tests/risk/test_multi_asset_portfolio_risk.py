@@ -44,6 +44,7 @@ def _snapshot(**overrides: object) -> PortfolioSnapshot:
         "account_equity": 10_000.0,
         "used_margin": 2000.0,
         "snapshot_fresh": True,
+        "owner_limits_present": True,
         "correlation_stress": 0.4,
         "unknown_correlation": False,
     }

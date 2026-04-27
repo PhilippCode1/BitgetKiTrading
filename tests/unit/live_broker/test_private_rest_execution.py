@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+
 import httpx
 import pytest
 
@@ -32,10 +33,10 @@ def test_bitget_signature_payload_format() -> None:
 
 
 def test_clock_skew_gate_raises() -> None:
+    import os
+
     from live_broker.config import LiveBrokerSettings
     from live_broker.private_rest import BitgetPrivateRestClient, BitgetRestError
-
-    import os
 
     os.environ.setdefault("DATABASE_URL", "postgresql://x:y@127.0.0.1:1/x")
     os.environ.setdefault("REDIS_URL", "redis://127.0.0.1:6379/0")

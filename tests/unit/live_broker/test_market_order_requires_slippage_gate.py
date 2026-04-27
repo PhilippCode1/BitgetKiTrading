@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[3]
 SERVICE = ROOT / "services" / "live-broker" / "src" / "live_broker" / "orders" / "service.py"
 

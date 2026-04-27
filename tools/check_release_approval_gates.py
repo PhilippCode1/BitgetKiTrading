@@ -179,7 +179,10 @@ def _check_evidence_drift_and_scorecard() -> list[str]:
         errs.append("Scorecard unvollstaendig: private_live_allowed fehlt")
     if "full_autonomous_live" not in score_text:
         errs.append("Scorecard unvollstaendig: full_autonomous_live fehlt")
-    if "Philipp Crljic Entscheidung: `PENDING`" not in score_text and "Philipp Crljic: PENDING" not in score_text:
+    if (
+        "Philipp Crljic Entscheidung: `PENDING`" not in score_text
+        and "Philipp Crljic: PENDING" not in score_text
+    ):
         errs.append("Owner-Signoff-PENDING-Hinweis fehlt in Scorecard")
 
     priv_line = next(
@@ -196,7 +199,10 @@ def _check_evidence_drift_and_scorecard() -> list[str]:
     if "`GO`" in full_line or "`GO_WITH_WARNINGS`" in full_line:
         errs.append("full_autonomous_live ist nicht NO_GO (Release muss blockieren)")
 
-    if "external_required" in score_text and "`private_live_allowed`: `GO`" in score_text:
+    if (
+        "external_required" in score_text
+        and "`private_live_allowed`: `GO`" in score_text
+    ):
         errs.append("external_required wird implizit als live-faehig behandelt")
 
     if "## Live-Blocker" not in score_text:
@@ -240,7 +246,11 @@ def main() -> int:
         print("FAIL: Monorepo-Versions-Einheitlichkeit", file=sys.stderr, flush=True)
         print("\n".join(b), file=sys.stderr, flush=True)
     if c:
-        print("FAIL: Readiness-Scorecard / Owner / Mode-Invarianten", file=sys.stderr, flush=True)
+        print(
+            "FAIL: Readiness-Scorecard / Owner / Mode-Invarianten",
+            file=sys.stderr,
+            flush=True,
+        )
         print("\n".join(c), file=sys.stderr, flush=True)
     if d:
         print("FAIL: Evidence-Matrix/Status-Drift", file=sys.stderr, flush=True)

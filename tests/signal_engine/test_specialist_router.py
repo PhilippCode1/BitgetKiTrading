@@ -155,4 +155,6 @@ def test_specialist_router_blocks_trade_when_no_registered_playbook_fits() -> No
     )
     assert out["playbook_context"]["decision_mode"] == "playbookless"
     assert out["router_arbitration"]["selected_trade_action"] == "do_not_trade"
-    assert "playbook_selection_missing_for_trade" in out["router_arbitration"]["reasons"]
+    assert (
+        "playbook_selection_missing_for_trade" in out["router_arbitration"]["reasons"]
+    )

@@ -3,6 +3,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import pytest
+
 from config.required_secrets import (
     RequiredSecretsError,
     required_env_names_for_env_file_profile,

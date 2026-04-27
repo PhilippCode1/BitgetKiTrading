@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
-from unittest.mock import patch
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 LIVE_BROKER_SRC = REPO_ROOT / "services" / "live-broker" / "src"
@@ -20,7 +20,6 @@ for candidate in (REPO_ROOT, LIVE_BROKER_SRC, SHARED_SRC):
 from live_broker.config import LiveBrokerSettings
 from live_broker.execution.models import ExecutionIntentRequest
 from live_broker.execution.service import LiveExecutionService
-
 from shared_py.eventbus import EventEnvelope
 
 

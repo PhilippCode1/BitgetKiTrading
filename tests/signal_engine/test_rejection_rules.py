@@ -329,7 +329,9 @@ def test_reject_news_shock_against_long(signal_settings) -> None:
 
 
 def test_news_shock_skipped_when_rejection_flag_disabled(signal_settings) -> None:
-    settings = signal_settings.model_copy(update={"signal_news_shock_rejection_enabled": False})
+    settings = signal_settings.model_copy(
+        update={"signal_news_shock_rejection_enabled": False}
+    )
     ctx = ScoringContext(
         symbol="BTCUSDT",
         timeframe="5m",

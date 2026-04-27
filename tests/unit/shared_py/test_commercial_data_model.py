@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -121,7 +121,7 @@ def test_approval_record_requires_note() -> None:
         customer_account_id="c1",
         approval_type=ApprovalType.LIVE_TRADING,
         decision=ApprovalDecision.GRANTED,
-        decided_at=datetime.now(timezone.utc),
+        decided_at=datetime.now(UTC),
         decided_by_user_id="admin-philipp",
         note="Freigabe nach Pruefung",
     )

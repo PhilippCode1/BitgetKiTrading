@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import io
 import json
-from unittest.mock import patch
-
 import urllib.error
+from unittest.mock import patch
 
 from shared_py.observability.health import check_http_ready_json
 

@@ -107,8 +107,58 @@ class DemoReadiness:
     result: str
     blockers: list[str]
     warnings: list[str]
-    checks: dict[str, str]
+    checks: dict[str, Any]
     env_snapshot: dict[str, Any]
+
+
+def build_demo_order_body(env: dict[str, str]) -> dict[str, Any]:
+    symbol = str(env.get("BITGET_SYMBOL") or "BTCUSDT").strip().upper()
+    product_type = str(env.get("DEMO_DEFAULT_PRODUCT_TYPE") or "USDT-FUTURES").strip()
+    margin_coin = str(env.get("DEMO_DEFAULT_MARGIN_COIN") or "USDT").strip()
+    margin_mode = str(env.get("DEMO_DEFAULT_MARGIN_MODE") or "isolated").strip().lower()
+    size = str(env.get("DEMO_DEFAULT_ORDER_SIZE") or "0.001").strip()
+    side = str(env.get("DEMO_DEFAULT_ORDER_SIDE") or "buy").strip().lower()
+    order_type = str(env.get("DEMO_DEFAULT_ORDER_TYPE") or "market").strip().lower()
+    force = str(env.get("DEMO_DEFAULT_FORCE") or "gtc").strip().lower()
+    position_mode = str(env.get("DEMO_POSITION_MODE") or "one_way").strip().lower()
+    trade_side = str(env.get("DEMO_TRADE_SIDE") or "").strip().lower()
+    pos_side = str(env.get("DEMO_POSITION_SIDE") or "").strip().lower()
+    price = str(env.get("DEMO_DEFAULT_PRICE") or "").strip()
+
+    body: dict[str, Any] = {
+        "symbol": symbol,
+        "productType": product_type,
+        "marginMode": margin_mode,
+        "marginCoin": margin_coin,
+        "size": size,
+        "side": side,
+        "orderType": order_type,
+        "clientOid": f"bgai-demo-{int(time.time())}",
+    }
+    if order_type == "limit":
+        body["force"] = force
+        if price:
+            body["price"] = price
+
+    if position_mode == "hedge":
+        body["tradeSide"] = trade_side or "open"
+        if pos_side:
+            body["posSide"] = pos_side
+    else:
+        body["reduceOnly"] = "NO"
+
+    return body
+
+
+def _demo_order_hint(code: str, msg: str) -> str:
+    if code == "40774":
+        return (
+            "Bitget 40774: Position-Mode und Order-Payload passen nicht zusammen. "
+            "Pruefe DEMO_POSITION_MODE. one_way: kein tradeSide/posSide; hedge: tradeSide=open/close."
+        )
+    if code and code not in ("00000", "0"):
+        return f"Bitget Fehlercode {code}: {msg or 'ohne Meldung'}"
+    return ""
 
 
 def build_report(
@@ -120,7 +170,7 @@ def build_report(
 ) -> DemoReadiness:
     blockers: list[str] = []
     warnings: list[str] = []
-    checks: dict[str, str] = {"mode": mode}
+    checks: dict[str, Any] = {"mode": mode}
 
     if mode not in SAFE_DEMO_MODES:
         blockers.append(f"Unbekannter Demo-Modus: {mode}")
@@ -197,9 +247,18 @@ def build_report(
             blockers.append("Demo private-readonly Account-Endpunkt nicht erfolgreich.")
 
     if mode == "demo-order-dry-run":
-        size = str(env.get("DEMO_DEFAULT_ORDER_SIZE") or "0.001").strip()
+        body = build_demo_order_body(env)
+        position_mode = str(env.get("DEMO_POSITION_MODE") or "one_way").strip().lower()
+        size = str(body.get("size") or "0.001")
         notional_cap = _safe_float(env.get("DEMO_MAX_ORDER_NOTIONAL_USDT"), 25.0)
-        checks["demo_order_payload"] = f"symbol={symbol}, productType={product_type}, marginCoin={margin_coin}, size={size}, maxNotional={notional_cap}"
+        checks["demo_position_mode"] = position_mode
+        checks["demo_order_payload"] = body
+        checks["demo_order_fields"] = ",".join(sorted(body.keys()))
+        checks["demo_order_has_tradeside"] = str("tradeSide" in body).lower()
+        checks["demo_order_has_reduceonly"] = str("reduceOnly" in body).lower()
+        checks["demo_order_payload_summary"] = (
+            f"symbol={symbol}, productType={product_type}, marginCoin={margin_coin}, size={size}, maxNotional={notional_cap}"
+        )
         checks["demo_order_executed"] = "false"
 
     if mode == "demo-order-smoke":
@@ -210,25 +269,26 @@ def build_report(
         allowed_symbols = [s.strip().upper() for s in str(env.get("DEMO_ALLOWED_SYMBOLS") or "").split(",") if s.strip()]
         if symbol not in allowed_symbols:
             blockers.append("BITGET_SYMBOL ist nicht in DEMO_ALLOWED_SYMBOLS.")
-        size = str(env.get("DEMO_DEFAULT_ORDER_SIZE") or "0.001").strip()
-        body = {
-            "symbol": symbol,
-            "productType": product_type,
-            "marginMode": "isolated",
-            "marginCoin": margin_coin,
-            "size": size,
-            "side": str(env.get("DEMO_DEFAULT_ORDER_SIDE") or "buy").strip().lower(),
-            "orderType": str(env.get("DEMO_DEFAULT_ORDER_TYPE") or "market").strip().lower(),
-            "clientOid": f"bgai-demo-{int(time.time())}",
-        }
+        position_mode = str(env.get("DEMO_POSITION_MODE") or "one_way").strip().lower()
+        body = build_demo_order_body(env)
+        checks["demo_position_mode"] = position_mode
+        checks["demo_order_payload"] = body
+        checks["demo_order_fields"] = ",".join(sorted(body.keys()))
+        checks["demo_order_has_tradeside"] = str("tradeSide" in body).lower()
+        checks["demo_order_has_reduceonly"] = str("reduceOnly" in body).lower()
         checks["demo_order_executed"] = "false"
         if not blockers:
             with httpx.Client(timeout=10.0) as client:
                 status, payload = _private_post(client, env, "/api/v2/mix/order/place-order", body)
             checks["demo_order_http"] = str(status)
-            checks["demo_order_code"] = str(payload.get("code") or "missing")
-            if status >= 400 or str(payload.get("code") or "") not in ("00000", "0"):
-                blockers.append("Echte Demo-Order wurde nicht erfolgreich angenommen.")
+            order_code = str(payload.get("code") or "missing")
+            order_msg = str(payload.get("msg") or "")
+            order_hint = _demo_order_hint(order_code, order_msg)
+            checks["demo_order_code"] = order_code
+            checks["demo_order_msg"] = order_msg
+            checks["demo_order_hint"] = order_hint
+            if status >= 400 or order_code not in ("00000", "0"):
+                blockers.append(order_hint or "Echte Demo-Order wurde nicht erfolgreich angenommen.")
             else:
                 checks["demo_order_executed"] = "true"
 

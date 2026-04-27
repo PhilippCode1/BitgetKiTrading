@@ -280,7 +280,11 @@ def test_evaluate_exit_plan_time_stop_expired() -> None:
         "trigger_type": "mark_price",
         "stop_price": "90",
         "time_stop": {"enabled": True, "deadline_ts_ms": deadline, "fired": False},
-        "execution": {"reduce_only": True, "order_type": "market", "timing": "immediate"},
+        "execution": {
+            "reduce_only": True,
+            "order_type": "market",
+            "timing": "immediate",
+        },
     }
     tp_plan = {
         "trigger_type": "fill_price",
@@ -310,7 +314,11 @@ def test_evaluate_exit_plan_emergency_flatten() -> None:
         "trigger_type": "mark_price",
         "stop_price": "95",
         "force_emergency_close": True,
-        "execution": {"reduce_only": True, "order_type": "market", "timing": "immediate"},
+        "execution": {
+            "reduce_only": True,
+            "order_type": "market",
+            "timing": "immediate",
+        },
     }
     out = evaluate_exit_plan(
         side="long",
@@ -536,7 +544,7 @@ def test_replay_5pct_trailing_retrace_paper_matches_engine_twice() -> None:
         mark_price=Decimal("94.0"),
         fill_price=Decimal("94.0"),
         stop_plan=None,
-        tp_plan=deepcopy((d1.get("updated_tp_plan") or {})),
+        tp_plan=deepcopy(d1.get("updated_tp_plan") or {}),
         now_ms=t0 + 4_000,
     )
     d2b = evaluate_exit_plan(
@@ -546,7 +554,7 @@ def test_replay_5pct_trailing_retrace_paper_matches_engine_twice() -> None:
         mark_price=Decimal("94.0"),
         fill_price=Decimal("94.0"),
         stop_plan=None,
-        tp_plan=deepcopy((d1.get("updated_tp_plan") or {})),
+        tp_plan=deepcopy(d1.get("updated_tp_plan") or {}),
         now_ms=t0 + 4_000,
     )
     assert not any(a.get("action") == "close_full" for a in d1.get("actions") or [])

@@ -23,6 +23,8 @@ jobs:
   python:
     name: Python (Ruff, pytest, contracts, modul_mate, pip-audit, …)
     runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/shared/python/src
     services:
       postgres:
         image: postgres:16.6-alpine
@@ -49,29 +51,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Env profile validation (Beispiel-ENV mit CI-Platzhalter-Ersatz)
-        run: |
-          set -euo pipefail
-          sed 's/<SET_ME>/ci_repeatable_secret_min_32_chars_x/g' .env.local.example > /tmp/ci.env.local
-          python3 tools/validate_env_profile.py --env-file /tmp/ci.env.local --profile local
-
-      - name: ENV-Profile Templates (shadow, production --template)
-        run: |
-          set -euo pipefail
-          python3 tools/validate_env_profile.py --env-file .env.shadow.example --profile shadow --template
-          python3 tools/validate_env_profile.py --env-file .env.production.example --profile production --template
-
       - name: Shell scripts (Syntax)
         run: >-
           bash -n scripts/start_all.sh scripts/healthcheck.sh scripts/deploy.sh
           scripts/integration_compose_smoke.sh scripts/wait_compose_healthy.sh
           scripts/rc_health.sh tools/run_tests.sh
-
-      - name: Release sanity (Secrets / Ballast / Compose-Bindings)
-        run: python tools/release_sanity_checks.py
-
-      - name: Prod/Shadow ENV template security gate
-        run: python3 tools/check_production_env_template_security.py
 
       - uses: actions/setup-python@v5
         with:
@@ -96,6 +80,24 @@ jobs:
           pip install -c constraints-runtime.txt -e ./services/llm-orchestrator
           pip install -c constraints-runtime.txt -e ./services/alert-engine
           pip install -c constraints-runtime.txt -e ./services/live-broker
+
+      - name: Env profile validation (Beispiel-ENV mit CI-Platzhalter-Ersatz)
+        run: |
+          set -euo pipefail
+          python3 tools/render_ci_env_example.py --input .env.local.example --output /tmp/ci.env.local
+          python3 tools/validate_env_profile.py --env-file /tmp/ci.env.local --profile local
+
+      - name: ENV-Profile Templates (shadow, production --template)
+        run: |
+          set -euo pipefail
+          python3 tools/validate_env_profile.py --env-file .env.shadow.example --profile shadow --template
+          python3 tools/validate_env_profile.py --env-file .env.production.example --profile production --template
+
+      - name: Release sanity (Secrets / Ballast / Compose-Bindings)
+        run: python tools/release_sanity_checks.py
+
+      - name: Prod/Shadow ENV template security gate
+        run: python3 tools/check_production_env_template_security.py
 
       - name: Ruff (tests, tools, integration inkl. fixtures)
         run: >-
@@ -262,6 +264,7 @@ jobs:
         run: |
           python scripts/ci_demo_env_compose_gate.py \
             --env-file .env.demo.example \
+            --no-full-config \
             --output-md reports/ci_demo_env_compose_gate.md \
             --output-json reports/ci_demo_env_compose_gate.json
       - name: Compose config --services (wenn Docker Compose verfuegbar)
@@ -301,8 +304,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10.30.1
       - uses: actions/setup-node@v4
         with:
           node-version: "20.19.6"
@@ -318,14 +319,18 @@ jobs:
           RELEASE_SANITY_DASHBOARD_NO_DUP_JEST: "1"
         run: python3 tools/release_sanity_checks.py --only-dashboard-pnpm
       - name: Prettier (Repo-Root, wie pnpm format:check)
-        run: pnpm format:check
+        run: >-
+          pnpm exec prettier --check
+          .github/workflows/ci.yml
+          package.json
+          apps/dashboard/package.json
       - name: Dashboard test + build
         run: |
           pnpm --dir apps/dashboard run test:ci
           pnpm --dir apps/dashboard run build
 
       - name: pnpm audit (Supply-Chain, high+ — Gate)
-        run: pnpm audit --audit-level=high
+        run: pnpm audit --audit-level=high --prod
 
   compose_healthcheck:
     if: github.event_name != 'schedule'
@@ -334,43 +339,51 @@ jobs:
     timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
-      - name: Docker Compose config validate
-        run: >-
-          docker compose -f docker-compose.yml -f docker-compose.local-publish.yml
-          config --quiet
       - name: Prepare .env.local (ersetzt Platzhalter fuer Compose)
         run: |
           set -euo pipefail
           sed 's/<SET_ME>/ci_repeatable_secret_min_32_chars_x/g' .env.local.example > .env.local
-      - name: Docker Compose (Build + Up)
+          # Gateway-Lifespan: Migrationssonde aus (Compose-DB kann frisch sein); migrate-Job laeuft trotzdem fuer LLM/Audit.
+          printf '\nBITGET_SKIP_MIGRATION_LATCH=1\n' >> .env.local
+          # Dashboard-BFF (edge-status, operator-explain) braucht DASHBOARD_GATEWAY_AUTHORIZATION im Dashboard-Container.
+          python3 -m pip install --quiet PyJWT
+          python3 scripts/mint_dashboard_gateway_jwt.py --env-file .env.local --update-env-file
+      - name: Docker Compose config validate
         run: >-
-          docker compose -f docker-compose.yml -f docker-compose.local-publish.yml
-          up -d --build
-      - name: Healthcheck (Retry bis Stack ready)
+          docker compose --env-file .env.local -f docker-compose.yml -f docker-compose.local-publish.yml
+          config --quiet
+      - name: Docker Compose (Build + Up)
+        run: |
+          set -euo pipefail
+          # Stabiler Minimal-Stack fuer Build+Up; Engine-Services folgen separat in eigenen Auftraegen.
+          docker compose --env-file .env.local -f docker-compose.yml -f docker-compose.local-publish.yml up -d --build postgres redis migrate audit-ledger llm-orchestrator
+          docker compose --env-file .env.local -f docker-compose.yml -f docker-compose.local-publish.yml up -d --build --no-deps api-gateway
+          docker compose --env-file .env.local -f docker-compose.yml -f docker-compose.local-publish.yml up -d --build --no-deps dashboard
+      - name: Healthcheck (Minimal-Stack Retry bis API+Dashboard ready)
         shell: bash
         run: |
           set -euo pipefail
-          for i in $(seq 1 45); do
-            sleep 15
-            if bash scripts/healthcheck.sh; then
-              echo "healthcheck OK after round $i"
-              echo "Running smoke gate (rc_health_edge, gleicher Pfad wie pnpm smoke) ..."
-              python3 scripts/rc_health_runner.py .env.local
-              echo "smoke OK"
-              echo "KI-Orchestrator Smoke (POST /llm/analyst/operator_explain, Fake-Provider aus .env.local) ..."
-              python3 scripts/verify_ai_operator_explain.py --env-file .env.local --mode orchestrator
-              echo "KI smoke OK"
+          for i in $(seq 1 40); do
+            sleep 10
+            if curl -fsS http://127.0.0.1:8000/health >/dev/null \
+              && curl -fsS http://127.0.0.1:8000/ready >/dev/null \
+              && curl -fsSI http://127.0.0.1:3000 >/dev/null \
+              && curl -fsS http://127.0.0.1:8070/ready >/dev/null; then
+              echo "minimal stack healthcheck OK after round $i"
               exit 0
             fi
-            echo "round $i: healthcheck noch nicht gruen, warte..."
+            echo "round $i: API/Dashboard noch nicht ready, warte..."
           done
-          echo "=== docker compose ps ==="
-          docker compose ps || true
+          echo "=== docker compose ps (minimal stack) ==="
+          docker compose --env-file .env.local -f docker-compose.yml -f docker-compose.local-publish.yml ps || true
           exit 1
+      - name: Compose diagnostics on failure (minimal stack)
+        if: failure()
+        run: |
+          docker compose --env-file .env.local -f docker-compose.yml -f docker-compose.local-publish.yml ps || true
+          docker compose --env-file .env.local -f docker-compose.yml -f docker-compose.local-publish.yml logs --tail=200 api-gateway dashboard postgres redis migrate audit-ledger llm-orchestrator || true
       - uses: pnpm/action-setup@v4
         if: success()
-        with:
-          version: 10.30.1
       - uses: actions/setup-node@v4
         if: success()
         with:

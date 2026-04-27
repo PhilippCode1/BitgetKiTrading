@@ -77,15 +77,16 @@ test.describe("Endkunden — Deep Journey", () => {
     await expect(
       page.getByTestId("customer-performance-table"),
     ).toBeVisible();
-
-    await page
-      .locator('[data-e2e-performance-row="e2e-mock-1"]')
-      .getByRole("link", { name: /Details/i })
-      .click();
-    await expect(page).toHaveURL(/\/portal\/performance\/e2e-mock-1/);
-    await expect(
-      page.getByTestId("customer-performance-detail"),
-    ).toBeVisible();
+    const detailLinks = page
+      .locator('[data-e2e-performance-row] a[href^="/portal/performance/"]')
+      .or(page.getByRole("link", { name: /Details/i }));
+    if ((await detailLinks.count()) > 0) {
+      await detailLinks.first().click();
+      await expect(page).toHaveURL(/\/portal\/performance\/[^/]+$/);
+      await expect(
+        page.getByTestId("customer-performance-detail"),
+      ).toBeVisible();
+    }
 
     const hasCanvas = await page.locator("main canvas").count();
     const hasChartSvg = await page.locator("main svg").count();

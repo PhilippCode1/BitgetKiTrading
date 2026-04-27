@@ -20,7 +20,10 @@ for candidate in (REPO_ROOT, LIVE_BROKER_SRC, SHARED_SRC):
 
 from live_broker.config import LiveBrokerSettings
 from live_broker.execution.models import ExecutionIntentRequest
-from live_broker.execution.risk_adapter import RISK_VPIN_HALT, build_live_trade_risk_decision
+from live_broker.execution.risk_adapter import (
+    RISK_VPIN_HALT,
+    build_live_trade_risk_decision,
+)
 from live_broker.execution.service import LiveExecutionService
 
 

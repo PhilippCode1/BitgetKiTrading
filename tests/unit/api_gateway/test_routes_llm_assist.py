@@ -40,6 +40,8 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     monkeypatch.setenv("JWT_SECRET", "jwt-secret-1234567890ab")
     monkeypatch.setenv("ENCRYPTION_KEY", "encryption-key-12345678")
     monkeypatch.setenv("GATEWAY_JWT_SECRET", "unit-test-gateway-jwt-secret-32b!")
+    monkeypatch.setenv("GATEWAY_ALLOW_LEGACY_ADMIN_TOKEN", "true")
+    monkeypatch.setenv("GATEWAY_ENFORCE_SENSITIVE_AUTH", "false")
     monkeypatch.setenv("INTERNAL_API_KEY", "internal-service-key-12345")
     monkeypatch.setenv("DATABASE_URL_DOCKER", "postgresql://u:p@postgres:5432/db")
     monkeypatch.setenv("REDIS_URL_DOCKER", "redis://redis:6379/0")

@@ -8,10 +8,11 @@ from math import isclose
 import numpy as np
 import pytest
 
-from feature_engine.features.atr import OHLC, atr_sma as py_atr_sma
+from feature_engine import numeric_hotpath as nh
+from feature_engine.features.atr import OHLC
+from feature_engine.features.atr import atr_sma as py_atr_sma
 from feature_engine.features.momentum import trend_snapshot as py_trend_snapshot
 from feature_engine.features.rsi import rsi_sma as py_rsi_sma
-from feature_engine import numeric_hotpath as nh
 
 pytest.importorskip("apex_core")
 

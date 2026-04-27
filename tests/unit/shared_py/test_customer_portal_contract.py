@@ -5,9 +5,9 @@ from __future__ import annotations
 from shared_py.customer_portal_contract import (
     CUSTOMER_PORTAL_BASE_PATH,
     CUSTOMER_PRIMARY_NAV,
-    CustomerPortalPageId,
     FORBIDDEN_UX_PATTERNS,
     SUBSCRIPTION_INTERVAL_LABELS_DE,
+    CustomerPortalPageId,
     SubscriptionIntervalId,
     all_customer_portal_nav_paths,
     customer_portal_descriptor,

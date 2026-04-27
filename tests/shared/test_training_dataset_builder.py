@@ -9,7 +9,10 @@ SHARED_SRC = ROOT / "shared" / "python" / "src"
 if SHARED_SRC.is_dir() and str(SHARED_SRC) not in sys.path:
     sys.path.insert(0, str(SHARED_SRC))
 
-from shared_py.model_contracts import build_feature_snapshot, build_model_output_snapshot
+from shared_py.model_contracts import (
+    build_feature_snapshot,
+    build_model_output_snapshot,
+)
 from shared_py.training_dataset_builder import (
     TakeTradeDatasetBuildConfig,
     build_take_trade_training_dataset,
@@ -94,7 +97,9 @@ def _good_row(*, decision_ts_ms: int = 1_800_000_000_000) -> dict[str, object]:
         "1H": _feature_row(timeframe="1H", decision_ts_ms=decision_ts_ms),
         "4H": _feature_row(timeframe="4H", decision_ts_ms=decision_ts_ms),
     }
-    snap = build_feature_snapshot(primary_timeframe="5m", primary_feature=tfs["5m"], features_by_tf=tfs)
+    snap = build_feature_snapshot(
+        primary_timeframe="5m", primary_feature=tfs["5m"], features_by_tf=tfs
+    )
     signal = build_model_output_snapshot(
         {
             "signal_id": str(uuid4()),
@@ -122,7 +127,9 @@ def _good_row(*, decision_ts_ms: int = 1_800_000_000_000) -> dict[str, object]:
 
 def test_config_fingerprint_stable() -> None:
     a = take_trade_dataset_config_fingerprint(TakeTradeDatasetBuildConfig())
-    b = take_trade_dataset_config_fingerprint(TakeTradeDatasetBuildConfig(max_feature_age_ms=3_600_000))
+    b = take_trade_dataset_config_fingerprint(
+        TakeTradeDatasetBuildConfig(max_feature_age_ms=3_600_000)
+    )
     assert a == b
 
 
@@ -133,7 +140,9 @@ def test_feature_snapshot_asof_ms() -> None:
 
 def test_stale_gate_drops_row() -> None:
     row = _good_row(decision_ts_ms=1_800_000_000_000)
-    cfg = TakeTradeDatasetBuildConfig(max_feature_age_ms=1_000, drop_on_stale_features=True)
+    cfg = TakeTradeDatasetBuildConfig(
+        max_feature_age_ms=1_000, drop_on_stale_features=True
+    )
     examples, report = build_take_trade_training_dataset([dict(row)], cfg)
     assert examples == []
     assert report.dropped.get("stale_features") == 1
@@ -157,6 +166,8 @@ def test_leak_key_drops_row() -> None:
     sig = dict(row["signal_snapshot_json"])
     sig["take_trade_prob"] = 0.88
     row["signal_snapshot_json"] = sig
-    examples, report = build_take_trade_training_dataset([row], TakeTradeDatasetBuildConfig())
+    examples, report = build_take_trade_training_dataset(
+        [row], TakeTradeDatasetBuildConfig()
+    )
     assert examples == []
     assert report.dropped.get("signal_snapshot_leak_keys") == 1

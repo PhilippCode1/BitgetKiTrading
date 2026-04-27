@@ -3,8 +3,6 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import pytest
-
 ROOT = Path(__file__).resolve().parents[3]
 FE = ROOT / "services" / "feature-engine" / "src"
 SHARED = ROOT / "shared" / "python" / "src"

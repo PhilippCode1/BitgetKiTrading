@@ -1,15 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+import sys
 import time
 from collections.abc import Awaitable, Callable
+from pathlib import Path
 from typing import cast
 from unittest.mock import MagicMock, patch
 
 import httpx
-
-import sys
-from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 ME_SRC = REPO_ROOT / "services" / "monitor-engine" / "src"

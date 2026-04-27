@@ -11,11 +11,10 @@ for candidate in (SERVICE_SRC, SHARED_SRC):
     if candidate.is_dir() and candidate_str not in sys.path:
         sys.path.insert(0, candidate_str)
 
+from shared_py.model_contracts import FEATURE_SCHEMA_HASH
 from signal_engine.models import ScoringContext
 from signal_engine.scoring.rejection_rules import apply_rejections
 from signal_engine.service import _collect_data_quality_issues
-
-from shared_py.model_contracts import FEATURE_SCHEMA_HASH
 
 
 def _feature_row(

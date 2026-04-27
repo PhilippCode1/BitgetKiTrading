@@ -8,9 +8,17 @@ import logging
 import sys
 from typing import Any
 
-from pythonjsonlogger import jsonlogger
+try:
+    from pythonjsonlogger import jsonlogger
+except ModuleNotFoundError:  # pragma: no cover - exercised in minimal CI bootstrap envs
+    jsonlogger = None  # type: ignore[assignment]
 
-from shared_py.observability.request_context import RequestContextLoggingFilter
+try:
+    from shared_py.observability.request_context import RequestContextLoggingFilter
+except ModuleNotFoundError:  # pragma: no cover - exercised in minimal CI bootstrap envs
+    class RequestContextLoggingFilter(logging.Filter):
+        def filter(self, record: logging.LogRecord) -> bool:  # noqa: D401
+            return True
 
 
 class _ServiceNameFilter(logging.Filter):
@@ -39,7 +47,7 @@ def setup_logging(service_name: str, level: str, log_format: str = "plain") -> N
     handler.addFilter(RequestContextLoggingFilter())
 
     fmt = str(log_format).strip().lower()
-    if fmt == "json":
+    if fmt == "json" and jsonlogger is not None:
         formatter: logging.Formatter = jsonlogger.JsonFormatter(
             "%(timestamp)s %(level)s %(service)s %(name)s %(message)s",
             rename_fields={

@@ -67,7 +67,9 @@ def test_cold_start_caps_execution() -> None:
         risk_account_snapshot={},
         signal_row={
             "market_family": "futures",
-            "source_snapshot_json": {"instrument_evidence_json": {"prior_signal_count": 3}},
+            "source_snapshot_json": {
+                "instrument_evidence_json": {"prior_signal_count": 3}
+            },
         },
         settings=st,
     )

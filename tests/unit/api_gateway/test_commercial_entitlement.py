@@ -6,13 +6,12 @@ from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
 import pytest
-from fastapi import HTTPException
-
+from api_gateway.auth import GatewayAuthContext
 from api_gateway.deps import (
     _evaluate_commercial_feature_access,
     commercial_feature_access_check_or_http,
 )
-from api_gateway.auth import GatewayAuthContext
+from fastapi import HTTPException
 
 
 def test_free_plan_denies_deep_analysis() -> None:

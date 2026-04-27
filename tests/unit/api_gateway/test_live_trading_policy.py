@@ -20,6 +20,7 @@ from api_gateway.deps import (
     LIVE_TRADING_NOT_ALLOWED_ERROR_CODE,
     verify_live_trading_capability,
 )
+
 from shared_py.product_policy import ExecutionPolicyViolationError
 
 

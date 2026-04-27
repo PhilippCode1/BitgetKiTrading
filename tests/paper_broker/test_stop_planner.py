@@ -3,6 +3,7 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
+
 from paper_broker.config import PaperBrokerSettings
 from paper_broker.risk.stop_planner import build_stop_plan
 

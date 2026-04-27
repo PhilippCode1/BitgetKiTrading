@@ -13,9 +13,16 @@ for candidate in (REPO_ROOT, SHARED_SRC):
     if candidate.is_dir() and candidate_str not in sys.path:
         sys.path.insert(0, candidate_str)
 
-from shared_py.bitget import BitgetInstrumentCatalog, BitgetSettings, UnknownInstrumentError
+from shared_py.bitget import (
+    BitgetInstrumentCatalog,
+    BitgetSettings,
+    UnknownInstrumentError,
+)
 from shared_py.bitget.discovery import BitgetMarketDiscoveryClient
-from shared_py.bitget.instruments import BitgetInstrumentCatalogEntry, BitgetInstrumentCatalogSnapshot
+from shared_py.bitget.instruments import (
+    BitgetInstrumentCatalogEntry,
+    BitgetInstrumentCatalogSnapshot,
+)
 
 
 def test_catalog_resolve_uses_canonical_entry() -> None:
@@ -79,7 +86,9 @@ def test_catalog_unknown_instrument_raises() -> None:
         catalog.resolve(symbol="ETHUSDT", market_family="spot")
 
 
-def test_discovery_catalog_snapshot_builds_futures_and_spot(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_discovery_catalog_snapshot_builds_futures_and_spot(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     settings = BitgetSettings(symbol="BTCUSDT")
     discovery = BitgetMarketDiscoveryClient(settings)
 
@@ -143,7 +152,9 @@ def test_discovery_catalog_snapshot_builds_futures_and_spot(monkeypatch: pytest.
         for entry in snapshot.entries
     )
     assert any(
-        row.market_family == "spot" and row.analytics_eligible and row.execution_disabled is False
+        row.market_family == "spot"
+        and row.analytics_eligible
+        and row.execution_disabled is False
         for row in snapshot.capability_matrix
     )
     assert any(

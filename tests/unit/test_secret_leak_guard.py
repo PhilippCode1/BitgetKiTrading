@@ -1,7 +1,10 @@
 import numpy as np
 import pytest
 
-from shared_py.observability.secret_leak_guard import scrub_audit_payload, scrub_plaintext
+from shared_py.observability.secret_leak_guard import (
+    scrub_audit_payload,
+    scrub_plaintext,
+)
 from shared_py.rust_core_bridge import assert_float64_c_contiguous
 
 

@@ -5,9 +5,8 @@ from __future__ import annotations
 from types import SimpleNamespace
 from unittest.mock import Mock
 
-import pytest
-
 import api_gateway.rate_limit as rl
+import pytest
 
 
 @pytest.mark.security

@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from shared_py.ai_layer_contract import (
+    ADMIN_VERSIONED_PROMPT_KEYS,
     AI_LAYER_CONTRACT_VERSION,
     DEFAULT_RATE_LIMIT_POLICY,
     ExecutionReceipt,
@@ -16,7 +17,6 @@ from shared_py.ai_layer_contract import (
     PipelineStage,
     PromptRegistryKey,
     TradingDecisionEnvelope,
-    ADMIN_VERSIONED_PROMPT_KEYS,
     ai_layer_descriptor,
     assert_monotonic_pipeline,
     pipeline_stage_rank,

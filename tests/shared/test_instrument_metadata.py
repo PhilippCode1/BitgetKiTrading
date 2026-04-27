@@ -4,7 +4,6 @@ import sys
 import time
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SHARED_SRC = REPO_ROOT / "shared" / "python" / "src"
 for candidate in (REPO_ROOT, SHARED_SRC):
@@ -14,7 +13,10 @@ for candidate in (REPO_ROOT, SHARED_SRC):
 
 from shared_py.bitget import BitgetInstrumentMetadataService
 from shared_py.bitget.catalog import BitgetInstrumentCatalog
-from shared_py.bitget.instruments import BitgetInstrumentCatalogEntry, BitgetInstrumentCatalogSnapshot
+from shared_py.bitget.instruments import (
+    BitgetInstrumentCatalogEntry,
+    BitgetInstrumentCatalogSnapshot,
+)
 
 
 class _FakeCatalog(BitgetInstrumentCatalog):
@@ -26,7 +28,9 @@ class _FakeCatalog(BitgetInstrumentCatalog):
 
     def resolve(self, *, symbol: str, market_family: str | None = None, **kwargs):
         for entry in self._snapshot.entries:
-            if entry.symbol == symbol and entry.market_family == (market_family or entry.market_family):
+            if entry.symbol == symbol and entry.market_family == (
+                market_family or entry.market_family
+            ):
                 return entry
         raise LookupError(symbol)
 

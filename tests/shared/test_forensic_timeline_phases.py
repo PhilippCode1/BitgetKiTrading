@@ -8,7 +8,11 @@ from shared_py.observability.execution_forensic import build_forensic_timeline_p
 def test_forensic_phases_index_signal_to_review() -> None:
     events = [
         {"ts": "2026-01-01T00:00:01Z", "kind": "signal_context", "ref": "sig-1"},
-        {"ts": "2026-01-01T00:00:02Z", "kind": "specialist_path_marker", "ref": "sig-1"},
+        {
+            "ts": "2026-01-01T00:00:02Z",
+            "kind": "specialist_path_marker",
+            "ref": "sig-1",
+        },
         {"ts": "2026-01-01T00:00:10Z", "kind": "execution_decision", "ref": "exec-1"},
         {"ts": "2026-01-01T00:00:12Z", "kind": "operator_release", "ref": "exec-1"},
         {"ts": "2026-01-01T00:00:20Z", "kind": "order", "ref": "ord-1"},
