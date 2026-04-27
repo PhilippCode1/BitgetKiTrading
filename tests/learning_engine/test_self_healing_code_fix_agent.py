@@ -3,13 +3,15 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
-from shared_py.eventbus.envelope import EventEnvelope
 
 from learning_engine.config import LearningEngineSettings
-from learning_engine.self_healing.code_fix_agent import run_self_healing_for_system_alert
+from learning_engine.self_healing.code_fix_agent import (
+    run_self_healing_for_system_alert,
+)
 from learning_engine.self_healing.protocol import RepairLLMOutput, SandboxTestResult
 from monitor_engine.checks.self_healing_canary import collect_self_healing_canary_alerts
 from monitor_engine.config import MonitorEngineSettings
+from shared_py.eventbus.envelope import EventEnvelope
 
 
 def test_monitor_canary_disabled_by_default() -> None:
