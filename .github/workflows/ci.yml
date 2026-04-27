@@ -355,8 +355,8 @@ jobs:
       - name: Docker Compose (Build + Up)
         run: |
           set -euo pipefail
-          # E2E braucht Konsole + dynamische Listen (signals/news/strategies): neben Kern-Stack auch Engine-Pfade hochfahren.
-          docker compose --env-file .env.local -f docker-compose.yml -f docker-compose.local-publish.yml up -d --build postgres redis migrate audit-ledger llm-orchestrator market-stream feature-engine structure-engine drawing-engine signal-engine news-engine paper-broker learning-engine alert-engine live-broker
+          # Stabiler Minimal-Stack fuer Build+Up; Engine-Services folgen separat in eigenen Auftraegen.
+          docker compose --env-file .env.local -f docker-compose.yml -f docker-compose.local-publish.yml up -d --build postgres redis migrate audit-ledger llm-orchestrator
           docker compose --env-file .env.local -f docker-compose.yml -f docker-compose.local-publish.yml up -d --build --no-deps api-gateway
           docker compose --env-file .env.local -f docker-compose.yml -f docker-compose.local-publish.yml up -d --build --no-deps dashboard
       - name: Healthcheck (Minimal-Stack Retry bis API+Dashboard ready)
@@ -366,10 +366,9 @@ jobs:
           for i in $(seq 1 40); do
             sleep 10
             if curl -fsS http://127.0.0.1:8000/health >/dev/null \
+              && curl -fsS http://127.0.0.1:8000/ready >/dev/null \
               && curl -fsSI http://127.0.0.1:3000 >/dev/null \
-              && curl -fsS http://127.0.0.1:8070/ready >/dev/null \
-              && curl -fsS http://127.0.0.1:8050/ready >/dev/null \
-              && curl -fsS http://127.0.0.1:8060/ready >/dev/null; then
+              && curl -fsS http://127.0.0.1:8070/ready >/dev/null; then
               echo "minimal stack healthcheck OK after round $i"
               exit 0
             fi
@@ -378,11 +377,11 @@ jobs:
           echo "=== docker compose ps (minimal stack) ==="
           docker compose --env-file .env.local -f docker-compose.yml -f docker-compose.local-publish.yml ps || true
           exit 1
-      - name: Compose diagnostics on failure (api-gateway/dashboard + engines)
+      - name: Compose diagnostics on failure (minimal stack)
         if: failure()
         run: |
           docker compose --env-file .env.local -f docker-compose.yml -f docker-compose.local-publish.yml ps || true
-          docker compose --env-file .env.local -f docker-compose.yml -f docker-compose.local-publish.yml logs --tail=200 api-gateway dashboard llm-orchestrator audit-ledger migrate signal-engine news-engine live-broker paper-broker || true
+          docker compose --env-file .env.local -f docker-compose.yml -f docker-compose.local-publish.yml logs --tail=200 api-gateway dashboard postgres redis migrate audit-ledger llm-orchestrator || true
       - uses: pnpm/action-setup@v4
         if: success()
       - uses: actions/setup-node@v4
