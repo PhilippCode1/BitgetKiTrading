@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
-from typing import Sequence
+from collections.abc import Sequence
 
 import numpy as np
 
-from feature_engine.features.atr import OHLC, atr_sma as _py_atr_sma
-from feature_engine.features.momentum import TrendSnapshot, trend_snapshot as _py_trend_snapshot
+from feature_engine.features.atr import OHLC
+from feature_engine.features.atr import atr_sma as _py_atr_sma
+from feature_engine.features.momentum import TrendSnapshot
+from feature_engine.features.momentum import trend_snapshot as _py_trend_snapshot
 from feature_engine.features.rsi import rsi_sma as _py_rsi_sma
 
 try:
@@ -24,7 +26,14 @@ def _as_f64_c(a: Sequence[float]) -> np.ndarray:
     return np.asarray(a, dtype=np.float64, order="C")
 
 
-def atr_sma(ohlc: Sequence[OHLC], opens: Sequence[float], highs: Sequence[float], lows: Sequence[float], closes: Sequence[float], window: int) -> float:
+def atr_sma(
+    ohlc: Sequence[OHLC],
+    opens: Sequence[float],
+    highs: Sequence[float],
+    lows: Sequence[float],
+    closes: Sequence[float],
+    window: int,
+) -> float:
     if _apex_core is not None:
         return float(
             _apex_core.compute_atr_sma(

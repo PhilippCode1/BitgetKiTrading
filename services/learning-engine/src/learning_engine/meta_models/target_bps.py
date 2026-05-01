@@ -11,24 +11,7 @@ from uuid import UUID, uuid4
 import numpy as np
 import psycopg
 from joblib import dump
-from sklearn.compose import TransformedTargetRegressor
-from sklearn.ensemble import HistGradientBoostingRegressor
-from sklearn.metrics import mean_absolute_error, mean_squared_error, median_absolute_error, r2_score
-
-from learning_engine.config import LearningEngineSettings
-from learning_engine.storage import repo_model_runs
-from learning_engine.training.cv_leakage_family import build_cv_report_with_leakage_family_audit
-from learning_engine.training.cv_runner import (
-    mean_fold_metric,
-    run_purged_kfold_regression,
-    run_walk_forward_regression,
-)
-from learning_engine.training.data_version import compute_data_version_hash
-from learning_engine.training.example_ranges import label_ranges_for_examples
-from learning_engine.training.manifest import build_training_manifest
-from learning_engine.training.run_manifest import write_full_run_manifest
 from shared_py.model_contracts import MODEL_TARGET_SCHEMA_HASH, stable_json_hash
-from shared_py.training_dataset_builder import training_row_metadata
 from shared_py.take_trade_model import (
     BPS_REGRESSION_MODEL_KIND,
     EXPECTED_MAE_BPS_MODEL_NAME,
@@ -40,6 +23,30 @@ from shared_py.take_trade_model import (
     build_signal_model_feature_vector_from_evaluation,
     signal_model_feature_contract_descriptor,
 )
+from shared_py.training_dataset_builder import training_row_metadata
+from sklearn.compose import TransformedTargetRegressor
+from sklearn.ensemble import HistGradientBoostingRegressor
+from sklearn.metrics import (
+    mean_absolute_error,
+    mean_squared_error,
+    median_absolute_error,
+    r2_score,
+)
+
+from learning_engine.config import LearningEngineSettings
+from learning_engine.storage import repo_model_runs
+from learning_engine.training.cv_leakage_family import (
+    build_cv_report_with_leakage_family_audit,
+)
+from learning_engine.training.cv_runner import (
+    mean_fold_metric,
+    run_purged_kfold_regression,
+    run_walk_forward_regression,
+)
+from learning_engine.training.data_version import compute_data_version_hash
+from learning_engine.training.example_ranges import label_ranges_for_examples
+from learning_engine.training.manifest import build_training_manifest
+from learning_engine.training.run_manifest import write_full_run_manifest
 
 _MIN_TEST_ROWS = 16
 
@@ -113,7 +120,9 @@ def train_expected_bps_model(
     symbol: str | None = None,
     promote: bool = True,
 ) -> dict[str, Any]:
-    rows = repo_model_runs.fetch_target_training_rows(conn, target_field=spec.target_field, symbol=symbol)
+    rows = repo_model_runs.fetch_target_training_rows(
+        conn, target_field=spec.target_field, symbol=symbol
+    )
     examples = [_example_from_row(row, target_field=spec.target_field) for row in rows]
     examples = [example for example in examples if example is not None]
     if len(examples) < settings.expected_bps_model_min_rows:
@@ -129,7 +138,10 @@ def train_expected_bps_model(
     k_cv = settings.train_cv_kfolds
     emb = settings.train_cv_embargo_pct
     rs = settings.train_random_state
-    make_est = lambda: _build_regressor(spec.scaling_method, random_state=rs)
+
+    def make_est():
+        return _build_regressor(spec.scaling_method, random_state=rs)
+
     cv_wf = run_walk_forward_regression(
         X=X_full,
         y=y_full,
@@ -214,7 +226,9 @@ def train_expected_bps_model(
         feature_schema_hash=feature_schema_hash,
     )
 
-    artifact_dir = _artifact_dir(settings.expected_bps_model_artifacts_dir, spec.model_name, run_id)
+    artifact_dir = _artifact_dir(
+        settings.expected_bps_model_artifacts_dir, spec.model_name, run_id
+    )
     model_path = artifact_dir / "model.joblib"
     dump(model, model_path)
 
@@ -323,7 +337,11 @@ def train_expected_bps_model(
         model_name=spec.model_name,
         version=version,
         dataset_hash=dataset_hash,
-        metrics_json={**metrics, "regime_metrics": regime_metrics, "cv_summary": cv_report["summary"]},
+        metrics_json={
+            **metrics,
+            "regime_metrics": regime_metrics,
+            "cv_summary": cv_report["summary"],
+        },
         promoted_bool=promote,
         artifact_path=_artifact_reference(model_path),
         target_name=spec.target_field,
@@ -385,8 +403,13 @@ def _example_from_row(
     }
 
 
-def _matrix_and_target(examples: list[dict[str, Any]]) -> tuple[list[list[float]], list[float]]:
-    X = [[example["features"][field] for field in SIGNAL_MODEL_FEATURE_FIELDS] for example in examples]
+def _matrix_and_target(
+    examples: list[dict[str, Any]]
+) -> tuple[list[list[float]], list[float]]:
+    X = [
+        [example["features"][field] for field in SIGNAL_MODEL_FEATURE_FIELDS]
+        for example in examples
+    ]
     y = [float(example["target"]) for example in examples]
     return X, y
 
@@ -395,11 +418,15 @@ def _holdout_start(total_rows: int) -> int:
     test_rows = max(_MIN_TEST_ROWS, int(total_rows * 0.2))
     train_rows = total_rows - test_rows
     if train_rows < _MIN_TEST_ROWS:
-        raise ValueError("chronologischer Holdout fuer Regressionsmodell nicht moeglich")
+        raise ValueError(
+            "chronologischer Holdout fuer Regressionsmodell nicht moeglich"
+        )
     return train_rows
 
 
-def _prediction_bounds(train_targets: list[float], *, spec: BpsRegressionSpec) -> tuple[float, float]:
+def _prediction_bounds(
+    train_targets: list[float], *, spec: BpsRegressionSpec
+) -> tuple[float, float]:
     values = np.asarray(train_targets, dtype=float)
     if values.size == 0:
         raise ValueError("keine Train-Targets fuer Bps-Regressionsmodell")
@@ -422,7 +449,9 @@ def _prediction_bounds(train_targets: list[float], *, spec: BpsRegressionSpec) -
     return lower, upper
 
 
-def _build_regressor(scaling_method: str, *, random_state: int) -> TransformedTargetRegressor:
+def _build_regressor(
+    scaling_method: str, *, random_state: int
+) -> TransformedTargetRegressor:
     regressor = HistGradientBoostingRegressor(
         learning_rate=0.05,
         max_depth=3,
@@ -465,7 +494,9 @@ def _regression_metrics(y_true: list[float], y_pred: list[float]) -> dict[str, A
     return metrics
 
 
-def _regime_metrics(examples: list[dict[str, Any]], preds: list[float]) -> list[dict[str, Any]]:
+def _regime_metrics(
+    examples: list[dict[str, Any]], preds: list[float]
+) -> list[dict[str, Any]]:
     grouped: dict[str, dict[str, Any]] = {}
     for example, pred in zip(examples, preds, strict=True):
         regime = str(example.get("market_regime") or "unknown")

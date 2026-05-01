@@ -7,12 +7,6 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
-
-from news_engine.api.routes_scoring import build_scoring_router
-from news_engine.config import NewsEngineSettings
-from news_engine.storage.repo import NewsRepository
-from news_engine.social.worker import SocialStreamWorker
-from news_engine.worker import NewsIngestWorker
 from shared_py.eventbus import RedisStreamBus
 from shared_py.observability import (
     append_peer_readiness_checks,
@@ -21,6 +15,12 @@ from shared_py.observability import (
     instrument_fastapi,
     merge_ready_details,
 )
+
+from news_engine.api.routes_scoring import build_scoring_router
+from news_engine.config import NewsEngineSettings
+from news_engine.social.worker import SocialStreamWorker
+from news_engine.storage.repo import NewsRepository
+from news_engine.worker import NewsIngestWorker
 
 
 def _ensure_shared_py_path() -> None:
@@ -44,7 +44,9 @@ class NewsEngineRuntime:
             settings.redis_url,
             dedupe_ttl_sec=settings.eventbus_dedupe_ttl_sec,
         )
-        self._worker = NewsIngestWorker(settings, self._repo, self._bus, logger=self._logger)
+        self._worker = NewsIngestWorker(
+            settings, self._repo, self._bus, logger=self._logger
+        )
         self._social = SocialStreamWorker(settings, self._bus, logger_=self._logger)
 
     @property

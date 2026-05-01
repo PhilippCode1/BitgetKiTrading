@@ -15,10 +15,10 @@ import logging
 from typing import Any
 
 import httpx
+from shared_py.service_auth import INTERNAL_SERVICE_HEADER
 
 from news_engine.config import NewsEngineSettings
 from news_engine.scoring.rules_v1 import Scored
-from shared_py.service_auth import INTERNAL_SERVICE_HEADER
 
 logger = logging.getLogger("news_engine.llm_enricher")
 

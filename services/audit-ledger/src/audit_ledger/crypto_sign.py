@@ -8,8 +8,14 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
 )
 
 
-def ed25519_sign_chain_hash(seed_32: bytes, chain_hash_32: bytes) -> tuple[bytes, bytes]:
-    """Signiert ``chain_hash_32`` (rohe SHA-256-Bytes). Rueckgabe: (signature_64, public_key_32)."""
+def ed25519_sign_chain_hash(
+    seed_32: bytes, chain_hash_32: bytes
+) -> tuple[bytes, bytes]:
+    """
+    Signiert ``chain_hash_32`` (rohe SHA-256-Bytes).
+
+    Rueckgabe: (signature_64, public_key_32).
+    """
     if len(seed_32) != 32:
         raise ValueError("Ed25519-Seed muss 32 Byte sein")
     if len(chain_hash_32) != 32:
@@ -23,9 +29,13 @@ def ed25519_sign_chain_hash(seed_32: bytes, chain_hash_32: bytes) -> tuple[bytes
     return sig, pub
 
 
-def ed25519_verify(public_key_32: bytes, signature_64: bytes, message_32: bytes) -> bool:
+def ed25519_verify(
+    public_key_32: bytes, signature_64: bytes, message_32: bytes
+) -> bool:
     try:
-        Ed25519PublicKey.from_public_bytes(public_key_32).verify(signature_64, message_32)
+        Ed25519PublicKey.from_public_bytes(public_key_32).verify(
+            signature_64, message_32
+        )
     except InvalidSignature:
         return False
     return True

@@ -5,7 +5,8 @@ Spezifika (z. B. Futures-Liquiditaets-Cluster) nur ueber diesen Adapter.
 
 from __future__ import annotations
 
-from typing import Any, Mapping
+from collections.abc import Mapping
+from typing import Any
 
 
 def structure_gates_for_family(

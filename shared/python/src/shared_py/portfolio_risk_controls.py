@@ -4,7 +4,15 @@ from dataclasses import dataclass
 from typing import Literal
 
 Side = Literal["long", "short"]
-RiskState = Literal["normal", "warn", "degraded", "halt_new_entries", "reduce_only", "global_halt", "unknown_blocked"]
+RiskState = Literal[
+    "normal",
+    "warn",
+    "degraded",
+    "halt_new_entries",
+    "reduce_only",
+    "global_halt",
+    "unknown_blocked",
+]
 
 
 @dataclass(frozen=True)
@@ -108,9 +116,15 @@ class PortfolioRiskResult:
 
 def _safe_asset_exposure(snapshot: PortfolioSnapshot) -> dict[str, float]:
     if snapshot.exposure_by_asset:
-        return {k.upper(): max(0.0, float(v)) for k, v in snapshot.exposure_by_asset.items()}
+        return {
+            k.upper(): max(0.0, float(v)) for k, v in snapshot.exposure_by_asset.items()
+        }
     out: dict[str, float] = {}
-    for item in snapshot.open_positions + snapshot.pending_orders + snapshot.pending_live_candidates:
+    for item in (
+        snapshot.open_positions
+        + snapshot.pending_orders
+        + snapshot.pending_live_candidates
+    ):
         key = item.symbol.upper()
         out[key] = out.get(key, 0.0) + max(0.0, item.notional)
     return out
@@ -118,13 +132,19 @@ def _safe_asset_exposure(snapshot: PortfolioSnapshot) -> dict[str, float]:
 
 def _safe_family_exposure(snapshot: PortfolioSnapshot) -> dict[str, float]:
     if snapshot.exposure_by_market_family:
-        return {k.lower(): max(0.0, float(v)) for k, v in snapshot.exposure_by_market_family.items()}
+        return {
+            k.lower(): max(0.0, float(v))
+            for k, v in snapshot.exposure_by_market_family.items()
+        }
     return compute_family_exposure(snapshot)
 
 
 def _safe_corr_group_exposure(snapshot: PortfolioSnapshot) -> dict[str, float]:
     if snapshot.exposure_by_correlation_group:
-        return {k.lower(): max(0.0, float(v)) for k, v in snapshot.exposure_by_correlation_group.items()}
+        return {
+            k.lower(): max(0.0, float(v))
+            for k, v in snapshot.exposure_by_correlation_group.items()
+        }
     return {}
 
 
@@ -140,11 +160,20 @@ def _derive_risk_state(
         return "global_halt", False, False
     if owner_limits_required and not snapshot.owner_limits_present:
         return "unknown_blocked", False, False
-    if "portfolio_snapshot_stale" in block_reasons or "portfolio_snapshot_fehlt" in block_reasons:
+    if (
+        "portfolio_snapshot_stale" in block_reasons
+        or "portfolio_snapshot_fehlt" in block_reasons
+    ):
         return "unknown_blocked", False, False
-    if "daily_loss_limit_erreicht" in block_reasons or "weekly_loss_limit_erreicht" in block_reasons:
+    if (
+        "daily_loss_limit_erreicht" in block_reasons
+        or "weekly_loss_limit_erreicht" in block_reasons
+    ):
         return "reduce_only", False, True
-    if "drawdown_limit_erreicht" in block_reasons or "intraday_drawdown_limit_erreicht" in block_reasons:
+    if (
+        "drawdown_limit_erreicht" in block_reasons
+        or "intraday_drawdown_limit_erreicht" in block_reasons
+    ):
         return "halt_new_entries", False, True
     if block_reasons:
         return "degraded", False, True
@@ -165,7 +194,11 @@ def validate_portfolio_risk_context(snapshot: PortfolioSnapshot | None) -> list[
 
 def compute_total_exposure(snapshot: PortfolioSnapshot) -> float:
     total = 0.0
-    for item in snapshot.open_positions + snapshot.pending_orders + snapshot.pending_live_candidates:
+    for item in (
+        snapshot.open_positions
+        + snapshot.pending_orders
+        + snapshot.pending_live_candidates
+    ):
         total += max(0.0, item.notional)
     return total
 
@@ -173,7 +206,11 @@ def compute_total_exposure(snapshot: PortfolioSnapshot) -> float:
 def compute_directional_exposure(snapshot: PortfolioSnapshot) -> tuple[float, float]:
     net_long = 0.0
     net_short = 0.0
-    for item in snapshot.open_positions + snapshot.pending_orders + snapshot.pending_live_candidates:
+    for item in (
+        snapshot.open_positions
+        + snapshot.pending_orders
+        + snapshot.pending_live_candidates
+    ):
         if item.side == "long":
             net_long += max(0.0, item.notional)
         else:
@@ -183,13 +220,19 @@ def compute_directional_exposure(snapshot: PortfolioSnapshot) -> tuple[float, fl
 
 def compute_family_exposure(snapshot: PortfolioSnapshot) -> dict[str, float]:
     out: dict[str, float] = {}
-    for item in snapshot.open_positions + snapshot.pending_orders + snapshot.pending_live_candidates:
+    for item in (
+        snapshot.open_positions
+        + snapshot.pending_orders
+        + snapshot.pending_live_candidates
+    ):
         key = item.market_family.lower()
         out[key] = out.get(key, 0.0) + max(0.0, item.notional)
     return out
 
 
-def apply_correlation_stress_cap(*, correlation_stress: float | None, unknown_correlation: bool) -> tuple[float, list[str]]:
+def apply_correlation_stress_cap(
+    *, correlation_stress: float | None, unknown_correlation: bool
+) -> tuple[float, list[str]]:
     reasons: list[str] = []
     if unknown_correlation:
         reasons.append("correlation_unbekannt_konservativ")
@@ -200,7 +243,9 @@ def apply_correlation_stress_cap(*, correlation_stress: float | None, unknown_co
     return max(0.0, correlation_stress), reasons
 
 
-def evaluate_portfolio_risk(snapshot: PortfolioSnapshot | None, limits: PortfolioRiskLimits) -> PortfolioRiskResult:
+def evaluate_portfolio_risk(
+    snapshot: PortfolioSnapshot | None, limits: PortfolioRiskLimits
+) -> PortfolioRiskResult:
     block_reasons = validate_portfolio_risk_context(snapshot)
     cap_reasons: list[str] = []
 
@@ -233,7 +278,11 @@ def evaluate_portfolio_risk(snapshot: PortfolioSnapshot | None, limits: Portfoli
         )
 
     total_exposure = compute_total_exposure(snapshot)
-    margin_usage = snapshot.used_margin / snapshot.account_equity if snapshot.account_equity > 0 else 1.0
+    margin_usage = (
+        snapshot.used_margin / snapshot.account_equity
+        if snapshot.account_equity > 0
+        else 1.0
+    )
     net_long, net_short = compute_directional_exposure(snapshot)
     family_exposure = _safe_family_exposure(snapshot)
     asset_exposure = _safe_asset_exposure(snapshot)
@@ -249,7 +298,11 @@ def evaluate_portfolio_risk(snapshot: PortfolioSnapshot | None, limits: Portfoli
     largest_position_risk = 0.0
     basis_risk = 0.0
     funding_concentration = 0.0
-    all_items = snapshot.open_positions + snapshot.pending_orders + snapshot.pending_live_candidates
+    all_items = (
+        snapshot.open_positions
+        + snapshot.pending_orders
+        + snapshot.pending_live_candidates
+    )
     if all_items:
         largest_position_risk = max(max(0.0, item.risk_pct) for item in all_items)
         basis_risk = max(max(0.0, item.basis_bps_abs) for item in all_items)
@@ -258,9 +311,14 @@ def evaluate_portfolio_risk(snapshot: PortfolioSnapshot | None, limits: Portfoli
 
     if total_exposure > limits.max_total_notional:
         block_reasons.append("total_exposure_ueber_limit")
-    if limits.max_total_leverage_exposure > 0 and snapshot.total_leverage_exposure > limits.max_total_leverage_exposure:
+    if (
+        limits.max_total_leverage_exposure > 0
+        and snapshot.total_leverage_exposure > limits.max_total_leverage_exposure
+    ):
         block_reasons.append("total_leverage_exposure_ueber_limit")
-    if limits.max_asset_exposure > 0 and any(v > limits.max_asset_exposure for v in asset_exposure.values()):
+    if limits.max_asset_exposure > 0 and any(
+        v > limits.max_asset_exposure for v in asset_exposure.values()
+    ):
         block_reasons.append("asset_exposure_ueber_limit")
     if margin_usage > limits.max_margin_usage:
         block_reasons.append("margin_usage_ueber_limit")
@@ -281,22 +339,39 @@ def evaluate_portfolio_risk(snapshot: PortfolioSnapshot | None, limits: Portfoli
     if any(value > limits.max_family_exposure for value in family_exposure.values()):
         block_reasons.append("family_exposure_zu_hoch")
     if limits.max_correlation_group_exposure > 0 and any(
-        value > limits.max_correlation_group_exposure for value in corr_group_exposure.values()
+        value > limits.max_correlation_group_exposure
+        for value in corr_group_exposure.values()
     ):
         block_reasons.append("correlation_group_exposure_zu_hoch")
-    if limits.max_daily_loss > 0 and (snapshot.daily_realized_pnl + snapshot.daily_unrealized_pnl) <= -limits.max_daily_loss:
+    if (
+        limits.max_daily_loss > 0
+        and (snapshot.daily_realized_pnl + snapshot.daily_unrealized_pnl)
+        <= -limits.max_daily_loss
+    ):
         block_reasons.append("daily_loss_limit_erreicht")
     if limits.max_weekly_loss > 0 and snapshot.weekly_pnl <= -limits.max_weekly_loss:
         block_reasons.append("weekly_loss_limit_erreicht")
-    if limits.max_intraday_drawdown > 0 and snapshot.current_drawdown >= limits.max_intraday_drawdown:
+    if (
+        limits.max_intraday_drawdown > 0
+        and snapshot.current_drawdown >= limits.max_intraday_drawdown
+    ):
         block_reasons.append("intraday_drawdown_limit_erreicht")
-    if limits.max_total_drawdown > 0 and snapshot.max_drawdown >= limits.max_total_drawdown:
+    if (
+        limits.max_total_drawdown > 0
+        and snapshot.max_drawdown >= limits.max_total_drawdown
+    ):
         block_reasons.append("drawdown_limit_erreicht")
-    if limits.max_consecutive_losses > 0 and snapshot.current_loss_streak >= limits.max_consecutive_losses:
+    if (
+        limits.max_consecutive_losses > 0
+        and snapshot.current_loss_streak >= limits.max_consecutive_losses
+    ):
         block_reasons.append("loss_streak_limit_erreicht")
     if snapshot.global_halt_active:
         block_reasons.append("global_halt_aktiv")
-    if limits.owner_limits_required_for_private_live and not snapshot.owner_limits_present:
+    if (
+        limits.owner_limits_required_for_private_live
+        and not snapshot.owner_limits_present
+    ):
         block_reasons.append("owner_limits_fehlen")
 
     risk_state, opening_allowed, reduce_only_allowed = _derive_risk_state(
@@ -348,7 +423,13 @@ def portfolio_risk_blocks_live(result: PortfolioRiskResult) -> bool:
     return len(result.block_reasons) > 0
 
 
-def reduce_only_reduces_risk(*, current_position_notional: float, order_notional: float, side: Side, position_side: Side) -> bool:
+def reduce_only_reduces_risk(
+    *,
+    current_position_notional: float,
+    order_notional: float,
+    side: Side,
+    position_side: Side,
+) -> bool:
     if order_notional <= 0 or current_position_notional <= 0:
         return False
     # reduce-only darf nur gegen die bestehende Richtung handeln

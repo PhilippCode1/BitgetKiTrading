@@ -16,6 +16,7 @@ from shared_py.market_data_quality import (
     evaluate_market_data_quality,
 )
 
+
 def _git_sha() -> str:
     try:
         completed = subprocess.run(
@@ -38,8 +39,22 @@ def _load_payload(path: Path | None) -> dict[str, Any]:
             "product_type": "USDT-FUTURES",
             "data_source": "dry_run_fixture",
             "candles": [
-                {"ts_ms": 1_700_000_000_000, "open": 3000, "high": 3010, "low": 2990, "close": 3005, "volume": 1234},
-                {"ts_ms": 1_700_000_060_000, "open": 3005, "high": 3020, "low": 3000, "close": 3015, "volume": 1400},
+                {
+                    "ts_ms": 1_700_000_000_000,
+                    "open": 3000,
+                    "high": 3010,
+                    "low": 2990,
+                    "close": 3005,
+                    "volume": 1234,
+                },
+                {
+                    "ts_ms": 1_700_000_060_000,
+                    "open": 3005,
+                    "high": 3020,
+                    "low": 3000,
+                    "close": 3015,
+                    "volume": 1400,
+                },
             ],
             "expected_candle_interval_ms": 60_000,
             "orderbook_present": True,
@@ -127,7 +142,9 @@ def render_markdown(summary: dict[str, Any]) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Generate per-asset data quality report.")
+    parser = argparse.ArgumentParser(
+        description="Generate per-asset data quality report."
+    )
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--input-json", type=Path)
     parser.add_argument("--output-md", type=Path)
@@ -146,7 +163,9 @@ def main(argv: list[str] | None = None) -> int:
         print(markdown)
     if args.output_json:
         args.output_json.parent.mkdir(parents=True, exist_ok=True)
-        args.output_json.write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
+        args.output_json.write_text(
+            json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
         print(f"wrote report: {args.output_json}")
     return 0
 

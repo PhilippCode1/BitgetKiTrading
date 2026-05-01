@@ -83,7 +83,9 @@ class MonitorEngineSettings(BaseServiceSettings):
 
     monitor_interval_sec: int = Field(default=10, alias="MONITOR_INTERVAL_SEC")
     monitor_alert_dedupe_sec: int = Field(default=300, alias="MONITOR_ALERT_DEDUPE_SEC")
-    monitor_enable_prometheus: bool = Field(default=True, alias="MONITOR_ENABLE_PROMETHEUS")
+    monitor_enable_prometheus: bool = Field(
+        default=True, alias="MONITOR_ENABLE_PROMETHEUS"
+    )
 
     monitor_service_urls_raw: str = Field(
         default=(
@@ -163,11 +165,17 @@ class MonitorEngineSettings(BaseServiceSettings):
     thresh_stale_ms_1h: int = Field(default=7_200_000, alias="THRESH_STALE_MS_1H")
     thresh_stale_ms_4h: int = Field(default=28_800_000, alias="THRESH_STALE_MS_4H")
 
-    thresh_stale_signals_ms: int = Field(default=600_000, alias="THRESH_STALE_SIGNALS_MS")
-    thresh_stale_drawings_ms: int = Field(default=600_000, alias="THRESH_STALE_DRAWINGS_MS")
+    thresh_stale_signals_ms: int = Field(
+        default=600_000, alias="THRESH_STALE_SIGNALS_MS"
+    )
+    thresh_stale_drawings_ms: int = Field(
+        default=600_000, alias="THRESH_STALE_DRAWINGS_MS"
+    )
     thresh_stale_news_ms: int = Field(default=3_600_000, alias="THRESH_STALE_NEWS_MS")
     thresh_stale_llm_ms: int = Field(default=900_000, alias="THRESH_STALE_LLM_MS")
-    thresh_stale_funding_ms: int = Field(default=3_600_000, alias="THRESH_STALE_FUNDING_MS")
+    thresh_stale_funding_ms: int = Field(
+        default=3_600_000, alias="THRESH_STALE_FUNDING_MS"
+    )
     thresh_stale_oi_ms: int = Field(default=3_600_000, alias="THRESH_STALE_OI_MS")
 
     thresh_pending_max: int = Field(default=1000, alias="THRESH_PENDING_MAX")

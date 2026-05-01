@@ -14,6 +14,7 @@ from .envelope import (
     STREAM_CANDLE_CLOSE,
     STREAM_DLQ,
     STREAM_DRAWING_UPDATED,
+    STREAM_DRIFT_EVENT,
     STREAM_FUNDING_BOOKED,
     STREAM_FUNDING_UPDATE,
     STREAM_INTERMARKET_CORRELATION_UPDATE,
@@ -26,7 +27,6 @@ from .envelope import (
     STREAM_OPERATOR_INTEL,
     STREAM_ORDERBOOK_INCONSISTENCY,
     STREAM_ORDERFLOW_TOXICITY,
-    STREAM_DRIFT_EVENT,
     STREAM_REGIME_DIVERGENCE_DETECTED,
     STREAM_RISK_ALERT,
     STREAM_SIGNAL_CREATED,
@@ -44,8 +44,8 @@ from .envelope import (
 )
 from .payload_schemas import SchemaValidationError, ensure_payload_matches_schema
 from .redis_streams import ConsumedEvent, RedisStreamBus
-from .stream_recency import sample_event_streams_union_recent
 from .shared_memory import SharedMemoryBus, make_stream_bus_from_url
+from .stream_recency import sample_event_streams_union_recent
 
 __all__ = [
     "ConsumedEvent",

@@ -46,7 +46,11 @@ def build_portfolio_synthesis(
     portfolio_live_reasons: list[str],
     account_stress_live_reasons: list[str],
 ) -> dict[str, Any]:
-    mf = str(signal_row.get("market_family") or pr.get("symbol_family") or "").strip().lower()
+    mf = (
+        str(signal_row.get("market_family") or pr.get("symbol_family") or "")
+        .strip()
+        .lower()
+    )
     dd_kill = [
         str(x)
         for x in account_stress_live_reasons
@@ -62,7 +66,9 @@ def build_portfolio_synthesis(
         "echo_margin_utilization_0_1": acct.get("margin_utilization_0_1"),
         "echo_gross_exposure_ratio_0_1": acct.get("gross_exposure_ratio_0_1"),
         "echo_open_positions_count": acct.get("open_positions_count"),
-        "echo_portfolio_correlation_stress_0_1": acct.get("portfolio_correlation_stress_0_1"),
+        "echo_portfolio_correlation_stress_0_1": acct.get(
+            "portfolio_correlation_stress_0_1"
+        ),
         "portfolio_risk_json_keys": sorted(pr.keys()) if pr else [],
         "policy_note_de": (
             "Universal-Hard-Blocks (z. B. uncertainty blocked, exchange_health_ok=false) gelten "
@@ -83,29 +89,43 @@ def assess_portfolio_structural_live_blocks(
     """
     reasons: list[str] = []
     pr = extract_portfolio_risk(acct)
-    mf = str(signal_row.get("market_family") or pr.get("symbol_family") or "").strip().lower()
+    mf = (
+        str(signal_row.get("market_family") or pr.get("symbol_family") or "")
+        .strip()
+        .lower()
+    )
 
-    mode = str(
-        pr.get("venue_operational_mode") or acct.get("venue_operational_mode") or ""
-    ).strip().lower()
+    mode = (
+        str(
+            pr.get("venue_operational_mode") or acct.get("venue_operational_mode") or ""
+        )
+        .strip()
+        .lower()
+    )
     if bool(getattr(settings, "risk_portfolio_live_block_venue_degraded", True)):
         if mode == "degraded":
             reasons.append("portfolio_live_venue_degraded")
 
     fam_map = pr.get("family_exposure_fraction_0_1")
-    lim_f = float(getattr(settings, "risk_portfolio_live_max_family_exposure_0_1", 0.58))
+    lim_f = float(
+        getattr(settings, "risk_portfolio_live_max_family_exposure_0_1", 0.58)
+    )
     if isinstance(fam_map, dict) and mf:
         v = _f(fam_map.get(mf))
         if v is not None and v > lim_f:
             reasons.append("portfolio_live_family_exposure_exceeded")
 
     dne = _f(pr.get("direction_net_exposure_0_1"))
-    lim_d = float(getattr(settings, "risk_portfolio_live_max_direction_net_exposure_0_1", 0.72))
+    lim_d = float(
+        getattr(settings, "risk_portfolio_live_max_direction_net_exposure_0_1", 0.72)
+    )
     if dne is not None and dne > lim_d:
         reasons.append("portfolio_live_direction_concentration_exceeded")
 
     cex = _f(pr.get("correlated_cluster_largest_exposure_0_1"))
-    lim_c = float(getattr(settings, "risk_portfolio_live_max_cluster_exposure_0_1", 0.48))
+    lim_c = float(
+        getattr(settings, "risk_portfolio_live_max_cluster_exposure_0_1", 0.48)
+    )
     if cex is not None and cex > lim_c:
         reasons.append("portfolio_live_correlated_cluster_exceeded")
 
@@ -120,13 +140,17 @@ def assess_portfolio_structural_live_blocks(
         reasons.append("portfolio_live_basis_stress_exceeded")
 
     sc = _f(pr.get("session_event_concentration_0_1"))
-    lim_sc = float(getattr(settings, "risk_portfolio_live_max_session_concentration_0_1", 0.88))
+    lim_sc = float(
+        getattr(settings, "risk_portfolio_live_max_session_concentration_0_1", 0.88)
+    )
     if sc is not None and sc > lim_sc:
         reasons.append("portfolio_live_session_event_concentration_exceeded")
 
     oo = _f(pr.get("open_orders_notional_to_equity_0_1"))
     lim_oo = float(
-        getattr(settings, "risk_portfolio_live_max_open_orders_notional_ratio_0_1", 0.42)
+        getattr(
+            settings, "risk_portfolio_live_max_open_orders_notional_ratio_0_1", 0.42
+        )
     )
     if oo is not None and oo > lim_oo:
         reasons.append("portfolio_live_open_orders_stress")

@@ -80,7 +80,7 @@ class TickerCollector:
         funding_snapshot_interval_sec: int,
         symbol_price_snapshot_interval_sec: int,
         logger: logging.Logger | None = None,
-        catalog_entry_provider: "CatalogEntryProvider | None" = None,
+        catalog_entry_provider: CatalogEntryProvider | None = None,
         provider_diagnostics: ProviderDiagnostics | None = None,
     ) -> None:
         self._bitget_settings = bitget_settings
@@ -258,7 +258,9 @@ class TickerCollector:
                         "error": str(exc),
                     },
                 )
-                self._logger.warning("failed to parse ticker payload error=%s item=%s", exc, item)
+                self._logger.warning(
+                    "failed to parse ticker payload error=%s item=%s", exc, item
+                )
                 continue
             snapshots.append(
                 self._build_snapshot(
@@ -328,7 +330,9 @@ class TickerCollector:
             raise ValueError("open-interest entry muss ein Objekt sein")
         snapshot = self._build_snapshot(
             source="bitget_rest_open_interest",
-            ts_ms=_to_int(data.get("ts")) or _to_int(payload.get("requestTime")) or _now_ms(),
+            ts_ms=_to_int(data.get("ts"))
+            or _to_int(payload.get("requestTime"))
+            or _now_ms(),
             updates={
                 "holding_amount": _to_decimal(first.get("size")),
             },
@@ -365,7 +369,9 @@ class TickerCollector:
             self._bitget_settings.endpoint_profile.public_ticker_path
         )
         item = _require_first_object(payload.get("data"))
-        ts_ms = _to_int(item.get("ts")) or _to_int(payload.get("requestTime")) or _now_ms()
+        ts_ms = (
+            _to_int(item.get("ts")) or _to_int(payload.get("requestTime")) or _now_ms()
+        )
         updates = {
             "last_pr": _to_decimal(item.get("price") or item.get("lastPr")),
             "bid_pr": _to_decimal(item.get("bidPr")),
@@ -385,7 +391,9 @@ class TickerCollector:
         self._last_rest_snapshot_ts_ms = snapshot.ts_ms
         await self._publish_market_tick(snapshot, origin="rest")
 
-    async def _publish_market_tick(self, snapshot: TickerSnapshot, *, origin: str) -> None:
+    async def _publish_market_tick(
+        self, snapshot: TickerSnapshot, *, origin: str
+    ) -> None:
         try:
             envelope = EventEnvelope(
                 event_type="market_tick",
@@ -429,7 +437,9 @@ class TickerCollector:
                 message_id,
             )
 
-    async def _publish_funding_update(self, snapshot: TickerSnapshot, *, origin: str) -> None:
+    async def _publish_funding_update(
+        self, snapshot: TickerSnapshot, *, origin: str
+    ) -> None:
         try:
             envelope = EventEnvelope(
                 event_type="funding_update",
@@ -465,7 +475,9 @@ class TickerCollector:
                     "origin": origin,
                 },
             )
-            self._logger.warning("failed to publish events:funding_update error=%s", exc)
+            self._logger.warning(
+                "failed to publish events:funding_update error=%s", exc
+            )
             return
         if message_id not in (None, "deduped"):
             self._published_funding_update_events += 1
@@ -509,7 +521,9 @@ class TickerCollector:
                     "rest_ticker_api",
                     f"code={payload.get('code')!r} endpoint={endpoint}",
                 )
-            raise ValueError(f"Bitget ticker response code not ok: {payload.get('code')}")
+            raise ValueError(
+                f"Bitget ticker response code not ok: {payload.get('code')}"
+            )
         return payload
 
     def _build_snapshot(
@@ -519,7 +533,9 @@ class TickerCollector:
         ts_ms: int,
         updates: dict[str, object],
     ) -> TickerSnapshot:
-        normalized_updates = {key: value for key, value in updates.items() if value is not None}
+        normalized_updates = {
+            key: value for key, value in updates.items() if value is not None
+        }
         self._latest_fields.update(normalized_updates)
         snapshot_data = {
             "symbol": self._bitget_settings.symbol,

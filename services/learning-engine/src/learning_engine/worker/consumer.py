@@ -66,7 +66,9 @@ def run_consumer_loop(settings: LearningEngineSettings, stop: threading.Event) -
     block = settings.eventbus_block_ms
     count = settings.eventbus_count
 
-    logger.info("learning-engine consumer started group=%s streams=%s", group, len(streams))
+    logger.info(
+        "learning-engine consumer started group=%s streams=%s", group, len(streams)
+    )
 
     _msg_count = 0
     _gc_every = int(settings.worker_gc_interval_messages or 0)
@@ -104,21 +106,30 @@ def run_consumer_loop(settings: LearningEngineSettings, stop: threading.Event) -
                     from shared_py.eventbus import EventEnvelope
 
                     env = EventEnvelope.model_validate_json(raw)
-                    if stream_name == settings.learn_stream_trade_closed and env.event_type == "trade_closed":
+                    if (
+                        stream_name == settings.learn_stream_trade_closed
+                        and env.event_type == "trade_closed"
+                    ):
                         process_trade_closed(
                             settings,
                             env,
                             stream=stream_name,
                             redis_message_id=msg_id,
                         )
-                    elif stream_name == settings.learn_stream_signal_created and env.event_type == "signal_created":
+                    elif (
+                        stream_name == settings.learn_stream_signal_created
+                        and env.event_type == "signal_created"
+                    ):
                         process_signal_created(
                             settings,
                             env,
                             stream=stream_name,
                             redis_message_id=msg_id,
                         )
-                    elif stream_name == settings.learn_stream_trade_opened and env.event_type == "trade_opened":
+                    elif (
+                        stream_name == settings.learn_stream_trade_opened
+                        and env.event_type == "trade_opened"
+                    ):
                         process_trade_opened(
                             settings,
                             env,
@@ -145,7 +156,9 @@ def run_consumer_loop(settings: LearningEngineSettings, stop: threading.Event) -
                             with conn2.transaction():
                                 mark_processed(conn2, stream_name, msg_id)
                 except Exception:
-                    logger.exception("process failed stream=%s id=%s", stream_name, msg_id)
+                    logger.exception(
+                        "process failed stream=%s id=%s", stream_name, msg_id
+                    )
                     try:
                         with db_connect(settings.database_url) as conn_poison:
                             with conn_poison.transaction():

@@ -5,9 +5,9 @@ from typing import Annotated, Any
 import httpx
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, Field
+from shared_py.service_auth import INTERNAL_SERVICE_HEADER, assert_internal_service_auth
 
 from learning_engine.config import LearningEngineSettings
-from shared_py.service_auth import INTERNAL_SERVICE_HEADER, assert_internal_service_auth
 
 
 class ToxicBatchProxyBody(BaseModel):
@@ -29,7 +29,9 @@ def build_adversarial_proxy_router(settings: LearningEngineSettings) -> APIRoute
     @r.post("/learning/adversarial/toxic-batch")
     async def proxy_toxic_batch(
         body: ToxicBatchProxyBody,
-        x_internal_service_key: Annotated[str | None, Header(alias="X-Internal-Service-Key")] = None,
+        x_internal_service_key: Annotated[
+            str | None, Header(alias="X-Internal-Service-Key")
+        ] = None,
     ) -> dict[str, Any]:
         assert_internal_service_auth(settings, x_internal_service_key)
         base = (settings.adversarial_engine_base_url or "").strip().rstrip("/")

@@ -21,7 +21,9 @@ def test_monitor_canary_disabled_by_default(monkeypatch: pytest.MonkeyPatch) -> 
     assert collect_self_healing_canary_alerts(s) == []
 
 
-def test_monitor_canary_contains_wrong_and_expected_path(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_monitor_canary_contains_wrong_and_expected_path(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setenv("MONITOR_SELF_HEALING_CANARY_ENABLED", "true")
     monkeypatch.setenv("MONITOR_SYMBOL", "BTCUSDT")
     s = MonitorEngineSettings()

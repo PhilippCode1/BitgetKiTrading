@@ -173,8 +173,7 @@ export function ConsoleLiveMarketChartSection({
           high: o.high,
           low: o.low,
           close: o.close,
-          volume_usdt:
-            typeof o.volume_usdt === "number" ? o.volume_usdt : 0,
+          volume_usdt: typeof o.volume_usdt === "number" ? o.volume_usdt : 0,
         };
       }
       return null;
@@ -324,14 +323,7 @@ export function ConsoleLiveMarketChartSection({
         candleCount: candles.length,
         surfaceKind: "market_chart",
       }),
-    [
-      live,
-      executionVm,
-      executionModeLabel,
-      fetchErr,
-      loading,
-      candles.length,
-    ],
+    [live, executionVm, executionModeLabel, fetchErr, loading, candles.length],
   );
 
   const strategyBundle = useMemo(() => {
@@ -416,7 +408,9 @@ export function ConsoleLiveMarketChartSection({
       ) : null}
       {prefsSaveErr ? (
         <div className="console-chart-prefs-save-err" role="alert">
-          <p className="muted small degradation-inline">{t("ui.chart.prefsSaveFailed")}</p>
+          <p className="muted small degradation-inline">
+            {t("ui.chart.prefsSaveFailed")}
+          </p>
           <details className="console-fetch-notice__diag small">
             <summary className="console-fetch-notice__diag-sum">
               {t("ui.diagnostic.summary")}

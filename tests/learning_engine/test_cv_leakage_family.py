@@ -38,7 +38,9 @@ def test_build_cv_report_enriches_folds() -> None:
         {"symbol": f"S{i % 3}", "market_family": "futures" if i % 2 == 0 else "spot"}
         for i in range(n)
     ]
-    ranges = [Range(1_000_000 + i * 10_000, 1_000_000 + i * 10_000 + 5_000) for i in range(n)]
+    ranges = [
+        Range(1_000_000 + i * 10_000, 1_000_000 + i * 10_000 + 5_000) for i in range(n)
+    ]
     cv_wf = [
         FoldMetric(
             fold_index=i,

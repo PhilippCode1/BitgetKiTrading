@@ -3,11 +3,11 @@ from __future__ import annotations
 from shared_py.asset_risk_tiers import (
     asset_live_eligibility_reasons,
     asset_risk_tier_blocks_live,
-    asset_tier_requires_owner_review,
     asset_tier_allows_mode,
+    asset_tier_requires_owner_review,
     build_asset_risk_summary_de,
-    classify_asset_risk_tier,
     classify_asset_risk_band,
+    classify_asset_risk_tier,
     dynamic_max_leverage_for_asset,
     max_leverage_for_asset_tier,
 )
@@ -154,9 +154,9 @@ def test_high_slippage_and_bad_data_quality_downgrade_to_d_or_e() -> None:
 
 
 def test_tier_a_has_higher_cap_than_tier_c() -> None:
-    assert max_leverage_for_asset_tier("RISK_TIER_1_MAJOR_LIQUID") > max_leverage_for_asset_tier(
-        "RISK_TIER_3_ELEVATED_RISK"
-    )
+    assert max_leverage_for_asset_tier(
+        "RISK_TIER_1_MAJOR_LIQUID"
+    ) > max_leverage_for_asset_tier("RISK_TIER_3_ELEVATED_RISK")
 
 
 def test_tier_c_requires_owner_review_and_strategy_evidence() -> None:

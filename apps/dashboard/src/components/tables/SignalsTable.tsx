@@ -172,7 +172,10 @@ export function SignalsTable({ items, isLoading = false }: Props) {
           "help.signals.step2",
           "help.signals.step3",
         ]}
-        cta={{ labelKey: "ui.emptyState.resetFilters", href: consolePath("signals") }}
+        cta={{
+          labelKey: "ui.emptyState.resetFilters",
+          href: consolePath("signals"),
+        }}
         commsPhase="partial"
         showActions
       />
@@ -234,7 +237,9 @@ export function SignalsTable({ items, isLoading = false }: Props) {
                 <div>
                   <span className="console-stack-card__k">Blockgruende</span>
                   <span className="console-stack-card__v muted small">
-                    {summarizeBlockReasonsDe(s.live_execution_block_reasons_json)
+                    {summarizeBlockReasonsDe(
+                      s.live_execution_block_reasons_json,
+                    )
                       .slice(0, 2)
                       .join(" · ")}
                   </span>
@@ -444,7 +449,9 @@ export function SignalsTable({ items, isLoading = false }: Props) {
                           : `${formatNum(s.expected_return_bps, 1)} ${t("signalsTable.bpsSuffix")}`}
                       </span>
                       <span className="stacked-muted">
-                        {summarizeBlockReasonsDe(s.live_execution_block_reasons_json)
+                        {summarizeBlockReasonsDe(
+                          s.live_execution_block_reasons_json,
+                        )
                           .slice(0, 2)
                           .join(" · ")}
                       </span>

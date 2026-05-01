@@ -10,13 +10,18 @@ import math
 from typing import Any
 
 from signal_engine.config import SignalEngineSettings
-from signal_engine.product_family_risk import effective_min_leverage, market_family_from_signal_row
+from signal_engine.product_family_risk import (
+    effective_min_leverage,
+    market_family_from_signal_row,
+)
 from signal_engine.scoring.risk_score import _first_geometry
 
 STOP_BUDGET_POLICY_VERSION = "stop-budget-v2"
 
 
-def canonical_stop_budget_curve_descriptor(settings: SignalEngineSettings) -> dict[str, Any]:
+def canonical_stop_budget_curve_descriptor(
+    settings: SignalEngineSettings,
+) -> dict[str, Any]:
     """End-to-end kanonische Kurve: Anchor-Hebel max 1.0%, linear enger bis Floor 0.10 %."""
     anchor = max(1, int(settings.stop_budget_anchor_leverage))
     high_l = max(anchor + 1, int(settings.stop_budget_high_leverage_floor))
@@ -34,7 +39,9 @@ def canonical_stop_budget_curve_descriptor(settings: SignalEngineSettings) -> di
     }
 
 
-def collect_exit_family_budget_alternatives(signal_row: dict[str, Any]) -> list[dict[str, Any]]:
+def collect_exit_family_budget_alternatives(
+    signal_row: dict[str, Any]
+) -> list[dict[str, Any]]:
     """
     Spezialisten-Vorschlaeg fuer weniger enge Stop-Budgets / andere Exit-Familien
     (Schritt 2 der Aufloesung wenn Hebelreduktion nicht reicht).
@@ -59,19 +66,31 @@ def collect_exit_family_budget_alternatives(signal_row: dict[str, Any]) -> list[
                 {
                     "source": key,
                     "exit_family_primary": eid.strip(),
-                    "stop_budget_0_1": float(sb) if isinstance(sb, (int, float)) else None,
+                    "stop_budget_0_1": (
+                        float(sb) if isinstance(sb, int | float) else None
+                    ),
                 }
             )
     by_fam: dict[str, dict[str, Any]] = {}
     for item in raw:
         fam = item["exit_family_primary"]
         prev = by_fam.get(fam)
-        if prev is None or (item.get("stop_budget_0_1") or 0) > (prev.get("stop_budget_0_1") or -1):
+        if prev is None or (item.get("stop_budget_0_1") or 0) > (
+            prev.get("stop_budget_0_1") or -1
+        ):
             by_fam[fam] = item
-    return sorted(by_fam.values(), key=lambda x: (x.get("stop_budget_0_1") is None, -(x.get("stop_budget_0_1") or 0)))
+    return sorted(
+        by_fam.values(),
+        key=lambda x: (
+            x.get("stop_budget_0_1") is None,
+            -(x.get("stop_budget_0_1") or 0),
+        ),
+    )
 
 
-def max_stop_budget_pct_for_leverage(leverage: int, settings: SignalEngineSettings) -> float:
+def max_stop_budget_pct_for_leverage(
+    leverage: int, settings: SignalEngineSettings
+) -> float:
     """Bei anchor-L (typ. 7) maximal max_pct (typ. 1%); nach oben linear bis floor_pct (typ. 0,1%)."""
     L = max(1, int(leverage))
     anchor = max(1, int(settings.stop_budget_anchor_leverage))
@@ -178,7 +197,9 @@ def _min_executable_stop_pct(
     detail["slippage_floor_pct"] = round(v, 8)
 
     if expected_mae_bps is not None and expected_mae_bps > 0:
-        v = (expected_mae_bps / 10_000.0) * float(settings.stop_budget_mae_structure_mult)
+        v = (expected_mae_bps / 10_000.0) * float(
+            settings.stop_budget_mae_structure_mult
+        )
         parts.append(("mae_structure", v))
         detail["mae_structure_floor_pct"] = round(v, 8)
 
@@ -198,7 +219,9 @@ def _min_executable_stop_pct(
     return raw * fam_scale, detail
 
 
-def _regime_floor_scale(market_regime: str | None, settings: SignalEngineSettings) -> float:
+def _regime_floor_scale(
+    market_regime: str | None, settings: SignalEngineSettings
+) -> float:
     r = str(market_regime or "").strip().lower()
     if r in {"shock", "dislocation"}:
         return float(settings.stop_budget_regime_stress_floor_scale)
@@ -207,7 +230,9 @@ def _regime_floor_scale(market_regime: str | None, settings: SignalEngineSetting
     return 1.0
 
 
-def _stop_to_spread_ratio(stop_pct: float | None, spread_bps: float | None) -> float | None:
+def _stop_to_spread_ratio(
+    stop_pct: float | None, spread_bps: float | None
+) -> float | None:
     if stop_pct is None or stop_pct <= 0:
         return None
     if spread_bps is None or spread_bps <= 0:
@@ -230,7 +255,9 @@ def _scores(
     dist = abs(stop_pct - center)
     quality = max(0.0, min(1.0, 1.0 - dist / max(width, 1e-9)))
     if stop_pct + 1e-12 >= min_exec:
-        executability = max(0.0, min(1.0, (stop_pct - min_exec) / max(budget - min_exec, 1e-9)))
+        executability = max(
+            0.0, min(1.0, (stop_pct - min_exec) / max(budget - min_exec, 1e-9))
+        )
     else:
         executability = max(0.0, min(1.0, stop_pct / max(min_exec, 1e-9)))
     if min_exec <= 1e-12:
@@ -314,7 +341,9 @@ def assess_stop_budget_policy(
     if stop_pct is None:
         base_audit["outcome"] = "blocked"
         base_audit["gate_reasons_json"] = geo_reasons
-        base_audit["resolution_ladder_json"] = [{"phase": "blocked_invalid_stop_geometry"}]
+        base_audit["resolution_ladder_json"] = [
+            {"phase": "blocked_invalid_stop_geometry"}
+        ]
         return base_audit
 
     if wrong_side:
@@ -396,7 +425,9 @@ def assess_stop_budget_policy(
         mark_basis_note = f"trigger={stop_trigger_type}"
 
     def _blocked_audit(reasons: list[str]) -> dict[str, Any]:
-        q0, e0, f0 = _scores(stop_pct=stop_pct, min_exec=min_exec, budget=max(stop_pct, min_exec))
+        q0, e0, f0 = _scores(
+            stop_pct=stop_pct, min_exec=min_exec, budget=max(stop_pct, min_exec)
+        )
         ladder_out = list(resolution_ladder)
         ex_alts: list[dict[str, Any]] = []
         if any("unsatisfiable" in r for r in reasons):
@@ -421,7 +452,9 @@ def assess_stop_budget_policy(
             **base_audit,
             "outcome": "blocked",
             "stop_distance_pct": round(stop_pct, 8),
-            "stop_budget_max_pct_allowed": round(max_stop_budget_pct_for_leverage(allowed, settings), 8),
+            "stop_budget_max_pct_allowed": round(
+                max_stop_budget_pct_for_leverage(allowed, settings), 8
+            ),
             "stop_min_executable_pct": round(min_exec, 8),
             "stop_to_spread_ratio": sts,
             "stop_quality_0_1": q0,
@@ -452,7 +485,9 @@ def assess_stop_budget_policy(
         and liq_stress >= float(settings.stop_budget_liquidation_stress_block)
         and stop_pct <= float(settings.stop_budget_liquidation_tight_stop_max_pct)
     ):
-        resolution_ladder.append({"phase": "liquidation_proximity_vs_tight_stop", "failed": True})
+        resolution_ladder.append(
+            {"phase": "liquidation_proximity_vs_tight_stop", "failed": True}
+        )
         return _blocked_audit(
             [
                 "stop_too_tight_vs_liquidation_stress",
@@ -461,7 +496,9 @@ def assess_stop_budget_policy(
         )
 
     if stop_pct + 1e-12 < min_exec and settings.stop_budget_hard_fragility_abstain:
-        resolution_ladder.append({"phase": "executable_floor_violation", "failed": True})
+        resolution_ladder.append(
+            {"phase": "executable_floor_violation", "failed": True}
+        )
         return _blocked_audit(
             [
                 "stop_fragile_below_executable_floor",
@@ -506,9 +543,13 @@ def assess_stop_budget_policy(
         }
     )
 
-    q, e, frag = _scores(stop_pct=stop_pct, min_exec=min_exec, budget=max(best_budget, min_exec))
+    q, e, frag = _scores(
+        stop_pct=stop_pct, min_exec=min_exec, budget=max(best_budget, min_exec)
+    )
     ladder_ok = list(resolution_ladder)
-    ladder_ok.append({"order": len(ladder_ok) + 1, "phase": "outcome", "result": "passed"})
+    ladder_ok.append(
+        {"order": len(ladder_ok) + 1, "phase": "outcome", "result": "passed"}
+    )
     audit: dict[str, Any] = {
         **base_audit,
         "outcome": "passed",
@@ -542,7 +583,11 @@ def assess_stop_budget_policy(
                 "from_leverage": allowed,
                 "to_leverage": best_l,
             },
-            {"order": len(ladder_ok) + 1, "phase": "outcome", "result": "leverage_reduced"},
+            {
+                "order": len(ladder_ok) + 1,
+                "phase": "outcome",
+                "result": "leverage_reduced",
+            },
         ]
 
     return audit

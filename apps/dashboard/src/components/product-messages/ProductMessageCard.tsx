@@ -19,11 +19,7 @@ type Props = Readonly<{
   children?: ReactNode;
 }>;
 
-function sectionRow(
-  label: string,
-  body: string,
-  key: string,
-): ReactNode {
+function sectionRow(label: string, body: string, key: string): ReactNode {
   const b = body.trim();
   if (!b) return null;
   return (

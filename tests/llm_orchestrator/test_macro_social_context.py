@@ -2,13 +2,21 @@ from __future__ import annotations
 
 import asyncio
 
-from llm_orchestrator.agents.macro import MacroAnalystAgent, _merge_social_sentiment_context
+from llm_orchestrator.agents.macro import (
+    MacroAnalystAgent,
+    _merge_social_sentiment_context,
+)
 
 
 def test_merge_social_adjusts_payload() -> None:
     raw = {
         "confidence_0_1": 0.5,
-        "signal_proposal": {"action": "hold_research", "symbol": None, "timeframe": None, "payload": {}},
+        "signal_proposal": {
+            "action": "hold_research",
+            "symbol": None,
+            "timeframe": None,
+            "payload": {},
+        },
     }
     ctx = {
         "social_context": {

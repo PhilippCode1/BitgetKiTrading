@@ -37,7 +37,9 @@ class XStreamAdapter:
         r.raise_for_status()
         body = r.json()
         existing = body.get("data") or []
-        ids = [str(x.get("id")) for x in existing if isinstance(x, dict) and x.get("id")]
+        ids = [
+            str(x.get("id")) for x in existing if isinstance(x, dict) and x.get("id")
+        ]
         if self._replace and ids:
             del_body = {"delete": {"ids": ids}}
             dr = await client.post(RULES_URL, headers=self._headers(), json=del_body)
@@ -45,8 +47,13 @@ class XStreamAdapter:
             logger.info("XStreamAdapter: %s alte Rules geloescht", len(ids))
         elif not self._replace and existing:
             for row in existing:
-                if isinstance(row, dict) and str(row.get("value", "")).strip() == self._rule:
-                    logger.info("XStreamAdapter: Rule bereits aktiv id=%s", row.get("id"))
+                if (
+                    isinstance(row, dict)
+                    and str(row.get("value", "")).strip() == self._rule
+                ):
+                    logger.info(
+                        "XStreamAdapter: Rule bereits aktiv id=%s", row.get("id")
+                    )
                     return
         add_body = {"add": [{"value": self._rule, "tag": "apex_social"}]}
         ar = await client.post(RULES_URL, headers=self._headers(), json=add_body)
@@ -54,7 +61,9 @@ class XStreamAdapter:
             logger.warning("XStreamAdapter: Rule add HTTP 400 body=%s", ar.text[:500])
         ar.raise_for_status()
 
-    async def run(self, queue: asyncio.Queue[SocialIncomingMessage], stop: asyncio.Event) -> None:
+    async def run(
+        self, queue: asyncio.Queue[SocialIncomingMessage], stop: asyncio.Event
+    ) -> None:
         params = {
             "tweet.fields": "lang,public_metrics",
             "expansions": "author_id",

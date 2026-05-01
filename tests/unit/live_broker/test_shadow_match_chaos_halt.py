@@ -1,4 +1,5 @@
 """Prompt 72: bei Redis-Ausfall vor Shadow-Read: Fail-Closed + in-process Halt."""
+
 from __future__ import annotations
 
 import sys
@@ -63,9 +64,7 @@ def test_get_shadow_unavailable_activates_latch_and_raises(  # noqa: D103
                 order_type="market",
                 source_execution_decision_id=eid,
             )
-            svc = LiveBrokerOrderService(
-                s2, repo, ex, bus=None, global_halt=latch
-            )
+            svc = LiveBrokerOrderService(s2, repo, ex, bus=None, global_halt=latch)
             with pytest.raises(ShadowDivergenceError) as e:
                 svc._assert_live_open_governance(  # noqa: SLF001
                     req,

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import date
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 from uuid import UUID
 
@@ -86,12 +86,16 @@ def maybe_apply_hwm_cashflow_for_wallet_reason(
     """Koppelt bekannte Ein-/Auszahlungsgruende an HWM-Verschiebung; ignoriert DB-Fehler."""
     r = (reason_code or "").strip()
     is_deposit = r == "payment_deposit" and delta_list_usd > 0
-    is_withdrawal = r in (
-        "wallet_withdrawal",
-        "admin_payout",
-        "payout",
-        "payment_withdrawal",
-    ) and delta_list_usd < 0
+    is_withdrawal = (
+        r
+        in (
+            "wallet_withdrawal",
+            "admin_payout",
+            "payout",
+            "payment_withdrawal",
+        )
+        and delta_list_usd < 0
+    )
     if not (is_deposit or is_withdrawal):
         return
     try:

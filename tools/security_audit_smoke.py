@@ -13,7 +13,7 @@ import json
 import sys
 import urllib.error
 import urllib.request
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Any
 
 

@@ -91,12 +91,18 @@ function metaValue(meta: Record<string, unknown> | null, key: string): string {
 }
 
 export function signalDetailAssetTierDe(detail: SignalDetail): string {
-  const meta = (detail.instrument_metadata ?? null) as Record<string, unknown> | null;
+  const meta = (detail.instrument_metadata ?? null) as Record<
+    string,
+    unknown
+  > | null;
   return metaValue(meta, "asset_tier");
 }
 
 export function signalDetailDataQualityDe(detail: SignalDetail): string {
-  const meta = (detail.instrument_metadata ?? null) as Record<string, unknown> | null;
+  const meta = (detail.instrument_metadata ?? null) as Record<
+    string,
+    unknown
+  > | null;
   const fromMeta = metaValue(meta, "data_quality_status");
   if (fromMeta !== "—") return fromMeta;
   if (detail.instrument_metadata_verified === true) return "verifiziert";
@@ -105,7 +111,10 @@ export function signalDetailDataQualityDe(detail: SignalDetail): string {
 }
 
 export function signalDetailLiquidityDe(detail: SignalDetail): string {
-  const meta = (detail.instrument_metadata ?? null) as Record<string, unknown> | null;
+  const meta = (detail.instrument_metadata ?? null) as Record<
+    string,
+    unknown
+  > | null;
   const liq = metaValue(meta, "liquidity_status");
   if (liq !== "—") return liq;
   const spread = metaValue(meta, "spread_band");
@@ -121,7 +130,8 @@ export function signalDetailLiveReleaseDe(detail: SignalDetail): string {
   if (detail.live_execution_clear_for_real_money && blocks === 0) {
     return "Live freigabefaehig";
   }
-  if (action === "do_not_trade" || action === "blocked") return "Live blockiert";
+  if (action === "do_not_trade" || action === "blocked")
+    return "Live blockiert";
   if (blocks > 0) return `Live blockiert (${blocks})`;
   return "Live nicht freigegeben";
 }

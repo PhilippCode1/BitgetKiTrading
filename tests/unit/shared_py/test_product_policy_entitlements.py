@@ -7,9 +7,13 @@ from shared_py.product_policy import (
 
 
 def test_plan_entitlement_requires_explicit_true() -> None:
-    assert not plan_entitlement_key_enabled({"ai_deep_analysis": False}, key="ai_deep_analysis")
+    assert not plan_entitlement_key_enabled(
+        {"ai_deep_analysis": False}, key="ai_deep_analysis"
+    )
     assert not plan_entitlement_key_enabled({}, key="ai_deep_analysis")
-    assert plan_entitlement_key_enabled({"ai_deep_analysis": True}, key="ai_deep_analysis")
+    assert plan_entitlement_key_enabled(
+        {"ai_deep_analysis": True}, key="ai_deep_analysis"
+    )
 
 
 def test_prepaid_sufficient() -> None:

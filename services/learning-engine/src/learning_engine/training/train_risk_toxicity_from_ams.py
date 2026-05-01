@@ -9,7 +9,6 @@ Aufruf:
 
 from __future__ import annotations
 
-import os
 import random
 import sys
 from pathlib import Path
@@ -31,6 +30,7 @@ def _ensure_paths() -> None:
 def main() -> int:
     _ensure_paths()
     from config.bootstrap import bootstrap_from_settings
+
     from learning_engine.config import LearningEngineSettings
     from learning_engine.stress_test.features import features_from_ams_moments
 

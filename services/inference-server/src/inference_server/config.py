@@ -65,8 +65,12 @@ class InferenceServerSettings(BaseServiceSettings):
     )
 
     embedding_enabled: bool = Field(default=True, alias="INFERENCE_EMBEDDING_ENABLED")
-    embedding_model_id: str = Field(default="BAAI/bge-m3", alias="INFERENCE_EMBEDDING_MODEL_ID")
-    embedding_prefer_cuda: bool = Field(default=True, alias="INFERENCE_EMBEDDING_PREFER_CUDA")
+    embedding_model_id: str = Field(
+        default="BAAI/bge-m3", alias="INFERENCE_EMBEDDING_MODEL_ID"
+    )
+    embedding_prefer_cuda: bool = Field(
+        default=True, alias="INFERENCE_EMBEDDING_PREFER_CUDA"
+    )
     embedding_allow_hash_fallback: bool = Field(
         default=True,
         alias="INFERENCE_EMBEDDING_ALLOW_HASH_FALLBACK",

@@ -7,9 +7,9 @@ from typing import Any
 from jsonschema import Draft202012Validator
 
 from signal_engine.config import SignalEngineSettings
+from signal_engine.explain import templates_de as T
 from signal_engine.explain.risk_warnings import build_risk_warnings
 from signal_engine.explain.schemas import ExplainInput
-from signal_engine.explain import templates_de as T
 from signal_engine.scoring.news_score import NEWS_LAYER_SENTIMENT_SCORE_CAP
 
 
@@ -19,7 +19,9 @@ def _explanation_schema_path() -> Path:
         cand = d / "shared" / "contracts" / "schemas" / "signal_explanation.schema.json"
         if cand.is_file():
             return cand
-    raise FileNotFoundError("shared/contracts/schemas/signal_explanation.schema.json nicht gefunden")
+    raise FileNotFoundError(
+        "shared/contracts/schemas/signal_explanation.schema.json nicht gefunden"
+    )
 
 
 def _explanation_schema_validator() -> Draft202012Validator:
@@ -73,7 +75,8 @@ def build_stop_explain_json(
     settings: SignalEngineSettings,
 ) -> dict[str, Any]:
     trigger = str(
-        inp.signal_row.get("stop_trigger_type") or settings.signal_default_stop_trigger_type
+        inp.signal_row.get("stop_trigger_type")
+        or settings.signal_default_stop_trigger_type
     )
     if trigger == "mark_price":
         expl = T.STOP_MARK
@@ -140,12 +143,18 @@ def _why_not_direction(inp: ExplainInput) -> dict[str, Any]:
         rej = []
     notes: list[str] = []
     if d == "neutral":
-        notes.append("Richtung neutral: Struktur RANGE oder Gates (Struktur-/MTF-Score) nicht erfuellt.")
+        notes.append(
+            "Richtung neutral: Struktur RANGE oder Gates (Struktur-/MTF-Score) nicht erfuellt."
+        )
         notes.extend(rj.get("timeframe_notes", [])[:4])
     elif d == "long":
-        notes.append("Short nicht gewaehlt: Struktur-Trend nicht DOWN bzw. Short-Gates nicht erfuellt.")
+        notes.append(
+            "Short nicht gewaehlt: Struktur-Trend nicht DOWN bzw. Short-Gates nicht erfuellt."
+        )
     else:
-        notes.append("Long nicht gewaehlt: Struktur-Trend nicht UP bzw. Long-Gates nicht erfuellt.")
+        notes.append(
+            "Long nicht gewaehlt: Struktur-Trend nicht UP bzw. Long-Gates nicht erfuellt."
+        )
     return {
         "current_direction": d,
         "rejection_reasons": rej,
@@ -160,9 +169,11 @@ def _playbook_context_section(inp: ExplainInput) -> dict[str, Any]:
     source_snapshot = _parse_json_obj(s.get("source_snapshot_json"))
     snapshot_ctx = _parse_json_obj(source_snapshot.get("playbook_context"))
     effective = snapshot_ctx or playbook
-    decision_mode = (
-        str(s.get("playbook_decision_mode") or effective.get("decision_mode") or "playbookless").strip()
-    )
+    decision_mode = str(
+        s.get("playbook_decision_mode")
+        or effective.get("decision_mode")
+        or "playbookless"
+    ).strip()
     benchmark_rule_ids = list(effective.get("benchmark_rule_ids") or [])
     counterfactuals = list(effective.get("counterfactual_candidates") or [])
     anti_patterns = list(effective.get("anti_pattern_hits") or [])
@@ -170,10 +181,13 @@ def _playbook_context_section(inp: ExplainInput) -> dict[str, Any]:
     invalid_context_hits = list(effective.get("invalid_context_hits") or [])
     return {
         "playbook_id": s.get("playbook_id") or effective.get("selected_playbook_id"),
-        "playbook_family": s.get("playbook_family") or effective.get("selected_playbook_family"),
+        "playbook_family": s.get("playbook_family")
+        or effective.get("selected_playbook_family"),
         "decision_mode": decision_mode,
-        "registry_version": s.get("playbook_registry_version") or effective.get("registry_version"),
-        "strategy_name": s.get("strategy_name") or effective.get("recommended_strategy_name"),
+        "registry_version": s.get("playbook_registry_version")
+        or effective.get("registry_version"),
+        "strategy_name": s.get("strategy_name")
+        or effective.get("recommended_strategy_name"),
         "selection_reasons": list(effective.get("selection_reasons") or []),
         "benchmark_rule_ids": benchmark_rule_ids,
         "anti_pattern_hits": anti_patterns,
@@ -224,7 +238,9 @@ def _regime_context_section(inp: ExplainInput) -> dict[str, Any]:
     }
 
 
-def build_long_json(inp: ExplainInput, settings: SignalEngineSettings) -> dict[str, Any]:
+def build_long_json(
+    inp: ExplainInput, settings: SignalEngineSettings
+) -> dict[str, Any]:
     s = inp.signal_row
     st = inp.structure_state
     pf = inp.primary_feature
@@ -238,7 +254,10 @@ def build_long_json(inp: ExplainInput, settings: SignalEngineSettings) -> dict[s
         else:
             mtf_lines.append(f"{tf}: trend_dir={row.get('trend_dir')}")
 
-    news_block: dict[str, Any] = {"available": False, "summary_de": "Keine News-Zeile in DB."}
+    news_block: dict[str, Any] = {
+        "available": False,
+        "summary_de": "Keine News-Zeile in DB.",
+    }
     if inp.news_row:
         news_block = {
             "available": True,
@@ -286,9 +305,11 @@ def build_long_json(inp: ExplainInput, settings: SignalEngineSettings) -> dict[s
                 "stop_quality_0_1": s.get("stop_quality_0_1"),
                 "stop_executability_0_1": s.get("stop_executability_0_1"),
                 "stop_fragility_0_1": s.get("stop_fragility_0_1"),
-                "stop_budget_assessment": rj.get("stop_budget_assessment")
-                if isinstance(rj.get("stop_budget_assessment"), dict)
-                else None,
+                "stop_budget_assessment": (
+                    rj.get("stop_budget_assessment")
+                    if isinstance(rj.get("stop_budget_assessment"), dict)
+                    else None
+                ),
             },
             "targets": {
                 "target_drawing_ids": s.get("target_zone_ids_json", []),
@@ -313,7 +334,11 @@ def _uncertainty_breakdown_section(inp: ExplainInput) -> dict[str, Any]:
     ua = snap.get("uncertainty_assessment")
     ua = ua if isinstance(ua, dict) else {}
     rj = _parse_json_obj(s.get("reasons_json"))
-    comp = rj.get("uncertainty_components") if isinstance(rj.get("uncertainty_components"), dict) else {}
+    comp = (
+        rj.get("uncertainty_components")
+        if isinstance(rj.get("uncertainty_components"), dict)
+        else {}
+    )
     return {
         "policy_version": ua.get("policy_version"),
         "aggregate_0_1": s.get("model_uncertainty_0_1"),
@@ -354,7 +379,11 @@ def _decision_pipeline_section(
             }
         )
     ntp = dcf.get("no_trade_path") if isinstance(dcf.get("no_trade_path"), dict) else {}
-    edb = dcf.get("end_decision_binding") if isinstance(dcf.get("end_decision_binding"), dict) else {}
+    edb = (
+        dcf.get("end_decision_binding")
+        if isinstance(dcf.get("end_decision_binding"), dict)
+        else {}
+    )
     out: dict[str, Any] = {
         "pipeline_version": dcf.get("pipeline_version"),
         "ordered_phases_de": lines,
@@ -362,12 +391,16 @@ def _decision_pipeline_section(
         "final_summary": dcf.get("final_summary"),
         "end_decision_binding": edb,
         "no_trade_path": ntp,
-        "raw_phase_ids": [p.get("id") for p in (dcf.get("phases") or []) if isinstance(p, dict)],
+        "raw_phase_ids": [
+            p.get("id") for p in (dcf.get("phases") or []) if isinstance(p, dict)
+        ],
     }
     fm = inp.foundation_model_tsfm
     if not fm:
         snap = signal_row.get("source_snapshot_json")
-        if isinstance(snap, dict) and isinstance(snap.get("foundation_model_tsfm"), dict):
+        if isinstance(snap, dict) and isinstance(
+            snap.get("foundation_model_tsfm"), dict
+        ):
             fm = snap["foundation_model_tsfm"]
     if isinstance(fm, dict) and fm:
         out["foundation_model_tsfm"] = fm
@@ -380,9 +413,7 @@ def _peripheral_boundary_section(
 ) -> dict[str, Any]:
     dcf = reasons_json.get("decision_control_flow")
     boundary = (
-        dcf.get("peripheral_boundary_de")
-        if isinstance(dcf, dict)
-        else None
+        dcf.get("peripheral_boundary_de") if isinstance(dcf, dict) else None
     ) or (
         "News und externe Textquellen sind randstaendig: nur Layer-4-Score und explizite "
         "deterministische Reject-Regeln. Kein LLM in der Signal-Engine-Kernentscheidung."
@@ -443,7 +474,9 @@ def build_long_md_de(
     lines.append("")
     lines.append("## Risiko & Stop")
     rs = long_json["sections"]["risk_and_stop"]
-    lines.append(f"- Risiko-Score: `{rs.get('risk_score')}` | RR: `{rs.get('reward_risk_ratio')}`")
+    lines.append(
+        f"- Risiko-Score: `{rs.get('risk_score')}` | RR: `{rs.get('reward_risk_ratio')}`"
+    )
     lines.append(f"- Entscheidung: `{rs.get('decision_state')}`")
     lines.append(
         f"- Stop trigger_type: `{stop_explain.get('trigger_type')}` — "
@@ -453,9 +486,7 @@ def build_long_md_de(
     lines.append("")
     lines.append("### Risiko-Warnungen (regelbasiert)")
     for w in risk_warnings:
-        lines.append(
-            f"- **{w.get('code')}** ({w.get('severity')}): {w.get('message')}"
-        )
+        lines.append(f"- **{w.get('code')}** ({w.get('severity')}): {w.get('message')}")
     lines.append("")
     ub = long_json["sections"].get("uncertainty_breakdown") or {}
     if ub.get("aggregate_0_1") is not None or ub.get("components_v2"):
@@ -560,7 +591,9 @@ def build_long_md_de(
     for n in wnd.get("notes_de", []):
         lines.append(f"- {n}")
     if wnd.get("rejection_reasons"):
-        lines.append("- Ablehnungs-/Downgrade-Gruende (Fakten aus rejection_reasons_json):")
+        lines.append(
+            "- Ablehnungs-/Downgrade-Gruende (Fakten aus rejection_reasons_json):"
+        )
         for item in wnd["rejection_reasons"][:12]:
             if isinstance(item, str):
                 lines.append(f"  - {item}")
@@ -591,10 +624,14 @@ def build_long_md_de(
         )
         eff_ranked = edb.get("exit_families_effective_ranked") or []
         if eff_ranked:
-            lines.append(f"  - Exit-Familien effektiv (Top): `{', '.join(str(x) for x in eff_ranked[:6])}`")
+            lines.append(
+                f"  - Exit-Familien effektiv (Top): `{', '.join(str(x) for x in eff_ranked[:6])}`"
+            )
         drv = edb.get("exit_resolution_drivers") or []
         if drv:
-            lines.append(f"  - Exit-Aufloesung Treiber: `{', '.join(str(x) for x in drv[:8])}`")
+            lines.append(
+                f"  - Exit-Aufloesung Treiber: `{', '.join(str(x) for x in drv[:8])}`"
+            )
         lbf = edb.get("leverage_band_fraction_0_1") or {}
         lines.append(
             f"  - Hebel-Band (Anteil Engine-Cap): min `{lbf.get('min')}` max `{lbf.get('max')}` | "

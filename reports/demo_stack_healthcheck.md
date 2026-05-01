@@ -1,16 +1,16 @@
 # Demo Stack Healthcheck
 
-- Ergebnis: `FAIL`
+- Ergebnis: `PASS`
 
 ## Checks
-- `dashboard`: `307`
+- `dashboard_http`: `307`
 - `gateway_health`: `200`
 - `gateway_ready`: `200`
 - `demo_status`: `200`
 - `demo_readiness`: `200`
 
 ## Blocker
-- Demo-Readiness meldet FAIL.
+- keine
 
 ## Warnungen
 - keine

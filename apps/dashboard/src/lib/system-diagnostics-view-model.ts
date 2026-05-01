@@ -8,12 +8,7 @@ import type {
 export type SystemOverallStatus = "OK" | "Warnung" | "Blockiert";
 
 export type StaleCheckItem = {
-  key:
-    | "candles"
-    | "orderbook"
-    | "signals"
-    | "reconcile"
-    | "worker_heartbeat";
+  key: "candles" | "orderbook" | "signals" | "reconcile" | "worker_heartbeat";
   label: string;
   stale: boolean;
   detail: string;
@@ -44,7 +39,10 @@ export function redactDiagnosticError(raw: string | null | undefined): string {
   return raw.slice(0, 240).replace(SECRET_RE, "$1=***");
 }
 
-function staleFromAge(ageMs: number | null | undefined, maxAgeMs: number): boolean {
+function staleFromAge(
+  ageMs: number | null | undefined,
+  maxAgeMs: number,
+): boolean {
   if (ageMs == null) return true;
   return ageMs > maxAgeMs;
 }
@@ -78,7 +76,10 @@ export function buildSystemDiagnosticsViewModel(input: {
   const signalTs = health?.data_freshness?.last_signal_ts_ms ?? null;
   const candlesStale = candleTs == null ? true : now - candleTs > 90_000;
   const signalsStale = signalTs == null ? true : now - signalTs > 120_000;
-  const orderbookStale = staleFromAge(liveState?.latest_feature?.orderbook_age_ms, 90_000);
+  const orderbookStale = staleFromAge(
+    liveState?.latest_feature?.orderbook_age_ms,
+    90_000,
+  );
   const reconcileStale = reconcileIsStale(health);
   const heartbeatStale = workerHeartbeatStale(health);
 
@@ -87,7 +88,9 @@ export function buildSystemDiagnosticsViewModel(input: {
       key: "candles",
       label: "Candles stale",
       stale: candlesStale,
-      detail: candlesStale ? "Candles sind stale oder fehlen." : "Candles sind frisch.",
+      detail: candlesStale
+        ? "Candles sind stale oder fehlen."
+        : "Candles sind frisch.",
     },
     {
       key: "orderbook",
@@ -101,13 +104,17 @@ export function buildSystemDiagnosticsViewModel(input: {
       key: "signals",
       label: "Signals stale",
       stale: signalsStale,
-      detail: signalsStale ? "Signal-Zeitstempel ist stale/missing." : "Signale sind aktuell.",
+      detail: signalsStale
+        ? "Signal-Zeitstempel ist stale/missing."
+        : "Signale sind aktuell.",
     },
     {
       key: "reconcile",
       label: "Reconcile stale",
       stale: reconcileStale,
-      detail: reconcileStale ? "Reconcile nicht ok oder unbekannt." : "Reconcile ist ok.",
+      detail: reconcileStale
+        ? "Reconcile nicht ok oder unbekannt."
+        : "Reconcile ist ok.",
     },
     {
       key: "worker_heartbeat",
@@ -137,11 +144,13 @@ export function buildSystemDiagnosticsViewModel(input: {
       : "OK";
 
   const reasons: string[] = [];
-  if (!healthEndpointWired) reasons.push("Health-Endpunkt ist nicht verdrahtet.");
+  if (!healthEndpointWired)
+    reasons.push("Health-Endpunkt ist nicht verdrahtet.");
   if (!health) reasons.push("System-Health nicht lesbar.");
   if (health?.database !== "ok") reasons.push("Postgres nicht ok.");
   if (health?.redis !== "ok") reasons.push("Redis/Eventbus nicht ok.");
-  if (runtime?.upstream_ok === false) reasons.push("Bitget Private nicht erreichbar.");
+  if (runtime?.upstream_ok === false)
+    reasons.push("Bitget Private nicht erreichbar.");
   if (hasStaleCritical) reasons.push("Stale-Daten erkannt.");
   if (hasOpenCriticalAlerts) reasons.push("Kritische Alerts sind offen.");
 
@@ -166,7 +175,8 @@ export function buildSystemDiagnosticsViewModel(input: {
 
   return {
     overallStatus,
-    summaryReasons: reasons.length > 0 ? reasons : ["Keine kritischen Probleme erkannt."],
+    summaryReasons:
+      reasons.length > 0 ? reasons : ["Keine kritischen Probleme erkannt."],
     serviceStatus,
     dataSources: [
       { name: "Market-Stream", status: candlesStale ? "stale" : "ok" },
@@ -184,7 +194,9 @@ export function buildSystemDiagnosticsViewModel(input: {
       runtime?.bitget_private_status?.private_auth_ok == null
         ? "unbekannt"
         : String(runtime.bitget_private_status.private_auth_ok),
-    llmStatus: (health?.services ?? []).some((s) => s.name === "llm_orchestrator" && s.status === "ok")
+    llmStatus: (health?.services ?? []).some(
+      (s) => s.name === "llm_orchestrator" && s.status === "ok",
+    )
       ? "ok"
       : "warnung/unknown",
     newsStatus: health?.data_freshness?.last_news_ts_ms ? "ok" : "unknown",

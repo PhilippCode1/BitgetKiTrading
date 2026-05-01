@@ -11,13 +11,27 @@ ROOT = Path(__file__).resolve().parents[1]
 def analyze() -> dict[str, object]:
     issues: list[dict[str, str]] = []
     doc = ROOT / "docs" / "production_10_10" / "main_console_incident_alerting.md"
-    page = ROOT / "apps" / "dashboard" / "src" / "app" / "(operator)" / "console" / "incidents" / "page.tsx"
-    view_model = ROOT / "apps" / "dashboard" / "src" / "lib" / "operator-alerts-view-model.ts"
+    page = (
+        ROOT
+        / "apps"
+        / "dashboard"
+        / "src"
+        / "app"
+        / "(operator)"
+        / "console"
+        / "incidents"
+        / "page.tsx"
+    )
+    view_model = (
+        ROOT / "apps" / "dashboard" / "src" / "lib" / "operator-alerts-view-model.ts"
+    )
     py_module = ROOT / "shared" / "python" / "src" / "shared_py" / "operator_alerts.py"
     nav = ROOT / "apps" / "dashboard" / "src" / "lib" / "main-console" / "navigation.ts"
     sec_test = ROOT / "tests" / "security" / "test_operator_alert_contracts.py"
     tool_test = ROOT / "tests" / "tools" / "test_check_main_console_incidents.py"
-    main_console_doc = ROOT / "docs" / "production_10_10" / "main_console_product_direction.md"
+    main_console_doc = (
+        ROOT / "docs" / "production_10_10" / "main_console_product_direction.md"
+    )
 
     for path, code, message in (
         (doc, "doc_missing", "Incident-/Alert-Doku fehlt."),
@@ -28,7 +42,14 @@ def analyze() -> dict[str, object]:
         (tool_test, "tool_test_missing", "Tool-Test fehlt."),
     ):
         if not path.is_file():
-            issues.append({"severity": "error", "code": code, "message": message, "path": str(path)})
+            issues.append(
+                {
+                    "severity": "error",
+                    "code": code,
+                    "message": message,
+                    "path": str(path),
+                }
+            )
 
     if nav.is_file():
         nav_text = nav.read_text(encoding="utf-8")
@@ -42,7 +63,14 @@ def analyze() -> dict[str, object]:
                 }
             )
     else:
-        issues.append({"severity": "error", "code": "nav_file_missing", "message": "Navigationsdatei fehlt.", "path": str(nav)})
+        issues.append(
+            {
+                "severity": "error",
+                "code": "nav_file_missing",
+                "message": "Navigationsdatei fehlt.",
+                "path": str(nav),
+            }
+        )
 
     if main_console_doc.is_file():
         mcd = main_console_doc.read_text(encoding="utf-8").lower()
@@ -56,14 +84,28 @@ def analyze() -> dict[str, object]:
                 }
             )
     else:
-        issues.append({"severity": "error", "code": "main_console_doc_missing", "message": "Main-Console-Doku fehlt.", "path": str(main_console_doc)})
+        issues.append(
+            {
+                "severity": "error",
+                "code": "main_console_doc_missing",
+                "message": "Main-Console-Doku fehlt.",
+                "path": str(main_console_doc),
+            }
+        )
 
     errors = sum(1 for item in issues if item["severity"] == "error")
-    return {"ok": errors == 0, "error_count": errors, "warning_count": 0, "issues": issues}
+    return {
+        "ok": errors == 0,
+        "error_count": errors,
+        "warning_count": 0,
+        "issues": issues,
+    }
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Prüft Main-Console-Incident-/Alert-Artefakte.")
+    parser = argparse.ArgumentParser(
+        description="Prüft Main-Console-Incident-/Alert-Artefakte."
+    )
     parser.add_argument("--strict", action="store_true")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
@@ -76,7 +118,9 @@ def main() -> int:
             f"errors={payload['error_count']} warnings={payload['warning_count']}"
         )
         for item in payload["issues"]:
-            print(f"{item['severity'].upper()} {item['code']}: {item['message']} [{item['path']}]")
+            print(
+                f"{item['severity'].upper()} {item['code']}: {item['message']} [{item['path']}]"
+            )
     if payload["error_count"] > 0:
         return 1
     if args.strict and payload["warning_count"] > 0:

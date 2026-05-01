@@ -78,7 +78,9 @@ def _parse_env_file(path: Path) -> dict[str, str]:
     return data
 
 
-def _run_command(args: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+def _run_command(
+    args: list[str], cwd: Path | None = None
+) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         args,
         cwd=str(cwd) if cwd else None,
@@ -97,10 +99,12 @@ def _is_placeholder_or_empty(value: str) -> bool:
 
 
 def _contains_missing_var_warning(stderr: str) -> bool:
-    return 'variable is not set. Defaulting to a blank string' in (stderr or "")
+    return "variable is not set. Defaulting to a blank string" in (stderr or "")
 
 
-def build_gate_report(env_file: Path, check_full_config: bool = True) -> DemoEnvComposeGateReport:
+def build_gate_report(
+    env_file: Path, check_full_config: bool = True
+) -> DemoEnvComposeGateReport:
     blockers: list[str] = []
     warnings: list[str] = []
     checks: dict[str, Any] = {}
@@ -119,7 +123,9 @@ def build_gate_report(env_file: Path, check_full_config: bool = True) -> DemoEnv
     data = _parse_env_file(env_file)
 
     # .env.demo darf nie committed sein.
-    tracked = _run_command(["git", "ls-files", "--error-unmatch", ".env.demo"], cwd=ROOT)
+    tracked = _run_command(
+        ["git", "ls-files", "--error-unmatch", ".env.demo"], cwd=ROOT
+    )
     checks["env_demo_committed"] = tracked.returncode == 0
     if tracked.returncode == 0:
         blockers.append(".env.demo ist im Git-Index tracked; muss untracked bleiben.")
@@ -138,7 +144,7 @@ def build_gate_report(env_file: Path, check_full_config: bool = True) -> DemoEnv
 
     for key in LIVE_KEYS_MUST_BE_EMPTY:
         val = data.get(key, "")
-        checks[f"{key}_empty"] = (val.strip() == "")
+        checks[f"{key}_empty"] = val.strip() == ""
         if val.strip():
             blockers.append(f"{key} muss im Demo-Profil leer sein.")
 
@@ -146,7 +152,9 @@ def build_gate_report(env_file: Path, check_full_config: bool = True) -> DemoEnv
         val = data.get(key, "")
         checks[f"{key}_placeholder_or_empty"] = _is_placeholder_or_empty(val)
         if not _is_placeholder_or_empty(val):
-            blockers.append(f"{key} sieht nicht nach Platzhalter aus (moeglicher echter Secret-Wert).")
+            blockers.append(
+                f"{key} sieht nicht nach Platzhalter aus (moeglicher echter Secret-Wert)."
+            )
 
     for key in SAFETY_FLAGS_MUST_BE_FALSE:
         if key in data:
@@ -167,7 +175,9 @@ def build_gate_report(env_file: Path, check_full_config: bool = True) -> DemoEnv
         if services.returncode != 0:
             blockers.append("docker compose config --services ist fehlgeschlagen.")
         if _contains_missing_var_warning(services.stderr):
-            blockers.append("Compose meldet fehlende ENV-Variablen in config --services.")
+            blockers.append(
+                "Compose meldet fehlende ENV-Variablen in config --services."
+            )
 
         if check_full_config:
             full_cfg = _run_command(
@@ -180,7 +190,9 @@ def build_gate_report(env_file: Path, check_full_config: bool = True) -> DemoEnv
             if _contains_missing_var_warning(full_cfg.stderr):
                 blockers.append("Compose meldet fehlende ENV-Variablen in config.")
     else:
-        warnings.append("docker compose nicht verfuegbar; Compose-Checks wurden uebersprungen.")
+        warnings.append(
+            "docker compose nicht verfuegbar; Compose-Checks wurden uebersprungen."
+        )
         checks["compose_checks"] = "SKIPPED_WITH_REASON"
 
     result = "FAIL" if blockers else "PASS"

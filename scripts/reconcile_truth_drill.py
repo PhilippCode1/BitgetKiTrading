@@ -20,8 +20,19 @@ from shared_py.reconcile_truth import (  # noqa: E402
 )
 
 RECONCILE_IDEMPOTENCY_SCHEMA_VERSION = "reconcile-idempotency-evidence-v1"
-DEFAULT_EVIDENCE_TEMPLATE = ROOT / "docs" / "production_10_10" / "reconcile_idempotency_evidence.template.json"
-SECRET_LIKE_KEYS = ("database_url", "dsn", "password", "secret", "token", "api_key", "private_key", "authorization")
+DEFAULT_EVIDENCE_TEMPLATE = (
+    ROOT / "docs" / "production_10_10" / "reconcile_idempotency_evidence.template.json"
+)
+SECRET_LIKE_KEYS = (
+    "database_url",
+    "dsn",
+    "password",
+    "secret",
+    "token",
+    "api_key",
+    "private_key",
+    "authorization",
+)
 
 
 def build_external_evidence_template() -> dict[str, Any]:
@@ -87,7 +98,9 @@ def _non_negative_int(payload: dict[str, Any], key: str) -> int | None:
     return parsed if parsed >= 0 else None
 
 
-def assess_external_evidence(payload: dict[str, Any] | None) -> tuple[str, list[str], list[str]]:
+def assess_external_evidence(
+    payload: dict[str, Any] | None
+) -> tuple[str, list[str], list[str]]:
     if not payload:
         return "FAIL", ["reconcile_idempotency_evidence_missing"], []
     blockers: list[str] = []
@@ -134,11 +147,20 @@ def assess_external_evidence(payload: dict[str, Any] | None) -> tuple[str, list[
         ("idempotency_key_required", "idempotency_key_not_required"),
         ("timeout_sets_unknown_submit_state", "timeout_unknown_state_not_set"),
         ("unknown_submit_state_blocks_opening", "unknown_submit_state_not_blocking"),
-        ("db_failure_after_submit_requires_reconcile", "db_failure_reconcile_not_required"),
-        ("safety_latch_armed_on_unresolved_duplicate", "safety_latch_not_armed_on_unresolved_duplicate"),
+        (
+            "db_failure_after_submit_requires_reconcile",
+            "db_failure_reconcile_not_required",
+        ),
+        (
+            "safety_latch_armed_on_unresolved_duplicate",
+            "safety_latch_not_armed_on_unresolved_duplicate",
+        ),
         ("audit_trail_verified", "audit_trail_not_verified"),
         ("alert_delivery_verified", "alert_delivery_not_verified"),
-        ("main_console_reconcile_state_verified", "main_console_reconcile_state_not_verified"),
+        (
+            "main_console_reconcile_state_verified",
+            "main_console_reconcile_state_not_verified",
+        ),
     )
     for key, code in required_true:
         if payload.get(key) is not True:
@@ -153,7 +175,13 @@ def assess_external_evidence(payload: dict[str, Any] | None) -> tuple[str, list[
     return status, blockers, warnings
 
 
-def _external_markdown(payload: dict[str, Any], status: str, blockers: list[str], warnings: list[str], secret_issues: list[str]) -> str:
+def _external_markdown(
+    payload: dict[str, Any],
+    status: str,
+    blockers: list[str],
+    warnings: list[str],
+    secret_issues: list[str],
+) -> str:
     lines = [
         "# Reconcile / Order-Idempotency Evidence Check",
         "",
@@ -211,12 +239,58 @@ def _build_simulated_cases() -> list[tuple[str, ReconcileTruthContext]]:
         safety_latch_active=False,
     )
     return [
-        ("exchange_order_missing", ReconcileTruthContext(**{**base, "exchange_order_missing": True, "global_status": "exchange_order_missing"})),
-        ("local_order_missing", ReconcileTruthContext(**{**base, "local_order_missing": True, "global_status": "local_order_missing"})),
-        ("position_mismatch", ReconcileTruthContext(**{**base, "position_mismatch": True, "global_status": "position_mismatch"})),
-        ("stale_reconcile", ReconcileTruthContext(**{**base, "reconcile_fresh": False, "global_status": "stale"})),
-        ("unknown_order_state", ReconcileTruthContext(**{**base, "unknown_order_state": True, "global_status": "unknown_order_state"})),
-        ("safety_latch_required", ReconcileTruthContext(**{**base, "fill_mismatch": True, "global_status": "fill_mismatch"})),
+        (
+            "exchange_order_missing",
+            ReconcileTruthContext(
+                **{
+                    **base,
+                    "exchange_order_missing": True,
+                    "global_status": "exchange_order_missing",
+                }
+            ),
+        ),
+        (
+            "local_order_missing",
+            ReconcileTruthContext(
+                **{
+                    **base,
+                    "local_order_missing": True,
+                    "global_status": "local_order_missing",
+                }
+            ),
+        ),
+        (
+            "position_mismatch",
+            ReconcileTruthContext(
+                **{
+                    **base,
+                    "position_mismatch": True,
+                    "global_status": "position_mismatch",
+                }
+            ),
+        ),
+        (
+            "stale_reconcile",
+            ReconcileTruthContext(
+                **{**base, "reconcile_fresh": False, "global_status": "stale"}
+            ),
+        ),
+        (
+            "unknown_order_state",
+            ReconcileTruthContext(
+                **{
+                    **base,
+                    "unknown_order_state": True,
+                    "global_status": "unknown_order_state",
+                }
+            ),
+        ),
+        (
+            "safety_latch_required",
+            ReconcileTruthContext(
+                **{**base, "fill_mismatch": True, "global_status": "fill_mismatch"}
+            ),
+        ),
     ]
 
 
@@ -277,7 +351,9 @@ def main() -> int:
     if args.write_template:
         args.write_template.parent.mkdir(parents=True, exist_ok=True)
         args.write_template.write_text(
-            json.dumps(build_external_evidence_template(), indent=2, ensure_ascii=False),
+            json.dumps(
+                build_external_evidence_template(), indent=2, ensure_ascii=False
+            ),
             encoding="utf-8",
         )
         print(f"wrote template: {args.write_template}")
@@ -296,11 +372,20 @@ def main() -> int:
         }
         out = Path(args.output_md)
         out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(_external_markdown(loaded, status, blockers, warnings, secret_issues), encoding="utf-8")
+        out.write_text(
+            _external_markdown(loaded, status, blockers, warnings, secret_issues),
+            encoding="utf-8",
+        )
         if args.output_json:
             args.output_json.parent.mkdir(parents=True, exist_ok=True)
-            args.output_json.write_text(json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False), encoding="utf-8")
-        print(_external_markdown(loaded, status, blockers, warnings, secret_issues), end="")
+            args.output_json.write_text(
+                json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False),
+                encoding="utf-8",
+            )
+        print(
+            _external_markdown(loaded, status, blockers, warnings, secret_issues),
+            end="",
+        )
         return 1 if args.strict and not payload["ok"] else 0
     if args.mode != "simulated":
         raise SystemExit("Nur --mode simulated ist lokal erlaubt.")
@@ -311,7 +396,9 @@ def main() -> int:
         out_md.write_text(_report_markdown(), encoding="utf-8")
         if args.output_json:
             args.output_json.parent.mkdir(parents=True, exist_ok=True)
-            args.output_json.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+            args.output_json.write_text(
+                json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8"
+            )
         print("reconcile_truth_drill: dry-run ok (mode=simulated)")
         return 0
     out = Path(args.output_md)
@@ -319,7 +406,10 @@ def main() -> int:
     out.write_text(_report_markdown(), encoding="utf-8")
     if args.output_json:
         args.output_json.parent.mkdir(parents=True, exist_ok=True)
-        args.output_json.write_text(json.dumps(_simulated_payload(), indent=2, ensure_ascii=False), encoding="utf-8")
+        args.output_json.write_text(
+            json.dumps(_simulated_payload(), indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
     print(f"reconcile_truth_drill: ok (mode=simulated, output={out.as_posix()})")
     return 0
 

@@ -21,7 +21,9 @@ describe("sanitizePublicErrorMessage", () => {
 
   it("redacts secret markers", () => {
     expect(
-      sanitizePublicErrorMessage("Authorization=Bearer abc token=123 api_key=xyz"),
+      sanitizePublicErrorMessage(
+        "Authorization=Bearer abc token=123 api_key=xyz",
+      ),
     ).toContain("authorization=***");
   });
 });

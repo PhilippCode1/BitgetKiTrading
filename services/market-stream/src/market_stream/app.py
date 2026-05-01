@@ -13,12 +13,12 @@ from config.settings import BaseServiceSettings
 from fastapi import FastAPI
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import SettingsConfigDict
+from redis.asyncio import Redis as AsyncRedis
 from shared_py.bitget import (
     BitgetInstrumentCatalog,
     BitgetInstrumentMetadataService,
     BitgetSettings,
 )
-from redis.asyncio import Redis as AsyncRedis
 from shared_py.eventbus import (
     STREAM_CANDLE_CLOSE,
     STREAM_MARKET_FEED_HEALTH,
@@ -122,7 +122,9 @@ class MarketStreamSettings(BitgetSettings):
         alias="MARKET_STREAM_FEED_HEALTH_INTERVAL_SEC",
     )
     orderbook_max_levels: int = Field(default=50, alias="ORDERBOOK_MAX_LEVELS")
-    orderbook_checksum_levels: int = Field(default=25, alias="ORDERBOOK_CHECKSUM_LEVELS")
+    orderbook_checksum_levels: int = Field(
+        default=25, alias="ORDERBOOK_CHECKSUM_LEVELS"
+    )
     orderbook_resync_on_mismatch: bool = Field(
         default=True,
         alias="ORDERBOOK_RESYNC_ON_MISMATCH",
@@ -197,6 +199,7 @@ class MarketStreamSettings(BitgetSettings):
         default=730,
         alias="TSDB_RETENTION_DAYS_CANDLES_4H",
     )
+
     @field_validator("market_stream_port")
     @classmethod
     def _validate_port(cls, value: int) -> int:
@@ -234,7 +237,9 @@ class MarketStreamSettings(BitgetSettings):
     def _validate_vpin_bucket(cls, value: float) -> float:
         x = float(value)
         if not (x > 0.0 and math.isfinite(x)):
-            raise ValueError("MARKET_STREAM_VPIN_BUCKET_VOLUME muss endlich und > 0 sein")
+            raise ValueError(
+                "MARKET_STREAM_VPIN_BUCKET_VOLUME muss endlich und > 0 sein"
+            )
         return x
 
     @field_validator("market_stream_vpin_window_buckets")
@@ -255,7 +260,9 @@ class MarketStreamSettings(BitgetSettings):
     @classmethod
     def _validate_initial_load_limit(cls, value: int) -> int:
         if not 1 <= value <= 1000:
-            raise ValueError("BITGET_CANDLE_INITIAL_LOAD_LIMIT muss zwischen 1 und 1000 liegen")
+            raise ValueError(
+                "BITGET_CANDLE_INITIAL_LOAD_LIMIT muss zwischen 1 und 1000 liegen"
+            )
         return value
 
     @field_validator("orderbook_max_levels")
@@ -309,7 +316,9 @@ class MarketStreamSettings(BitgetSettings):
             raise ValueError("SLIPPAGE_SIZES_USDT darf nicht leer sein")
         for part in parts:
             if int(part) <= 0:
-                raise ValueError("SLIPPAGE_SIZES_USDT darf nur positive Werte enthalten")
+                raise ValueError(
+                    "SLIPPAGE_SIZES_USDT darf nur positive Werte enthalten"
+                )
         return ",".join(parts)
 
     @field_validator(
@@ -328,7 +337,9 @@ class MarketStreamSettings(BitgetSettings):
     @model_validator(mode="after")
     def _validate_orderbook_relationships(self) -> MarketStreamSettings:
         if self.orderbook_checksum_levels > self.orderbook_max_levels:
-            raise ValueError("ORDERBOOK_CHECKSUM_LEVELS darf ORDERBOOK_MAX_LEVELS nicht uebersteigen")
+            raise ValueError(
+                "ORDERBOOK_CHECKSUM_LEVELS darf ORDERBOOK_MAX_LEVELS nicht uebersteigen"
+            )
         return self
 
     @property
@@ -624,7 +635,8 @@ class MarketStreamRuntime:
         return {
             "status": (
                 "ok"
-                if self._catalog_block_reason is None and metadata_health.get("status") == "ok"
+                if self._catalog_block_reason is None
+                and metadata_health.get("status") == "ok"
                 else "degraded"
             ),
             "service": "market-stream",
@@ -649,7 +661,9 @@ class MarketStreamRuntime:
             "instrument_metadata": metadata_health,
             "catalog_block_reason": self._catalog_block_reason,
             "candle_initial_load_complete": self._candle_collector.initial_load_complete,
-            "orderbook_desynced": self._orderbook_collector.stats_payload()["orderbook_desynced"],
+            "orderbook_desynced": self._orderbook_collector.stats_payload()[
+                "orderbook_desynced"
+            ],
             "gapfill_last_ok_ts_ms": self._gapfill_worker.last_gapfill_ok_ts_ms,
             "gapfill_last_reason": self._gapfill_worker.last_gapfill_reason,
             "stale_escalation_count": self._stats.stale_escalation_count,
@@ -995,7 +1009,9 @@ class MarketStreamRuntime:
         except Exception as exc:  # pragma: no cover - callback logging path
             self._stats.last_error = str(exc)
             self._stats.connection_state = "error"
-            self._logger.exception("market-stream background task crashed", exc_info=exc)
+            self._logger.exception(
+                "market-stream background task crashed", exc_info=exc
+            )
 
 
 def _instrument_metadata_ready_ok(
@@ -1068,7 +1084,11 @@ def create_app() -> FastAPI:
             ),
             "candle_initial_load": (
                 runtime._candle_collector.initial_load_complete,
-                "complete" if runtime._candle_collector.initial_load_complete else "pending",
+                (
+                    "complete"
+                    if runtime._candle_collector.initial_load_complete
+                    else "pending"
+                ),
             ),
             "orderbook_consistent": (
                 not desynced,
@@ -1080,7 +1100,8 @@ def create_app() -> FastAPI:
             ),
             "instrument_catalog": (
                 runtime._catalog_block_reason is None,
-                runtime._catalog_block_reason or runtime._catalog.health_payload().get("status", "ok"),
+                runtime._catalog_block_reason
+                or runtime._catalog.health_payload().get("status", "ok"),
             ),
             "instrument_metadata": (
                 _instrument_metadata_ready_ok(
@@ -1095,4 +1116,3 @@ def create_app() -> FastAPI:
 
     instrument_fastapi(app, "market-stream")
     return app
-

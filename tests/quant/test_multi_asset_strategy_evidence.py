@@ -42,13 +42,17 @@ def test_major_high_liquidity_with_full_evidence_pass() -> None:
 
 
 def test_without_walk_forward_fail() -> None:
-    verdict, reasons, _ = evaluate_multi_asset_strategy_evidence(_base(walk_forward_ok=False))
+    verdict, reasons, _ = evaluate_multi_asset_strategy_evidence(
+        _base(walk_forward_ok=False)
+    )
     assert verdict == "FAIL"
     assert any("Walk-forward" in r for r in reasons)
 
 
 def test_without_slippage_fees_fail() -> None:
-    verdict, reasons, _ = evaluate_multi_asset_strategy_evidence(_base(slippage_fees_funding_ok=False))
+    verdict, reasons, _ = evaluate_multi_asset_strategy_evidence(
+        _base(slippage_fees_funding_ok=False)
+    )
     assert verdict == "FAIL"
     assert any("Slippage/Fees/Funding" in r for r in reasons)
 
@@ -62,19 +66,25 @@ def test_low_liquidity_without_execution_evidence_fail() -> None:
 
 
 def test_new_listing_is_quarantine_fail() -> None:
-    verdict, reasons, _ = evaluate_multi_asset_strategy_evidence(_base(asset_class="new_listing"))
+    verdict, reasons, _ = evaluate_multi_asset_strategy_evidence(
+        _base(asset_class="new_listing")
+    )
     assert verdict == "FAIL"
     assert any("gesperrt" in r for r in reasons)
 
 
 def test_negative_expectancy_fail() -> None:
-    verdict, reasons, _ = evaluate_multi_asset_strategy_evidence(_base(expectancy_after_costs=-0.01))
+    verdict, reasons, _ = evaluate_multi_asset_strategy_evidence(
+        _base(expectancy_after_costs=-0.01)
+    )
     assert verdict == "FAIL"
     assert any("Expectancy" in r for r in reasons)
 
 
 def test_high_drawdown_fail() -> None:
-    verdict, reasons, _ = evaluate_multi_asset_strategy_evidence(_base(drawdown_ok=False, max_drawdown_pct=0.31))
+    verdict, reasons, _ = evaluate_multi_asset_strategy_evidence(
+        _base(drawdown_ok=False, max_drawdown_pct=0.31)
+    )
     assert verdict == "FAIL"
     assert any("Drawdown" in r for r in reasons)
 
@@ -101,7 +111,9 @@ def test_backtest_only_not_live() -> None:
 
 
 def test_report_text_contains_german_reason() -> None:
-    verdict, reasons, text = evaluate_multi_asset_strategy_evidence(_base(walk_forward_ok=False))
+    verdict, reasons, text = evaluate_multi_asset_strategy_evidence(
+        _base(walk_forward_ok=False)
+    )
     assert verdict == "FAIL"
     assert "Strategie" in text and ("fuer" in text or "f\u00fcr" in text)
     assert len(reasons) > 0

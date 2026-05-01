@@ -18,7 +18,12 @@ def test_stale_orderbook_blocks_live() -> None:
     )
     assert ok is False
     assert "orderbook_stale" in reasons
-    assert asset_data_quality_blocks_live(quality_status="data_stale", block_reasons=reasons) is True
+    assert (
+        asset_data_quality_blocks_live(
+            quality_status="data_stale", block_reasons=reasons
+        )
+        is True
+    )
 
 
 def test_missing_orderbook_blocks_live() -> None:
@@ -30,15 +35,27 @@ def test_missing_orderbook_blocks_live() -> None:
     )
     assert ok is False
     assert "orderbook_missing" in reasons
-    assert asset_data_quality_blocks_live(quality_status="data_incomplete", block_reasons=reasons) is True
+    assert (
+        asset_data_quality_blocks_live(
+            quality_status="data_incomplete", block_reasons=reasons
+        )
+        is True
+    )
 
 
 def test_extreme_spread_blocks_live() -> None:
-    ok, reasons, warnings = validate_spread_sanity(bid=100.0, ask=104.0, max_spread_bps=20.0)
+    ok, reasons, warnings = validate_spread_sanity(
+        bid=100.0, ask=104.0, max_spread_bps=20.0
+    )
     assert ok is False
     assert "spread_extreme" in reasons
     assert warnings == []
-    assert asset_data_quality_blocks_live(quality_status="data_invalid", block_reasons=reasons) is True
+    assert (
+        asset_data_quality_blocks_live(
+            quality_status="data_invalid", block_reasons=reasons
+        )
+        is True
+    )
 
 
 def test_delisted_blocks_live() -> None:
@@ -87,8 +104,22 @@ def test_missing_exchange_truth_is_not_enough_evidence() -> None:
             "market_family": "futures",
             "product_type": "USDT-FUTURES",
             "candles": [
-                {"ts_ms": 1000, "open": 10, "high": 12, "low": 9, "close": 11, "volume": 1},
-                {"ts_ms": 2000, "open": 11, "high": 13, "low": 10, "close": 12, "volume": 1},
+                {
+                    "ts_ms": 1000,
+                    "open": 10,
+                    "high": 12,
+                    "low": 9,
+                    "close": 11,
+                    "volume": 1,
+                },
+                {
+                    "ts_ms": 2000,
+                    "open": 11,
+                    "high": 13,
+                    "low": 10,
+                    "close": 12,
+                    "volume": 1,
+                },
             ],
             "expected_candle_interval_ms": 1000,
             "orderbook_present": True,

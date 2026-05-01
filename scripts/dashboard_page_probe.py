@@ -15,7 +15,9 @@ import urllib.request
 
 
 def fetch(url: str, timeout: float = 25.0) -> tuple[int, str]:
-    req = urllib.request.Request(url, method="GET", headers={"User-Agent": "dashboard-page-probe/1.0"})
+    req = urllib.request.Request(
+        url, method="GET", headers={"User-Agent": "dashboard-page-probe/1.0"}
+    )
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         return resp.status, resp.read().decode("utf-8", errors="replace")
 
@@ -52,7 +54,9 @@ def page_ok(html: str, path: str) -> tuple[bool, str]:
 
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--base-url", default="http://127.0.0.1:3000", help="Dashboard-Origin")
+    p.add_argument(
+        "--base-url", default="http://127.0.0.1:3000", help="Dashboard-Origin"
+    )
     p.add_argument(
         "--paths",
         nargs="*",

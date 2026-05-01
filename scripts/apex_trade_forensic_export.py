@@ -24,10 +24,15 @@ for p in (
 
 def main() -> int:
     if len(sys.argv) < 2:
-        print("Usage: python scripts/apex_trade_forensic_export.py <execution_id>", file=sys.stderr)
+        print(
+            "Usage: python scripts/apex_trade_forensic_export.py <execution_id>",
+            file=sys.stderr,
+        )
         return 2
     eid = sys.argv[1].strip()
-    dsn = (os.environ.get("DATABASE_URL") or os.environ.get("TEST_DATABASE_URL") or "").strip()
+    dsn = (
+        os.environ.get("DATABASE_URL") or os.environ.get("TEST_DATABASE_URL") or ""
+    ).strip()
     if not dsn:
         print("DATABASE_URL fehlt", file=sys.stderr)
         return 1
@@ -44,7 +49,11 @@ def main() -> int:
     with psycopg.connect(dsn, row_factory=dict_row) as conn:
         row = fetch_apex_trade_forensic_row(conn, execution_id=eid)
     if not row:
-        print(json.dumps({"ok": False, "error": "kein Eintrag in app.apex_trade_forensics"}))
+        print(
+            json.dumps(
+                {"ok": False, "error": "kein Eintrag in app.apex_trade_forensics"}
+            )
+        )
         return 3
     with psycopg.connect(dsn) as conn2:
         try:

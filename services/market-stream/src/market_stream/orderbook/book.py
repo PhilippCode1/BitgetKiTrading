@@ -128,7 +128,9 @@ class LocalOrderBook:
                 )
             if self._require_contiguous_seq and seq > self._seq + 1:
                 self.mark_desynced(f"seq-gap-{self._seq}-{seq}")
-                raise OrderBookSequenceError(f"seq gap previous={self._seq} current={seq}")
+                raise OrderBookSequenceError(
+                    f"seq gap previous={self._seq} current={seq}"
+                )
 
         self._merge_levels(self._bids, bids, descending=True)
         self._merge_levels(self._asks, asks, descending=False)

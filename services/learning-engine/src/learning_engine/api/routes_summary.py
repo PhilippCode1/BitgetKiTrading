@@ -6,8 +6,8 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 
 from learning_engine.config import LearningEngineSettings
-from learning_engine.storage.connection import db_connect
 from learning_engine.storage import repo_eval
+from learning_engine.storage.connection import db_connect
 
 
 def build_summary_router(settings: LearningEngineSettings) -> APIRouter:

@@ -30,10 +30,13 @@ export default async function SystemHealthMapPage() {
     fetchMonitorAlertsOpen(),
   ]);
 
-  const health = healthRes.status === "fulfilled" ? healthRes.value.health : null;
-  const runtime = runtimeRes.status === "fulfilled" ? runtimeRes.value.item : null;
+  const health =
+    healthRes.status === "fulfilled" ? healthRes.value.health : null;
+  const runtime =
+    runtimeRes.status === "fulfilled" ? runtimeRes.value.item : null;
   const liveState = liveRes.status === "fulfilled" ? liveRes.value : null;
-  const openAlerts = alertsRes.status === "fulfilled" ? alertsRes.value.items : [];
+  const openAlerts =
+    alertsRes.status === "fulfilled" ? alertsRes.value.items : [];
   const model = buildHealthMapViewModel({ health, runtime });
   const diagnostics = buildSystemDiagnosticsViewModel({
     health,
@@ -54,15 +57,16 @@ export default async function SystemHealthMapPage() {
       <div className="panel">
         <h2>Gesamtbewertung</h2>
         <p>
-          Gesamtstatus:{" "}
-          <strong>{diagnostics.overallStatus}</strong>
+          Gesamtstatus: <strong>{diagnostics.overallStatus}</strong>
         </p>
-        <p className="muted small">
-          {diagnostics.summaryReasons.join(" · ")}
-        </p>
+        <p className="muted small">{diagnostics.summaryReasons.join(" · ")}</p>
         <p>
           Live-Trading:{" "}
-          <strong>{model.live_blockiert ? "Blockiert (fail-closed)" : "Nicht blockiert durch Health-Landkarte"}</strong>
+          <strong>
+            {model.live_blockiert
+              ? "Blockiert (fail-closed)"
+              : "Nicht blockiert durch Health-Landkarte"}
+          </strong>
         </p>
         {model.blocker_gründe_de.length > 0 ? (
           <>
@@ -79,10 +83,22 @@ export default async function SystemHealthMapPage() {
       <div className="panel">
         <h2>Systemstatus-Seite</h2>
         <ul className="news-list">
-          <li>DB/Redis: <strong>{diagnostics.dbStatus}</strong> / <strong>{diagnostics.redisStatus}</strong></li>
-          <li>Bitget Public/Private: <strong>{diagnostics.bitgetPublicStatus}</strong> / <strong>{diagnostics.bitgetPrivateStatus}</strong></li>
-          <li>LLM/News: <strong>{diagnostics.llmStatus}</strong> / <strong>{diagnostics.newsStatus}</strong></li>
-          <li>Alert-/Monitor-Status: <strong>{diagnostics.alertStatus}</strong></li>
+          <li>
+            DB/Redis: <strong>{diagnostics.dbStatus}</strong> /{" "}
+            <strong>{diagnostics.redisStatus}</strong>
+          </li>
+          <li>
+            Bitget Public/Private:{" "}
+            <strong>{diagnostics.bitgetPublicStatus}</strong> /{" "}
+            <strong>{diagnostics.bitgetPrivateStatus}</strong>
+          </li>
+          <li>
+            LLM/News: <strong>{diagnostics.llmStatus}</strong> /{" "}
+            <strong>{diagnostics.newsStatus}</strong>
+          </li>
+          <li>
+            Alert-/Monitor-Status: <strong>{diagnostics.alertStatus}</strong>
+          </li>
         </ul>
       </div>
 
@@ -102,7 +118,13 @@ export default async function SystemHealthMapPage() {
                 <tr key={s.key}>
                   <td>{s.label}</td>
                   <td>
-                    <span className={s.stale ? "status-pill status-pill--danger" : "status-pill status-pill--ok"}>
+                    <span
+                      className={
+                        s.stale
+                          ? "status-pill status-pill--danger"
+                          : "status-pill status-pill--ok"
+                      }
+                    >
                       {s.stale ? "stale" : "ok"}
                     </span>
                   </td>
@@ -128,7 +150,9 @@ export default async function SystemHealthMapPage() {
             <tbody>
               {diagnostics.serviceStatus.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="muted">Keine Service-Daten vorhanden.</td>
+                  <td colSpan={3} className="muted">
+                    Keine Service-Daten vorhanden.
+                  </td>
                 </tr>
               ) : (
                 diagnostics.serviceStatus.map((s) => (
@@ -162,22 +186,34 @@ export default async function SystemHealthMapPage() {
       <div className="panel">
         <h2>Diagnose-Aktionen (Read-only)</h2>
         <p className="muted small">
-          Keine ungefragten Produktionsnetze. Aktionen sind reine Read-only-Checks.
+          Keine ungefragten Produktionsnetze. Aktionen sind reine
+          Read-only-Checks.
         </p>
-        <button type="button" className="public-btn ghost" disabled title="Nur manuelle Seitenaktualisierung">
+        <button
+          type="button"
+          className="public-btn ghost"
+          disabled
+          title="Nur manuelle Seitenaktualisierung"
+        >
           Safe Refresh (Read-only)
         </button>
         <button
           type="button"
           className="public-btn ghost"
           disabled={healthEndpointMissing}
-          title={healthEndpointMissing ? "Nicht verdrahtet: Health-Endpunkt fehlt." : "Read-only Diagnosecheck"}
+          title={
+            healthEndpointMissing
+              ? "Nicht verdrahtet: Health-Endpunkt fehlt."
+              : "Read-only Diagnosecheck"
+          }
           style={{ marginLeft: 8 }}
         >
           Safe Check ausführen
         </button>
         {healthEndpointMissing ? (
-          <p className="muted small">Nicht verdrahtet: Health-Endpunkt aktuell nicht lesbar.</p>
+          <p className="muted small">
+            Nicht verdrahtet: Health-Endpunkt aktuell nicht lesbar.
+          </p>
         ) : null}
       </div>
     </>

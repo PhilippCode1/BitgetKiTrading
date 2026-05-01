@@ -7,13 +7,13 @@ from pathlib import Path
 from typing import Any
 
 from joblib import load
-
 from shared_py.take_trade_model import (
     TAKE_TRADE_FEATURE_FIELDS,
     TAKE_TRADE_MODEL_NAME,
     build_take_trade_feature_vector,
     evaluate_signal_model_ood,
 )
+
 from signal_engine.storage.repo import SignalRepository
 
 
@@ -70,7 +70,9 @@ class TakeTradeModelScorer:
         matrix = [[features[field] for field in TAKE_TRADE_FEATURE_FIELDS]]
         probability = float(self._loaded_model.predict_proba(matrix)[0][1])
         metadata = _metadata_summary(self._loaded_row)
-        cal_method = str(self._loaded_row.get("calibration_method") or "").strip() or None
+        cal_method = (
+            str(self._loaded_row.get("calibration_method") or "").strip() or None
+        )
         diagnostics = _inference_diagnostics(
             row=self._loaded_row,
             features=features,
@@ -81,8 +83,12 @@ class TakeTradeModelScorer:
         )
         return {
             "take_trade_prob": probability,
-            "take_trade_model_version": str(self._loaded_row.get("version") or "").strip() or None,
-            "take_trade_model_run_id": str(self._loaded_row.get("run_id") or "").strip() or None,
+            "take_trade_model_version": str(
+                self._loaded_row.get("version") or ""
+            ).strip()
+            or None,
+            "take_trade_model_run_id": str(self._loaded_row.get("run_id") or "").strip()
+            or None,
             "take_trade_calibration_method": str(
                 self._loaded_row.get("calibration_method") or ""
             ).strip()
@@ -103,7 +109,9 @@ class TakeTradeModelScorer:
     def _maybe_refresh(self, signal_row: dict[str, Any] | None = None) -> None:
         now_ms = int(time.time() * 1000)
         res_key = self._registry_resolution_key(signal_row)
-        within_ttl = self._last_refresh_ms and now_ms - self._last_refresh_ms < self._refresh_ms
+        within_ttl = (
+            self._last_refresh_ms and now_ms - self._last_refresh_ms < self._refresh_ms
+        )
         if within_ttl and res_key == self._last_resolution_key:
             return
         if not within_ttl:
@@ -133,7 +141,9 @@ class TakeTradeModelScorer:
             return
         artifact_path = _resolve_artifact_path(row.get("artifact_path"))
         if artifact_path is None or not artifact_path.is_file():
-            self._logger.warning("take_trade_model artifact fehlt: %s", row.get("artifact_path"))
+            self._logger.warning(
+                "take_trade_model artifact fehlt: %s", row.get("artifact_path")
+            )
             self._loaded_run_id = None
             self._loaded_model = None
             self._loaded_row = None

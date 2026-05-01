@@ -114,9 +114,11 @@ def _forward_turn(
         if exc.status_code == 502:
             raise HTTPException(
                 status_code=502,
-                detail=exc.payload
-                if isinstance(exc.payload, dict)
-                else {"message": str(exc.payload)},
+                detail=(
+                    exc.payload
+                    if isinstance(exc.payload, dict)
+                    else {"message": str(exc.payload)}
+                ),
             ) from exc
         raise HTTPException(
             status_code=502,
@@ -164,7 +166,9 @@ def llm_assist_admin_operations_turn(
 def llm_assist_strategy_signal_turn(
     request: Request,
     body: AssistTurnPublicBody,
-    auth: Annotated[GatewayAuthContext, Depends(require_commercial_entitlement("AI_DEEP_ANALYSIS"))],
+    auth: Annotated[
+        GatewayAuthContext, Depends(require_commercial_entitlement("AI_DEEP_ANALYSIS"))
+    ],
 ) -> dict[str, Any]:
     return _forward_turn(
         request=request,

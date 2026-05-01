@@ -114,7 +114,9 @@ class GatewaySettings(BaseServiceSettings):
     health_url_live_broker: str = Field(default="", alias="HEALTH_URL_LIVE_BROKER")
 
     dashboard_default_symbol: str = Field(default="", alias="DASHBOARD_DEFAULT_SYMBOL")
-    next_public_default_symbol: str = Field(default="", alias="NEXT_PUBLIC_DEFAULT_SYMBOL")
+    next_public_default_symbol: str = Field(
+        default="", alias="NEXT_PUBLIC_DEFAULT_SYMBOL"
+    )
     dashboard_default_market_family: str = Field(
         default="",
         alias="DASHBOARD_DEFAULT_MARKET_FAMILY",
@@ -146,12 +148,20 @@ class GatewaySettings(BaseServiceSettings):
     live_sse_enabled: bool = Field(default=True, alias="LIVE_SSE_ENABLED")
     live_sse_ping_sec: int = Field(default=15, alias="LIVE_SSE_PING_SEC")
 
-    gateway_sse_cookie_name: str = Field(default="gateway_sse_v1", alias="GATEWAY_SSE_COOKIE_NAME")
-    gateway_sse_cookie_ttl_sec: int = Field(default=900, alias="GATEWAY_SSE_COOKIE_TTL_SEC")
-    gateway_sse_signing_secret: str = Field(default="", alias="GATEWAY_SSE_SIGNING_SECRET")
+    gateway_sse_cookie_name: str = Field(
+        default="gateway_sse_v1", alias="GATEWAY_SSE_COOKIE_NAME"
+    )
+    gateway_sse_cookie_ttl_sec: int = Field(
+        default=900, alias="GATEWAY_SSE_COOKIE_TTL_SEC"
+    )
+    gateway_sse_signing_secret: str = Field(
+        default="", alias="GATEWAY_SSE_SIGNING_SECRET"
+    )
 
     gateway_jwt_secret: str = Field(default="", alias="GATEWAY_JWT_SECRET")
-    gateway_jwt_audience: str = Field(default="api-gateway", alias="GATEWAY_JWT_AUDIENCE")
+    gateway_jwt_audience: str = Field(
+        default="api-gateway", alias="GATEWAY_JWT_AUDIENCE"
+    )
     gateway_jwt_issuer: str = Field(
         default="bitget-btc-ai-gateway", alias="GATEWAY_JWT_ISSUER"
     )
@@ -365,7 +375,9 @@ class GatewaySettings(BaseServiceSettings):
         description="sandbox oder live (Stripe-Keys, Webhook-Pflicht).",
     )
     payment_stripe_enabled: bool = Field(default=False, alias="PAYMENT_STRIPE_ENABLED")
-    payment_stripe_secret_key: str = Field(default="", alias="PAYMENT_STRIPE_SECRET_KEY")
+    payment_stripe_secret_key: str = Field(
+        default="", alias="PAYMENT_STRIPE_SECRET_KEY"
+    )
     payment_stripe_webhook_secret: str = Field(
         default="",
         alias="PAYMENT_STRIPE_WEBHOOK_SECRET",
@@ -502,10 +514,18 @@ class GatewaySettings(BaseServiceSettings):
         )
 
     def dashboard_watchlist_symbols_list(self) -> list[str]:
-        explicit = [item.strip().upper() for item in self.dashboard_watchlist_symbols.split(",") if item.strip()]
+        explicit = [
+            item.strip().upper()
+            for item in self.dashboard_watchlist_symbols.split(",")
+            if item.strip()
+        ]
         if explicit:
             return explicit
-        fallback = [item.strip().upper() for item in self.next_public_watchlist_symbols.split(",") if item.strip()]
+        fallback = [
+            item.strip().upper()
+            for item in self.next_public_watchlist_symbols.split(",")
+            if item.strip()
+        ]
         if fallback:
             return fallback
         return self.bitget_watchlist_symbols_list()
@@ -610,7 +630,10 @@ class GatewaySettings(BaseServiceSettings):
                 self.next_public_default_market_family.strip().lower(),
             )
         families = self.bitget_universe_market_families_list()
-        if self.dashboard_default_market_family and self.dashboard_default_market_family not in families:
+        if (
+            self.dashboard_default_market_family
+            and self.dashboard_default_market_family not in families
+        ):
             raise ValueError(
                 "DASHBOARD_DEFAULT_MARKET_FAMILY muss Teil von BITGET_UNIVERSE_MARKET_FAMILIES sein"
             )
@@ -667,7 +690,10 @@ class GatewaySettings(BaseServiceSettings):
                 )
 
         if self.payment_checkout_enabled and self.production:
-            if self.payment_mode.strip().lower() == "live" and self.payment_stripe_enabled:
+            if (
+                self.payment_mode.strip().lower() == "live"
+                and self.payment_stripe_enabled
+            ):
                 sk = self.payment_stripe_secret_key.strip()
                 wh = self.payment_stripe_webhook_secret.strip()
                 if not sk or len(sk) < MIN_PRODUCTION_SECRET_LEN:
@@ -805,7 +831,9 @@ class GatewaySettings(BaseServiceSettings):
         direct = str(self.llm_orchestrator_base_url or "").strip().rstrip("/")
         if direct:
             return direct
-        return http_base_from_health_or_ready_url(str(self.health_url_llm_orchestrator or ""))
+        return http_base_from_health_or_ready_url(
+            str(self.health_url_llm_orchestrator or "")
+        )
 
     def live_broker_http_base(self) -> str:
         """
@@ -817,7 +845,9 @@ class GatewaySettings(BaseServiceSettings):
         direct = str(self.live_broker_base_url or "").strip().rstrip("/")
         if direct:
             return direct
-        return http_base_from_health_or_ready_url(str(self.health_url_live_broker or ""))
+        return http_base_from_health_or_ready_url(
+            str(self.health_url_live_broker or "")
+        )
 
 
 @lru_cache

@@ -61,10 +61,9 @@ def resolve_standard_env_files() -> tuple[str, ...]:
         if env_file:
             _append_candidate(candidates, env_file)
 
-    production_like = (
-        profile_name in ("production", "prod")
-        or (os.environ.get("PRODUCTION") or "").strip().lower() in ("true", "1", "yes")
-    )
+    production_like = profile_name in ("production", "prod") or (
+        os.environ.get("PRODUCTION") or ""
+    ).strip().lower() in ("true", "1", "yes")
     env_files_target_prod = False
     for env_name in ("CONFIG_ENV_FILE", "COMPOSE_ENV_FILE", "ENV_PROFILE_FILE"):
         raw = (os.environ.get(env_name) or "").strip().lower()

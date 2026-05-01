@@ -321,9 +321,7 @@ def _build(
     else:
         shadow_incl = "\n*(Kein `shadow_burn_in.md` — siehe Befehl in Abschnitt 2.)*\n"
 
-    sh_lines = [
-        f"![{n}](run85/{n})" for n in screen_names if (evidence / n).is_file()
-    ]
+    sh_lines = [f"![{n}](run85/{n})" for n in screen_names if (evidence / n).is_file()]
 
     fazit_engineering = (
         "**Technischer Status: 10/10.** Das System ist bereit für Echtgeld-Trading im "

@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from market_stream.feed_health import compute_quote_age_ms, gapfill_triggers_orderbook_resync
+from market_stream.feed_health import (
+    compute_quote_age_ms,
+    gapfill_triggers_orderbook_resync,
+)
 
 
 def test_compute_quote_age_ms() -> None:

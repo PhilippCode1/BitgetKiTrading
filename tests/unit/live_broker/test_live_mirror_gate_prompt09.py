@@ -74,7 +74,9 @@ def _server_time_response() -> httpx.Response:
     )
 
 
-def test_reduce_only_remains_possible_with_safety_latch(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_reduce_only_remains_possible_with_safety_latch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     settings = _settings(monkeypatch)
     repo = InMemoryOrderRepo()
     _seed_exchange_long_for_reduce_only_guard(repo)
@@ -105,7 +107,9 @@ def test_reduce_only_remains_possible_with_safety_latch(monkeypatch: pytest.Monk
         catalog=_UNIT_TEST_CATALOG,
         metadata_service=_UNIT_TEST_METADATA,
     )
-    with patch("live_broker.orders.service.verify_execution_liquidity", return_value=None):
+    with patch(
+        "live_broker.orders.service.verify_execution_liquidity", return_value=None
+    ):
         with pytest.raises(BitgetRestError):
             service.create_order(
                 OrderCreateRequest(
@@ -162,7 +166,9 @@ def test_emergency_flatten_remains_possible_for_risk_reduction(
         catalog=_UNIT_TEST_CATALOG,
         metadata_service=_UNIT_TEST_METADATA,
     )
-    with patch("live_broker.orders.service.verify_execution_liquidity", return_value=None):
+    with patch(
+        "live_broker.orders.service.verify_execution_liquidity", return_value=None
+    ):
         result = service.emergency_flatten(
             EmergencyFlattenRequest(
                 source_service="manual",

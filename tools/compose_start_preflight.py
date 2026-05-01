@@ -43,7 +43,9 @@ def main() -> int:
         required=True,
     )
     args = p.parse_args()
-    env_path = args.env_file if args.env_file.is_absolute() else _REPO_ROOT / args.env_file
+    env_path = (
+        args.env_file if args.env_file.is_absolute() else _REPO_ROOT / args.env_file
+    )
     if not env_path.is_file():
         print(f"compose_start_preflight: Datei fehlt: {env_path}", file=sys.stderr)
         return 1

@@ -13,8 +13,13 @@ from shared_py.settlement_pipeline import (
 
 
 def test_initial_status_secondary() -> None:
-    assert initial_status(secondary_treasury_approval_required=True) == "pending_treasury"
-    assert initial_status(secondary_treasury_approval_required=False) == "approved_for_payout"
+    assert (
+        initial_status(secondary_treasury_approval_required=True) == "pending_treasury"
+    )
+    assert (
+        initial_status(secondary_treasury_approval_required=False)
+        == "approved_for_payout"
+    )
 
 
 def test_happy_path_transitions() -> None:

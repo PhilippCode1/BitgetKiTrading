@@ -13,7 +13,9 @@ class OnchainSnifferSettings(BaseSettings):
         extra="ignore",
     )
 
-    service_name: str = Field(default="onchain-sniffer", validation_alias="SERVICE_NAME")
+    service_name: str = Field(
+        default="onchain-sniffer", validation_alias="SERVICE_NAME"
+    )
     bind_host: str = Field(default="0.0.0.0")
     bind_port: int = Field(default=8096)
 

@@ -23,7 +23,8 @@ class RequiredSecretsError(RuntimeError):
 
 def _load_matrix() -> dict[str, Any]:
     raw = _MATRIX_PATH.read_text(encoding="utf-8")
-    return json.loads(raw)
+    import typing
+    return typing.cast(dict[str, typing.Any], json.loads(raw))
 
 
 def _bad_value(val: str | None) -> bool:
@@ -94,7 +95,7 @@ def validate_required_secrets(
     for entry in entries:
         if entry.get(phase_key) != "required":
             continue
-        svc = entry.get("services")
+        svc = entry.get("services", "")
         if not _service_matches(svc, service_name):
             continue
         name = str(entry.get("env") or "").strip()

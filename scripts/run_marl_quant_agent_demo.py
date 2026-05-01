@@ -34,10 +34,12 @@ def _bootstrap_path() -> None:
 
 async def _main() -> None:
     _bootstrap_path()
-    os.environ.setdefault("REDIS_URL", os.environ.get("REDIS_URL", "redis://127.0.0.1:6379/0"))
+    os.environ.setdefault(
+        "REDIS_URL", os.environ.get("REDIS_URL", "redis://127.0.0.1:6379/0")
+    )
 
-    from llm_orchestrator.agents.quant import QuantAnalystAgent
     from llm_orchestrator.agents.contract import validate_agent_message
+    from llm_orchestrator.agents.quant import QuantAnalystAgent
 
     base = os.environ.get("FEATURE_ENGINE_URL", "http://127.0.0.1:8020").rstrip("/")
     symbol = os.environ.get("DEMO_SYMBOL", "BTCUSDT")

@@ -59,7 +59,11 @@ function repairHandler(
       router.refresh();
       break;
     case "open_edge_diagnostics":
-      window.open("/api/dashboard/edge-status", "_blank", "noopener,noreferrer");
+      window.open(
+        "/api/dashboard/edge-status",
+        "_blank",
+        "noopener,noreferrer",
+      );
       break;
     case "open_health_page":
       window.location.href = consolePath("health");
@@ -179,7 +183,10 @@ export function SelfHealingHubClient() {
     const flat: { ts_ms: number; line: string; service: string }[] = [];
     for (const it of items) {
       for (const e of it.timeline) {
-        const msg = (e as { message?: string }).message ?? (e as { event?: string }).event ?? "event";
+        const msg =
+          (e as { message?: string }).message ??
+          (e as { event?: string }).event ??
+          "event";
         const ev = (e as { event?: string }).event ?? "event";
         flat.push({
           ts_ms: (e as { ts_ms: number }).ts_ms,
@@ -197,10 +204,12 @@ export function SelfHealingHubClient() {
     const f = snap.narrative_facts;
     const agg = f.aggregateLevel;
     let aggLine = t("pages.selfHealing.narrative.aggregateUnknown");
-    if (agg === "green") aggLine = t("pages.selfHealing.narrative.aggregateGreen");
+    if (agg === "green")
+      aggLine = t("pages.selfHealing.narrative.aggregateGreen");
     else if (agg === "degraded")
       aggLine = t("pages.selfHealing.narrative.aggregateDegraded");
-    else if (agg === "red") aggLine = t("pages.selfHealing.narrative.aggregateRed");
+    else if (agg === "red")
+      aggLine = t("pages.selfHealing.narrative.aggregateRed");
 
     const counts = t("pages.selfHealing.narrative.counts", {
       ok: f.healthyCount,
@@ -222,9 +231,13 @@ export function SelfHealingHubClient() {
         })
       : t("pages.selfHealing.narrative.noWorst");
 
-    return [aggLine, counts, edge, worst, t("pages.selfHealing.narrative.footer")].join(
-      "\n\n",
-    );
+    return [
+      aggLine,
+      counts,
+      edge,
+      worst,
+      t("pages.selfHealing.narrative.footer"),
+    ].join("\n\n");
   }, [snap, t]);
 
   const incidentBlock = (inc: SelfHealingIncident) => (
@@ -271,7 +284,9 @@ export function SelfHealingHubClient() {
           type="button"
           className="public-btn ghost"
           disabled={repairing}
-          onClick={() => void runRepair("full_stack_refresh", inc.componentId ?? undefined)}
+          onClick={() =>
+            void runRepair("full_stack_refresh", inc.componentId ?? undefined)
+          }
         >
           {t("pages.selfHealing.buttons.serverRecheck")}
         </button>
@@ -301,7 +316,9 @@ export function SelfHealingHubClient() {
             disabled={loading || repairing}
             onClick={() => void load("manual")}
           >
-            {loading ? t("pages.selfHealing.buttons.loading") : t("pages.selfHealing.buttons.refresh")}
+            {loading
+              ? t("pages.selfHealing.buttons.loading")
+              : t("pages.selfHealing.buttons.refresh")}
           </button>
           <button
             type="button"
@@ -348,10 +365,15 @@ export function SelfHealingHubClient() {
         </p>
       ) : null}
 
-      <section className="panel self-healing-section" aria-labelledby="sh-narrative">
+      <section
+        className="panel self-healing-section"
+        aria-labelledby="sh-narrative"
+      >
         <h2 id="sh-narrative">{t("pages.selfHealing.sectionNarrative")}</h2>
         <p className="self-healing-narrative">{narrative || "…"}</p>
-        <p className="muted small">{t("pages.selfHealing.narrativeDisclaimer")}</p>
+        <p className="muted small">
+          {t("pages.selfHealing.narrativeDisclaimer")}
+        </p>
       </section>
 
       {snap && snapshotWarrantsSituationExplain(snap) ? (
@@ -360,7 +382,10 @@ export function SelfHealingHubClient() {
         </div>
       ) : null}
 
-      <section className="panel self-healing-section" aria-labelledby="sh-healing">
+      <section
+        className="panel self-healing-section"
+        aria-labelledby="sh-healing"
+      >
         <h2 id="sh-healing">{t("pages.selfHealing.sectionHealing")}</h2>
         <ul className="self-healing-hint-list">
           {(snap?.healing_hints ?? []).map((h) => (
@@ -369,7 +394,10 @@ export function SelfHealingHubClient() {
         </ul>
       </section>
 
-      <section className="panel self-healing-section" aria-labelledby="sh-auto-recover">
+      <section
+        className="panel self-healing-section"
+        aria-labelledby="sh-auto-recover"
+      >
         <h2 id="sh-auto-recover">
           {t("pages.selfHealing.sectionAutoRecover")}
         </h2>
@@ -381,7 +409,10 @@ export function SelfHealingHubClient() {
             {snap.self_healing_error}
           </p>
         ) : null}
-        <div className="self-healing-repair-row" style={{ marginBottom: "0.75rem" }}>
+        <div
+          className="self-healing-repair-row"
+          style={{ marginBottom: "0.75rem" }}
+        >
           {["feature-engine", "drawing-engine", "signal-engine"].map((id) => (
             <button
               key={id}
@@ -421,9 +452,14 @@ export function SelfHealingHubClient() {
         )}
       </section>
 
-      <section className="panel self-healing-section" aria-labelledby="sh-manual">
+      <section
+        className="panel self-healing-section"
+        aria-labelledby="sh-manual"
+      >
         <h2 id="sh-manual">{t("pages.selfHealing.sectionManual")}</h2>
-        <p className="muted small">{t("pages.selfHealing.sectionManualLead")}</p>
+        <p className="muted small">
+          {t("pages.selfHealing.sectionManualLead")}
+        </p>
         <div className="self-healing-incident-stack">
           {(snap?.not_auto_fixable ?? []).map(incidentBlock)}
           {!snap?.not_auto_fixable.length && !loading ? (
@@ -432,17 +468,27 @@ export function SelfHealingHubClient() {
         </div>
       </section>
 
-      <section className="panel self-healing-section" aria-labelledby="sh-incidents">
+      <section
+        className="panel self-healing-section"
+        aria-labelledby="sh-incidents"
+      >
         <h2 id="sh-incidents">{t("pages.selfHealing.sectionIncidents")}</h2>
-        <p className="muted small">{t("pages.selfHealing.sectionIncidentsLead")}</p>
+        <p className="muted small">
+          {t("pages.selfHealing.sectionIncidentsLead")}
+        </p>
         <div className="self-healing-incident-stack">
           {(snap?.incidents ?? []).map(incidentBlock)}
         </div>
       </section>
 
-      <section className="panel self-healing-section" aria-labelledby="sh-components">
+      <section
+        className="panel self-healing-section"
+        aria-labelledby="sh-components"
+      >
         <h2 id="sh-components">{t("pages.selfHealing.sectionComponents")}</h2>
-        <p className="muted small">{t("pages.selfHealing.sectionComponentsLead")}</p>
+        <p className="muted small">
+          {t("pages.selfHealing.sectionComponentsLead")}
+        </p>
         <div className="self-healing-table-wrap">
           <table className="self-healing-table">
             <thead>
@@ -493,9 +539,14 @@ export function SelfHealingHubClient() {
         </div>
       </section>
 
-      <section className="panel self-healing-section" aria-labelledby="sh-history">
+      <section
+        className="panel self-healing-section"
+        aria-labelledby="sh-history"
+      >
         <h2 id="sh-history">{t("pages.selfHealing.sectionHistory")}</h2>
-        <p className="muted small">{t("pages.selfHealing.sectionHistoryLead")}</p>
+        <p className="muted small">
+          {t("pages.selfHealing.sectionHistoryLead")}
+        </p>
         <ol className="self-healing-history">
           {history.map((h, i) => (
             <li key={`${h.ts_ms}-${i}`}>

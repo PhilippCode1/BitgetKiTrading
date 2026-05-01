@@ -13,7 +13,9 @@ TradeAction = Literal["allow_trade", "do_not_trade"]
 PlaybookDecisionMode = Literal["selected", "playbookless"]
 
 # Meta-Entscheidung Prompt 22 — Lane unabhaengig vom binaeren trade_action (Execution).
-MetaTradeLane = Literal["do_not_trade", "shadow_only", "paper_only", "candidate_for_live"]
+MetaTradeLane = Literal[
+    "do_not_trade", "shadow_only", "paper_only", "candidate_for_live"
+]
 META_TRADE_LANE_VALUES: tuple[str, ...] = (
     "do_not_trade",
     "shadow_only",

@@ -23,9 +23,7 @@ class MigrationMismatchError(RuntimeError):
     """Wird bei fehlendem Eintrag in app.schema_migrations geworfen."""
 
 
-def _format_mismatch(
-    pending: list[str], *, head: str | None
-) -> str:
+def _format_mismatch(pending: list[str], *, head: str | None) -> str:
     prev = (pending or [])[:8]
     tail = "…" if len(pending) > 8 else ""
     base = f"Migration Mismatch: {len(pending)} pending repo migration(s) not in app.schema_migrations"
@@ -59,7 +57,7 @@ def assert_repo_migrations_applied_sync(
     ):
         return
     with psycopg.connect(
-        dsn, row_factory=dict_row, connect_timeout=connect_timeout
+        dsn, row_factory=dict_row, connect_timeout=connect_timeout  # type: ignore
     ) as conn:
         pending = _pending_against_db(conn, expected)
     if pending:
@@ -74,11 +72,10 @@ def _pending_against_db(
 ) -> list[str]:
     try:
         cur = conn.execute("SELECT filename FROM app.schema_migrations")
-        rows: list = cur.fetchall() or []
+        rows: list = cur.fetchall() or []  # type: ignore
     except Exception:  # noqa: BLE001
         raise MigrationMismatchError(
-            "Migration Mismatch: app.schema_migrations not readable (apply migrations: "
-            "python infra/migrate.py)"
+            "Migration Mismatch: app.schema_migrations not readable (apply migrations: python infra/migrate.py)"
         ) from None
     applied = {
         str(r["filename"]) for r in rows if r and (r.get("filename") is not None)
@@ -110,8 +107,7 @@ async def assert_repo_migrations_applied_async(engine: AsyncEngine) -> None:
                 maps = r.mappings().all()
             except Exception:
                 raise MigrationMismatchError(
-                    "Migration Mismatch: app.schema_migrations not readable (apply "
-                    "migrations: python infra/migrate.py)"
+                    "Migration Mismatch: app.schema_migrations not readable (apply migrations: python infra/migrate.py)"
                 ) from None
             applied = {str(m["filename"]) for m in maps if m.get("filename")}
             pending = [f for f in expected if f not in applied]

@@ -6,15 +6,19 @@ import logging
 from typing import Any
 
 import httpx
+from shared_py.service_auth import INTERNAL_SERVICE_HEADER
 
 from llm_orchestrator.config import LLMOrchestratorSettings
-from shared_py.service_auth import INTERNAL_SERVICE_HEADER
 
 logger = logging.getLogger("llm_orchestrator.consensus.tsfm_learning_feedback")
 
 
-async def post_tsfm_war_room_audit(settings: LLMOrchestratorSettings, body: dict[str, Any]) -> None:
-    base = str(getattr(settings, "learning_engine_base_url", "") or "").strip().rstrip("/")
+async def post_tsfm_war_room_audit(
+    settings: LLMOrchestratorSettings, body: dict[str, Any]
+) -> None:
+    base = (
+        str(getattr(settings, "learning_engine_base_url", "") or "").strip().rstrip("/")
+    )
     if not base:
         return
     url = f"{base}/learning/tsfm-war-room-audit"

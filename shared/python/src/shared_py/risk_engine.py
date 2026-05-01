@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass
 from decimal import Decimal, InvalidOperation
-from typing import Any, Mapping, Sequence
+from typing import Any
 
 from shared_py.asset_risk_tiers import (
     asset_live_eligibility_reasons,
@@ -69,8 +70,12 @@ def evaluate_asset_tier_risk_gate(
         requested_leverage=requested_leverage,
         requested_notional_usdt=requested_notional_usdt,
     )
-    all_reasons = list(dict.fromkeys(list(live_reasons) + list(sizing.get("reasons", []))))
-    blocked = (normalized_mode == "live" and len(live_reasons) > 0) or (not bool(sizing.get("valid", False)))
+    all_reasons = list(
+        dict.fromkeys(list(live_reasons) + list(sizing.get("reasons", [])))
+    )
+    blocked = (normalized_mode == "live" and len(live_reasons) > 0) or (
+        not bool(sizing.get("valid", False))
+    )
     return {
         "symbol": symbol,
         "mode": normalized_mode,
@@ -103,21 +108,21 @@ class TradeRiskLimits:
 
 def build_trade_risk_limits(settings: Any) -> TradeRiskLimits:
     return TradeRiskLimits(
-        min_signal_strength=int(getattr(settings, "risk_min_signal_strength")),
-        min_probability=float(getattr(settings, "risk_min_probability")),
-        min_risk_score=int(getattr(settings, "risk_min_risk_score")),
-        min_expected_return_bps=float(getattr(settings, "risk_min_expected_return_bps")),
-        max_expected_mae_bps=float(getattr(settings, "risk_max_expected_mae_bps")),
-        min_projected_rr=float(getattr(settings, "risk_min_projected_rr")),
-        min_allowed_leverage=int(getattr(settings, "risk_allowed_leverage_min")),
-        max_position_risk_pct=float(getattr(settings, "risk_max_position_risk_pct")),
-        max_account_margin_usage=float(getattr(settings, "risk_max_account_margin_usage")),
-        max_account_drawdown_pct=float(getattr(settings, "risk_max_account_drawdown_pct")),
-        max_daily_drawdown_pct=float(getattr(settings, "risk_max_daily_drawdown_pct")),
-        max_weekly_drawdown_pct=float(getattr(settings, "risk_max_weekly_drawdown_pct")),
-        max_daily_loss_usdt=float(getattr(settings, "risk_max_daily_loss_usdt")),
-        max_position_notional_usdt=float(getattr(settings, "risk_max_position_notional_usdt")),
-        max_concurrent_positions=int(getattr(settings, "risk_max_concurrent_positions")),
+        min_signal_strength=int(settings.risk_min_signal_strength),
+        min_probability=float(settings.risk_min_probability),
+        min_risk_score=int(settings.risk_min_risk_score),
+        min_expected_return_bps=float(settings.risk_min_expected_return_bps),
+        max_expected_mae_bps=float(settings.risk_max_expected_mae_bps),
+        min_projected_rr=float(settings.risk_min_projected_rr),
+        min_allowed_leverage=int(settings.risk_allowed_leverage_min),
+        max_position_risk_pct=float(settings.risk_max_position_risk_pct),
+        max_account_margin_usage=float(settings.risk_max_account_margin_usage),
+        max_account_drawdown_pct=float(settings.risk_max_account_drawdown_pct),
+        max_daily_drawdown_pct=float(settings.risk_max_daily_drawdown_pct),
+        max_weekly_drawdown_pct=float(settings.risk_max_weekly_drawdown_pct),
+        max_daily_loss_usdt=float(settings.risk_max_daily_loss_usdt),
+        max_position_notional_usdt=float(settings.risk_max_position_notional_usdt),
+        max_concurrent_positions=int(settings.risk_max_concurrent_positions),
     )
 
 
@@ -209,7 +214,11 @@ def evaluate_trade_risk(
     if trade_action == "do_not_trade":
         signal_reasons.append("trade_action_do_not_trade")
 
-    decision_state = str(signal.get("final_decision_state") or signal.get("decision_state") or "").strip().lower()
+    decision_state = (
+        str(signal.get("final_decision_state") or signal.get("decision_state") or "")
+        .strip()
+        .lower()
+    )
     if decision_state and decision_state != "accepted":
         signal_reasons.append("not_accepted")
 
@@ -256,7 +265,9 @@ def evaluate_trade_risk(
     quality_gate_passed = _quality_gate_passed(signal)
     stale_signal_reasons = [
         reason
-        for reason in raw_rejection_reasons + raw_abstention_reasons + raw_uncertainty_reasons
+        for reason in raw_rejection_reasons
+        + raw_abstention_reasons
+        + raw_uncertainty_reasons
         if _is_stale_reason(reason)
     ]
     if quality_gate_passed is False and not stale_signal_reasons:
@@ -294,19 +305,31 @@ def evaluate_trade_risk(
         else signal.get("recommended_leverage")
     )
     if (
-        allowed_leverage is not None
-        and allowed_leverage < limits.min_allowed_leverage
-    ) or (
-        recommended_leverage is not None
-        and recommended_leverage < limits.min_allowed_leverage
-    ) or any("allowed_leverage_below_minimum" in reason for reason in raw_leverage_reasons):
+        (
+            allowed_leverage is not None
+            and allowed_leverage < limits.min_allowed_leverage
+        )
+        or (
+            recommended_leverage is not None
+            and recommended_leverage < limits.min_allowed_leverage
+        )
+        or any(
+            "allowed_leverage_below_minimum" in reason
+            for reason in raw_leverage_reasons
+        )
+    ):
         position_reasons.append("allowed_leverage_below_minimum")
 
-    if open_positions_count is not None and open_positions_count >= limits.max_concurrent_positions:
+    if (
+        open_positions_count is not None
+        and open_positions_count >= limits.max_concurrent_positions
+    ):
         account_reasons.append("max_concurrent_positions_exceeded")
 
     notional = _coerce_decimal(position_notional_usdt)
-    if notional is not None and notional > Decimal(str(limits.max_position_notional_usdt)):
+    if notional is not None and notional > Decimal(
+        str(limits.max_position_notional_usdt)
+    ):
         position_reasons.append("position_notional_limit_exceeded")
 
     if (
@@ -340,10 +363,14 @@ def evaluate_trade_risk(
         account_reasons.append("weekly_drawdown_limit_exceeded")
 
     daily_loss = _coerce_decimal(daily_loss_usdt)
-    if daily_loss is not None and daily_loss >= Decimal(str(limits.max_daily_loss_usdt)):
+    if daily_loss is not None and daily_loss >= Decimal(
+        str(limits.max_daily_loss_usdt)
+    ):
         account_reasons.append("daily_loss_limit_exceeded")
 
-    reasons = _unique_strs(signal_reasons + market_reasons + account_reasons + position_reasons)
+    reasons = _unique_strs(
+        signal_reasons + market_reasons + account_reasons + position_reasons
+    )
     trade_decision: TradeAction = "allow_trade" if not reasons else "do_not_trade"
     decision: DecisionState = "accepted" if not reasons else "rejected"
     return {
@@ -404,7 +431,11 @@ def _projected_rr(signal: Mapping[str, Any]) -> float | None:
 
 def _is_stale_reason(reason: str) -> bool:
     lowered = str(reason).strip().lower()
-    return lowered.startswith("stale_") or lowered.startswith("missing_") or lowered == "liquidity_context_fallback"
+    return (
+        lowered.startswith("stale_")
+        or lowered.startswith("missing_")
+        or lowered == "liquidity_context_fallback"
+    )
 
 
 def _unique_strs(values: Sequence[Any]) -> list[str]:

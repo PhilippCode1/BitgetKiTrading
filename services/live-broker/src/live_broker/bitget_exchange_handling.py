@@ -15,7 +15,9 @@ ExchangeHandling = Literal[
 ]
 
 
-def exchange_handling_for_classification(classification: "BitgetErrorClassification") -> ExchangeHandling:
+def exchange_handling_for_classification(
+    classification: BitgetErrorClassification,
+) -> ExchangeHandling:
     if classification in (
         "rate_limit",
         "transport",

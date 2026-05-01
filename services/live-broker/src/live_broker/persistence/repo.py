@@ -78,18 +78,16 @@ class LiveBrokerRepository:
     def __init__(self, dsn: str) -> None:
         self._dsn = dsn
         self._pool: Any = None
-        _use = (os.environ.get("BITGET_USE_PSYCOPG_POOL", "1") or "1").strip().lower() in (
+        _use = (
+            os.environ.get("BITGET_USE_PSYCOPG_POOL", "1") or "1"
+        ).strip().lower() in (
             "1",
             "true",
             "yes",
             "on",
             "",
         )
-        if (
-            _use
-            and dsn.strip()
-            and ConnectionPool is not None
-        ):
+        if _use and dsn.strip() and ConnectionPool is not None:
             self._pool = ConnectionPool(
                 dsn.strip(),
                 min_size=1,
@@ -341,8 +339,14 @@ class LiveBrokerRepository:
         risk_decision: dict[str, Any],
     ) -> None:
         detail = _json_safe(risk_decision)
-        metrics = detail.get("metrics") if isinstance(detail.get("metrics"), dict) else {}
-        reasons = detail.get("reasons_json") if isinstance(detail.get("reasons_json"), list) else []
+        metrics = (
+            detail.get("metrics") if isinstance(detail.get("metrics"), dict) else {}
+        )
+        reasons = (
+            detail.get("reasons_json")
+            if isinstance(detail.get("reasons_json"), list)
+            else []
+        )
         with self._connect() as conn:
             conn.execute(
                 """
@@ -386,7 +390,9 @@ class LiveBrokerRepository:
         gate_blocked: bool,
         report: dict[str, Any],
     ) -> None:
-        protocol_version = report.get("protocol_version") if isinstance(report, dict) else None
+        protocol_version = (
+            report.get("protocol_version") if isinstance(report, dict) else None
+        )
         with self._connect() as conn:
             conn.execute(
                 """
@@ -658,18 +664,26 @@ class LiveBrokerRepository:
                 """,
                 {
                     **record,
-                    "stop_plan_json": Json(_json_safe(record.get("stop_plan_json", {}))),
+                    "stop_plan_json": Json(
+                        _json_safe(record.get("stop_plan_json", {}))
+                    ),
                     "tp_plan_json": Json(_json_safe(record.get("tp_plan_json", {}))),
                     "context_json": Json(_json_safe(record.get("context_json", {}))),
-                    "last_market_json": Json(_json_safe(record.get("last_market_json", {}))),
-                    "last_decision_json": Json(_json_safe(record.get("last_decision_json", {}))),
+                    "last_market_json": Json(
+                        _json_safe(record.get("last_market_json", {}))
+                    ),
+                    "last_decision_json": Json(
+                        _json_safe(record.get("last_decision_json", {}))
+                    ),
                 },
             ).fetchone()
         if row is None:
             raise RuntimeError("exit plan upsert failed")
         return _serialize_row(dict(row))
 
-    def get_exit_plan_by_root_order(self, root_internal_order_id: str) -> dict[str, Any] | None:
+    def get_exit_plan_by_root_order(
+        self, root_internal_order_id: str
+    ) -> dict[str, Any] | None:
         with self._connect() as conn:
             row = conn.execute(
                 """
@@ -734,7 +748,9 @@ class LiveBrokerRepository:
             return None
         return _serialize_row(dict(row))
 
-    def get_order_by_exchange_order_id(self, exchange_order_id: str) -> dict[str, Any] | None:
+    def get_order_by_exchange_order_id(
+        self, exchange_order_id: str
+    ) -> dict[str, Any] | None:
         with self._connect() as conn:
             row = conn.execute(
                 """
@@ -1043,9 +1059,15 @@ class LiveBrokerRepository:
         exit_plan_limit: int = 200,
     ) -> dict[str, Any]:
         open_orders = self.list_active_orders(limit=order_limit)
-        order_snapshots = self.list_latest_exchange_snapshots("orders", limit=order_limit)
-        position_snapshots = self.list_latest_exchange_snapshots("positions", limit=order_limit)
-        account_snapshots = self.list_latest_exchange_snapshots("account", limit=order_limit)
+        order_snapshots = self.list_latest_exchange_snapshots(
+            "orders", limit=order_limit
+        )
+        position_snapshots = self.list_latest_exchange_snapshots(
+            "positions", limit=order_limit
+        )
+        account_snapshots = self.list_latest_exchange_snapshots(
+            "account", limit=order_limit
+        )
         recent_fills = self.list_recent_fills(fill_limit)
         journal_recent = self.list_recent_execution_journal(journal_limit)
         exit_plans = self.list_active_exit_plans(limit=exit_plan_limit)
@@ -1351,7 +1373,9 @@ class LiveBrokerRepository:
             "recent_fills": self.list_recent_fills(20),
             "active_kill_switches": self.active_kill_switches(),
             "latest_reconcile": self.latest_reconcile_snapshot(),
-            "recovery_state": self.reconstruct_runtime_state(order_limit=100, fill_limit=100),
+            "recovery_state": self.reconstruct_runtime_state(
+                order_limit=100, fill_limit=100
+            ),
         }
 
     def list_live_positions(self) -> list[dict[str, Any]]:
@@ -1365,14 +1389,20 @@ class LiveBrokerRepository:
             ).fetchall()
         return [_serialize_row(dict(r)) for r in rows]
 
-    def delete_live_position(self, inst_id: str, product_type: str, hold_side: str) -> bool:
+    def delete_live_position(
+        self, inst_id: str, product_type: str, hold_side: str
+    ) -> bool:
         with self._connect() as conn:
             r = conn.execute(
                 """
                 DELETE FROM live.positions
                 WHERE inst_id = %s AND product_type = %s AND hold_side = %s
                 """,
-                (inst_id.strip().upper(), product_type.strip().upper(), hold_side.strip().lower()),
+                (
+                    inst_id.strip().upper(),
+                    product_type.strip().upper(),
+                    hold_side.strip().lower(),
+                ),
             )
             return (r.rowcount or 0) > 0
 
@@ -1440,7 +1470,11 @@ class LiveBrokerRepository:
         apex_trace: dict[str, Any],
     ) -> None:
         """Prompt 39: `app.apex_latency_audit` (kein starker Contract mit audit-ledger HTTP)."""
-        if not (signal_id or "").strip() or not isinstance(apex_trace, dict) or not apex_trace:
+        if (
+            not (signal_id or "").strip()
+            or not isinstance(apex_trace, dict)
+            or not apex_trace
+        ):
             return
         eid: UUID | None
         try:

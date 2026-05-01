@@ -47,18 +47,28 @@ class BitgetMarketDiscoveryClient:
             refresh_reason="discover_supported_market_universe",
             candidate_margin_symbols=candidate_margin_symbols,
         )
-        spot = [entry.identity() for entry in snapshot.entries if entry.market_family == "spot"]
+        spot = [
+            entry.identity()
+            for entry in snapshot.entries
+            if entry.market_family == "spot"
+        ]
         futures = [
-            entry.identity() for entry in snapshot.entries if entry.market_family == "futures"
+            entry.identity()
+            for entry in snapshot.entries
+            if entry.market_family == "futures"
         ]
         margin = [
-            entry.identity() for entry in snapshot.entries if entry.market_family == "margin"
+            entry.identity()
+            for entry in snapshot.entries
+            if entry.market_family == "margin"
         ]
         return {
             "schema_version": snapshot.schema_version,
             "snapshot_id": snapshot.snapshot_id,
             "status": snapshot.status,
-            "categories": [item.model_dump(mode="json") for item in snapshot.capability_matrix],
+            "categories": [
+                item.model_dump(mode="json") for item in snapshot.capability_matrix
+            ],
             "spot": [item.model_dump(mode="json") for item in spot],
             "margin": [item.model_dump(mode="json") for item in margin],
             "futures": [item.model_dump(mode="json") for item in futures],
@@ -86,9 +96,13 @@ class BitgetMarketDiscoveryClient:
                 self._category_descriptor(
                     market_family="spot",
                     entries=spot_entries,
-                    metadata_source=endpoint_profile_for("spot").public_symbol_config_path,
+                    metadata_source=endpoint_profile_for(
+                        "spot"
+                    ).public_symbol_config_path,
                     reasons=(
-                        [] if spot_entries else ["spot_category_not_exposed_by_current_metadata"]
+                        []
+                        if spot_entries
+                        else ["spot_category_not_exposed_by_current_metadata"]
                     ),
                 )
             )
@@ -103,18 +117,24 @@ class BitgetMarketDiscoveryClient:
             entries.extend(futures_entries)
             for product_type in _FUTURES_PRODUCT_TYPES:
                 per_product_entries = [
-                    entry for entry in futures_entries if entry.product_type == product_type
+                    entry
+                    for entry in futures_entries
+                    if entry.product_type == product_type
                 ]
                 category_descriptors.append(
                     self._category_descriptor(
                         market_family="futures",
                         product_type=product_type,
                         entries=per_product_entries,
-                        metadata_source=endpoint_profile_for("futures").public_symbol_config_path,
+                        metadata_source=endpoint_profile_for(
+                            "futures"
+                        ).public_symbol_config_path,
                         reasons=(
                             []
                             if per_product_entries
-                            else [f"product_type_not_exposed_by_current_metadata:{product_type}"]
+                            else [
+                                f"product_type_not_exposed_by_current_metadata:{product_type}"
+                            ]
                         ),
                     )
                 )
@@ -135,7 +155,9 @@ class BitgetMarketDiscoveryClient:
                     for entry in margin_entries
                     if entry.margin_account_mode == margin_mode
                 ]
-                profile = endpoint_profile_for("margin", margin_account_mode=margin_mode)
+                profile = endpoint_profile_for(
+                    "margin", margin_account_mode=margin_mode
+                )
                 reasons = []
                 if not per_mode_entries:
                     reasons.append(
@@ -164,7 +186,7 @@ class BitgetMarketDiscoveryClient:
             snapshot_id=str(uuid4()),
             source_service=source_service,
             refresh_reason=refresh_reason,
-            status=status,
+            status=status,  # type: ignore
             fetch_started_ts_ms=started,
             fetch_completed_ts_ms=int(time.time() * 1000),
             refreshed_families=refreshed_families,
@@ -221,19 +243,25 @@ class BitgetMarketDiscoveryClient:
         rts = int(time.time() * 1000)
         entries: list[BitgetInstrumentCatalogEntry] = []
         for row in rows:
-            ent = MarketInstrumentFactory.catalog_entry_from_spot_row(row, refresh_ts_ms=rts)
+            ent = MarketInstrumentFactory.catalog_entry_from_spot_row(
+                row, refresh_ts_ms=rts
+            )
             if ent is not None:
                 entries.append(ent)
         return entries
 
-    def _futures_contract_rows(self, *, symbol: str | None = None) -> list[dict[str, Any]]:
+    def _futures_contract_rows(
+        self, *, symbol: str | None = None
+    ) -> list[dict[str, Any]]:
         rows: list[dict[str, Any]] = []
         profile = endpoint_profile_for("futures")
         for product_type in _FUTURES_PRODUCT_TYPES:
             params: dict[str, str] = {"productType": product_type}
             if symbol:
                 params["symbol"] = symbol
-            payload = self._public_json(profile.public_symbol_config_path, params=params)
+            payload = self._public_json(
+                profile.public_symbol_config_path, params=params
+            )
             data = payload.get("data")
             if not isinstance(data, list):
                 continue
@@ -252,7 +280,9 @@ class BitgetMarketDiscoveryClient:
         rts = int(time.time() * 1000)
         entries: list[BitgetInstrumentCatalogEntry] = []
         for row in rows:
-            ent = MarketInstrumentFactory.catalog_entry_from_futures_row(row, refresh_ts_ms=rts)
+            ent = MarketInstrumentFactory.catalog_entry_from_futures_row(
+                row, refresh_ts_ms=rts
+            )
             if ent is not None:
                 entries.append(ent)
         return entries
@@ -283,7 +313,9 @@ class BitgetMarketDiscoveryClient:
         if cross_entries:
             entries.extend(cross_entries)
         else:
-            warnings.append("margin_crossed_symbol_universe_not_exposed_by_current_endpoints")
+            warnings.append(
+                "margin_crossed_symbol_universe_not_exposed_by_current_endpoints"
+            )
 
         if candidate_symbols:
             for symbol in candidate_symbols:
@@ -291,7 +323,9 @@ class BitgetMarketDiscoveryClient:
                 if not normalized:
                     continue
                 if normalized not in spot_by_symbol:
-                    warnings.append(f"candidate_symbol_not_in_spot_metadata:{normalized}")
+                    warnings.append(
+                        f"candidate_symbol_not_in_spot_metadata:{normalized}"
+                    )
         return self._dedupe_catalog_entries(entries), warnings
 
     def _margin_mode_catalog_entries(
@@ -300,7 +334,9 @@ class BitgetMarketDiscoveryClient:
         margin_account_mode: MarginAccountMode,
         spot_by_symbol: dict[str, dict[str, Any]],
     ) -> list[BitgetInstrumentCatalogEntry]:
-        profile = endpoint_profile_for("margin", margin_account_mode=margin_account_mode)
+        profile = endpoint_profile_for(
+            "margin", margin_account_mode=margin_account_mode
+        )
         if not profile.private_account_assets_path:
             return []
         payload = self._private_json(
@@ -336,7 +372,8 @@ class BitgetMarketDiscoveryClient:
         entries: Sequence[BitgetInstrumentCatalogEntry],
     ) -> list[BitgetInstrumentCatalogEntry]:
         deduped: dict[str, BitgetInstrumentCatalogEntry] = {
-            entry.canonical_instrument_id or entry.instrument_key: entry for entry in entries
+            entry.canonical_instrument_id or entry.instrument_key: entry
+            for entry in entries
         }
         return list(deduped.values())
 
@@ -366,7 +403,7 @@ class BitgetMarketDiscoveryClient:
         )
         if not entries:
             profile = endpoint_profile_for(
-                market_family, margin_account_mode=margin_account_mode
+                market_family, margin_account_mode=margin_account_mode  # type: ignore
             )
             supports_funding = profile.supports_funding
             supports_open_interest = profile.supports_open_interest
@@ -377,16 +414,18 @@ class BitgetMarketDiscoveryClient:
             uses_spot_public_market_data = profile.uses_spot_public_market_data
         return BitgetMarketCapabilityMatrixRow(
             venue="bitget",
-            market_family=market_family,
+            market_family=market_family,  # type: ignore
             product_type=product_type,
-            margin_account_mode=margin_account_mode,
+            margin_account_mode=margin_account_mode,  # type: ignore
             metadata_source=metadata_source,
             metadata_verified=metadata_verified,
             inventory_visible=inventory_visible,
             analytics_eligible=analytics_eligible,
             paper_shadow_eligible=paper_shadow_eligible,
             live_execution_enabled=live_execution_enabled,
-            execution_disabled=inventory_visible and analytics_eligible and not live_execution_enabled,
+            execution_disabled=inventory_visible
+            and analytics_eligible
+            and not live_execution_enabled,
             supports_funding=supports_funding,
             supports_open_interest=supports_open_interest,
             supports_long_short=supports_long_short,
@@ -415,7 +454,9 @@ class BitgetMarketDiscoveryClient:
         if not isinstance(payload, dict):
             raise ValueError("Bitget discovery response muss ein JSON-Objekt sein")
         if payload.get("code") not in (None, "00000"):
-            raise ValueError(f"Bitget discovery response code not ok: {payload.get('code')}")
+            raise ValueError(
+                f"Bitget discovery response code not ok: {payload.get('code')}"
+            )
         return payload
 
     def _private_json(
@@ -444,7 +485,9 @@ class BitgetMarketDiscoveryClient:
             response.raise_for_status()
             payload = response.json()
         if not isinstance(payload, dict):
-            raise ValueError("Bitget private discovery response muss ein JSON-Objekt sein")
+            raise ValueError(
+                "Bitget private discovery response muss ein JSON-Objekt sein"
+            )
         if payload.get("code") not in (None, "00000"):
             raise ValueError(
                 f"Bitget private discovery response code not ok: {payload.get('code')}"

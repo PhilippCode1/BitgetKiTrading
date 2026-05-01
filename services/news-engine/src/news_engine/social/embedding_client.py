@@ -58,7 +58,9 @@ async def embed_texts(
         texts_only = [t for _, t in to_fetch]
         vecs, backend = await _http_embed(base_url, texts_only)
         if len(vecs) != len(to_fetch):
-            logger.warning("embed batch size mismatch want=%s got=%s", len(to_fetch), len(vecs))
+            logger.warning(
+                "embed batch size mismatch want=%s got=%s", len(to_fetch), len(vecs)
+            )
         for k, (i, tx) in enumerate(to_fetch):
             if k >= len(vecs):
                 break

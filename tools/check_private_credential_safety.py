@@ -11,15 +11,37 @@ ROOT = Path(__file__).resolve().parents[1]
 def analyze() -> dict[str, object]:
     issues: list[dict[str, str]] = []
     required = (
-        (ROOT / "docs" / "production_10_10" / "private_bitget_credential_safety.md", "doc_missing", "Credential-Safety-Doku fehlt."),
-        (ROOT / "shared" / "python" / "src" / "shared_py" / "private_credentials.py", "contract_missing", "private_credentials.py fehlt."),
-        (ROOT / "scripts" / "private_bitget_credential_check.py", "script_missing", "private_bitget_credential_check.py fehlt."),
-        (ROOT / "tests" / "security" / "test_private_credential_safety.py", "security_test_missing", "Security-Test fehlt."),
-        (ROOT / "tests" / "tools" / "test_check_private_credential_safety.py", "tool_test_missing", "Tool-Test fehlt."),
+        (
+            ROOT / "docs" / "production_10_10" / "private_bitget_credential_safety.md",
+            "doc_missing",
+            "Credential-Safety-Doku fehlt.",
+        ),
+        (
+            ROOT / "shared" / "python" / "src" / "shared_py" / "private_credentials.py",
+            "contract_missing",
+            "private_credentials.py fehlt.",
+        ),
+        (
+            ROOT / "scripts" / "private_bitget_credential_check.py",
+            "script_missing",
+            "private_bitget_credential_check.py fehlt.",
+        ),
+        (
+            ROOT / "tests" / "security" / "test_private_credential_safety.py",
+            "security_test_missing",
+            "Security-Test fehlt.",
+        ),
+        (
+            ROOT / "tests" / "tools" / "test_check_private_credential_safety.py",
+            "tool_test_missing",
+            "Tool-Test fehlt.",
+        ),
     )
     for p, code, msg in required:
         if not p.is_file():
-            issues.append({"severity": "error", "code": code, "message": msg, "path": str(p)})
+            issues.append(
+                {"severity": "error", "code": code, "message": msg, "path": str(p)}
+            )
 
     script = ROOT / "scripts" / "private_bitget_credential_check.py"
     if script.is_file():
@@ -35,7 +57,17 @@ def analyze() -> dict[str, object]:
                     }
                 )
 
-    live_broker_page = ROOT / "apps" / "dashboard" / "src" / "app" / "(operator)" / "console" / "live-broker" / "page.tsx"
+    live_broker_page = (
+        ROOT
+        / "apps"
+        / "dashboard"
+        / "src"
+        / "app"
+        / "(operator)"
+        / "console"
+        / "live-broker"
+        / "page.tsx"
+    )
     if live_broker_page.is_file():
         txt = live_broker_page.read_text(encoding="utf-8")
         if "Bitget-Verbindung" not in txt:
@@ -49,11 +81,18 @@ def analyze() -> dict[str, object]:
             )
 
     errors = sum(1 for i in issues if i["severity"] == "error")
-    return {"ok": errors == 0, "error_count": errors, "warning_count": 0, "issues": issues}
+    return {
+        "ok": errors == 0,
+        "error_count": errors,
+        "warning_count": 0,
+        "issues": issues,
+    }
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Prüft private Credential-Safety-Artefakte.")
+    parser = argparse.ArgumentParser(
+        description="Prüft private Credential-Safety-Artefakte."
+    )
     parser.add_argument("--strict", action="store_true")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()

@@ -128,7 +128,9 @@ def signals_facets(
         return merge_read_envelope(
             data,
             status="ok",
-            message="Keine Signal-Facetten im Lookback (keine Daten)." if empty else None,
+            message=(
+                "Keine Signal-Facetten im Lookback (keine Daten)." if empty else None
+            ),
             empty_state=empty,
             degradation_reason="no_signal_facets" if empty else None,
             next_step="Signal-Engine und app.signals_v1 pruefen." if empty else None,

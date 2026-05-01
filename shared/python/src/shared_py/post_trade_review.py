@@ -192,19 +192,12 @@ def build_attribution_post_trade_review(
             "Trade im Plus, aber Begruendung/Szenario passt nicht zum Preisverlauf — "
             "Attribution: Glueck / falsche Begruendung.",
         ]
-        worked = (
-            "Disziplin bei Exit/Size kann trotzdem greifen — "
-            "pruefe unabhaengig von der KI-Story."
-        )
+        worked = "Disziplin bei Exit/Size kann trotzdem greifen — pruefe unabhaengig von der KI-Story."
         failed = (
-            "KI-Szenario und Chart-Level wichen ab; "
-            "nicht als validierte These werten."
+            "KI-Szenario und Chart-Level wichen ab; nicht als validierte These werten."
         )
         bias = "Gewinner-Trades nicht automatisch als „KI lag richtig“ buchen."
-        out = (
-            f"P&L {pnl_net} USDT; {th} "
-            f"Label={quality_label} (Reasoning-Accuracy niedrig trotz Gewinn)."
-        )
+        out = f"P&L {pnl_net} USDT; {th} Label={quality_label} (Reasoning-Accuracy niedrig trotz Gewinn)."
         conf = 0.55
     elif quality_label == "sound_reasoning_win":
         lessons = [

@@ -15,7 +15,7 @@ import os
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from shared_py.eventbus.envelope import STREAM_SYSTEM_ALERT, EventEnvelope
 
@@ -173,7 +173,10 @@ def _load_rust_eval() -> Any | None:
         logger.warning("survival_kernel CDLL failed: %s", exc)
         return None
     fn = lib.survival_kernel_evaluate_io
-    fn.argtypes = [ctypes.POINTER(_SurvivalKernelIoC), ctypes.POINTER(_SurvivalKernelParamsC)]
+    fn.argtypes = [
+        ctypes.POINTER(_SurvivalKernelIoC),
+        ctypes.POINTER(_SurvivalKernelParamsC),
+    ]
     fn.restype = None
     _rust_eval = fn
     return _rust_eval
@@ -235,7 +238,7 @@ def read_survival_state_from_redis(redis: Redis | None) -> dict[str, Any] | None
     if not raw:
         return None
     try:
-        return json.loads(raw)
+        return json.loads(raw)  # type: ignore
     except (TypeError, json.JSONDecodeError):
         return None
 
@@ -250,7 +253,12 @@ def write_survival_state_to_redis(redis: Redis | None, state: dict[str, Any]) ->
 
 
 def env_survival_forced() -> bool:
-    return os.environ.get(SURVIVAL_ENV_FLAG, "").strip().lower() in ("1", "true", "yes", "on")
+    return os.environ.get(SURVIVAL_ENV_FLAG, "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
 
 
 def merge_survival_truth(
@@ -335,8 +343,7 @@ def build_safety_incident_diagnosis_survival(
             SURVIVAL_REDIS_KEY,
         ],
         "non_authoritative_note_de": (
-            "Diese Struktur ist eine KI-/Systemdiagnose ohne Ausfuehrungsbefugnis; "
-            "keine automatischen Shell-Befehle."
+            "Diese Struktur ist eine KI-/Systemdiagnose ohne Ausfuehrungsbefugnis; keine automatischen Shell-Befehle."
         ),
         "separation_note_de": (
             "SafetyIncidentDiagnosis ist rein analytisch; Live-Orders und Limits werden "
@@ -450,7 +457,7 @@ def publish_survival_hedge_operator_intel(bus: Any, *, symbol: str) -> None:
         from shared_py.operator_intel import build_operator_intel_envelope_payload
     except ImportError:
         return
-    pl = build_operator_intel_envelope_payload(
+    pl = build_operator_intel_envelope_payload(  # type: ignore
         intel_kind="risk_notice",
         symbol=symbol,
         correlation_id="survival:delta-hedge",

@@ -1,4 +1,5 @@
 """DoD Prompt 41: drei Plaentypen (Basic/Pro/Institution) — anteiliger Tages-Abzug."""
+
 from __future__ import annotations
 
 from decimal import Decimal
@@ -19,13 +20,21 @@ _REF_DAYS = 30
 
 def test_three_plan_tiers_daily_net_cents() -> None:
     assert (
-        daily_prorata_net_cents_eur(_BASIC_MONTH_NET_CENTS, reference_period_days=_REF_DAYS) == 100
+        daily_prorata_net_cents_eur(
+            _BASIC_MONTH_NET_CENTS, reference_period_days=_REF_DAYS
+        )
+        == 100
     )
     assert (
-        daily_prorata_net_cents_eur(_PRO_MONTH_NET_CENTS, reference_period_days=_REF_DAYS) == 1000
+        daily_prorata_net_cents_eur(
+            _PRO_MONTH_NET_CENTS, reference_period_days=_REF_DAYS
+        )
+        == 1000
     )
     assert (
-        daily_prorata_net_cents_eur(_INSTITUTION_MONTH_NET_CENTS, reference_period_days=_REF_DAYS)
+        daily_prorata_net_cents_eur(
+            _INSTITUTION_MONTH_NET_CENTS, reference_period_days=_REF_DAYS
+        )
         == 5000
     )
 
@@ -50,7 +59,10 @@ def test_idempotency_key_uniqueness_pattern() -> None:
     d = "2030-01-15"
     tid = "t42"
     assert f"subscription:deduct:{d}:{tid}" != f"subscription:deduct:{d}:other"
-    assert f"subscription_prepaid:wallet:{d}:{tid}" == f"subscription_prepaid:wallet:{d}:{tid}"
+    assert (
+        f"subscription_prepaid:wallet:{d}:{tid}"
+        == f"subscription_prepaid:wallet:{d}:{tid}"
+    )
 
 
 def test_eur_cents_rejects_negative() -> None:

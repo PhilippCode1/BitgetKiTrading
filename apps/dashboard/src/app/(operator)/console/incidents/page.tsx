@@ -7,7 +7,10 @@ import {
   fetchSystemHealthBestEffort,
 } from "@/lib/api";
 import { buildOperatorAlertsFromConsoleSnapshot } from "@/lib/operator-alerts-view-model";
-import type { OperatorAlertView, OperatorSeverity } from "@/lib/operator-alerts-view-model";
+import type {
+  OperatorAlertView,
+  OperatorSeverity,
+} from "@/lib/operator-alerts-view-model";
 
 export const dynamic = "force-dynamic";
 
@@ -32,9 +35,15 @@ function severityFrame(sev: OperatorSeverity): CSSProperties {
 
 function AlertCard({ alert }: { alert: OperatorAlertView }) {
   return (
-    <article className="panel operator-alert-card" style={severityFrame(alert.severity)}>
+    <article
+      className="panel operator-alert-card"
+      style={severityFrame(alert.severity)}
+    >
       <header className="operator-alert-card__head">
-        <span className="operator-alert-card__sev" data-severity={alert.severity}>
+        <span
+          className="operator-alert-card__sev"
+          data-severity={alert.severity}
+        >
           {alert.severity}
         </span>
         <h3 className="operator-alert-card__title">{alert.titel_de}</h3>
@@ -51,7 +60,11 @@ function AlertCard({ alert }: { alert: OperatorAlertView }) {
         </div>
         <div>
           <dt>Betroffene Assets</dt>
-          <dd>{alert.betroffene_assets.length ? alert.betroffene_assets.join(", ") : "—"}</dd>
+          <dd>
+            {alert.betroffene_assets.length
+              ? alert.betroffene_assets.join(", ")
+              : "—"}
+          </dd>
         </div>
         <div>
           <dt>Empfohlene Aktion</dt>
@@ -72,7 +85,8 @@ function AlertCard({ alert }: { alert: OperatorAlertView }) {
       </dl>
       {alert.technische_details_redacted ? (
         <p className="muted small">
-          <strong>Technische Details (redacted):</strong> {alert.technische_details_redacted}
+          <strong>Technische Details (redacted):</strong>{" "}
+          {alert.technische_details_redacted}
         </p>
       ) : null}
     </article>
@@ -86,9 +100,12 @@ export default async function IncidentsPage() {
     fetchSystemHealthBestEffort(),
   ]);
 
-  const runtime = runtimeRes.status === "fulfilled" ? runtimeRes.value.item : null;
-  const killCount = killRes.status === "fulfilled" ? (killRes.value.items ?? []).length : 0;
-  const health = healthRes.status === "fulfilled" ? healthRes.value.health : null;
+  const runtime =
+    runtimeRes.status === "fulfilled" ? runtimeRes.value.item : null;
+  const killCount =
+    killRes.status === "fulfilled" ? (killRes.value.items ?? []).length : 0;
+  const health =
+    healthRes.status === "fulfilled" ? healthRes.value.health : null;
 
   const activeAlerts = buildOperatorAlertsFromConsoleSnapshot({
     health,
@@ -110,10 +127,12 @@ export default async function IncidentsPage() {
         <h2>Eskalationslogik</h2>
         <ul className="muted small">
           <li>
-            <strong>P0</strong>: sofortiger Live-Blocker — immer mit klarem Hinweis, ob Live blockiert ist.
+            <strong>P0</strong>: sofortiger Live-Blocker — immer mit klarem
+            Hinweis, ob Live blockiert ist.
           </li>
           <li>
-            <strong>P1</strong>: kritische Störung, Live blockiert oder stark eingeschränkt.
+            <strong>P1</strong>: kritische Störung, Live blockiert oder stark
+            eingeschränkt.
           </li>
           <li>
             <strong>P2</strong>: Warnung, Beobachtung und geplante Maßnahme.
@@ -123,17 +142,23 @@ export default async function IncidentsPage() {
           </li>
         </ul>
         <p className="muted small">
-          Fehlende Daten werden nicht als „OK“ gewertet. Historische Einträge erscheinen unten, sobald eine
-          Archiv-Anbindung existiert (derzeit meist leer).
+          Fehlende Daten werden nicht als „OK“ gewertet. Historische Einträge
+          erscheinen unten, sobald eine Archiv-Anbindung existiert (derzeit
+          meist leer).
         </p>
       </div>
 
       <div className="panel">
         <h2>Aktive Meldungen</h2>
         {aktivListe.length === 0 ? (
-          <p className="muted">Keine aktiven Einträge aus den angebundenen Quellen.</p>
+          <p className="muted">
+            Keine aktiven Einträge aus den angebundenen Quellen.
+          </p>
         ) : (
-          <div className="stack" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <div
+            className="stack"
+            style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
+          >
             {aktivListe.map((a) => (
               <AlertCard key={a.korrelation_id} alert={a} />
             ))}
@@ -145,10 +170,14 @@ export default async function IncidentsPage() {
         <h2>Historische Meldungen</h2>
         {historischListe.length === 0 ? (
           <p className="muted">
-            Noch keine Archiv-Anbindung — nur aktuelle Snapshots werden angezeigt.
+            Noch keine Archiv-Anbindung — nur aktuelle Snapshots werden
+            angezeigt.
           </p>
         ) : (
-          <div className="stack" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <div
+            className="stack"
+            style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
+          >
             {historischListe.map((a) => (
               <AlertCard key={a.korrelation_id} alert={a} />
             ))}

@@ -3,19 +3,23 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Annotated, Any
 from uuid import UUID
 
 import psycopg
 import psycopg.errors
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from psycopg.rows import dict_row
 from pydantic import BaseModel, Field
 from shared_py.customer_lifecycle import CustomerLifecycleStatus
 
 from api_gateway.audit import record_gateway_audit_line
-from api_gateway.auth import GatewayAuthContext, require_billing_admin, require_billing_read
+from api_gateway.auth import (
+    GatewayAuthContext,
+    require_billing_admin,
+    require_billing_read,
+)
 from api_gateway.config import get_gateway_settings
 from api_gateway.contract_pdf import build_contract_pdf_bytes
 from api_gateway.db import get_database_url
@@ -35,7 +39,10 @@ from api_gateway.db_contract_workflow import (
     patch_review_queue_item,
     update_contract_envelope_and_status,
 )
-from api_gateway.db_tenant_lifecycle import apply_trial_expiry_if_due, fetch_tenant_lifecycle_row
+from api_gateway.db_tenant_lifecycle import (
+    apply_trial_expiry_if_due,
+    fetch_tenant_lifecycle_row,
+)
 from api_gateway.esign_mock import create_mock_envelope, verify_webhook_signature
 from api_gateway.routes_commerce_customer import (
     _ensure_commercial,
@@ -104,7 +111,10 @@ def customer_contract_templates(
     except psycopg.errors.UndefinedTable:
         raise HTTPException(
             status_code=503,
-            detail={"code": "CONTRACT_MIGRATION_REQUIRED", "message": "608_commercial_contract_workflow"},
+            detail={
+                "code": "CONTRACT_MIGRATION_REQUIRED",
+                "message": "608_commercial_contract_workflow",
+            },
         ) from None
     record_gateway_audit_line(
         request, auth, "commerce_customer_contract_templates", extra={"tenant_id": tid}
@@ -128,9 +138,14 @@ def customer_contract_list(
     except psycopg.errors.UndefinedTable:
         raise HTTPException(
             status_code=503,
-            detail={"code": "CONTRACT_MIGRATION_REQUIRED", "message": "608_commercial_contract_workflow"},
+            detail={
+                "code": "CONTRACT_MIGRATION_REQUIRED",
+                "message": "608_commercial_contract_workflow",
+            },
         ) from None
-    record_gateway_audit_line(request, auth, "commerce_customer_contract_list", extra={"tenant_id": tid})
+    record_gateway_audit_line(
+        request, auth, "commerce_customer_contract_list", extra={"tenant_id": tid}
+    )
     return {"schema_version": "tenant-contracts-v1", "contracts": items}
 
 
@@ -150,7 +165,9 @@ def customer_contract_start(
             apply_trial_expiry_if_due(conn, tenant_id=tid, actor=auth.actor)
             lc = fetch_tenant_lifecycle_row(conn, tenant_id=tid)
             if lc is None:
-                raise _http_contract("lifecycle_missing", "Lebenszyklus nicht initialisiert", 409)
+                raise _http_contract(
+                    "lifecycle_missing", "Lebenszyklus nicht initialisiert", 409
+                )
             st = CustomerLifecycleStatus(str(lc["lifecycle_status"]))
             if st != CustomerLifecycleStatus.CONTRACT_PENDING:
                 raise _http_contract(
@@ -159,16 +176,22 @@ def customer_contract_start(
                     409,
                 )
             if fetch_open_contract_for_tenant(conn, tenant_id=tid) is not None:
-                raise _http_contract("open_contract_exists", "Bereits eine offene Vertragsinstanz", 409)
+                raise _http_contract(
+                    "open_contract_exists", "Bereits eine offene Vertragsinstanz", 409
+                )
 
             if body.template_version is not None:
                 tpl = fetch_template(
                     conn, template_key=body.template_key, version=body.template_version
                 )
             else:
-                tpl = fetch_latest_active_template_for_key(conn, template_key=body.template_key)
+                tpl = fetch_latest_active_template_for_key(
+                    conn, template_key=body.template_key
+                )
             if tpl is None:
-                raise _http_contract("template_not_found", "Vorlage nicht gefunden oder inaktiv", 404)
+                raise _http_contract(
+                    "template_not_found", "Vorlage nicht gefunden oder inaktiv", 404
+                )
 
             with conn.transaction():
                 cid = insert_tenant_contract_row(
@@ -178,7 +201,7 @@ def customer_contract_start(
                     template_version=int(tpl["version"]),
                     status="awaiting_customer_sign",
                 )
-                iso = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+                iso = datetime.now(UTC).isoformat().replace("+00:00", "Z")
                 draft_pdf = build_contract_pdf_bytes(
                     title=str(tpl["title_de"]),
                     body_text=str(tpl["body_text"]),
@@ -197,11 +220,16 @@ def customer_contract_start(
                 )
             row = fetch_contract_by_id_for_tenant(conn, contract_id=cid, tenant_id=tid)
     except psycopg.errors.UniqueViolation as e:
-        raise _http_contract("open_contract_exists", "Bereits eine offene Vertragsinstanz", 409) from e
+        raise _http_contract(
+            "open_contract_exists", "Bereits eine offene Vertragsinstanz", 409
+        ) from e
     except psycopg.errors.UndefinedTable:
         raise HTTPException(
             status_code=503,
-            detail={"code": "CONTRACT_MIGRATION_REQUIRED", "message": "608_commercial_contract_workflow"},
+            detail={
+                "code": "CONTRACT_MIGRATION_REQUIRED",
+                "message": "608_commercial_contract_workflow",
+            },
         ) from None
 
     record_gateway_audit_line(
@@ -226,16 +254,24 @@ def customer_contract_get(
     try:
         with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
             _require_tenant_commercial_state(conn, tid)
-            row = fetch_contract_by_id_for_tenant(conn, contract_id=contract_id, tenant_id=tid)
+            row = fetch_contract_by_id_for_tenant(
+                conn, contract_id=contract_id, tenant_id=tid
+            )
     except psycopg.errors.UndefinedTable:
         raise HTTPException(
             status_code=503,
-            detail={"code": "CONTRACT_MIGRATION_REQUIRED", "message": "608_commercial_contract_workflow"},
+            detail={
+                "code": "CONTRACT_MIGRATION_REQUIRED",
+                "message": "608_commercial_contract_workflow",
+            },
         ) from None
     if row is None:
         raise HTTPException(status_code=404, detail="contract not found")
     record_gateway_audit_line(
-        request, auth, "commerce_customer_contract_get", extra={"tenant_id": tid, "contract_id": str(contract_id)}
+        request,
+        auth,
+        "commerce_customer_contract_get",
+        extra={"tenant_id": tid, "contract_id": str(contract_id)},
     )
     return {"schema_version": "tenant-contract-v1", "contract": row}
 
@@ -253,13 +289,23 @@ def customer_contract_documents(
     try:
         with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
             _require_tenant_commercial_state(conn, tid)
-            if fetch_contract_by_id_for_tenant(conn, contract_id=contract_id, tenant_id=tid) is None:
+            if (
+                fetch_contract_by_id_for_tenant(
+                    conn, contract_id=contract_id, tenant_id=tid
+                )
+                is None
+            ):
                 raise HTTPException(status_code=404, detail="contract not found")
-            docs = list_documents_for_contract(conn, contract_id=contract_id, tenant_id=tid)
+            docs = list_documents_for_contract(
+                conn, contract_id=contract_id, tenant_id=tid
+            )
     except psycopg.errors.UndefinedTable:
         raise HTTPException(
             status_code=503,
-            detail={"code": "CONTRACT_MIGRATION_REQUIRED", "message": "608_commercial_contract_workflow"},
+            detail={
+                "code": "CONTRACT_MIGRATION_REQUIRED",
+                "message": "608_commercial_contract_workflow",
+            },
         ) from None
     record_gateway_audit_line(
         request,
@@ -286,13 +332,23 @@ def customer_contract_document_download(
     try:
         with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
             _require_tenant_commercial_state(conn, tid)
-            if fetch_contract_by_id_for_tenant(conn, contract_id=contract_id, tenant_id=tid) is None:
+            if (
+                fetch_contract_by_id_for_tenant(
+                    conn, contract_id=contract_id, tenant_id=tid
+                )
+                is None
+            ):
                 raise HTTPException(status_code=404, detail="contract not found")
-            row = fetch_document_row_for_download(conn, document_id=document_id, tenant_id=tid)
+            row = fetch_document_row_for_download(
+                conn, document_id=document_id, tenant_id=tid
+            )
     except psycopg.errors.UndefinedTable:
         raise HTTPException(
             status_code=503,
-            detail={"code": "CONTRACT_MIGRATION_REQUIRED", "message": "608_commercial_contract_workflow"},
+            detail={
+                "code": "CONTRACT_MIGRATION_REQUIRED",
+                "message": "608_commercial_contract_workflow",
+            },
         ) from None
     if row is None or UUID(str(row["contract_id"])) != contract_id:
         raise HTTPException(status_code=404, detail="document not found")
@@ -307,7 +363,9 @@ def customer_contract_document_download(
     )
 
 
-@contract_customer_router.post("/{contract_id}/signing-session", summary="E-Sign-Session (Mock)")
+@contract_customer_router.post(
+    "/{contract_id}/signing-session", summary="E-Sign-Session (Mock)"
+)
 def customer_contract_signing_session(
     request: Request,
     contract_id: UUID,
@@ -316,17 +374,23 @@ def customer_contract_signing_session(
     settings = get_gateway_settings()
     _ensure_commercial(settings)
     if settings.commercial_contract_esign_provider.strip().lower() != "mock":
-        raise _http_contract("esign_provider_unsupported", "Nur mock-Provider implementiert", 501)
+        raise _http_contract(
+            "esign_provider_unsupported", "Nur mock-Provider implementiert", 501
+        )
     tid = _resolve_target_tenant(auth, None)
     dsn = get_database_url()
     try:
         with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
             _require_tenant_commercial_state(conn, tid)
-            c = fetch_contract_by_id_for_tenant(conn, contract_id=contract_id, tenant_id=tid)
+            c = fetch_contract_by_id_for_tenant(
+                conn, contract_id=contract_id, tenant_id=tid
+            )
             if c is None:
                 raise HTTPException(status_code=404, detail="contract not found")
             if str(c["status"]) != "awaiting_customer_sign":
-                raise _http_contract("contract_not_awaiting_sign", "Keine aktive Signatur-Phase", 409)
+                raise _http_contract(
+                    "contract_not_awaiting_sign", "Keine aktive Signatur-Phase", 409
+                )
             env = create_mock_envelope(contract_id=str(contract_id), tenant_id=tid)
             update_contract_envelope_and_status(
                 conn,
@@ -339,7 +403,10 @@ def customer_contract_signing_session(
     except psycopg.errors.UndefinedTable:
         raise HTTPException(
             status_code=503,
-            detail={"code": "CONTRACT_MIGRATION_REQUIRED", "message": "608_commercial_contract_workflow"},
+            detail={
+                "code": "CONTRACT_MIGRATION_REQUIRED",
+                "message": "608_commercial_contract_workflow",
+            },
         ) from None
     record_gateway_audit_line(
         request,
@@ -367,15 +434,20 @@ def customer_contract_mock_complete_sign(
 ) -> dict[str, Any]:
     settings = get_gateway_settings()
     _ensure_commercial(settings)
-    if settings.production or not settings.commercial_contract_allow_mock_customer_complete:
+    if (
+        settings.production
+        or not settings.commercial_contract_allow_mock_customer_complete
+    ):
         raise HTTPException(status_code=404, detail="not available")
     tid = _resolve_target_tenant(auth, None)
     dsn = get_database_url()
-    iso = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    iso = datetime.now(UTC).isoformat().replace("+00:00", "Z")
     try:
         with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
             _require_tenant_commercial_state(conn, tid)
-            c = fetch_contract_by_id_for_tenant(conn, contract_id=contract_id, tenant_id=tid)
+            c = fetch_contract_by_id_for_tenant(
+                conn, contract_id=contract_id, tenant_id=tid
+            )
             if c is None:
                 raise HTTPException(status_code=404, detail="contract not found")
             tpl = fetch_template(
@@ -413,7 +485,10 @@ def customer_contract_mock_complete_sign(
     except psycopg.errors.UndefinedTable:
         raise HTTPException(
             status_code=503,
-            detail={"code": "CONTRACT_MIGRATION_REQUIRED", "message": "608_commercial_contract_workflow"},
+            detail={
+                "code": "CONTRACT_MIGRATION_REQUIRED",
+                "message": "608_commercial_contract_workflow",
+            },
         ) from None
     except ValueError as e:
         raise _http_contract(str(e), str(e), 409) from e
@@ -441,13 +516,20 @@ def admin_contract_review_queue(
     except psycopg.errors.UndefinedTable:
         raise HTTPException(
             status_code=503,
-            detail={"code": "CONTRACT_MIGRATION_REQUIRED", "message": "608_commercial_contract_workflow"},
+            detail={
+                "code": "CONTRACT_MIGRATION_REQUIRED",
+                "message": "608_commercial_contract_workflow",
+            },
         ) from None
-    record_gateway_audit_line(request, auth, "commerce_admin_contract_review_queue", extra={})
+    record_gateway_audit_line(
+        request, auth, "commerce_admin_contract_review_queue", extra={}
+    )
     return {"schema_version": "contract-review-queue-v1", "items": items}
 
 
-@contract_admin_router.patch("/review-queue/{queue_id}", summary="Queue-Eintrag aktualisieren")
+@contract_admin_router.patch(
+    "/review-queue/{queue_id}", summary="Queue-Eintrag aktualisieren"
+)
 def admin_contract_review_queue_patch(
     request: Request,
     queue_id: UUID,
@@ -456,7 +538,11 @@ def admin_contract_review_queue_patch(
 ) -> dict[str, Any]:
     settings = get_gateway_settings()
     _ensure_commercial(settings)
-    if body.queue_status is None and body.admin_notes_internal is None and body.customer_message_public is None:
+    if (
+        body.queue_status is None
+        and body.admin_notes_internal is None
+        and body.customer_message_public is None
+    ):
         raise _http_contract("no_fields", "Mindestens ein Feld erforderlich", 422)
     dsn = get_database_url()
     try:
@@ -472,7 +558,10 @@ def admin_contract_review_queue_patch(
     except psycopg.errors.UndefinedTable:
         raise HTTPException(
             status_code=503,
-            detail={"code": "CONTRACT_MIGRATION_REQUIRED", "message": "608_commercial_contract_workflow"},
+            detail={
+                "code": "CONTRACT_MIGRATION_REQUIRED",
+                "message": "608_commercial_contract_workflow",
+            },
         ) from None
     if row is None:
         raise HTTPException(status_code=404, detail="queue item not found")
@@ -512,10 +601,12 @@ async def contract_esign_webhook(request: Request) -> dict[str, Any]:
     except ValueError:
         raise HTTPException(status_code=400, detail="invalid contract_id")
     dsn = get_database_url()
-    iso = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    iso = datetime.now(UTC).isoformat().replace("+00:00", "Z")
     try:
         with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=10) as conn:
-            c = fetch_contract_by_id_for_tenant(conn, contract_id=cid, tenant_id=body.tenant_id)
+            c = fetch_contract_by_id_for_tenant(
+                conn, contract_id=cid, tenant_id=body.tenant_id
+            )
             if c is None:
                 raise HTTPException(status_code=404, detail="contract not found")
             tpl = fetch_template(
@@ -559,7 +650,10 @@ async def contract_esign_webhook(request: Request) -> dict[str, Any]:
     except psycopg.errors.UndefinedTable:
         raise HTTPException(
             status_code=503,
-            detail={"code": "CONTRACT_MIGRATION_REQUIRED", "message": "608_commercial_contract_workflow"},
+            detail={
+                "code": "CONTRACT_MIGRATION_REQUIRED",
+                "message": "608_commercial_contract_workflow",
+            },
         ) from None
     except ValueError as e:
         if str(e) == "contract_not_found":

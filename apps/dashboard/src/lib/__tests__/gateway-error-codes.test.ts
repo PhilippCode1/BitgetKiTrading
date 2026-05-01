@@ -22,7 +22,9 @@ describe("Gateway-Fehlercodes + Produktmeldung", () => {
       path: "/v1/system/health",
       bffPath: "/api/dashboard/gateway/v1/system/health",
       status: 503,
-      bodyText: bffBody503AuthMissing("Authorization header missing for dashboard BFF."),
+      bodyText: bffBody503AuthMissing(
+        "Authorization header missing for dashboard BFF.",
+      ),
     });
     expect(err.kind).toBe("config");
     expect(classifyFetchError(err)).toBe("configuration");
@@ -50,7 +52,9 @@ describe("Gateway-Fehlercodes + Produktmeldung", () => {
     expect(pm.headline).not.toMatch(/^\s*\[/);
     expect(pm.headline).not.toMatch(/\{"/);
     expect(pm.summary).not.toMatch(/\{"/);
-    expect(t("productMessage.fetch.configuration.headline")).toContain("Konfiguration");
+    expect(t("productMessage.fetch.configuration.headline")).toContain(
+      "Konfiguration",
+    );
     expect(pm.headline).toBe(t("productMessage.fetch.configuration.headline"));
   });
 });

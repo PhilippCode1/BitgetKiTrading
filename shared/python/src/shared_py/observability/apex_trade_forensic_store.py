@@ -50,8 +50,7 @@ def upsert_apex_trade_forensic(
             (_TRADE_FORENSIC_ADVISORY_LOCK_KEY,),
         )
         row = conn.execute(
-            "SELECT chain_checksum FROM app.apex_trade_forensics "
-            "ORDER BY id DESC LIMIT 1"
+            "SELECT chain_checksum FROM app.apex_trade_forensics ORDER BY id DESC LIMIT 1"
         ).fetchone()
         prev = row[0] if row and row[0] is not None else GENESIS_CHAIN_HASH
         if isinstance(prev, memoryview):
@@ -237,7 +236,7 @@ def verify_row_integrity(
     if isinstance(ch, memoryview):
         ch = ch.tobytes()
     canon = canonical_json_bytes(gr)
-    local_ok = ledger_chain_digest(prev, canon) == ch
+    local_ok = ledger_chain_digest(prev, canon) == ch  # type: ignore
     if expected_prev_link is None:
         link_ok = prev == GENESIS_CHAIN_HASH
     else:

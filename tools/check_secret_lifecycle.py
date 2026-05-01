@@ -6,7 +6,6 @@ from __future__ import annotations
 import argparse
 import json
 import re
-import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -153,7 +152,9 @@ def build_summary(results: list[CheckResult]) -> dict[str, Any]:
 def print_text(summary: dict[str, Any]) -> None:
     print("secret_lifecycle_check")
     print(f"ok={str(summary['ok']).lower()}")
-    print(f"passed={summary['passed']} failed={summary['failed']} total={summary['total']}")
+    print(
+        f"passed={summary['passed']} failed={summary['failed']} total={summary['total']}"
+    )
     for failure in summary["failures"]:
         path = f" path={failure['path']}" if failure.get("path") else ""
         print(
@@ -164,8 +165,12 @@ def print_text(summary: dict[str, Any]) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--strict", action="store_true", help="Exit 1 on any failed check.")
-    parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")
+    parser.add_argument(
+        "--strict", action="store_true", help="Exit 1 on any failed check."
+    )
+    parser.add_argument(
+        "--json", action="store_true", help="Emit machine-readable JSON."
+    )
     args = parser.parse_args(argv)
 
     results = run_checks()

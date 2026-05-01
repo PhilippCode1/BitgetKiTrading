@@ -77,7 +77,9 @@ class UnitTestInstrumentCatalogStub:
             )
         pt = str(product_type or "USDT-FUTURES").strip().upper()
         mmode_raw = str(margin_account_mode or "isolated").strip().lower()
-        mmode = mmode_raw if mmode_raw in ("cash", "isolated", "crossed") else "isolated"
+        mmode = (
+            mmode_raw if mmode_raw in ("cash", "isolated", "crossed") else "isolated"
+        )
         return BitgetInstrumentCatalogEntry(
             market_family="futures",
             symbol=sym,
@@ -148,7 +150,15 @@ class UnitTestMetadataServiceStub:
         now_ms: int | None = None,
         account_margin_coin: str | None = None,
     ) -> OrderPreflightResult:
-        del side, order_type, reduce_only, quote_size_order, max_metadata_age_sec, now_ms, account_margin_coin
+        del (
+            side,
+            order_type,
+            reduce_only,
+            quote_size_order,
+            max_metadata_age_sec,
+            now_ms,
+            account_margin_coin,
+        )
         return OrderPreflightResult(
             metadata=metadata,
             normalized_price=str(price) if price not in (None, "") else None,
@@ -199,7 +209,9 @@ class InMemoryOrderRepo:
         self.journal.append(row)
         return row
 
-    def seed_execution_candidate(self, execution_id: UUID, *, symbol: str = "BTCUSDT") -> None:
+    def seed_execution_candidate(
+        self, execution_id: UUID, *, symbol: str = "BTCUSDT"
+    ) -> None:
         self.executions[str(execution_id)] = {
             "execution_id": str(execution_id),
             "decision_action": "live_candidate_recorded",
@@ -270,7 +282,9 @@ class InMemoryOrderRepo:
                 continue
             if product_type and item.get("product_type") != product_type:
                 continue
-            if internal_order_id and str(item.get("internal_order_id")) != str(internal_order_id):
+            if internal_order_id and str(item.get("internal_order_id")) != str(
+                internal_order_id
+            ):
                 continue
             out.append(item)
         return out
@@ -383,7 +397,11 @@ def test_order_service_blocks_open_when_execution_binding_required(
         BitgetPrivateRestClient(
             settings,
             transport=httpx.MockTransport(
-                lambda r: _server_time_response() if r.url.path == "/api/v2/public/time" else httpx.Response(500)
+                lambda r: (
+                    _server_time_response()
+                    if r.url.path == "/api/v2/public/time"
+                    else httpx.Response(500)
+                )
             ),
         ),
         catalog=_UNIT_TEST_CATALOG,
@@ -422,9 +440,11 @@ def test_order_service_blocks_open_without_operator_release(
         BitgetPrivateRestClient(
             settings,
             transport=httpx.MockTransport(
-                lambda r: _server_time_response()
-                if r.url.path == "/api/v2/public/time"
-                else httpx.Response(500)
+                lambda r: (
+                    _server_time_response()
+                    if r.url.path == "/api/v2/public/time"
+                    else httpx.Response(500)
+                )
             ),
         ),
         catalog=_UNIT_TEST_CATALOG,
@@ -465,9 +485,11 @@ def test_order_service_blocks_open_without_shadow_match_latch(
         BitgetPrivateRestClient(
             settings,
             transport=httpx.MockTransport(
-                lambda r: _server_time_response()
-                if r.url.path == "/api/v2/public/time"
-                else httpx.Response(500)
+                lambda r: (
+                    _server_time_response()
+                    if r.url.path == "/api/v2/public/time"
+                    else httpx.Response(500)
+                )
             ),
         ),
         catalog=_UNIT_TEST_CATALOG,
@@ -630,7 +652,9 @@ def test_private_client_retries_rate_limit_then_succeeds(
         if request.url.path == "/api/v2/mix/order/place-order":
             order_calls["count"] += 1
             if order_calls["count"] == 1:
-                return httpx.Response(429, json={"code": "429", "msg": "Too many requests"})
+                return httpx.Response(
+                    429, json={"code": "429", "msg": "Too many requests"}
+                )
             return httpx.Response(
                 200,
                 json={
@@ -1010,7 +1034,15 @@ def test_kill_switch_arm_auto_cancels_existing_orders(
                     "code": "00000",
                     "msg": "success",
                     "requestTime": int(time.time() * 1000),
-                    "data": {"successList": [{"orderId": "order-1", "clientOid": "bgai-test-crt-existing"}], "failureList": []},
+                    "data": {
+                        "successList": [
+                            {
+                                "orderId": "order-1",
+                                "clientOid": "bgai-test-crt-existing",
+                            }
+                        ],
+                        "failureList": [],
+                    },
                 },
             )
         if request.url.path == "/api/v2/mix/order/cancel-order":
@@ -1020,7 +1052,10 @@ def test_kill_switch_arm_auto_cancels_existing_orders(
                     "code": "00000",
                     "msg": "success",
                     "requestTime": int(time.time() * 1000),
-                    "data": {"orderId": "order-1", "clientOid": "bgai-test-crt-existing"},
+                    "data": {
+                        "orderId": "order-1",
+                        "clientOid": "bgai-test-crt-existing",
+                    },
                 },
             )
         raise AssertionError(f"unexpected path: {request.url.path}")
@@ -1140,7 +1175,10 @@ def test_trade_kill_switch_blocks_replace_across_replace_chain(
                     "code": "00000",
                     "msg": "success",
                     "requestTime": int(time.time() * 1000),
-                    "data": {"clientOid": body["newClientOid"], "orderId": "replace-order-2"},
+                    "data": {
+                        "clientOid": body["newClientOid"],
+                        "orderId": "replace-order-2",
+                    },
                 },
             )
         if request.url.path == "/api/v2/mix/order/detail":
@@ -1211,7 +1249,10 @@ def test_cancel_and_query_support_exchange_only_order_identity(
                     "code": "00000",
                     "msg": "success",
                     "requestTime": int(time.time() * 1000),
-                    "data": {"orderId": "remote-order-1", "clientOid": "remote-client-1"},
+                    "data": {
+                        "orderId": "remote-order-1",
+                        "clientOid": "remote-client-1",
+                    },
                 },
             )
         if request.url.path == "/api/v2/mix/order/detail":
@@ -1418,7 +1459,9 @@ def test_emergency_flatten_bypasses_open_circuit_with_priority(
         if request.url.path == "/api/v2/mix/order/place-order":
             order_calls["count"] += 1
             if order_calls["count"] == 1:
-                return httpx.Response(429, json={"code": "429", "msg": "Too many requests"})
+                return httpx.Response(
+                    429, json={"code": "429", "msg": "Too many requests"}
+                )
             body = json.loads(request.content.decode("utf-8"))
             return httpx.Response(
                 200,
@@ -1515,7 +1558,10 @@ def test_order_timeout_cancels_stale_orders(
                     "code": "00000",
                     "msg": "success",
                     "requestTime": int(time.time() * 1000),
-                    "data": {"orderId": "timeout-order", "clientOid": "bgai-test-crt-timeout"},
+                    "data": {
+                        "orderId": "timeout-order",
+                        "clientOid": "bgai-test-crt-timeout",
+                    },
                 },
             )
         raise AssertionError(f"unexpected path: {request.url.path}")
@@ -1612,7 +1658,9 @@ def test_release_safety_latch_idempotent_when_inactive(
         catalog=_UNIT_TEST_CATALOG,
         metadata_service=_UNIT_TEST_METADATA,
     )
-    out = service.release_safety_latch(SafetyLatchReleaseRequest(reason="restart_smoke"))
+    out = service.release_safety_latch(
+        SafetyLatchReleaseRequest(reason="restart_smoke")
+    )
     assert out == {"ok": True, "idempotent": True}
 
 

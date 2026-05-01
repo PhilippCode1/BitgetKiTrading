@@ -12,7 +12,11 @@ from psycopg.rows import dict_row
 from pydantic import BaseModel, Field
 
 from api_gateway.audit import record_gateway_audit_line
-from api_gateway.auth import GatewayAuthContext, require_billing_admin, require_billing_read
+from api_gateway.auth import (
+    GatewayAuthContext,
+    require_billing_admin,
+    require_billing_read,
+)
 from api_gateway.config import get_gateway_settings
 from api_gateway.db import get_database_url
 from api_gateway.db_subscription_billing import (
@@ -81,7 +85,9 @@ class AdminRenewalBody(BaseModel):
 
 class AdminPaymentAllocateBody(BaseModel):
     tenant_id: str = Field(min_length=1, max_length=128)
-    amount_gross_cents: int = Field(..., description="Brutto-Cent (kann negativ sein fuer Rueckbuchung)")
+    amount_gross_cents: int = Field(
+        ..., description="Brutto-Cent (kann negativ sein fuer Rueckbuchung)"
+    )
     currency: str = Field(default="EUR", min_length=3, max_length=3)
     payment_intent_id: str | None = Field(default=None, max_length=64)
 
@@ -102,10 +108,15 @@ def customer_billing_plans(
     except psycopg.errors.UndefinedTable:
         raise HTTPException(
             status_code=503,
-            detail={"code": "BILLING_MIGRATION_REQUIRED", "message": "609_subscription_billing_ledger"},
+            detail={
+                "code": "BILLING_MIGRATION_REQUIRED",
+                "message": "609_subscription_billing_ledger",
+            },
         ) from None
     plans = [plan_row_to_public_amounts(dict(r)) for r in raw]
-    record_gateway_audit_line(request, auth, "commerce_customer_billing_plans", extra={"tenant_id": tid})
+    record_gateway_audit_line(
+        request, auth, "commerce_customer_billing_plans", extra={"tenant_id": tid}
+    )
     return {"schema_version": "billing-plans-v1", "plans": plans}
 
 
@@ -125,9 +136,17 @@ def customer_billing_subscription(
     except psycopg.errors.UndefinedTable:
         raise HTTPException(
             status_code=503,
-            detail={"code": "BILLING_MIGRATION_REQUIRED", "message": "609_subscription_billing_ledger"},
+            detail={
+                "code": "BILLING_MIGRATION_REQUIRED",
+                "message": "609_subscription_billing_ledger",
+            },
         ) from None
-    record_gateway_audit_line(request, auth, "commerce_customer_billing_subscription", extra={"tenant_id": tid})
+    record_gateway_audit_line(
+        request,
+        auth,
+        "commerce_customer_billing_subscription",
+        extra={"tenant_id": tid},
+    )
     if sub is None:
         return {"schema_version": "tenant-subscription-v1", "subscription": None}
     preview = plan_row_to_public_amounts(
@@ -161,9 +180,14 @@ def customer_billing_invoices(
     except psycopg.errors.UndefinedTable:
         raise HTTPException(
             status_code=503,
-            detail={"code": "BILLING_MIGRATION_REQUIRED", "message": "609_subscription_billing_ledger"},
+            detail={
+                "code": "BILLING_MIGRATION_REQUIRED",
+                "message": "609_subscription_billing_ledger",
+            },
         ) from None
-    record_gateway_audit_line(request, auth, "commerce_customer_billing_invoices", extra={"tenant_id": tid})
+    record_gateway_audit_line(
+        request, auth, "commerce_customer_billing_invoices", extra={"tenant_id": tid}
+    )
     return {"schema_version": "billing-invoices-v1", "invoices": items}
 
 
@@ -190,7 +214,10 @@ def customer_billing_invoice_lines(
     except psycopg.errors.UndefinedTable:
         raise HTTPException(
             status_code=503,
-            detail={"code": "BILLING_MIGRATION_REQUIRED", "message": "609_subscription_billing_ledger"},
+            detail={
+                "code": "BILLING_MIGRATION_REQUIRED",
+                "message": "609_subscription_billing_ledger",
+            },
         ) from None
     record_gateway_audit_line(
         request,
@@ -229,13 +256,20 @@ def customer_billing_ledger(
     except psycopg.errors.UndefinedTable:
         raise HTTPException(
             status_code=503,
-            detail={"code": "BILLING_MIGRATION_REQUIRED", "message": "609_subscription_billing_ledger"},
+            detail={
+                "code": "BILLING_MIGRATION_REQUIRED",
+                "message": "609_subscription_billing_ledger",
+            },
         ) from None
-    record_gateway_audit_line(request, auth, "commerce_customer_billing_ledger", extra={"tenant_id": tid})
+    record_gateway_audit_line(
+        request, auth, "commerce_customer_billing_ledger", extra={"tenant_id": tid}
+    )
     return {"schema_version": "billing-financial-ledger-v1", "entries": items}
 
 
-@billing_admin_router.get("/tenant/{tenant_id}/snapshot", summary="Abo + Rechnungen + Ledger")
+@billing_admin_router.get(
+    "/tenant/{tenant_id}/snapshot", summary="Abo + Rechnungen + Ledger"
+)
 def admin_billing_tenant_snapshot(
     request: Request,
     tenant_id: str,
@@ -253,7 +287,10 @@ def admin_billing_tenant_snapshot(
     except psycopg.errors.UndefinedTable:
         raise HTTPException(
             status_code=503,
-            detail={"code": "BILLING_MIGRATION_REQUIRED", "message": "609_subscription_billing_ledger"},
+            detail={
+                "code": "BILLING_MIGRATION_REQUIRED",
+                "message": "609_subscription_billing_ledger",
+            },
         ) from None
     record_gateway_audit_line(
         request, auth, "commerce_admin_billing_snapshot", extra={"tenant_id": tenant_id}
@@ -282,9 +319,14 @@ def admin_billing_subscriptions(
     except psycopg.errors.UndefinedTable:
         raise HTTPException(
             status_code=503,
-            detail={"code": "BILLING_MIGRATION_REQUIRED", "message": "609_subscription_billing_ledger"},
+            detail={
+                "code": "BILLING_MIGRATION_REQUIRED",
+                "message": "609_subscription_billing_ledger",
+            },
         ) from None
-    record_gateway_audit_line(request, auth, "commerce_admin_billing_subscriptions", extra={})
+    record_gateway_audit_line(
+        request, auth, "commerce_admin_billing_subscriptions", extra={}
+    )
     return {"schema_version": "admin-billing-subscriptions-v1", "subscriptions": rows}
 
 
@@ -311,7 +353,10 @@ def admin_billing_issue_invoice(
     except psycopg.errors.UndefinedTable:
         raise HTTPException(
             status_code=503,
-            detail={"code": "BILLING_MIGRATION_REQUIRED", "message": "609_subscription_billing_ledger"},
+            detail={
+                "code": "BILLING_MIGRATION_REQUIRED",
+                "message": "609_subscription_billing_ledger",
+            },
         ) from None
     except ValueError as e:
         raise _http(str(e), str(e), 404) from e
@@ -346,7 +391,10 @@ def admin_billing_credit_invoice(
     except psycopg.errors.UndefinedTable:
         raise HTTPException(
             status_code=503,
-            detail={"code": "BILLING_MIGRATION_REQUIRED", "message": "609_subscription_billing_ledger"},
+            detail={
+                "code": "BILLING_MIGRATION_REQUIRED",
+                "message": "609_subscription_billing_ledger",
+            },
         ) from None
     except ValueError as e:
         raise _http(str(e), str(e), 409) from e
@@ -382,17 +430,26 @@ def admin_billing_dunning(
     except psycopg.errors.UndefinedTable:
         raise HTTPException(
             status_code=503,
-            detail={"code": "BILLING_MIGRATION_REQUIRED", "message": "609_subscription_billing_ledger"},
+            detail={
+                "code": "BILLING_MIGRATION_REQUIRED",
+                "message": "609_subscription_billing_ledger",
+            },
         ) from None
     except ValueError as e:
         raise _http(str(e), str(e), 404) from e
     record_gateway_audit_line(
         request, auth, "commerce_admin_billing_dunning", extra={"tenant_id": tenant_id}
     )
-    return {"schema_version": "billing-dunning-v1", "tenant_id": tenant_id, "dunning_stage": body.dunning_stage}
+    return {
+        "schema_version": "billing-dunning-v1",
+        "tenant_id": tenant_id,
+        "dunning_stage": body.dunning_stage,
+    }
 
 
-@billing_admin_router.post("/tenant/{tenant_id}/plan", summary="Abo-Plan zuweisen/aendern")
+@billing_admin_router.post(
+    "/tenant/{tenant_id}/plan", summary="Abo-Plan zuweisen/aendern"
+)
 def admin_billing_assign_plan(
     request: Request,
     tenant_id: str,
@@ -415,14 +472,24 @@ def admin_billing_assign_plan(
     except psycopg.errors.UndefinedTable:
         raise HTTPException(
             status_code=503,
-            detail={"code": "BILLING_MIGRATION_REQUIRED", "message": "609_subscription_billing_ledger"},
+            detail={
+                "code": "BILLING_MIGRATION_REQUIRED",
+                "message": "609_subscription_billing_ledger",
+            },
         ) from None
     except ValueError as e:
         raise _http(str(e), str(e), 404) from e
     record_gateway_audit_line(
-        request, auth, "commerce_admin_billing_assign_plan", extra={"tenant_id": tenant_id}
+        request,
+        auth,
+        "commerce_admin_billing_assign_plan",
+        extra={"tenant_id": tenant_id},
     )
-    return {"schema_version": "billing-assign-plan-v1", "tenant_id": tenant_id, "plan_code": body.plan_code}
+    return {
+        "schema_version": "billing-assign-plan-v1",
+        "tenant_id": tenant_id,
+        "plan_code": body.plan_code,
+    }
 
 
 @billing_admin_router.post("/tenant/{tenant_id}/cancel", summary="Kuendigung")
@@ -448,7 +515,10 @@ def admin_billing_cancel(
     except psycopg.errors.UndefinedTable:
         raise HTTPException(
             status_code=503,
-            detail={"code": "BILLING_MIGRATION_REQUIRED", "message": "609_subscription_billing_ledger"},
+            detail={
+                "code": "BILLING_MIGRATION_REQUIRED",
+                "message": "609_subscription_billing_ledger",
+            },
         ) from None
     except ValueError as e:
         raise _http(str(e), str(e), 404) from e
@@ -462,7 +532,9 @@ def admin_billing_cancel(
     }
 
 
-@billing_admin_router.post("/tenant/{tenant_id}/renewal", summary="Verlaengerung protokollieren")
+@billing_admin_router.post(
+    "/tenant/{tenant_id}/renewal", summary="Verlaengerung protokollieren"
+)
 def admin_billing_renewal(
     request: Request,
     tenant_id: str,
@@ -477,11 +549,16 @@ def admin_billing_renewal(
         with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=10) as conn:
             _require_tenant_commercial_state(conn, tenant_id)
             with conn.transaction():
-                record_renewal_event(conn, tenant_id=tenant_id, actor=auth.actor, meta_json=meta)
+                record_renewal_event(
+                    conn, tenant_id=tenant_id, actor=auth.actor, meta_json=meta
+                )
     except psycopg.errors.UndefinedTable:
         raise HTTPException(
             status_code=503,
-            detail={"code": "BILLING_MIGRATION_REQUIRED", "message": "609_subscription_billing_ledger"},
+            detail={
+                "code": "BILLING_MIGRATION_REQUIRED",
+                "message": "609_subscription_billing_ledger",
+            },
         ) from None
     except ValueError as e:
         raise _http(str(e), str(e), 404) from e
@@ -518,7 +595,10 @@ def admin_billing_payment_allocate(
     except psycopg.errors.UndefinedTable:
         raise HTTPException(
             status_code=503,
-            detail={"code": "BILLING_MIGRATION_REQUIRED", "message": "609_subscription_billing_ledger"},
+            detail={
+                "code": "BILLING_MIGRATION_REQUIRED",
+                "message": "609_subscription_billing_ledger",
+            },
         ) from None
     record_gateway_audit_line(
         request,

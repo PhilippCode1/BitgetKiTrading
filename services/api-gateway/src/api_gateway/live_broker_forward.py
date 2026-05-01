@@ -11,7 +11,10 @@ from typing import Any
 
 from shared_py.observability.apex_trace import merge_gateway_response_apex
 from shared_py.observability.request_context import get_outbound_trace_headers
-from shared_py.service_auth import INTERNAL_SERVICE_HEADER, internal_service_auth_required
+from shared_py.service_auth import (
+    INTERNAL_SERVICE_HEADER,
+    internal_service_auth_required,
+)
 
 from api_gateway.config import GatewaySettings
 from api_gateway.gateway_metrics import observe_live_broker_forward
@@ -74,7 +77,9 @@ def post_live_broker_json(
             body = json.loads(raw.decode("utf-8"))
             observe_live_broker_forward(result="success", elapsed_sec=elapsed)
             if isinstance(body, dict):
-                body = merge_gateway_response_apex(body, t_gw0_ns=t_gw0_ns, t_gw1_ns=t_gw1_ns)
+                body = merge_gateway_response_apex(
+                    body, t_gw0_ns=t_gw0_ns, t_gw1_ns=t_gw1_ns
+                )
                 try:
                     logger.info(
                         "apex_gateway forward path=%s deltas_ms=%s",

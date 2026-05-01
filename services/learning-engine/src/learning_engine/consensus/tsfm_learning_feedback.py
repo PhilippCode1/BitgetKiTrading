@@ -10,7 +10,8 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Mapping
+from collections.abc import Mapping
+from typing import Any
 from uuid import UUID
 
 import psycopg
@@ -163,7 +164,10 @@ def enrich_trade_evaluations_with_apex_war_room(
 
     try:
         araw = _fetch_by_signal_json_path(conn, [str(s) for s in ulist])
-    except (pg_errors.UndefinedTable, Exception) as exc:  # pragma: no cover — schema drift
+    except (
+        pg_errors.UndefinedTable,
+        Exception,
+    ) as exc:  # pragma: no cover — schema drift
         logger.info("enrich trade rows: apex_audit_ledger_entries %s", exc)
         for row in rows:
             row["consensus_penalty"] = 0.0

@@ -77,7 +77,11 @@ def _collect_evidence_abstentions(
         codes.append(MDK_DATA_QUALITY)
 
     unc_phase = str(db_row.get("uncertainty_gate_phase") or "").strip().lower()
-    ug = snap.get("uncertainty_gate") if isinstance(snap.get("uncertainty_gate"), dict) else {}
+    ug = (
+        snap.get("uncertainty_gate")
+        if isinstance(snap.get("uncertainty_gate"), dict)
+        else {}
+    )
     if not unc_phase:
         unc_phase = str(ug.get("gate_phase") or "full").strip().lower()
     if unc_phase in ("blocked", "abstain", "hold"):
@@ -123,7 +127,9 @@ def _collect_evidence_abstentions(
     return list(dict.fromkeys(codes))
 
 
-def expected_utility_proxy_0_1(db_row: dict[str, Any], hd: dict[str, Any]) -> tuple[float, dict[str, Any]]:
+def expected_utility_proxy_0_1(
+    db_row: dict[str, Any], hd: dict[str, Any]
+) -> tuple[float, dict[str, Any]]:
     """Kalibrierter Nutzen-Proxy (kein Ersatz fuer echte Kalibrierungskurven; nur relative Skala)."""
     p = _f(hd.get("take_trade_prob_adjusted_0_1")) or _f(db_row.get("take_trade_prob"))
     er = _f(db_row.get("expected_return_bps"))
@@ -177,7 +183,8 @@ def apply_meta_decision_kernel(
 
     eu01, eu_breakdown = expected_utility_proxy_0_1(db_row, hd)
     models_ok = db_row.get("take_trade_prob") is not None and all(
-        db_row.get(k) is not None for k in ("expected_return_bps", "expected_mae_bps", "expected_mfe_bps")
+        db_row.get(k) is not None
+        for k in ("expected_return_bps", "expected_mae_bps", "expected_mfe_bps")
     )
     if models_ok and eu01 < float(settings.mdk_min_expected_utility_proxy_0_1):
         evidence.append(MDK_NEGATIVE_EU)
@@ -197,7 +204,9 @@ def apply_meta_decision_kernel(
         meta_action = "blocked_by_policy" if policy_layer else "do_not_trade"
     elif operator_gate or live_blocks:
         meta_action = "operator_release_pending"
-    elif str(db_row.get("meta_trade_lane") or "").strip().lower() == "candidate_for_live":
+    elif (
+        str(db_row.get("meta_trade_lane") or "").strip().lower() == "candidate_for_live"
+    ):
         meta_action = "candidate_for_live"
     else:
         meta_action = "allow_trade_candidate"

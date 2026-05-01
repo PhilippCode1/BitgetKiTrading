@@ -12,7 +12,9 @@ EXPECTED_LINE = "reports/owner_private_live_release.json"
 def test_owner_private_live_release_is_gitignored() -> None:
     assert GITIGNORE.is_file(), f"fehlt {GITIGNORE}"
     lines = GITIGNORE.read_text(encoding="utf-8").splitlines()
-    stripped = {ln.strip() for ln in lines if ln.strip() and not ln.strip().startswith("#")}
-    assert EXPECTED_LINE in stripped, (
-        f".gitignore muss `{EXPECTED_LINE}` enthalten (No-Go Regel 53 / release_sanity)."
-    )
+    stripped = {
+        ln.strip() for ln in lines if ln.strip() and not ln.strip().startswith("#")
+    }
+    assert (
+        EXPECTED_LINE in stripped
+    ), f".gitignore muss `{EXPECTED_LINE}` enthalten (No-Go Regel 53 / release_sanity)."

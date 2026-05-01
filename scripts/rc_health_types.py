@@ -29,12 +29,16 @@ def classify_connection_refused_oserror(exc: OSError) -> str:
     s = str(exc)
     w = getattr(exc, "winerror", None)
     errno = getattr(exc, "errno", None) or 0
-    is_refused = w == 10061 or "10061" in s or errno in (10061, 61, 111) or "refused" in s.lower()
+    is_refused = (
+        w == 10061
+        or "10061" in s
+        or errno in (10061, 61, 111)
+        or "refused" in s.lower()
+    )
     if not is_refused:
         return s
     return (
-        s
-        + " | Diagnose: TCP-Verbindung abgelehnt. "
+        s + " | Diagnose: TCP-Verbindung abgelehnt. "
         "Falls `docker compose ps` den Container (z.B. api-gateway) nicht zeigt oder „Exit“: "
         "Stack/Container starten (Docker-Ebene). "
         "Falls der Container **läuft**, lauscht der Prozess im Container evtl. noch nicht "

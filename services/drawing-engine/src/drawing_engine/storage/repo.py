@@ -2,15 +2,16 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
+
 import psycopg
 from psycopg.rows import dict_row
 
 
 def _ms_to_timestamptz(ms: int) -> datetime:
-    return datetime.fromtimestamp(ms / 1000.0, tz=timezone.utc)
+    return datetime.fromtimestamp(ms / 1000.0, tz=UTC)
 
 
 def input_gates_from_drawing_provenance(prov: dict[str, Any] | None) -> dict[str, Any]:
@@ -42,7 +43,9 @@ def fingerprint_drawing(
 
 
 class DrawingRepository:
-    def __init__(self, database_url: str, *, logger: logging.Logger | None = None) -> None:
+    def __init__(
+        self, database_url: str, *, logger: logging.Logger | None = None
+    ) -> None:
         self._database_url = database_url
         self._logger = logger or logging.getLogger("drawing_engine.repo")
 

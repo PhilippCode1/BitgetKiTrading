@@ -300,7 +300,9 @@ def resolve_gateway_auth_with_diagnostic(
     if expected_internal:
         if internal:
             if internal == expected_internal:
-                roles = _parse_internal_key_roles_csv(settings.gateway_internal_key_roles)
+                roles = _parse_internal_key_roles_csv(
+                    settings.gateway_internal_key_roles
+                )
                 return (
                     GatewayAuthContext(
                         actor="gateway_internal",
@@ -468,7 +470,8 @@ def _admin_read_problem_detail(
     return {
         "code": "GATEWAY_AUTH_MISSING",
         "message": "Kein gueltiges Bearer-JWT / X-Gateway-Internal-Key / Legacy-Admin-Token.",
-        "hint": _HINT_BFF_JWT + " Legacy: X-Admin-Token nur wenn GATEWAY_ALLOW_LEGACY_ADMIN_TOKEN=true.",
+        "hint": _HINT_BFF_JWT
+        + " Legacy: X-Admin-Token nur wenn GATEWAY_ALLOW_LEGACY_ADMIN_TOKEN=true.",
         "required_capability": "admin_read",
     }
 
@@ -549,9 +552,7 @@ def _admin_forbidden_customer_session_detail() -> dict[str, str | bool]:
 
 
 def _forbid_admin_if_customer_jwt(
-    request: Request,
-    ctx: GatewayAuthContext | None,
-    *, event: str
+    request: Request, ctx: GatewayAuthContext | None, *, event: str
 ) -> None:
     if ctx is None or not ctx.is_customer_portal_jwt():
         return
@@ -582,9 +583,7 @@ def _admin_forbidden_jwt_not_admin_role_detail() -> dict[str, str | bool]:
 
 
 def _forbid_admin_if_jwt_main_role_not_admin(
-    request: Request,
-    ctx: GatewayAuthContext | None,
-    *, event: str
+    request: Request, ctx: GatewayAuthContext | None, *, event: str
 ) -> None:
     if ctx is None or ctx.auth_method != "jwt":
         return
@@ -773,7 +772,9 @@ async def require_live_stream_access(
     record_gateway_auth_failure(
         request,
         "auth_failure_live_stream",
-        extra={"failure_code": (fail_diag or {}).get("code") or "live_stream_auth_failed"},
+        extra={
+            "failure_code": (fail_diag or {}).get("code") or "live_stream_auth_failed"
+        },
     )
     d = _sensitive_read_problem_detail(fail_ctx, fail_diag)
     d = dict(d)
@@ -861,7 +862,9 @@ async def require_billing_admin(
         auth_method=ctx.auth_method if ctx is not None else "none",
         extra={"failure_code": fc},
     )
-    raise HTTPException(status_code=401, detail=_billing_admin_problem_detail(ctx, diag))
+    raise HTTPException(
+        status_code=401, detail=_billing_admin_problem_detail(ctx, diag)
+    )
 
 
 async def require_operator_aggregate_auth(
@@ -914,9 +917,7 @@ async def require_customer_role(
     Kunden- und Abo-Scope: delegiert an require_billing_read (identische technische Pruefung).
     Gegenstueck zu require_admin_read / require_admin_write auf /v1/admin/... .
     """
-    return await require_billing_read(
-        request, authorization, x_gateway_internal_key
-    )
+    return await require_billing_read(request, authorization, x_gateway_internal_key)
 
 
 # --- RBAC: /v1/admin bevorzugt explizit benannte Dependencies ---

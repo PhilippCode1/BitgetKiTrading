@@ -35,7 +35,9 @@ class TelegramApiClient:
         chunks = chunk_message(safe, self._s.telegram_message_safe_len)
         if self._s.telegram_dry_run:
             for part in chunks:
-                logger.info("SIMULATED SEND chat=%s len=%s", safe_chat_ref(chat_id), len(part))
+                logger.info(
+                    "SIMULATED SEND chat=%s len=%s", safe_chat_ref(chat_id), len(part)
+                )
             return {"ok": True, "dry_run": True, "result": {"message_id": None}}
         if not self._token:
             return {"ok": False, "error": "no_token"}
@@ -55,7 +57,9 @@ class TelegramApiClient:
                 time.sleep(max(0.05, 1.0 / self._s.telegram_send_max_per_sec))
         return last
 
-    def _post_json(self, method: str, body: dict[str, Any], attempt: int) -> dict[str, Any]:
+    def _post_json(
+        self, method: str, body: dict[str, Any], attempt: int
+    ) -> dict[str, Any]:
         url = f"{self._base()}{method}"
         data = json.dumps(body).encode("utf-8")
         req = urllib.request.Request(
@@ -77,7 +81,9 @@ class TelegramApiClient:
                     time.sleep(backoff)
                     backoff *= 2
                     continue
-                logger.warning("telegram HTTPError code=%s body_len=%s", e.code, len(err_body))
+                logger.warning(
+                    "telegram HTTPError code=%s body_len=%s", e.code, len(err_body)
+                )
                 return {"ok": False, "error": f"http_{e.code}"}
             except OSError as exc:
                 if tries < max_r:

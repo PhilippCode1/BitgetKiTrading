@@ -1,13 +1,5 @@
 from __future__ import annotations
 
-"""HTTP-/Readiness-Helper fuer Postgres, Redis, Peer-URLs (merge).
-
-Worker-Prometheus-Heartbeats: Schreibvorgaenge sollen **nicht** in derselben
-Co-Routine laufen wie schwere Verarbeitung. Nutzung: :func:`create_isolated_heartbeat_task`
-(``asyncio.create_task`` + :func:`shared_py.observability.metrics.arun_periodic_heartbeat`)
-oder fuer reine Thread-Worker :func:`shared_py.observability.metrics.start_thread_periodic_heartbeat`.
-Blockierend sind hier nur synchrones ``time.sleep`` in ``check_redis_url``-Retries.
-"""
 import asyncio
 import json
 import time
@@ -24,6 +16,15 @@ from shared_py.redis_client import (
     exponential_backoff_sec,
     sync_redis_from_pool,
 )
+
+__doc__ = """HTTP-/Readiness-Helper fuer Postgres, Redis, Peer-URLs (merge).
+
+Worker-Prometheus-Heartbeats: Schreibvorgaenge sollen **nicht** in derselben
+Co-Routine laufen wie schwere Verarbeitung. Nutzung: :func:`create_isolated_heartbeat_task`
+(``asyncio.create_task`` + :func:`shared_py.observability.metrics.arun_periodic_heartbeat`)
+oder fuer reine Thread-Worker :func:`shared_py.observability.metrics.start_thread_periodic_heartbeat`.
+Blockierend sind hier nur synchrones ``time.sleep`` in ``check_redis_url``-Retries.
+"""
 
 
 def _split_peer_urls(raw: str) -> list[str]:
@@ -119,7 +120,7 @@ def append_peer_readiness_checks(
 
 def check_postgres(dsn: str, *, timeout_sec: float = 3.0) -> tuple[bool, str]:
     try:
-        with psycopg.connect(dsn, connect_timeout=timeout_sec) as conn:
+        with psycopg.connect(dsn, connect_timeout=timeout_sec) as conn:  # type: ignore
             conn.execute("SELECT 1")
         return True, "ok"
     except Exception as exc:
@@ -236,7 +237,9 @@ def check_redis_url_readiness(
     return False, last_err
 
 
-def merge_ready_details(parts: dict[str, tuple[bool, str]]) -> tuple[bool, dict[str, Any]]:
+def merge_ready_details(
+    parts: dict[str, tuple[bool, str]],
+) -> tuple[bool, dict[str, Any]]:
     ok = all(p[0] for p in parts.values())
     details = {k: {"ok": v[0], "detail": v[1]} for k, v in parts.items()}
     return ok, details

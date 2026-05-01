@@ -14,6 +14,5 @@ for import_path in (ROOT, SCRIPTS_DIR):
 
 from cursor_master_status import main
 
-
 if __name__ == "__main__":
     raise SystemExit(main())

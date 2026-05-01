@@ -17,15 +17,14 @@ from typing import Any
 import numpy as np
 import psycopg
 from psycopg import errors as pg_errors
-
 from shared_py.eventbus import (
+    STREAM_TSFM_SIGNAL_CANDIDATE,
     ConsumedEvent,
     EventEnvelope,
-    STREAM_TSFM_SIGNAL_CANDIDATE,
     make_stream_bus_from_url,
 )
-from shared_py.online_drift import action_rank, normalize_online_drift_action
 from shared_py.inference_governance import record_inference_timeout_state
+from shared_py.online_drift import action_rank, normalize_online_drift_action
 from shared_py.timesfm_client import (
     DEFAULT_INFERENCE_DEADLINE_SEC,
     InferenceUnavailableError,
@@ -47,6 +46,7 @@ except ImportError:
             return f
 
         return _wrap
+
 else:
     _NUMBA_AVAILABLE = True
 
@@ -139,6 +139,7 @@ if _NUMBA_AVAILABLE:
             else:
                 out[i] = (x[i] - m) / var**0.5
         return out
+
 else:
 
     def _rolling_zscore_numba(x: np.ndarray, win: int) -> np.ndarray:
@@ -325,9 +326,7 @@ class TsfmPatchConsumer:
         await asyncio.to_thread(self._bus.close)
 
     async def run(self) -> None:
-        conc = int(
-            getattr(self._settings, "feature_tsfm_tick_concurrency", 1) or 1
-        )
+        conc = int(getattr(self._settings, "feature_tsfm_tick_concurrency", 1) or 1)
         self._logger.info(
             "tsfm patch consumer gestartet stream=%s group=%s stride=%s target=%s concurrency=%s",
             self._settings.tsfm_tick_stream,
@@ -423,7 +422,9 @@ class TsfmPatchConsumer:
             blocked = await asyncio.to_thread(
                 online_drift_blocks_prediction,
                 self._settings.database_url,
-                min_rank_to_block=int(self._settings.tsfm_online_drift_min_rank_to_block),
+                min_rank_to_block=int(
+                    self._settings.tsfm_online_drift_min_rank_to_block
+                ),
             )
             if blocked:
                 self._logger.debug("tsfm online_drift_block skip symbol=%s", symbol)
@@ -448,7 +449,9 @@ class TsfmPatchConsumer:
                 vec,
                 forecast_horizon=int(self._settings.tsfm_forecast_horizon),
                 model_id=str(self._settings.tsfm_model_id),
-                inference_priority=str(self._settings.tsfm_inference_priority or "live"),
+                inference_priority=str(
+                    self._settings.tsfm_inference_priority or "live"
+                ),
             )
         except InferenceUnavailableError as exc:
             self._logger.warning(
@@ -466,7 +469,9 @@ class TsfmPatchConsumer:
             await self._ack(item)
             return
         except Exception as exc:
-            self._logger.warning("tsfm grpc predict failed symbol=%s err=%s", symbol, exc)
+            self._logger.warning(
+                "tsfm grpc predict failed symbol=%s err=%s", symbol, exc
+            )
             await self._ack(item)
             return
         fc = forecasts[0] if forecasts else None

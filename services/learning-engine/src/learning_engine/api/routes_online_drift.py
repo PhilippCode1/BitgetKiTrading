@@ -3,15 +3,15 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter
-
-from learning_engine.config import LearningEngineSettings
-from learning_engine.drift.online_evaluator import run_online_drift_evaluation
-from learning_engine.storage.connection import db_connect
-from learning_engine.storage import repo_online_drift
 from shared_py.learning_drift_api import (
     drift_recent_response,
     learning_engine_online_drift_state_body,
 )
+
+from learning_engine.config import LearningEngineSettings
+from learning_engine.drift.online_evaluator import run_online_drift_evaluation
+from learning_engine.storage import repo_online_drift
+from learning_engine.storage.connection import db_connect
 
 
 def build_online_drift_router(settings: LearningEngineSettings) -> APIRouter:

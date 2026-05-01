@@ -21,7 +21,10 @@ class AuditLedgerSettings(BaseServiceSettings):
     apex_audit_ledger_ed25519_seed_hex: str = Field(
         default="",
         alias="APEX_AUDIT_LEDGER_ED25519_SEED_HEX",
-        description="64 Hex-Zeichen (32 Byte) Ed25519-Seed; in Produktion aus Vault/HSM injiziert.",
+        description=(
+            "64 Hex-Zeichen (32 Byte) Ed25519-Seed; "
+            "in Produktion aus Vault/HSM injiziert."
+        ),
     )
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
 
@@ -37,11 +40,15 @@ class AuditLedgerSettings(BaseServiceSettings):
         hx = self.apex_audit_ledger_ed25519_seed_hex.strip()
         if hx:
             if len(hx) != 64:
-                raise ValueError("APEX_AUDIT_LEDGER_ED25519_SEED_HEX muss 64 Hex-Zeichen sein")
+                raise ValueError(
+                    "APEX_AUDIT_LEDGER_ED25519_SEED_HEX muss 64 Hex-Zeichen sein"
+                )
             try:
                 bytes.fromhex(hx)
             except ValueError as exc:
-                raise ValueError("APEX_AUDIT_LEDGER_ED25519_SEED_HEX ungueltig") from exc
+                raise ValueError(
+                    "APEX_AUDIT_LEDGER_ED25519_SEED_HEX ungueltig"
+                ) from exc
             return self
         if self.production or self.app_env in ("shadow", "production"):
             raise ValueError(

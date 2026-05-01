@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
-import json
 from pathlib import Path
 
 from scripts.reconcile_truth_drill import (
@@ -13,7 +13,9 @@ from scripts.reconcile_truth_drill import (
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts" / "reconcile_truth_drill.py"
-TEMPLATE = ROOT / "docs" / "production_10_10" / "reconcile_idempotency_evidence.template.json"
+TEMPLATE = (
+    ROOT / "docs" / "production_10_10" / "reconcile_idempotency_evidence.template.json"
+)
 
 
 def test_drill_dry_run() -> None:
@@ -83,7 +85,9 @@ def _valid_external_evidence() -> dict[str, object]:
 
 
 def test_external_template_blocks_live() -> None:
-    status, blockers, warnings = assess_external_evidence(build_external_evidence_template())
+    status, blockers, warnings = assess_external_evidence(
+        build_external_evidence_template()
+    )
     assert status == "FAIL"
     assert "reconcile_status_not_ok" in blockers
     assert "per_asset_reconcile_missing" in blockers
@@ -110,7 +114,12 @@ def test_external_secret_surface_blocks_unredacted_values() -> None:
     assert secret_surface_issues({"authorization": "Bearer real-token"}) == [
         "secret_like_field_not_redacted:authorization"
     ]
-    assert secret_surface_issues({"authorization": "[REDACTED]", "database_url": "not_stored_in_repo"}) == []
+    assert (
+        secret_surface_issues(
+            {"authorization": "[REDACTED]", "database_url": "not_stored_in_repo"}
+        )
+        == []
+    )
 
 
 def test_cli_template_strict_fails_and_writes_json(tmp_path: Path) -> None:

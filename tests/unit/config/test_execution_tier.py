@@ -36,7 +36,9 @@ def test_tier_paper_development(monkeypatch: pytest.MonkeyPatch) -> None:
     assert tier["bitget_demo_enabled"] is False
 
 
-def test_tier_exchange_sandbox_overrides_paper_label(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_tier_exchange_sandbox_overrides_paper_label(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     _base(monkeypatch, BITGET_DEMO_ENABLED="true")
     s = BaseServiceSettings()
     tier = build_execution_tier_payload(s)

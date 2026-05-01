@@ -20,8 +20,22 @@ from shared_py.live_preflight import (  # noqa: E402
 
 DEFAULT_REPORT = ROOT / "reports" / "live_broker_preflight_matrix.md"
 FAIL_CLOSED_EVIDENCE_SCHEMA_VERSION = "live-broker-fail-closed-evidence-v1"
-DEFAULT_EVIDENCE_TEMPLATE = ROOT / "docs" / "production_10_10" / "live_broker_fail_closed_evidence.template.json"
-SECRET_LIKE_KEYS = ("database_url", "redis_url", "dsn", "password", "secret", "token", "api_key", "authorization")
+DEFAULT_EVIDENCE_TEMPLATE = (
+    ROOT
+    / "docs"
+    / "production_10_10"
+    / "live_broker_fail_closed_evidence.template.json"
+)
+SECRET_LIKE_KEYS = (
+    "database_url",
+    "redis_url",
+    "dsn",
+    "password",
+    "secret",
+    "token",
+    "api_key",
+    "authorization",
+)
 
 REQUIRED_BLOCKING_REASONS = (
     "execution_mode_not_live",
@@ -110,7 +124,9 @@ def secret_surface_issues(payload: dict[str, object]) -> list[str]:
     return issues
 
 
-def assess_external_evidence(payload: dict[str, object] | None) -> tuple[str, list[str], list[str]]:
+def assess_external_evidence(
+    payload: dict[str, object] | None
+) -> tuple[str, list[str], list[str]]:
     if not payload:
         return "FAIL", ["live_broker_fail_closed_evidence_missing"], []
     blockers: list[str] = []
@@ -132,7 +148,10 @@ def assess_external_evidence(payload: dict[str, object] | None) -> tuple[str, li
             blockers.append(code)
     required_true = (
         ("preflight_matrix_passed", "preflight_matrix_not_passed"),
-        ("all_required_blocking_reasons_covered", "required_blocking_reasons_not_covered"),
+        (
+            "all_required_blocking_reasons_covered",
+            "required_blocking_reasons_not_covered",
+        ),
         ("provider_error_blocks_submit", "provider_error_not_blocking"),
         ("redis_missing_blocks_live", "redis_missing_not_blocking"),
         ("database_missing_blocks_live", "database_missing_not_blocking"),
@@ -142,7 +161,10 @@ def assess_external_evidence(payload: dict[str, object] | None) -> tuple[str, li
         ("stale_market_data_blocks_submit", "stale_market_data_not_blocking"),
         ("unknown_instrument_blocks_submit", "unknown_instrument_not_blocking"),
         ("risk_context_missing_blocks_submit", "risk_context_missing_not_blocking"),
-        ("operator_release_missing_blocks_submit", "operator_release_missing_not_blocking"),
+        (
+            "operator_release_missing_blocks_submit",
+            "operator_release_missing_not_blocking",
+        ),
         ("shadow_match_missing_blocks_submit", "shadow_match_missing_not_blocking"),
         ("reconcile_fail_blocks_submit", "reconcile_fail_not_blocking"),
         ("kill_switch_blocks_submit", "kill_switch_not_blocking"),
@@ -150,7 +172,10 @@ def assess_external_evidence(payload: dict[str, object] | None) -> tuple[str, li
         ("idempotency_missing_blocks_submit", "idempotency_missing_not_blocking"),
         ("audit_context_missing_blocks_submit", "audit_context_missing_not_blocking"),
         ("warning_defaults_block_live", "warning_defaults_not_blocking_live"),
-        ("all_green_control_no_exchange_submit", "all_green_control_sent_exchange_submit"),
+        (
+            "all_green_control_no_exchange_submit",
+            "all_green_control_sent_exchange_submit",
+        ),
         ("audit_trail_verified", "audit_trail_not_verified"),
         ("alert_delivery_verified", "alert_delivery_not_verified"),
         ("main_console_gate_state_verified", "main_console_gate_state_not_verified"),
@@ -210,36 +235,116 @@ def _ctx(**overrides: object) -> LivePreflightContext:
 
 
 SCENARIOS: tuple[tuple[str, LivePreflightContext, str], ...] = (
-    ("execution_mode_not_live", _ctx(execution_mode_live=False), "Nicht-live Modus blockiert Live-Submit."),
-    ("live_trade_enable_false", _ctx(live_trade_enable=False), "LIVE_TRADE_ENABLE=false blockiert."),
+    (
+        "execution_mode_not_live",
+        _ctx(execution_mode_live=False),
+        "Nicht-live Modus blockiert Live-Submit.",
+    ),
+    (
+        "live_trade_enable_false",
+        _ctx(live_trade_enable=False),
+        "LIVE_TRADE_ENABLE=false blockiert.",
+    ),
     ("owner_approval_missing", _ctx(owner_approved=False), "Owner-Freigabe fehlt."),
-    ("asset_not_in_catalog", _ctx(asset_in_catalog=False), "Unbekanntes Asset blockiert."),
-    ("asset_status_not_ok", _ctx(asset_status_ok=False), "Delisted/suspended/unknown blockiert."),
-    ("asset_not_live_allowed", _ctx(asset_live_allowed=False), "Asset ist nicht live freigegeben."),
-    ("instrument_contract_missing", _ctx(instrument_contract_complete=False), "Instrument-Contract fehlt."),
-    ("instrument_metadata_stale", _ctx(instrument_metadata_fresh=False), "Metadaten stale."),
-    ("data_quality_not_pass", _ctx(data_quality_status="stale"), "Stale Datenqualitaet blockiert."),
-    ("liquidity_not_pass", _ctx(liquidity_status="missing"), "Fehlende Liquiditaet blockiert."),
+    (
+        "asset_not_in_catalog",
+        _ctx(asset_in_catalog=False),
+        "Unbekanntes Asset blockiert.",
+    ),
+    (
+        "asset_status_not_ok",
+        _ctx(asset_status_ok=False),
+        "Delisted/suspended/unknown blockiert.",
+    ),
+    (
+        "asset_not_live_allowed",
+        _ctx(asset_live_allowed=False),
+        "Asset ist nicht live freigegeben.",
+    ),
+    (
+        "instrument_contract_missing",
+        _ctx(instrument_contract_complete=False),
+        "Instrument-Contract fehlt.",
+    ),
+    (
+        "instrument_metadata_stale",
+        _ctx(instrument_metadata_fresh=False),
+        "Metadaten stale.",
+    ),
+    (
+        "data_quality_not_pass",
+        _ctx(data_quality_status="stale"),
+        "Stale Datenqualitaet blockiert.",
+    ),
+    (
+        "liquidity_not_pass",
+        _ctx(liquidity_status="missing"),
+        "Fehlende Liquiditaet blockiert.",
+    ),
     ("slippage_too_high", _ctx(slippage_ok=False), "Slippage-Gate blockiert."),
-    ("risk_tier_not_live_allowed", _ctx(risk_tier_live_allowed=False), "Risk-Tier nicht livefaehig."),
+    (
+        "risk_tier_not_live_allowed",
+        _ctx(risk_tier_live_allowed=False),
+        "Risk-Tier nicht livefaehig.",
+    ),
     ("order_sizing_not_safe", _ctx(order_sizing_ok=False), "Order-Sizing unsicher."),
-    ("portfolio_risk_not_safe", _ctx(portfolio_risk_ok=False), "Portfolio-Risk unsicher."),
-    ("strategy_evidence_missing_or_invalid", _ctx(strategy_evidence_ok=False), "Strategie-Evidence fehlt."),
-    ("bitget_readiness_not_ok", _ctx(bitget_readiness_ok=False), "Bitget-Readiness fehlt."),
+    (
+        "portfolio_risk_not_safe",
+        _ctx(portfolio_risk_ok=False),
+        "Portfolio-Risk unsicher.",
+    ),
+    (
+        "strategy_evidence_missing_or_invalid",
+        _ctx(strategy_evidence_ok=False),
+        "Strategie-Evidence fehlt.",
+    ),
+    (
+        "bitget_readiness_not_ok",
+        _ctx(bitget_readiness_ok=False),
+        "Bitget-Readiness fehlt.",
+    ),
     ("reconcile_not_ok", _ctx(reconcile_ok=False), "Reconcile nicht ok."),
     ("kill_switch_active", _ctx(kill_switch_active=True), "Kill-Switch aktiv."),
     ("safety_latch_active", _ctx(safety_latch_active=True), "Safety-Latch aktiv."),
-    ("unknown_order_state_active", _ctx(unknown_order_state=True), "Unklarer Order-State aktiv."),
-    ("account_snapshot_stale", _ctx(account_snapshot_fresh=False), "Account-Snapshot stale."),
+    (
+        "unknown_order_state_active",
+        _ctx(unknown_order_state=True),
+        "Unklarer Order-State aktiv.",
+    ),
+    (
+        "account_snapshot_stale",
+        _ctx(account_snapshot_fresh=False),
+        "Account-Snapshot stale.",
+    ),
     ("idempotency_key_missing", _ctx(idempotency_key=None), "Idempotency-Key fehlt."),
-    ("audit_context_missing", _ctx(audit_context_present=False), "Audit-Context fehlt."),
-    ("liquidity_gate_missing", _ctx(liquidity_gate_present=False), "Liquidity-Gate fehlt."),
+    (
+        "audit_context_missing",
+        _ctx(audit_context_present=False),
+        "Audit-Context fehlt.",
+    ),
+    (
+        "liquidity_gate_missing",
+        _ctx(liquidity_gate_present=False),
+        "Liquidity-Gate fehlt.",
+    ),
     ("spread_gate_missing", _ctx(spread_gate_present=False), "Spread-Gate fehlt."),
-    ("slippage_gate_missing", _ctx(slippage_gate_present=False), "Slippage-Gate fehlt."),
+    (
+        "slippage_gate_missing",
+        _ctx(slippage_gate_present=False),
+        "Slippage-Gate fehlt.",
+    ),
     ("orderbook_missing", _ctx(orderbook_present=False), "Orderbook fehlt."),
     ("orderbook_stale", _ctx(orderbook_fresh=False), "Orderbook ist stale."),
-    ("market_order_slippage_gate_missing", _ctx(market_order_slippage_checked=False), "Market-Order ohne Slippage-Gate."),
-    ("stop_tp_not_executable", _ctx(stop_tp_executable=False), "Stop/TP technisch nicht ausfuehrbar."),
+    (
+        "market_order_slippage_gate_missing",
+        _ctx(market_order_slippage_checked=False),
+        "Market-Order ohne Slippage-Gate.",
+    ),
+    (
+        "stop_tp_not_executable",
+        _ctx(stop_tp_executable=False),
+        "Stop/TP technisch nicht ausfuehrbar.",
+    ),
     ("all_green_control", _base_context(), "Kontrollfall ohne echten Submit."),
 )
 
@@ -262,11 +367,14 @@ def scenario_results() -> list[dict[str, object]]:
                 "missing_gates": decision.missing_gates,
                 "german_reasons": build_live_preflight_reasons_de(decision),
                 "ok": (
-                    decision.submit_allowed is False
-                    and expected_reason in decision.blocking_reasons
-                )
-                if expected_blocked and expected_reason
-                else decision.submit_allowed is True and not decision.blocking_reasons,
+                    (
+                        decision.submit_allowed is False
+                        and expected_reason in decision.blocking_reasons
+                    )
+                    if expected_blocked and expected_reason
+                    else decision.submit_allowed is True
+                    and not decision.blocking_reasons
+                ),
             }
         )
     return rows
@@ -279,16 +387,32 @@ def analyze() -> dict[str, object]:
     sec_test = ROOT / "tests" / "security" / "test_live_broker_multi_asset_preflight.py"
     lb_test = ROOT / "tests" / "live_broker" / "test_live_preflight_contracts.py"
     tool_test = ROOT / "tests" / "tools" / "test_check_live_broker_preflight.py"
-    main_console = ROOT / "docs" / "production_10_10" / "main_console_product_direction.md"
+    main_console = (
+        ROOT / "docs" / "production_10_10" / "main_console_product_direction.md"
+    )
     no_go = ROOT / "docs" / "production_10_10" / "no_go_rules.md"
-    live_broker_service = ROOT / "services" / "live-broker" / "src" / "live_broker" / "orders" / "service.py"
-    fail_closed_report_script = ROOT / "scripts" / "live_broker_fail_closed_evidence_report.py"
-    fail_closed_report_test = ROOT / "tests" / "scripts" / "test_live_broker_fail_closed_evidence_report.py"
+    live_broker_service = (
+        ROOT
+        / "services"
+        / "live-broker"
+        / "src"
+        / "live_broker"
+        / "orders"
+        / "service.py"
+    )
+    fail_closed_report_script = (
+        ROOT / "scripts" / "live_broker_fail_closed_evidence_report.py"
+    )
+    fail_closed_report_test = (
+        ROOT / "tests" / "scripts" / "test_live_broker_fail_closed_evidence_report.py"
+    )
     fail_closed_report_md = ROOT / "reports" / "live_broker_fail_closed_evidence.md"
     fail_closed_report_json = ROOT / "reports" / "live_broker_fail_closed_evidence.json"
     liquidity_report_md = ROOT / "reports" / "liquidity_spread_slippage_evidence.md"
     liquidity_report_json = ROOT / "reports" / "liquidity_spread_slippage_evidence.json"
-    liquidity_report_script = ROOT / "scripts" / "liquidity_spread_slippage_evidence_report.py"
+    liquidity_report_script = (
+        ROOT / "scripts" / "liquidity_spread_slippage_evidence_report.py"
+    )
 
     for path, code, message in (
         (doc, "doc_missing", "Live-Preflight-Doku fehlt."),
@@ -297,30 +421,93 @@ def analyze() -> dict[str, object]:
         (lb_test, "live_broker_test_missing", "Live-Broker-Contract-Tests fehlen."),
         (tool_test, "tool_test_missing", "Tool-Tests fehlen."),
         (live_broker_service, "live_broker_missing", "Live-Broker-Service fehlt."),
-        (fail_closed_report_script, "fail_closed_report_script_missing", "Fail-Closed-Evidence-Report-Script fehlt."),
-        (fail_closed_report_test, "fail_closed_report_test_missing", "Fail-Closed-Evidence-Report-Test fehlt."),
-        (fail_closed_report_md, "fail_closed_report_md_missing", "Fail-Closed-Evidence-Markdown fehlt."),
-        (fail_closed_report_json, "fail_closed_report_json_missing", "Fail-Closed-Evidence-JSON fehlt."),
-        (liquidity_report_script, "liquidity_report_script_missing", "Liquidity-Evidence-Report-Script fehlt."),
-        (liquidity_report_md, "liquidity_report_md_missing", "Liquidity-Evidence-Markdown fehlt."),
-        (liquidity_report_json, "liquidity_report_json_missing", "Liquidity-Evidence-JSON fehlt."),
+        (
+            fail_closed_report_script,
+            "fail_closed_report_script_missing",
+            "Fail-Closed-Evidence-Report-Script fehlt.",
+        ),
+        (
+            fail_closed_report_test,
+            "fail_closed_report_test_missing",
+            "Fail-Closed-Evidence-Report-Test fehlt.",
+        ),
+        (
+            fail_closed_report_md,
+            "fail_closed_report_md_missing",
+            "Fail-Closed-Evidence-Markdown fehlt.",
+        ),
+        (
+            fail_closed_report_json,
+            "fail_closed_report_json_missing",
+            "Fail-Closed-Evidence-JSON fehlt.",
+        ),
+        (
+            liquidity_report_script,
+            "liquidity_report_script_missing",
+            "Liquidity-Evidence-Report-Script fehlt.",
+        ),
+        (
+            liquidity_report_md,
+            "liquidity_report_md_missing",
+            "Liquidity-Evidence-Markdown fehlt.",
+        ),
+        (
+            liquidity_report_json,
+            "liquidity_report_json_missing",
+            "Liquidity-Evidence-JSON fehlt.",
+        ),
     ):
         if not path.is_file():
-            issues.append({"severity": "error", "code": code, "message": message, "path": str(path)})
+            issues.append(
+                {
+                    "severity": "error",
+                    "code": code,
+                    "message": message,
+                    "path": str(path),
+                }
+            )
 
     if no_go.is_file():
         text = no_go.read_text(encoding="utf-8").lower()
         if "preflight" not in text:
-            issues.append({"severity": "error", "code": "no_go_preflight_missing", "message": "No-Go-Regeln erwaehnen Preflight nicht.", "path": str(no_go)})
+            issues.append(
+                {
+                    "severity": "error",
+                    "code": "no_go_preflight_missing",
+                    "message": "No-Go-Regeln erwaehnen Preflight nicht.",
+                    "path": str(no_go),
+                }
+            )
     else:
-        issues.append({"severity": "error", "code": "no_go_doc_missing", "message": "No-Go-Doku fehlt.", "path": str(no_go)})
+        issues.append(
+            {
+                "severity": "error",
+                "code": "no_go_doc_missing",
+                "message": "No-Go-Doku fehlt.",
+                "path": str(no_go),
+            }
+        )
 
     if main_console.is_file():
         text = main_console.read_text(encoding="utf-8").lower()
         if "preflight" not in text:
-            issues.append({"severity": "error", "code": "main_console_preflight_missing", "message": "Main-Console-Doku erwaehnt Preflight-Blockgruende nicht.", "path": str(main_console)})
+            issues.append(
+                {
+                    "severity": "error",
+                    "code": "main_console_preflight_missing",
+                    "message": "Main-Console-Doku erwaehnt Preflight-Blockgruende nicht.",
+                    "path": str(main_console),
+                }
+            )
     else:
-        issues.append({"severity": "error", "code": "main_console_doc_missing", "message": "Main-Console-Doku fehlt.", "path": str(main_console)})
+        issues.append(
+            {
+                "severity": "error",
+                "code": "main_console_doc_missing",
+                "message": "Main-Console-Doku fehlt.",
+                "path": str(main_console),
+            }
+        )
 
     if live_broker_service.is_file():
         service_text = live_broker_service.read_text(encoding="utf-8")
@@ -406,7 +593,9 @@ def render_markdown(payload: dict[str, object]) -> str:
     for row in scenario_rows:
         if not isinstance(row, dict):
             continue
-        blocking = ", ".join(f"`{item}`" for item in row.get("blocking_reasons", [])) or "-"
+        blocking = (
+            ", ".join(f"`{item}`" for item in row.get("blocking_reasons", [])) or "-"
+        )
         german = "<br>".join(str(item) for item in row.get("german_reasons", [])) or "-"
         expected = "block" if row.get("expected_blocked") else "allow"
         submit = "ja" if row.get("submit_allowed") else "nein"
@@ -415,10 +604,16 @@ def render_markdown(payload: dict[str, object]) -> str:
         )
     lines.extend(["", "## Bewertung", ""])
     if payload.get("ok") is True:
-        lines.append("- Alle synthetischen Pflichtgate-Szenarien blockieren fail-closed; der Kontrollfall bleibt submit-fahig.")
+        lines.append(
+            "- Alle synthetischen Pflichtgate-Szenarien blockieren fail-closed; der Kontrollfall bleibt submit-fahig."
+        )
     else:
-        lines.append("- Mindestens ein Pflichtgate-Szenario ist nicht belegt oder nicht fail-closed.")
-    lines.append("- Dieser Report ersetzt keine externe Shadow-, Bitget-, Restore- oder Owner-Evidence.")
+        lines.append(
+            "- Mindestens ein Pflichtgate-Szenario ist nicht belegt oder nicht fail-closed."
+        )
+    lines.append(
+        "- Dieser Report ersetzt keine externe Shadow-, Bitget-, Restore- oder Owner-Evidence."
+    )
     lines.append("")
     return "\n".join(lines)
 
@@ -471,7 +666,9 @@ def render_external_markdown(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Prueft Live-Broker-Multi-Asset-Preflight-Artefakte.")
+    parser = argparse.ArgumentParser(
+        description="Prueft Live-Broker-Multi-Asset-Preflight-Artefakte."
+    )
     parser.add_argument("--strict", action="store_true")
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--write-report", type=Path)
@@ -482,7 +679,9 @@ def main() -> int:
     if args.write_template:
         args.write_template.parent.mkdir(parents=True, exist_ok=True)
         args.write_template.write_text(
-            json.dumps(build_external_evidence_template(), indent=2, ensure_ascii=False),
+            json.dumps(
+                build_external_evidence_template(), indent=2, ensure_ascii=False
+            ),
             encoding="utf-8",
         )
         print(f"wrote template: {args.write_template}")
@@ -502,16 +701,25 @@ def main() -> int:
         if args.write_report:
             args.write_report.parent.mkdir(parents=True, exist_ok=True)
             args.write_report.write_text(
-                render_external_markdown(loaded, status, blockers, warnings, secret_issues),
+                render_external_markdown(
+                    loaded, status, blockers, warnings, secret_issues
+                ),
                 encoding="utf-8",
             )
         if args.output_json:
             args.output_json.parent.mkdir(parents=True, exist_ok=True)
-            args.output_json.write_text(json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False), encoding="utf-8")
+            args.output_json.write_text(
+                json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False),
+                encoding="utf-8",
+            )
         if args.json:
             print(json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False))
         elif not args.write_report:
-            print(render_external_markdown(loaded, status, blockers, warnings, secret_issues))
+            print(
+                render_external_markdown(
+                    loaded, status, blockers, warnings, secret_issues
+                )
+            )
         return 1 if args.strict and not payload["ok"] else 0
     payload = analyze()
     if args.write_report:
@@ -525,7 +733,9 @@ def main() -> int:
             f"errors={payload['error_count']} warnings={payload['warning_count']}"
         )
         for item in payload["issues"]:
-            print(f"{item['severity'].upper()} {item['code']}: {item['message']} [{item['path']}]")
+            print(
+                f"{item['severity'].upper()} {item['code']}: {item['message']} [{item['path']}]"
+            )
     if payload["error_count"] > 0:
         return 1
     if args.strict and payload["warning_count"] > 0:

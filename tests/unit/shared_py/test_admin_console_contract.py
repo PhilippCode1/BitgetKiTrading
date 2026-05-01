@@ -66,15 +66,24 @@ def test_global_kill_switch_type_confirm() -> None:
         ACTION_CONFIRMATION_TIER[AdminActionId.GLOBAL_PAUSE_LIVE_TRADING]
         == ConfirmationTier.TYPE_TO_CONFIRM
     )
-    assert ACTION_WARNING_LEVEL[AdminActionId.GLOBAL_PAUSE_LIVE_TRADING] == UiWarningLevel.CRITICAL
+    assert (
+        ACTION_WARNING_LEVEL[AdminActionId.GLOBAL_PAUSE_LIVE_TRADING]
+        == UiWarningLevel.CRITICAL
+    )
 
 
 def test_recheck_exchange_no_dialog_tier() -> None:
-    assert ACTION_CONFIRMATION_TIER[AdminActionId.RECHECK_EXCHANGE_CONNECTION] == ConfirmationTier.NONE
+    assert (
+        ACTION_CONFIRMATION_TIER[AdminActionId.RECHECK_EXCHANGE_CONNECTION]
+        == ConfirmationTier.NONE
+    )
 
 
 def test_grant_live_double_confirm() -> None:
-    assert ACTION_CONFIRMATION_TIER[AdminActionId.GRANT_LIVE_TRADING] == ConfirmationTier.DOUBLE_CONFIRM
+    assert (
+        ACTION_CONFIRMATION_TIER[AdminActionId.GRANT_LIVE_TRADING]
+        == ConfirmationTier.DOUBLE_CONFIRM
+    )
 
 
 def test_requires_reason_for_critical() -> None:

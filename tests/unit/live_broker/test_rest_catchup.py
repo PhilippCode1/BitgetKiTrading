@@ -70,7 +70,9 @@ def _settings(monkeypatch: pytest.MonkeyPatch) -> LiveBrokerSettings:
     return LiveBrokerSettings()
 
 
-def test_rest_catchup_writes_orders_and_positions_snapshots(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_rest_catchup_writes_orders_and_positions_snapshots(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     settings = _settings(monkeypatch)
     repo = _FakeRepo()
     private = _FakePrivate(
@@ -82,7 +84,9 @@ def test_rest_catchup_writes_orders_and_positions_snapshots(monkeypatch: pytest.
                 ]
             }
         },
-        positions_payload={"data": {"list": [{"instId": "BTCUSDT", "holdSide": "long"}]}},
+        positions_payload={
+            "data": {"list": [{"instId": "BTCUSDT", "holdSide": "long"}]}
+        },
     )
     out = run_rest_snapshot_catchup(settings, repo, private, reason="test")
     assert out["ok"] is True
@@ -119,7 +123,9 @@ def test_rest_catchup_empty_lists_still_record_symbol_placeholder(
     assert all(r["symbol"] == sym for r in repo.recorded)
 
 
-def test_rest_catchup_skips_when_private_runtime_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_rest_catchup_skips_when_private_runtime_disabled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Ohne Shadow/Live-Order-Pfad ist private_exchange_access_enabled false (kein Catchup)."""
     for k, v in (
         ("APP_ENV", "test"),

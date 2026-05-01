@@ -275,7 +275,9 @@ class FeatureWorker:
     async def _build_feature_row(self, item: ConsumedEvent) -> CandleFeatureRow:
         event = item.envelope
         if event.event_type != "candle_close":
-            raise ValueError(f"unexpected event_type for feature-engine: {event.event_type}")
+            raise ValueError(
+                f"unexpected event_type for feature-engine: {event.event_type}"
+            )
         instrument = _require_event_instrument(event)
         timeframe = _extract_timeframe(event)
         start_ts_ms = _extract_start_ts_ms(event)
@@ -287,7 +289,8 @@ class FeatureWorker:
         )
         if quality_issues:
             raise ValueError(
-                "candle_close data-quality gate failed: " + ", ".join(sorted(set(quality_issues)))
+                "candle_close data-quality gate failed: "
+                + ", ".join(sorted(set(quality_issues)))
             )
         metadata = await asyncio.to_thread(self._resolve_metadata, instrument)
         entry = metadata.entry
@@ -298,9 +301,7 @@ class FeatureWorker:
             entry.market_family == "futures" and entry.supports_open_interest
         )
         active_namespaces = feature_namespaces_for_identity(entry)
-        hard_issues = list(
-            validate_event_vs_resolved_metadata(instrument, entry)
-        )
+        hard_issues = list(validate_event_vs_resolved_metadata(instrument, entry))
         hard_issues.extend(
             family_foreign_namespace_violations(
                 market_family=entry.market_family,
@@ -320,7 +321,9 @@ class FeatureWorker:
         if not candles:
             raise ValueError("keine Candle-History verfuegbar")
 
-        ohlc = [OHLC(o=candle.o, h=candle.h, l=candle.l, c=candle.c) for candle in candles]
+        ohlc = [
+            OHLC(o=candle.o, h=candle.h, l=candle.l, c=candle.c) for candle in candles
+        ]
         opens = [candle.o for candle in candles]
         closes = [candle.c for candle in candles]
         highs = [candle.h for candle in candles]
@@ -328,7 +331,9 @@ class FeatureWorker:
         volumes = [candle.usdt_vol for candle in candles]
         current = candles[-1]
         timeframe_ms = _timeframe_to_ms(timeframe)
-        analysis_ts_ms = _extract_analysis_ts_ms(event, timeframe=timeframe, start_ts_ms=current.start_ts_ms)
+        analysis_ts_ms = _extract_analysis_ts_ms(
+            event, timeframe=timeframe, start_ts_ms=current.start_ts_ms
+        )
 
         atr_value_raw = _num.atr_sma(
             ohlc,
@@ -592,7 +597,9 @@ class FeatureWorker:
             trend_slope_proxy=_nullable(trend.slope_proxy),
             trend_dir=trend.trend_dir,
             confluence_score_0_100=_nullable(confluence_value),
-            vol_z_50=_nullable(volume_zscore(volumes, self._settings.feature_volz_window)),
+            vol_z_50=_nullable(
+                volume_zscore(volumes, self._settings.feature_volz_window)
+            ),
             spread_bps=market_context.spread_bps,
             bid_depth_usdt_top25=market_context.bid_depth_usdt_top25,
             ask_depth_usdt_top25=market_context.ask_depth_usdt_top25,
@@ -746,7 +753,9 @@ def _validate_candle_close_event(
             issues.append("instrument_symbol_missing")
         elif symbol and instrument_symbol != symbol:
             issues.append("instrument_symbol_mismatch")
-        market_family = str(getattr(instrument, "market_family", "") or "").strip().lower()
+        market_family = (
+            str(getattr(instrument, "market_family", "") or "").strip().lower()
+        )
         if market_family not in {"spot", "margin", "futures"}:
             issues.append("instrument_market_family_invalid")
 
@@ -870,10 +879,15 @@ def _mean_reversion_pressure(
     deviation_bps = abs((close - ema_fast) / close) * 10_000.0
     atrp_bps = max((atrp_14 or 0.0) * 100.0, 20.0)
     deviation_score = min(100.0, (deviation_bps / atrp_bps) * 100.0)
-    compression = max(0.0, min(range_score_value if range_score_value is not None else 50.0, 100.0))
+    compression = max(
+        0.0, min(range_score_value if range_score_value is not None else 50.0, 100.0)
+    )
     imbalance = max(-1.0, min(1.0, orderbook_imbalance or 0.0))
     counterflow = max(0.0, -imbalance if close >= ema_fast else imbalance) * 100.0
-    return max(0.0, min(100.0, deviation_score * 0.45 + compression * 0.35 + counterflow * 0.20))
+    return max(
+        0.0,
+        min(100.0, deviation_score * 0.45 + compression * 0.35 + counterflow * 0.20),
+    )
 
 
 def _breakout_compression_score(
@@ -884,13 +898,25 @@ def _breakout_compression_score(
 ) -> float | None:
     if range_score_value is None and atrp_14 is None and depth_balance_ratio is None:
         return None
-    compression = max(0.0, min(range_score_value if range_score_value is not None else 50.0, 100.0))
-    atrp_score = 50.0 if atrp_14 is None else max(0.0, min(100.0, 100.0 - (atrp_14 * 200.0)))
-    depth_score = 50.0 if depth_balance_ratio is None else max(0.0, min(depth_balance_ratio * 100.0, 100.0))
-    return max(0.0, min(100.0, compression * 0.55 + atrp_score * 0.25 + depth_score * 0.20))
+    compression = max(
+        0.0, min(range_score_value if range_score_value is not None else 50.0, 100.0)
+    )
+    atrp_score = (
+        50.0 if atrp_14 is None else max(0.0, min(100.0, 100.0 - (atrp_14 * 200.0)))
+    )
+    depth_score = (
+        50.0
+        if depth_balance_ratio is None
+        else max(0.0, min(depth_balance_ratio * 100.0, 100.0))
+    )
+    return max(
+        0.0, min(100.0, compression * 0.55 + atrp_score * 0.25 + depth_score * 0.20)
+    )
 
 
-def _realized_vol_cluster_score(*, rv20: float | None, rv50: float | None) -> float | None:
+def _realized_vol_cluster_score(
+    *, rv20: float | None, rv50: float | None
+) -> float | None:
     if rv20 is None or rv50 is None or rv50 <= 0:
         return None
     ratio = rv20 / rv50
@@ -902,7 +928,11 @@ def _liquidation_distance_bps_max_leverage(
     metadata: BitgetInstrumentResolvedMetadata,
 ) -> float | None:
     leverage_max = metadata.entry.leverage_max
-    if metadata.entry.market_family != "futures" or leverage_max is None or leverage_max <= 0:
+    if (
+        metadata.entry.market_family != "futures"
+        or leverage_max is None
+        or leverage_max <= 0
+    ):
         return None
     return (10_000.0 / float(leverage_max)) * 0.8
 
@@ -936,7 +966,11 @@ def _feature_quality_status(
 ) -> str:
     if hard_issues or tick_lot_issues:
         return "degraded"
-    if data_completeness >= 0.85 and staleness_score <= 0.5 and metadata.health_status == "ok":
+    if (
+        data_completeness >= 0.85
+        and staleness_score <= 0.5
+        and metadata.health_status == "ok"
+    ):
         return "ok"
     return "degraded"
 

@@ -36,7 +36,9 @@ def apex_trace_by_signal(
             status_code=503, detail={"code": "query_failed", "message": str(exc)[:500]}
         ) from exc
     if row is None:
-        raise HTTPException(status_code=404, detail={"code": "not_found", "signal_id": signal_id})
+        raise HTTPException(
+            status_code=404, detail={"code": "not_found", "signal_id": signal_id}
+        )
     at = row.get("apex_trace")
     return {
         "ok": True,

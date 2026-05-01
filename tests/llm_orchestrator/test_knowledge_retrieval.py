@@ -17,7 +17,9 @@ def test_retrieve_respects_tag_allowlist(knowledge_dir: Path) -> None:
 
     if not (knowledge_dir / "manifest.json").is_file():
         pytest.skip("manifest missing")
-    kr = KnowledgeRetriever(knowledge_dir=knowledge_dir, max_chunks=4, max_excerpt_chars=800)
+    kr = KnowledgeRetriever(
+        knowledge_dir=knowledge_dir, max_chunks=4, max_excerpt_chars=800
+    )
     chunks = kr.retrieve("analyst_hypotheses", "futures funding margin bitget")
     assert len(chunks) >= 1
     assert all(len(c.content_sha256) == 64 for c in chunks)

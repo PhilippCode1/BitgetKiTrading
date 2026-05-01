@@ -38,7 +38,10 @@ def test_nav_count_matches_required_views() -> None:
 def test_subscription_intervals_all_de() -> None:
     for sid in SubscriptionIntervalId:
         assert len(SUBSCRIPTION_INTERVAL_LABELS_DE[sid]) >= 3
-        assert " " in subscription_billing_explanation_de(sid) or len(subscription_billing_explanation_de(sid)) > 20
+        assert (
+            " " in subscription_billing_explanation_de(sid)
+            or len(subscription_billing_explanation_de(sid)) > 20
+        )
 
 
 def test_status_mode_labels_plain_language() -> None:

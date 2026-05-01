@@ -124,7 +124,9 @@ def strategy_scope_matches_asset_class(evidence: StrategyAssetEvidence) -> bool:
     return evidence.asset_class in evidence.scope_asset_classes
 
 
-def strategy_evidence_status_for_asset(evidence: StrategyAssetEvidence) -> EvidenceStatus:
+def strategy_evidence_status_for_asset(
+    evidence: StrategyAssetEvidence,
+) -> EvidenceStatus:
     if evidence.evidence_status == "rejected":
         return "rejected"
     if _is_expired(evidence.expires_at):
@@ -149,15 +151,23 @@ def validate_strategy_asset_evidence(evidence: StrategyAssetEvidence) -> list[st
         reasons.append("strategy_evidence_rejected")
     if status == "expired":
         reasons.append("strategy_evidence_expired")
-    if evidence.market_family.lower() not in {item.lower() for item in evidence.allowed_market_families}:
+    if evidence.market_family.lower() not in {
+        item.lower() for item in evidence.allowed_market_families
+    }:
         reasons.append("market_family_mismatch")
-    if evidence.risk_tier is None or evidence.risk_tier not in evidence.allowed_risk_tiers:
+    if (
+        evidence.risk_tier is None
+        or evidence.risk_tier not in evidence.allowed_risk_tiers
+    ):
         reasons.append("risk_tier_mismatch")
     if evidence.data_quality_status != "data_ok":
         reasons.append("data_quality_mismatch")
     if not strategy_scope_matches_asset_class(evidence):
         reasons.append("strategy_scope_mismatch")
-    if status in {"shadow_passed", "live_candidate", "live_allowed"} and not evidence.shadow_available:
+    if (
+        status in {"shadow_passed", "live_candidate", "live_allowed"}
+        and not evidence.shadow_available
+    ):
         reasons.append("shadow_evidence_fehlt")
     if status == "live_allowed" and not evidence.shadow_passed:
         reasons.append("shadow_passed_fehlt")
@@ -167,7 +177,10 @@ def validate_strategy_asset_evidence(evidence: StrategyAssetEvidence) -> list[st
         reasons.append("spread_fehlt")
     if not evidence.slippage_included:
         reasons.append("slippage_fehlt")
-    if evidence.market_family.lower() == "futures" and evidence.funding_included is not True:
+    if (
+        evidence.market_family.lower() == "futures"
+        and evidence.funding_included is not True
+    ):
         reasons.append("funding_fehlt_futures")
     if evidence.max_drawdown is None:
         reasons.append("drawdown_fehlt")
@@ -214,7 +227,11 @@ def strategy_evidence_decision(evidence: StrategyAssetEvidence) -> Decision:
     reasons = validate_strategy_asset_evidence(evidence)
     if not reasons:
         return "ALLOW_FOR_SHADOW"
-    hard_all = {"strategy_evidence_rejected", "asset_class_unknown", "strategy_scope_mismatch"}
+    hard_all = {
+        "strategy_evidence_rejected",
+        "asset_class_unknown",
+        "strategy_scope_mismatch",
+    }
     if any(reason in hard_all for reason in reasons):
         return "BLOCK_ALL"
     if "paper_evidence_fehlt_oder_nicht_bestanden" in reasons:
@@ -225,10 +242,15 @@ def strategy_evidence_decision(evidence: StrategyAssetEvidence) -> Decision:
 def strategy_evidence_live_allowed(evidence: StrategyAssetEvidence) -> bool:
     if strategy_evidence_decision(evidence) in {"BLOCK_ALL", "BLOCK_FOR_LIVE"}:
         return False
-    return evidence.evidence_level in {"shadow", "runtime"} and not strategy_evidence_blocks_live(evidence)
+    return evidence.evidence_level in {
+        "shadow",
+        "runtime",
+    } and not strategy_evidence_blocks_live(evidence)
 
 
-def llm_strategy_execution_authority_contract(payload: dict[str, Any] | None) -> list[str]:
+def llm_strategy_execution_authority_contract(
+    payload: dict[str, Any] | None,
+) -> list[str]:
     if not isinstance(payload, dict):
         return ["llm_payload_missing"]
     value = str(payload.get("execution_authority", "")).strip().lower()
@@ -247,6 +269,7 @@ def build_strategy_asset_evidence_summary_de(evidence: StrategyAssetEvidence) ->
             f"fuer {evidence.asset_symbol}/{evidence.asset_class} blockiert ({decision}): {', '.join(reasons)}."
         )
     return (
-        f"Strategie {evidence.strategy_id} v{evidence.strategy_version} fuer {evidence.asset_symbol}/{evidence.asset_class} "
-        f"hat Evidence-Status {status}, Decision {decision} und darf nur den naechsten Gate-Schritt erreichen."
+        f"Strategie {evidence.strategy_id} v{evidence.strategy_version} "
+        f"fuer {evidence.asset_symbol}/{evidence.asset_class} hat Evidence-Status "
+        f"{status}, Decision {decision} und darf nur den naechsten Gate-Schritt erreichen."
     )

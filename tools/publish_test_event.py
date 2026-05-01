@@ -103,7 +103,9 @@ def main() -> int:
     return 0
 
 
-def _seed_test_candle_history(*, symbol: str, timeframe: str, candle_start_ms: int) -> int:
+def _seed_test_candle_history(
+    *, symbol: str, timeframe: str, candle_start_ms: int
+) -> int:
     database_url = os.environ.get("DATABASE_URL", "").strip()
     if not database_url:
         return 0
@@ -113,7 +115,9 @@ def _seed_test_candle_history(*, symbol: str, timeframe: str, candle_start_ms: i
         print("warning: psycopg nicht installiert, Candle-Seed wird uebersprungen")
         return 0
 
-    rows = _build_seed_rows(symbol=symbol, timeframe=timeframe, candle_start_ms=candle_start_ms)
+    rows = _build_seed_rows(
+        symbol=symbol, timeframe=timeframe, candle_start_ms=candle_start_ms
+    )
     sql = """
     INSERT INTO tsdb.candles (
         symbol,

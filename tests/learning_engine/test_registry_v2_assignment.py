@@ -46,7 +46,9 @@ def test_assign_champion_rejects_missing_calibration(
     )
     conn = MagicMock()
     with pytest.raises(HTTPException) as exc:
-        assign_champion(conn, settings_cal_req, model_name="take_trade_prob", run_id=rid)
+        assign_champion(
+            conn, settings_cal_req, model_name="take_trade_prob", run_id=rid
+        )
     assert exc.value.status_code == 400
 
 
@@ -82,7 +84,9 @@ def test_assign_champion_accepts_calibrated_run(
         lambda *a, **k: None,
     )
     conn = MagicMock()
-    out = assign_champion(conn, settings_cal_req, model_name="take_trade_prob", run_id=rid)
+    out = assign_champion(
+        conn, settings_cal_req, model_name="take_trade_prob", run_id=rid
+    )
     assert out["status"] == "ok"
     repo_model_runs.clear_promoted_model.assert_called_once()
     conn.execute.assert_called()

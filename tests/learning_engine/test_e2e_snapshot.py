@@ -9,7 +9,10 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 from learning_engine.e2e.qc import derive_trade_close_qc_labels
-from learning_engine.e2e.snapshot import build_e2e_snapshot_from_signal_row, initial_outcomes_json
+from learning_engine.e2e.snapshot import (
+    build_e2e_snapshot_from_signal_row,
+    initial_outcomes_json,
+)
 
 
 def test_build_snapshot_extracts_specialists_and_stop_budget() -> None:
@@ -53,8 +56,14 @@ def test_build_snapshot_extracts_specialists_and_stop_budget() -> None:
     }
     snap = build_e2e_snapshot_from_signal_row(row)
     assert snap["snapshot_schema_version"] == "e2e-snapshot-v1"
-    assert snap["proposal_and_votes"]["router_arbitration"]["selected_trade_action"] == "allow_trade"
-    assert snap["stop_and_execution_quality"]["stop_budget_assessment"]["policy_version"] == "stop-budget-v2"
+    assert (
+        snap["proposal_and_votes"]["router_arbitration"]["selected_trade_action"]
+        == "allow_trade"
+    )
+    assert (
+        snap["stop_and_execution_quality"]["stop_budget_assessment"]["policy_version"]
+        == "stop-budget-v2"
+    )
     assert snap["final_decision"]["trade_action"] == "allow_trade"
     out0 = initial_outcomes_json(row)
     assert out0["shadow"] is not None

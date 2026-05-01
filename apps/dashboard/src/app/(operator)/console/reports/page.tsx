@@ -31,15 +31,16 @@ export default async function ReportsPage() {
           Live-blockierende Nachweise: <strong>{liveBlockers.length}</strong>
         </p>
         <p className="muted small">
-          Kein 10/10 ohne verifizierten Nachweis. Fehlende Reports bleiben fail-closed.
+          Kein 10/10 ohne verifizierten Nachweis. Fehlende Reports bleiben
+          fail-closed.
         </p>
       </div>
 
       <div className="panel">
         <h2>Maschinelle Owner-Freigabe (Private Live)</h2>
         <p>
-          Datei: <span className="mono-small">{ownerGate.fileRelative}</span> (gitignored,
-          nicht committen)
+          Datei: <span className="mono-small">{ownerGate.fileRelative}</span>{" "}
+          (gitignored, nicht committen)
         </p>
         <p>
           Status:{" "}
@@ -50,12 +51,18 @@ export default async function ReportsPage() {
                 ? "Datei ungültig"
                 : "Datei fehlt"}
           </strong>
-          {ownerGate.scorecardBlocksPrivateLive ? " — blockiert private_live_allowed" : ""}
+          {ownerGate.scorecardBlocksPrivateLive
+            ? " — blockiert private_live_allowed"
+            : ""}
         </p>
         <p className="muted small">{ownerGate.summaryDe}</p>
         <p className="muted small">
-          Template: <span className="mono-small">{ownerGate.templateRelative}</span> — Ausführung:{" "}
-          <span className="mono-small">scripts/production_readiness_scorecard.py</span>
+          Template:{" "}
+          <span className="mono-small">{ownerGate.templateRelative}</span> —
+          Ausführung:{" "}
+          <span className="mono-small">
+            scripts/production_readiness_scorecard.py
+          </span>
         </p>
       </div>
 
@@ -108,18 +115,22 @@ export default async function ReportsPage() {
         <h2>Evidence-Dokumentation und Skripte</h2>
         <ul className="news-list">
           <li>
-            <Link href={consolePath("system-health-map")}>Systemstatus prüfen</Link>
+            <Link href={consolePath("system-health-map")}>
+              Systemstatus prüfen
+            </Link>
           </li>
           <li>
             <span className="mono-small">tools/check_10_10_evidence.py</span>
           </li>
           <li>
-            <span className="mono-small">scripts/production_readiness_scorecard.py</span>
+            <span className="mono-small">
+              scripts/production_readiness_scorecard.py
+            </span>
           </li>
         </ul>
         <p className="muted small">
-          Diese Seite startet keine Scripts aus der UI. Ausführung erfolgt nur explizit im
-          kontrollierten Operator-Workflow.
+          Diese Seite startet keine Scripts aus der UI. Ausführung erfolgt nur
+          explizit im kontrollierten Operator-Workflow.
         </p>
       </div>
     </>

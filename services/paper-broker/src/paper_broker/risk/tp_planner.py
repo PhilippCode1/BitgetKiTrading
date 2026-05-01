@@ -4,10 +4,10 @@ from decimal import Decimal
 from typing import Any
 
 import psycopg
+from shared_py.exit_engine import EXIT_POLICY_VERSION, merge_exit_build_overrides
 
 from paper_broker.config import PaperBrokerSettings
 from paper_broker.risk.market_data import fetch_target_zone_drawings, zone_mid_price
-from shared_py.exit_engine import EXIT_POLICY_VERSION, merge_exit_build_overrides
 
 
 def _atr_targets(

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import psycopg
@@ -44,8 +44,12 @@ def fetch_monitor_open_alerts(
                 "message": str(data["message"]),
                 "details": _j(data.get("details")) or {},
                 "state": str(data["state"]),
-                "created_ts": data["created_ts"].isoformat() if data.get("created_ts") else None,
-                "updated_ts": data["updated_ts"].isoformat() if data.get("updated_ts") else None,
+                "created_ts": (
+                    data["created_ts"].isoformat() if data.get("created_ts") else None
+                ),
+                "updated_ts": (
+                    data["updated_ts"].isoformat() if data.get("updated_ts") else None
+                ),
             }
         )
     return out
@@ -74,15 +78,23 @@ def fetch_alert_outbox_recent(
         out.append(
             {
                 "alert_id": str(data["alert_id"]),
-                "created_ts": data["created_ts"].isoformat() if data.get("created_ts") else None,
+                "created_ts": (
+                    data["created_ts"].isoformat() if data.get("created_ts") else None
+                ),
                 "alert_type": str(data["alert_type"]),
                 "severity": str(data["severity"]),
                 "symbol": data.get("symbol"),
                 "timeframe": data.get("timeframe"),
                 "dedupe_key": data.get("dedupe_key"),
-                "chat_id": int(data["chat_id"]) if data.get("chat_id") is not None else None,
+                "chat_id": (
+                    int(data["chat_id"]) if data.get("chat_id") is not None else None
+                ),
                 "state": str(data["state"]),
-                "attempt_count": int(data["attempt_count"]) if data.get("attempt_count") is not None else None,
+                "attempt_count": (
+                    int(data["attempt_count"])
+                    if data.get("attempt_count") is not None
+                    else None
+                ),
                 "last_error": data.get("last_error"),
                 "telegram_message_id": data.get("telegram_message_id"),
                 "sent_ts": data["sent_ts"].isoformat() if data.get("sent_ts") else None,
@@ -160,11 +172,15 @@ def fetch_ops_summary(conn: psycopg.Connection[Any]) -> dict[str, Any]:
         """
     ).fetchone()
     safety_latch_active = (
-        str(dict(latch_row).get("action") or "") == "arm" if latch_row is not None else False
+        str(dict(latch_row).get("action") or "") == "arm"
+        if latch_row is not None
+        else False
     )
 
     outbox_counts = {str(row["state"]): int(row["total"]) for row in outbox_rows}
-    latest_reconcile_data = dict(latest_reconcile) if latest_reconcile is not None else {}
+    latest_reconcile_data = (
+        dict(latest_reconcile) if latest_reconcile is not None else {}
+    )
     details = _j(latest_reconcile_data.get("details_json")) or {}
     drift = details.get("drift") if isinstance(details, dict) else {}
     latest_reconcile_ts = latest_reconcile_data.get("created_ts")
@@ -173,7 +189,9 @@ def fetch_ops_summary(conn: psycopg.Connection[Any]) -> dict[str, Any]:
 
     return {
         "monitor": {
-            "open_alert_count": int(alert_count_row["total"]) if alert_count_row is not None else 0,
+            "open_alert_count": (
+                int(alert_count_row["total"]) if alert_count_row is not None else 0
+            ),
         },
         "alert_engine": {
             "outbox_pending": int(outbox_counts.get("pending", 0)),
@@ -182,25 +200,29 @@ def fetch_ops_summary(conn: psycopg.Connection[Any]) -> dict[str, Any]:
         },
         "live_broker": {
             "latest_reconcile_status": latest_reconcile_data.get("status"),
-            "latest_reconcile_created_ts": latest_reconcile_ts.isoformat()
-            if hasattr(latest_reconcile_ts, "isoformat")
-            else None,
+            "latest_reconcile_created_ts": (
+                latest_reconcile_ts.isoformat()
+                if hasattr(latest_reconcile_ts, "isoformat")
+                else None
+            ),
             "latest_reconcile_age_ms": latest_reconcile_age_ms,
-            "latest_reconcile_drift_total": int(
-                drift.get("total_count") or 0
-            )
-            if isinstance(drift, dict)
-            else 0,
-            "active_kill_switch_count": int(kill_switch_count_row["total"])
-            if kill_switch_count_row is not None
-            else 0,
-            "last_fill_created_ts": last_fill_ts.isoformat()
-            if hasattr(last_fill_ts, "isoformat")
-            else None,
+            "latest_reconcile_drift_total": (
+                int(drift.get("total_count") or 0) if isinstance(drift, dict) else 0
+            ),
+            "active_kill_switch_count": (
+                int(kill_switch_count_row["total"])
+                if kill_switch_count_row is not None
+                else 0
+            ),
+            "last_fill_created_ts": (
+                last_fill_ts.isoformat() if hasattr(last_fill_ts, "isoformat") else None
+            ),
             "last_fill_age_ms": _age_ms(last_fill_ts),
-            "critical_audit_count_24h": int(critical_audit_row["total"])
-            if critical_audit_row is not None
-            else 0,
+            "critical_audit_count_24h": (
+                int(critical_audit_row["total"])
+                if critical_audit_row is not None
+                else 0
+            ),
             "order_status_counts": {
                 str(row["status"]): int(row["total"]) for row in order_rows
             },
@@ -222,8 +244,10 @@ def _age_ms(value: Any) -> int | None:
     else:
         return None
     if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
-    return max(0, int((datetime.now(timezone.utc) - parsed.astimezone(timezone.utc)).total_seconds() * 1000))
+        parsed = parsed.replace(tzinfo=UTC)
+    return max(
+        0, int((datetime.now(UTC) - parsed.astimezone(UTC)).total_seconds() * 1000)
+    )
 
 
 def fetch_self_healing_state_rows(

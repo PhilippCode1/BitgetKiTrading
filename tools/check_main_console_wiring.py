@@ -40,7 +40,14 @@ REQUIRED_AREAS: tuple[tuple[str, str], ...] = (
     ("settings", "Settings"),
 )
 
-REQUIRED_STATUS_TERMS = ("loading", "ready", "empty", "degraded", "error", "unavailable")
+REQUIRED_STATUS_TERMS = (
+    "loading",
+    "ready",
+    "empty",
+    "degraded",
+    "error",
+    "unavailable",
+)
 REQUIRED_COLUMN_TERMS = (
     "ui-komponente",
     "bff-route",
@@ -71,7 +78,13 @@ def _read_text(path: Path) -> str:
 
 
 def _norm(text: str) -> str:
-    return text.lower().replace("ä", "ae").replace("ö", "oe").replace("ü", "ue").replace("ß", "ss")
+    return (
+        text.lower()
+        .replace("ä", "ae")
+        .replace("ö", "oe")
+        .replace("ü", "ue")
+        .replace("ß", "ss")
+    )
 
 
 def validate_wiring(root: Path = ROOT, *, strict: bool = False) -> list[WiringIssue]:
@@ -85,39 +98,100 @@ def validate_wiring(root: Path = ROOT, *, strict: bool = False) -> list[WiringIs
         _issue(issues, STATUS_ERROR, "doc_missing", f"missing {DOC_PATH.as_posix()}")
         return issues
     if not api_dir.is_dir():
-        _issue(issues, STATUS_ERROR, "dashboard_api_missing", f"missing {DASHBOARD_API_PATH.as_posix()}")
+        _issue(
+            issues,
+            STATUS_ERROR,
+            "dashboard_api_missing",
+            f"missing {DASHBOARD_API_PATH.as_posix()}",
+        )
     if not app_dir.is_dir():
-        _issue(issues, STATUS_ERROR, "dashboard_app_missing", f"missing {DASHBOARD_APP_PATH.as_posix()}")
+        _issue(
+            issues,
+            STATUS_ERROR,
+            "dashboard_app_missing",
+            f"missing {DASHBOARD_APP_PATH.as_posix()}",
+        )
     if not evidence.is_file():
-        _issue(issues, STATUS_ERROR, "evidence_matrix_missing", f"missing {EVIDENCE_PATH.as_posix()}")
+        _issue(
+            issues,
+            STATUS_ERROR,
+            "evidence_matrix_missing",
+            f"missing {EVIDENCE_PATH.as_posix()}",
+        )
 
     text = _read_text(doc)
     normalized = _norm(text)
 
     for slug, label in REQUIRED_AREAS:
         if slug not in normalized and _norm(label) not in normalized:
-            _issue(issues, STATUS_ERROR, "required_area_missing", f"missing required area: {label}")
+            _issue(
+                issues,
+                STATUS_ERROR,
+                "required_area_missing",
+                f"missing required area: {label}",
+            )
 
     for term in REQUIRED_STATUS_TERMS:
         if term not in normalized:
-            _issue(issues, STATUS_ERROR, "status_model_term_missing", f"missing status model term: {term}")
+            _issue(
+                issues,
+                STATUS_ERROR,
+                "status_model_term_missing",
+                f"missing status model term: {term}",
+            )
 
     for term in REQUIRED_COLUMN_TERMS:
         if term not in normalized:
-            _issue(issues, STATUS_ERROR, "wiring_column_missing", f"missing wiring field: {term}")
+            _issue(
+                issues,
+                STATUS_ERROR,
+                "wiring_column_missing",
+                f"missing wiring field: {term}",
+            )
 
     if "fehlermeld" not in normalized and "fehlerzustand" not in normalized:
-        _issue(issues, STATUS_ERROR, "error_state_doc_missing", "German error-state documentation missing")
+        _issue(
+            issues,
+            STATUS_ERROR,
+            "error_state_doc_missing",
+            "German error-state documentation missing",
+        )
     if "empty state" not in normalized:
-        _issue(issues, STATUS_ERROR, "empty_state_doc_missing", "empty-state documentation missing")
+        _issue(
+            issues,
+            STATUS_ERROR,
+            "empty_state_doc_missing",
+            "empty-state documentation missing",
+        )
     if "loading" not in normalized and "ladezustand" not in normalized:
-        _issue(issues, STATUS_ERROR, "loading_state_doc_missing", "loading-state documentation missing")
+        _issue(
+            issues,
+            STATUS_ERROR,
+            "loading_state_doc_missing",
+            "loading-state documentation missing",
+        )
     if "/api/dashboard/" not in normalized:
-        _issue(issues, STATUS_ERROR, "bff_doc_missing", "BFF routes under /api/dashboard are not documented")
-    if "keine secrets im browser" not in normalized and "keine secrets" not in normalized:
-        _issue(issues, STATUS_ERROR, "browser_secret_rule_missing", "browser secret rule missing")
+        _issue(
+            issues,
+            STATUS_ERROR,
+            "bff_doc_missing",
+            "BFF routes under /api/dashboard are not documented",
+        )
+    if (
+        "keine secrets im browser" not in normalized
+        and "keine secrets" not in normalized
+    ):
+        _issue(
+            issues,
+            STATUS_ERROR,
+            "browser_secret_rule_missing",
+            "browser secret rule missing",
+        )
 
-    if re.search(r"pflicht(?:bereich|karte|route|secret|variable)?[^\n]{0,80}(billing|customer|payment|checkout)", normalized):
+    if re.search(
+        r"pflicht(?:bereich|karte|route|secret|variable)?[^\n]{0,80}(billing|customer|payment|checkout)",
+        normalized,
+    ):
         _issue(
             issues,
             STATUS_ERROR,
@@ -135,12 +209,22 @@ def validate_wiring(root: Path = ROOT, *, strict: bool = False) -> list[WiringIs
         )
         for ref in required_refs:
             if ref not in evidence_norm:
-                _issue(issues, STATUS_ERROR, "evidence_reference_missing", f"evidence matrix missing {ref}")
+                _issue(
+                    issues,
+                    STATUS_ERROR,
+                    "evidence_reference_missing",
+                    f"evidence matrix missing {ref}",
+                )
 
     if strict:
         route_count = len(list(api_dir.rglob("route.ts"))) if api_dir.is_dir() else 0
         if route_count < 1:
-            _issue(issues, STATUS_ERROR, "dashboard_api_routes_missing", "no dashboard API route.ts files found")
+            _issue(
+                issues,
+                STATUS_ERROR,
+                "dashboard_api_routes_missing",
+                "no dashboard API route.ts files found",
+            )
     return issues
 
 

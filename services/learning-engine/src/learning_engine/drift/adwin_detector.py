@@ -59,9 +59,7 @@ def _norm_sf(x: float) -> float:
     return 0.5 * math.erfc(x / math.sqrt(2.0))
 
 
-def welch_t_two_sided_pvalue(
-    a: list[float], b: list[float]
-) -> float:
+def welch_t_two_sided_pvalue(a: list[float], b: list[float]) -> float:
     """Grob: zwei Stichproben, ungleiche Varianz (Welch); Normalapproximation fuer grosse n."""
     if len(a) < 2 or len(b) < 2:
         return 1.0
@@ -103,9 +101,7 @@ class MseAdwinDriftMonitor:
     max_window: int = 200
     min_confidence: float = 0.99
     adwin: SimpleAdwin = field(
-        default_factory=lambda: SimpleAdwin(
-            delta=0.002, min_window=20, max_window=200
-        )
+        default_factory=lambda: SimpleAdwin(delta=0.002, min_window=20, max_window=200)
     )
 
     def __post_init__(self) -> None:
@@ -135,13 +131,7 @@ class MseAdwinDriftMonitor:
         )
         conf = 1.0 - p
         if not split_hit:
-            return MseDriftStep(
-                index=n - 1, drift=False, p_value=p, confidence=conf
-            )
+            return MseDriftStep(index=n - 1, drift=False, p_value=p, confidence=conf)
         if conf > self.min_confidence:
-            return MseDriftStep(
-                index=n - 1, drift=True, p_value=p, confidence=conf
-            )
-        return MseDriftStep(
-            index=n - 1, drift=False, p_value=p, confidence=conf
-        )
+            return MseDriftStep(index=n - 1, drift=True, p_value=p, confidence=conf)
+        return MseDriftStep(index=n - 1, drift=False, p_value=p, confidence=conf)

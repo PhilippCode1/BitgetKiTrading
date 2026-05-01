@@ -110,4 +110,8 @@ def fetch_newsapi_everything(settings: NewsEngineSettings) -> list[NewsCandidate
     except Exception as exc:  # pragma: no cover
         logger.warning("newsapi everything fehlgeschlagen: %s", exc)
         return []
-    return [c for r in _articles_from_payload(data) if (c := _row_to_candidate(r)) is not None]
+    return [
+        c
+        for r in _articles_from_payload(data)
+        if (c := _row_to_candidate(r)) is not None
+    ]

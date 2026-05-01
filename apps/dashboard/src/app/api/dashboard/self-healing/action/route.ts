@@ -64,13 +64,20 @@ export async function POST(req: Request) {
         { status: 400 },
       );
     }
-    const gres = await fetchGatewayUpstream("/v1/ops/self-healing/restart", auth.authorization, {
-      method: "POST",
-      body: JSON.stringify({ service_name: svc }),
-    });
+    const gres = await fetchGatewayUpstream(
+      "/v1/ops/self-healing/restart",
+      auth.authorization,
+      {
+        method: "POST",
+        body: JSON.stringify({ service_name: svc }),
+      },
+    );
     if (!gres.ok) {
       const tx = (await gres.text()).slice(0, 500);
-      worker_restart_result = { ok: false, detail: `HTTP ${gres.status}: ${tx}` };
+      worker_restart_result = {
+        ok: false,
+        detail: `HTTP ${gres.status}: ${tx}`,
+      };
     } else {
       worker_restart_result = { ok: true };
     }
@@ -113,7 +120,8 @@ export async function POST(req: Request) {
       timeline: [...(i.timeline ?? [])],
     }));
   } catch (e) {
-    self_healing_error = e instanceof Error ? e.message : "self_healing_status_failed";
+    self_healing_error =
+      e instanceof Error ? e.message : "self_healing_status_failed";
   }
 
   const raw: SelfHealingRawInputs = {

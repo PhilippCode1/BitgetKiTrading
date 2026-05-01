@@ -115,7 +115,9 @@ def _public_deposit_intent(row: dict[str, Any]) -> dict[str, Any]:
         "last_error_public": row.get("last_error_public"),
     }
     if str(row.get("status") or "") == "succeeded":
-        d["receipt"] = row.get("receipt_json") if row.get("receipt_json") is not None else {}
+        d["receipt"] = (
+            row.get("receipt_json") if row.get("receipt_json") is not None else {}
+        )
     sid = row.get("provider_checkout_session_id")
     if sid:
         d["provider_checkout_session_id_masked"] = _mask_checkout_ref(str(sid))
@@ -194,7 +196,9 @@ def _ensure_commercial(settings: Any) -> None:
         raise HTTPException(status_code=404, detail="commercial module disabled")
 
 
-def _require_tenant_commercial_state(conn: psycopg.Connection[Any], tenant_id: str) -> None:
+def _require_tenant_commercial_state(
+    conn: psycopg.Connection[Any], tenant_id: str
+) -> None:
     row = conn.execute(
         "SELECT 1 FROM app.tenant_commercial_state WHERE tenant_id = %s",
         (tenant_id,),
@@ -319,9 +323,7 @@ def download_apex_regulatory_audit_pdf(
     _ensure_commercial(settings)
     tid = _resolve_target_tenant(auth, None)
     if time_to < time_from:
-        raise HTTPException(
-            status_code=400, detail="invalid_range: to must be >= from"
-        )
+        raise HTTPException(status_code=400, detail="invalid_range: to must be >= from")
     t0, t1 = time_from, time_to
     if t0.tzinfo is None:
         t0 = t0.replace(tzinfo=UTC)
@@ -355,8 +357,10 @@ def download_apex_regulatory_audit_pdf(
         forensics_rows=forensics,
         global_ledger_chain_tip_hash_hex=tip,
     )
-    rec = re.sub(r"[^a-zA-Z0-9_.-]+", "-", (tid or "tenant")[:48]).strip("-") or "tenant"
-    name = f'regulatory-apex-forensics_{rec}.pdf'
+    rec = (
+        re.sub(r"[^a-zA-Z0-9_.-]+", "-", (tid or "tenant")[:48]).strip("-") or "tenant"
+    )
+    name = f"regulatory-apex-forensics_{rec}.pdf"
     record_gateway_audit_line(
         request,
         auth,
@@ -406,7 +410,10 @@ def customer_lifecycle_me(
         except psycopg.errors.UndefinedTable:
             raise HTTPException(
                 status_code=503,
-                detail={"code": "LIFECYCLE_MIGRATION_REQUIRED", "message": "607_tenant_customer_lifecycle"},
+                detail={
+                    "code": "LIFECYCLE_MIGRATION_REQUIRED",
+                    "message": "607_tenant_customer_lifecycle",
+                },
             ) from None
     if row is None:
         raise HTTPException(status_code=404, detail="tenant lifecycle not provisioned")
@@ -438,7 +445,10 @@ def customer_lifecycle_audit(
         except psycopg.errors.UndefinedTable:
             raise HTTPException(
                 status_code=503,
-                detail={"code": "LIFECYCLE_MIGRATION_REQUIRED", "message": "607_tenant_customer_lifecycle"},
+                detail={
+                    "code": "LIFECYCLE_MIGRATION_REQUIRED",
+                    "message": "607_tenant_customer_lifecycle",
+                },
             ) from None
     record_gateway_audit_line(
         request, auth, "commerce_customer_lifecycle_audit", extra={"tenant_id": tid}
@@ -461,8 +471,8 @@ def customer_lifecycle_start_trial(
     dsn = get_database_url()
     try:
         with gateway_psycopg(
-        dsn, row_factory=dict_row, connect_timeout=5, tenant_id=tid
-    ) as conn:
+            dsn, row_factory=dict_row, connect_timeout=5, tenant_id=tid
+        ) as conn:
             _require_tenant_commercial_state(conn, tid)
             transition_lifecycle(
                 conn,
@@ -476,12 +486,18 @@ def customer_lifecycle_start_trial(
     except psycopg.errors.UndefinedTable:
         raise HTTPException(
             status_code=503,
-            detail={"code": "LIFECYCLE_MIGRATION_REQUIRED", "message": "607_tenant_customer_lifecycle"},
+            detail={
+                "code": "LIFECYCLE_MIGRATION_REQUIRED",
+                "message": "607_tenant_customer_lifecycle",
+            },
         ) from None
     except ValueError as e:
         raise _http_lifecycle_reject(str(e)) from e
     record_gateway_audit_line(
-        request, auth, "commerce_customer_lifecycle_start_trial", extra={"tenant_id": tid}
+        request,
+        auth,
+        "commerce_customer_lifecycle_start_trial",
+        extra={"tenant_id": tid},
     )
     with gateway_psycopg(
         dsn, row_factory=dict_row, connect_timeout=5, tenant_id=tid
@@ -506,8 +522,8 @@ def customer_lifecycle_open_contract(
     dsn = get_database_url()
     try:
         with gateway_psycopg(
-        dsn, row_factory=dict_row, connect_timeout=5, tenant_id=tid
-    ) as conn:
+            dsn, row_factory=dict_row, connect_timeout=5, tenant_id=tid
+        ) as conn:
             _require_tenant_commercial_state(conn, tid)
             apply_trial_expiry_if_due(conn, tenant_id=tid, actor=auth.actor)
             row = fetch_tenant_lifecycle_row(conn, tenant_id=tid)
@@ -534,12 +550,18 @@ def customer_lifecycle_open_contract(
     except psycopg.errors.UndefinedTable:
         raise HTTPException(
             status_code=503,
-            detail={"code": "LIFECYCLE_MIGRATION_REQUIRED", "message": "607_tenant_customer_lifecycle"},
+            detail={
+                "code": "LIFECYCLE_MIGRATION_REQUIRED",
+                "message": "607_tenant_customer_lifecycle",
+            },
         ) from None
     except ValueError as e:
         raise _http_lifecycle_reject(str(e)) from e
     record_gateway_audit_line(
-        request, auth, "commerce_customer_lifecycle_open_contract", extra={"tenant_id": tid}
+        request,
+        auth,
+        "commerce_customer_lifecycle_open_contract",
+        extra={"tenant_id": tid},
     )
     with gateway_psycopg(
         dsn, row_factory=dict_row, connect_timeout=5, tenant_id=tid
@@ -579,8 +601,8 @@ def customer_lifecycle_ack_contract_signed(
     dsn = get_database_url()
     try:
         with gateway_psycopg(
-        dsn, row_factory=dict_row, connect_timeout=5, tenant_id=tid
-    ) as conn:
+            dsn, row_factory=dict_row, connect_timeout=5, tenant_id=tid
+        ) as conn:
             _require_tenant_commercial_state(conn, tid)
             transition_lifecycle(
                 conn,
@@ -594,7 +616,10 @@ def customer_lifecycle_ack_contract_signed(
     except psycopg.errors.UndefinedTable:
         raise HTTPException(
             status_code=503,
-            detail={"code": "LIFECYCLE_MIGRATION_REQUIRED", "message": "607_tenant_customer_lifecycle"},
+            detail={
+                "code": "LIFECYCLE_MIGRATION_REQUIRED",
+                "message": "607_tenant_customer_lifecycle",
+            },
         ) from None
     except ValueError as e:
         raise _http_lifecycle_reject(str(e)) from e
@@ -676,7 +701,9 @@ def customer_integrations(
                 tg_public["connected"] = True
                 vt = bind.get("verified_ts")
                 tg_public["verified_ts"] = vt.isoformat() if vt is not None else None
-                tg_public["chat_ref_masked"] = mask_chat_id(int(bind["telegram_chat_id"]))
+                tg_public["chat_ref_masked"] = mask_chat_id(
+                    int(bind["telegram_chat_id"])
+                )
             else:
                 row = conn.execute(
                     """
@@ -738,8 +765,8 @@ def customer_telegram_start_link(
     dsn = get_database_url()
     try:
         with gateway_psycopg(
-        dsn, row_factory=dict_row, connect_timeout=5, tenant_id=tid
-    ) as conn:
+            dsn, row_factory=dict_row, connect_timeout=5, tenant_id=tid
+        ) as conn:
             _require_tenant_commercial_state(conn, tid)
             with conn.transaction():
                 token, exp = create_pending_link(conn, tenant_id=tid, ttl_hours=24)
@@ -842,7 +869,10 @@ def customer_telegram_notify_prefs_get(
                 detail="customer telegram notify prefs table missing (run migrations)",
             ) from e
     record_gateway_audit_line(
-        request, auth, "commerce_customer_telegram_notify_prefs_read", extra={"tenant_id": tid}
+        request,
+        auth,
+        "commerce_customer_telegram_notify_prefs_read",
+        extra={"tenant_id": tid},
     )
     return {"tenant_id_masked": _mask_tenant_id(tid), "prefs": prefs}
 
@@ -883,7 +913,10 @@ def customer_telegram_notify_prefs_patch(
                 detail="customer telegram notify prefs table missing (run migrations)",
             ) from e
     record_gateway_audit_line(
-        request, auth, "commerce_customer_telegram_notify_prefs_patch", extra={"tenant_id": tid}
+        request,
+        auth,
+        "commerce_customer_telegram_notify_prefs_patch",
+        extra={"tenant_id": tid},
     )
     return {"tenant_id_masked": _mask_tenant_id(tid), "prefs": after}
 
@@ -926,7 +959,9 @@ def customer_balance(
     billing_status = build_billing_status_public(
         prepaid_balance_list_usd=prepaid,
         daily_fee_usd=Decimal(str(s.billing_daily_api_fee_usd.strip() or "50")),
-        min_new_trade_usd=Decimal(str(s.billing_min_balance_new_trade_usd.strip() or "50")),
+        min_new_trade_usd=Decimal(
+            str(s.billing_min_balance_new_trade_usd.strip() or "50")
+        ),
         warning_below_usd=Decimal(str(s.billing_warning_balance_usd.strip() or "100")),
         critical_below_usd=Decimal(str(s.billing_critical_balance_usd.strip() or "50")),
     )
@@ -988,7 +1023,10 @@ def customer_payments_capabilities(
     _ensure_commercial(settings)
     tid = _resolve_target_tenant(auth, None)
     record_gateway_audit_line(
-        request, auth, "commerce_customer_payments_capabilities", extra={"tenant_id": tid}
+        request,
+        auth,
+        "commerce_customer_payments_capabilities",
+        extra={"tenant_id": tid},
     )
     return build_payment_capabilities(settings)
 
@@ -1092,7 +1130,10 @@ def customer_deposit_intent_get(
         "commerce_customer_deposit_intent_get",
         extra={"tenant_id": tid, "intent_id": str(intent_id)},
     )
-    return {"tenant_id_masked": _mask_tenant_id(tid), "intent": _public_deposit_intent(row)}
+    return {
+        "tenant_id_masked": _mask_tenant_id(tid),
+        "intent": _public_deposit_intent(row),
+    }
 
 
 @customer_router.get(
@@ -1144,8 +1185,8 @@ def admin_lifecycle_transition(
     dsn = get_database_url()
     try:
         with gateway_psycopg(
-        dsn, row_factory=dict_row, connect_timeout=5, tenant_id=tid
-    ) as conn:
+            dsn, row_factory=dict_row, connect_timeout=5, tenant_id=tid
+        ) as conn:
             _require_tenant_commercial_state(conn, tid)
             transition_lifecycle(
                 conn,
@@ -1159,7 +1200,10 @@ def admin_lifecycle_transition(
     except psycopg.errors.UndefinedTable:
         raise HTTPException(
             status_code=503,
-            detail={"code": "LIFECYCLE_MIGRATION_REQUIRED", "message": "607_tenant_customer_lifecycle"},
+            detail={
+                "code": "LIFECYCLE_MIGRATION_REQUIRED",
+                "message": "607_tenant_customer_lifecycle",
+            },
         ) from None
     except ValueError as e:
         raise _http_lifecycle_reject(str(e)) from e
@@ -1189,8 +1233,8 @@ def admin_lifecycle_set_email_verified(
     dsn = get_database_url()
     try:
         with gateway_psycopg(
-        dsn, row_factory=dict_row, connect_timeout=5, tenant_id=tid
-    ) as conn:
+            dsn, row_factory=dict_row, connect_timeout=5, tenant_id=tid
+        ) as conn:
             _require_tenant_commercial_state(conn, tid)
             set_email_verified(
                 conn,
@@ -1201,7 +1245,10 @@ def admin_lifecycle_set_email_verified(
     except psycopg.errors.UndefinedTable:
         raise HTTPException(
             status_code=503,
-            detail={"code": "LIFECYCLE_MIGRATION_REQUIRED", "message": "607_tenant_customer_lifecycle"},
+            detail={
+                "code": "LIFECYCLE_MIGRATION_REQUIRED",
+                "message": "607_tenant_customer_lifecycle",
+            },
         ) from None
     except ValueError as e:
         raise _http_lifecycle_reject(str(e)) from e

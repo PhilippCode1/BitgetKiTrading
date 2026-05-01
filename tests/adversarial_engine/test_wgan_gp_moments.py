@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import numpy as np
-
 import pytest
 
 torch = pytest.importorskip("torch")
 
-from adversarial_engine.models.wgan_gp import AdversarialMarketSimulator, wgan_gp_training_step
+from adversarial_engine.models.wgan_gp import (
+    AdversarialMarketSimulator,
+    wgan_gp_training_step,
+)
 
 
 def test_generate_paths_high_toxicity_heavy_tails() -> None:

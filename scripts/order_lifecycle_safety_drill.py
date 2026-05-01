@@ -11,8 +11,16 @@ for import_path in (ROOT, SHARED_SRC):
     if str(import_path) not in sys.path:
         sys.path.insert(0, str(import_path))
 
-from shared_py.exit_safety import ReduceOnlyExitRequest, build_exit_block_reasons_de, validate_emergency_flatten_request, validate_reduce_only_exit  # noqa: E402
-from shared_py.order_lifecycle import OrderSubmitContext, evaluate_submit_safety  # noqa: E402
+from shared_py.exit_safety import (  # noqa: E402
+    ReduceOnlyExitRequest,
+    build_exit_block_reasons_de,
+    validate_emergency_flatten_request,
+    validate_reduce_only_exit,
+)
+from shared_py.order_lifecycle import (  # noqa: E402
+    OrderSubmitContext,
+    evaluate_submit_safety,
+)
 
 
 def _simulated_report() -> str:
@@ -22,16 +30,24 @@ def _simulated_report() -> str:
         OrderSubmitContext("exec-1", "idem-1", "cid-a", set(), "submit_prepared", "ack")
     )
     timeout_state, timeout_reasons = evaluate_submit_safety(
-        OrderSubmitContext("exec-2", "idem-2", "cid-b", set(), "submit_prepared", "timeout")
+        OrderSubmitContext(
+            "exec-2", "idem-2", "cid-b", set(), "submit_prepared", "timeout"
+        )
     )
     duplicate_state, duplicate_reasons = evaluate_submit_safety(
-        OrderSubmitContext("exec-3", "idem-3", "cid-dup", {"cid-dup"}, "submit_prepared", "ack")
+        OrderSubmitContext(
+            "exec-3", "idem-3", "cid-dup", {"cid-dup"}, "submit_prepared", "ack"
+        )
     )
     reduce_reasons = validate_reduce_only_exit(
-        ReduceOnlyExitRequest("BTCUSDT", 0.2, 1.0, True, [50.0, 50.0], 0.1, True, None, False)
+        ReduceOnlyExitRequest(
+            "BTCUSDT", 0.2, 1.0, True, [50.0, 50.0], 0.1, True, None, False
+        )
     )
     emergency_reasons = validate_emergency_flatten_request(
-        ReduceOnlyExitRequest("BTCUSDT", 1.2, 1.0, True, [100.0], 0.1, False, "kill_switch_active", True)
+        ReduceOnlyExitRequest(
+            "BTCUSDT", 1.2, 1.0, True, [100.0], 0.1, False, "kill_switch_active", True
+        )
     )
 
     lines.extend(
@@ -66,7 +82,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Order-Lifecycle/Exit-Safety-Drill")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--mode", default="simulated")
-    parser.add_argument("--output-md", default="reports/order_lifecycle_safety_drill_sample.md")
+    parser.add_argument(
+        "--output-md", default="reports/order_lifecycle_safety_drill_sample.md"
+    )
     args = parser.parse_args()
     if args.mode != "simulated":
         raise SystemExit("Nur --mode simulated ist lokal erlaubt.")

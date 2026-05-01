@@ -9,7 +9,8 @@ in target_projection_summary fuer Audit verfuegbar.
 from __future__ import annotations
 
 import math
-from typing import Any, Mapping
+from collections.abc import Mapping
+from typing import Any
 
 PROJECTION_ADJUSTMENT_VERSION = "1.0.0"
 
@@ -89,9 +90,11 @@ def apply_projection_cost_adjustment(
             "expected_mae_bps": None if eff_mae is None else round(eff_mae, 6),
             "expected_mfe_bps": None if eff_mfe is None else round(eff_mfe, 6),
         },
-        "safety_stop_buffer_bps": None
-        if safety_stop_buffer_bps is None
-        else round(float(safety_stop_buffer_bps), 6),
+        "safety_stop_buffer_bps": (
+            None
+            if safety_stop_buffer_bps is None
+            else round(float(safety_stop_buffer_bps), 6)
+        ),
         "inputs_used": {
             "spread_bps": spread,
             "execution_cost_bps": exec_cost,

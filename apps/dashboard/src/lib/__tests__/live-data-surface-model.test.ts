@@ -15,9 +15,7 @@ const baseLive = {
   symbol: "BTCUSDT",
   timeframe: "1m",
   server_ts_ms: 1_700_000_000_000,
-  candles: [
-    { time_s: 1, open: 1, high: 1, low: 1, close: 1, volume_usdt: 1 },
-  ],
+  candles: [{ time_s: 1, open: 1, high: 1, low: 1, close: 1, volume_usdt: 1 }],
   latest_signal: null,
   latest_drawings: [],
   latest_news: [],
@@ -106,7 +104,9 @@ describe("live-data-surface-model", () => {
     });
     expect(m.primaryBadge).toBe("PARTIAL");
     expect(
-      m.extraHintKeys.some((k) => k.key === "live.dataSituation.shadowPartialSections"),
+      m.extraHintKeys.some(
+        (k) => k.key === "live.dataSituation.shadowPartialSections",
+      ),
     ).toBe(true);
     expect(m.affectedAreaKeys).toContain("live.dataSituation.areaShadowPanels");
   });

@@ -90,7 +90,11 @@ def decode_swap_context(tx: dict[str, Any], eth_usd: float) -> dict[str, Any] | 
             return {
                 "dex": "uniswap_v2",
                 "token_pair": _pair_label(path),
-                "estimated_volume_usd": notional_eth * eth_usd if notional_eth > 0 else float(amount_in) / 1e6,
+                "estimated_volume_usd": (
+                    notional_eth * eth_usd
+                    if notional_eth > 0
+                    else float(amount_in) / 1e6
+                ),
                 "direction": _direction_from_path(path),
                 "amount_in": int(amount_in),
                 "amount_out_min": int(amount_out_min),
@@ -104,7 +108,9 @@ def decode_swap_context(tx: dict[str, Any], eth_usd: float) -> dict[str, Any] | 
             if not path:
                 return None
             w = _weth_weight(path, weth_l)
-            vol = float(amount_in) / 1e18 * w * eth_usd + float(amount_in) / 1e6 * (1.0 - min(1.0, w))
+            vol = float(amount_in) / 1e18 * w * eth_usd + float(amount_in) / 1e6 * (
+                1.0 - min(1.0, w)
+            )
             return {
                 "dex": "uniswap_v2",
                 "token_pair": _pair_label(path),
@@ -121,7 +127,16 @@ def decode_swap_context(tx: dict[str, Any], eth_usd: float) -> dict[str, Any] | 
                 ],
                 body,
             )[0]
-            token_in, token_out, _fee, _recipient, _deadline, amount_in, _amount_out_min, _sqrt_limit = params
+            (
+                token_in,
+                token_out,
+                _fee,
+                _recipient,
+                _deadline,
+                amount_in,
+                _amount_out_min,
+                _sqrt_limit,
+            ) = params
             ti, tout = token_in.lower(), token_out.lower()
             if weth_l in (ti, tout):
                 amt = int(amount_in)

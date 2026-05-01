@@ -3,8 +3,9 @@ from __future__ import annotations
 from unittest.mock import patch
 
 import pytest
-from llm_orchestrator.exceptions import RetryableLLMError
+
 from llm_orchestrator.constants import LLM_ORCHESTRATOR_API_CONTRACT_VERSION
+from llm_orchestrator.exceptions import RetryableLLMError
 from llm_orchestrator.retry.backoff import sleep_backoff
 
 
@@ -43,7 +44,9 @@ def test_sleep_backoff_invokes_sleep(monkeypatch: pytest.MonkeyPatch) -> None:
     assert sleeps[1] >= sleeps[0]
 
 
-def test_fake_provider_retries_on_retryable(mock_redis_bus, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_fake_provider_retries_on_retryable(
+    mock_redis_bus, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setenv("REDIS_URL", "redis://127.0.0.1:6379/0")
     monkeypatch.setenv("LLM_USE_FAKE_PROVIDER", "true")
     monkeypatch.setenv("LLM_MAX_RETRIES", "4")

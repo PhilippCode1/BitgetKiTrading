@@ -6,7 +6,9 @@ import { render, screen } from "@testing-library/react";
 import { MainConsoleStatusBar } from "@/components/layout/MainConsoleStatusBar";
 import type { ExecutionTierSnapshot, SystemHealthResponse } from "@/lib/types";
 
-function mockTier(partial?: Partial<ExecutionTierSnapshot>): ExecutionTierSnapshot {
+function mockTier(
+  partial?: Partial<ExecutionTierSnapshot>,
+): ExecutionTierSnapshot {
   return {
     schema_version: 1,
     deployment: "local",
@@ -23,7 +25,9 @@ function mockTier(partial?: Partial<ExecutionTierSnapshot>): ExecutionTierSnapsh
   };
 }
 
-function mockHealth(partial?: Partial<SystemHealthResponse>): SystemHealthResponse {
+function mockHealth(
+  partial?: Partial<SystemHealthResponse>,
+): SystemHealthResponse {
   return {
     server_ts_ms: Date.now(),
     symbol: "BTCUSDT",
@@ -69,7 +73,10 @@ describe("MainConsoleStatusBar", () => {
   it("rendert Betriebsmodus-Badge", () => {
     render(
       <MainConsoleStatusBar
-        tier={mockTier({ trading_plane: "live", live_order_submission_enabled: true })}
+        tier={mockTier({
+          trading_plane: "live",
+          live_order_submission_enabled: true,
+        })}
         health={mockHealth()}
         healthError={false}
       />,
@@ -82,7 +89,13 @@ describe("MainConsoleStatusBar", () => {
     render(
       <MainConsoleStatusBar
         tier={mockTier()}
-        health={mockHealth({ aggregate: { level: "degraded", summary_de: "", primary_reason_codes: [] } })}
+        health={mockHealth({
+          aggregate: {
+            level: "degraded",
+            summary_de: "",
+            primary_reason_codes: [],
+          },
+        })}
         healthError={false}
       />,
     );

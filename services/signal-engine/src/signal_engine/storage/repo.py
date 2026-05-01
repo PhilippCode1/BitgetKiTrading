@@ -38,7 +38,9 @@ class SignalRepository:
           AND last_ts_ms <= %s
         """
         with self._connect(row_factory=dict_row) as conn:
-            row = conn.execute(sql, (symbol, _timeframe_aliases(timeframe), max_ts_ms)).fetchone()
+            row = conn.execute(
+                sql, (symbol, _timeframe_aliases(timeframe), max_ts_ms)
+            ).fetchone()
         if row is None:
             return None
         out = dict(row)
@@ -155,7 +157,9 @@ class SignalRepository:
             return None
         out = dict(row)
         if isinstance(out.get("regime_transition_reasons_json"), str):
-            out["regime_transition_reasons_json"] = json.loads(out["regime_transition_reasons_json"])
+            out["regime_transition_reasons_json"] = json.loads(
+                out["regime_transition_reasons_json"]
+            )
         source_snapshot = out.get("source_snapshot_json")
         if isinstance(source_snapshot, str):
             try:
@@ -216,7 +220,9 @@ class SignalRepository:
             ).fetchall()
         return [_drawing_row_to_dict(dict(r)) for r in rows]
 
-    def fetch_latest_news(self, *, symbol: str, max_ts_ms: int) -> dict[str, Any] | None:
+    def fetch_latest_news(
+        self, *, symbol: str, max_ts_ms: int
+    ) -> dict[str, Any] | None:
         sql_symbol = """
         SELECT id, relevance_score, sentiment, impact_window, title, published_ts, news_id,
                published_ts_ms, scored_ts_ms, ingested_ts_ms, source
@@ -348,7 +354,9 @@ class SignalRepository:
         """
         comp_hist = row.get("signal_components_history_json")
         comp_hist_json = (
-            json.dumps(comp_hist, separators=(",", ":")) if comp_hist is not None else None
+            json.dumps(comp_hist, separators=(",", ":"))
+            if comp_hist is not None
+            else None
         )
         params = (
             row["signal_id"],
@@ -359,14 +367,18 @@ class SignalRepository:
             row["analysis_ts_ms"],
             row.get("market_regime"),
             row.get("regime_bias"),
-            None
-            if row.get("regime_confidence_0_1") is None
-            else str(row["regime_confidence_0_1"]),
+            (
+                None
+                if row.get("regime_confidence_0_1") is None
+                else str(row["regime_confidence_0_1"])
+            ),
             json.dumps(row.get("regime_reasons_json") or [], separators=(",", ":")),
             row.get("regime_state"),
             row.get("regime_substate"),
             row.get("regime_transition_state"),
-            json.dumps(row.get("regime_transition_reasons_json") or [], separators=(",", ":")),
+            json.dumps(
+                row.get("regime_transition_reasons_json") or [], separators=(",", ":")
+            ),
             row.get("regime_persistence_bars"),
             row.get("regime_policy_version"),
             row["direction"],
@@ -376,40 +388,76 @@ class SignalRepository:
             row.get("take_trade_model_version"),
             row.get("take_trade_model_run_id"),
             row.get("take_trade_calibration_method"),
-            None if row.get("expected_return_bps") is None else str(row["expected_return_bps"]),
-            None if row.get("expected_mae_bps") is None else str(row["expected_mae_bps"]),
-            None if row.get("expected_mfe_bps") is None else str(row["expected_mfe_bps"]),
-            json.dumps(row.get("target_projection_models_json") or [], separators=(",", ":")),
-            None
-            if row.get("model_uncertainty_0_1") is None
-            else str(row["model_uncertainty_0_1"]),
-            None
-            if row.get("uncertainty_effective_for_leverage_0_1") is None
-            else str(row["uncertainty_effective_for_leverage_0_1"]),
-            None
-            if row.get("shadow_divergence_0_1") is None
-            else str(row["shadow_divergence_0_1"]),
-            None if row.get("model_ood_score_0_1") is None else str(row["model_ood_score_0_1"]),
+            (
+                None
+                if row.get("expected_return_bps") is None
+                else str(row["expected_return_bps"])
+            ),
+            (
+                None
+                if row.get("expected_mae_bps") is None
+                else str(row["expected_mae_bps"])
+            ),
+            (
+                None
+                if row.get("expected_mfe_bps") is None
+                else str(row["expected_mfe_bps"])
+            ),
+            json.dumps(
+                row.get("target_projection_models_json") or [], separators=(",", ":")
+            ),
+            (
+                None
+                if row.get("model_uncertainty_0_1") is None
+                else str(row["model_uncertainty_0_1"])
+            ),
+            (
+                None
+                if row.get("uncertainty_effective_for_leverage_0_1") is None
+                else str(row["uncertainty_effective_for_leverage_0_1"])
+            ),
+            (
+                None
+                if row.get("shadow_divergence_0_1") is None
+                else str(row["shadow_divergence_0_1"])
+            ),
+            (
+                None
+                if row.get("model_ood_score_0_1") is None
+                else str(row["model_ood_score_0_1"])
+            ),
             bool(row.get("model_ood_alert")),
-            json.dumps(row.get("uncertainty_reasons_json") or [], separators=(",", ":")),
+            json.dumps(
+                row.get("uncertainty_reasons_json") or [], separators=(",", ":")
+            ),
             json.dumps(row.get("ood_reasons_json") or [], separators=(",", ":")),
             json.dumps(row.get("abstention_reasons_json") or [], separators=(",", ":")),
             row.get("trade_action"),
             row.get("meta_decision_action"),
             row.get("meta_decision_kernel_version"),
-            json.dumps(row.get("meta_decision_bundle_json") or {}, separators=(",", ":")),
-            None
-            if row.get("operator_override_audit_json") is None
-            else json.dumps(row.get("operator_override_audit_json"), separators=(",", ":")),
+            json.dumps(
+                row.get("meta_decision_bundle_json") or {}, separators=(",", ":")
+            ),
+            (
+                None
+                if row.get("operator_override_audit_json") is None
+                else json.dumps(
+                    row.get("operator_override_audit_json"), separators=(",", ":")
+                )
+            ),
             row.get("meta_trade_lane"),
-            None
-            if row.get("decision_confidence_0_1") is None
-            else str(row["decision_confidence_0_1"]),
+            (
+                None
+                if row.get("decision_confidence_0_1") is None
+                else str(row["decision_confidence_0_1"])
+            ),
             row.get("decision_policy_version"),
             row.get("allowed_leverage"),
             row.get("recommended_leverage"),
             row.get("leverage_policy_version"),
-            json.dumps(row.get("leverage_cap_reasons_json") or [], separators=(",", ":")),
+            json.dumps(
+                row.get("leverage_cap_reasons_json") or [], separators=(",", ":")
+            ),
             row["signal_class"],
             str(row["structure_score_0_100"]),
             str(row["momentum_score_0_100"]),
@@ -423,13 +471,21 @@ class SignalRepository:
             row["decision_state"],
             json.dumps(row["reasons_json"], separators=(",", ":")),
             json.dumps(row["supporting_drawing_ids_json"], separators=(",", ":")),
-            json.dumps(row["supporting_structure_event_ids_json"], separators=(",", ":")),
+            json.dumps(
+                row["supporting_structure_event_ids_json"], separators=(",", ":")
+            ),
             row.get("stop_zone_id"),
             json.dumps(row["target_zone_ids_json"], separators=(",", ":")),
-            None if row.get("reward_risk_ratio") is None else str(row["reward_risk_ratio"]),
-            None
-            if row.get("expected_volatility_band") is None
-            else str(row["expected_volatility_band"]),
+            (
+                None
+                if row.get("reward_risk_ratio") is None
+                else str(row["reward_risk_ratio"])
+            ),
+            (
+                None
+                if row.get("expected_volatility_band") is None
+                else str(row["expected_volatility_band"])
+            ),
             json.dumps(row["source_snapshot_json"], separators=(",", ":")),
             row["scoring_model_version"],
             row.get("strategy_name"),
@@ -437,17 +493,41 @@ class SignalRepository:
             row.get("playbook_family"),
             row.get("playbook_decision_mode"),
             row.get("playbook_registry_version"),
-            None if row.get("stop_distance_pct") is None else str(row["stop_distance_pct"]),
-            None
-            if row.get("stop_budget_max_pct_allowed") is None
-            else str(row["stop_budget_max_pct_allowed"]),
-            None if row.get("stop_min_executable_pct") is None else str(row["stop_min_executable_pct"]),
-            None if row.get("stop_to_spread_ratio") is None else str(row["stop_to_spread_ratio"]),
-            None if row.get("stop_quality_0_1") is None else str(row["stop_quality_0_1"]),
-            None
-            if row.get("stop_executability_0_1") is None
-            else str(row["stop_executability_0_1"]),
-            None if row.get("stop_fragility_0_1") is None else str(row["stop_fragility_0_1"]),
+            (
+                None
+                if row.get("stop_distance_pct") is None
+                else str(row["stop_distance_pct"])
+            ),
+            (
+                None
+                if row.get("stop_budget_max_pct_allowed") is None
+                else str(row["stop_budget_max_pct_allowed"])
+            ),
+            (
+                None
+                if row.get("stop_min_executable_pct") is None
+                else str(row["stop_min_executable_pct"])
+            ),
+            (
+                None
+                if row.get("stop_to_spread_ratio") is None
+                else str(row["stop_to_spread_ratio"])
+            ),
+            (
+                None
+                if row.get("stop_quality_0_1") is None
+                else str(row["stop_quality_0_1"])
+            ),
+            (
+                None
+                if row.get("stop_executability_0_1") is None
+                else str(row["stop_executability_0_1"])
+            ),
+            (
+                None
+                if row.get("stop_fragility_0_1") is None
+                else str(row["stop_fragility_0_1"])
+            ),
             row.get("stop_budget_policy_version"),
             comp_hist_json,
         )
@@ -455,7 +535,9 @@ class SignalRepository:
             with conn.transaction():
                 conn.execute(sql, params)
 
-    def fetch_latest_promoted_model_run(self, *, model_name: str) -> dict[str, Any] | None:
+    def fetch_latest_promoted_model_run(
+        self, *, model_name: str
+    ) -> dict[str, Any] | None:
         """Legacy: nur promoted_bool. Produktion nutzt fetch_production_model_run."""
         sql = """
         SELECT run_id, model_name, version, dataset_hash, metrics_json, promoted_bool,
@@ -480,7 +562,9 @@ class SignalRepository:
         router_slot: str | None = None,
         symbol: str | None = None,
     ) -> dict[str, Any] | None:
-        from shared_py.model_registry_policy import production_probability_calibration_satisfied
+        from shared_py.model_registry_policy import (
+            production_probability_calibration_satisfied,
+        )
         from shared_py.take_trade_model import TAKE_TRADE_MODEL_NAME
 
         if (
@@ -560,10 +644,13 @@ class SignalRepository:
         if row is None:
             return None
         out = dict(row)
-        if self._model_calibration_required and not production_probability_calibration_satisfied(
-            model_name=model_name,
-            calibration_method=out.get("calibration_method"),
-            metadata_json=out.get("metadata_json"),
+        if (
+            self._model_calibration_required
+            and not production_probability_calibration_satisfied(
+                model_name=model_name,
+                calibration_method=out.get("calibration_method"),
+                metadata_json=out.get("metadata_json"),
+            )
         ):
             self._logger.warning(
                 "production model blocked (calibration): model_name=%s run_id=%s",
@@ -589,7 +676,9 @@ class SignalRepository:
         if row is None:
             return None
         out = dict(row)
-        if out.get("computed_at") is not None and hasattr(out["computed_at"], "isoformat"):
+        if out.get("computed_at") is not None and hasattr(
+            out["computed_at"], "isoformat"
+        ):
             out["computed_at"] = out["computed_at"].isoformat()
         return out
 

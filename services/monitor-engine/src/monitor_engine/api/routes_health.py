@@ -27,7 +27,9 @@ def health(request: Request) -> dict[str, Any]:
     stats = scheduler.stats_snapshot()
     now_ms = int(time.time() * 1000)
     sm = float(settings.monitor_scheduler_stale_multiplier)
-    stale_after_ms = int(max(15_000, int(settings.monitor_interval_sec) * 3 * 1000) * sm)
+    stale_after_ms = int(
+        max(15_000, int(settings.monitor_interval_sec) * 3 * 1000) * sm
+    )
     last_run_ts_ms = stats.get("last_run_ts_ms")
     scheduler_stale = (
         True
@@ -86,7 +88,9 @@ def ready(request: Request) -> dict[str, Any]:
     grace_ms = int(settings.monitor_readiness_boot_grace_ms)
     in_boot_grace = boot_age_ms < grace_ms
     sm = float(settings.monitor_scheduler_stale_multiplier)
-    stale_after_ms = int(max(15_000, int(settings.monitor_interval_sec) * 3 * 1000) * sm)
+    stale_after_ms = int(
+        max(15_000, int(settings.monitor_interval_sec) * 3 * 1000) * sm
+    )
     last_run_ts_ms = stats.get("last_run_ts_ms")
     last_err = stats.get("last_error")
     if last_run_ts_ms is not None:

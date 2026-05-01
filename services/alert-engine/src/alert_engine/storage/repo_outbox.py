@@ -47,7 +47,9 @@ class RepoOutbox:
                 ),
             )
             conn.commit()
-        logger.info("outbox inserted alert_id=%s type=%s chat_id=%s", aid, alert_type, chat_id)
+        logger.info(
+            "outbox inserted alert_id=%s type=%s chat_id=%s", aid, alert_type, chat_id
+        )
         return aid
 
     def count_pending(self) -> int:
@@ -165,7 +167,9 @@ class RepoOutbox:
             )
             conn.commit()
 
-    def requeue_send_or_fail(self, alert_id: str, err: str, *, max_attempts: int) -> None:
+    def requeue_send_or_fail(
+        self, alert_id: str, err: str, *, max_attempts: int
+    ) -> None:
         """Nach fehlgeschlagenem Send: pending retry solange attempt_count < max_attempts."""
         with psycopg.connect(self._dsn) as conn:
             row = conn.execute(

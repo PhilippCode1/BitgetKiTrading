@@ -4,10 +4,10 @@ import logging
 from typing import Any
 
 import httpx
+from config.internal_service_discovery import http_base_from_health_or_ready_url
 from fastapi import APIRouter
 
 from api_gateway.config import get_gateway_settings
-from config.internal_service_discovery import http_base_from_health_or_ready_url
 
 logger = logging.getLogger("api_gateway.correlation_proxy")
 
@@ -45,5 +45,9 @@ async def correlation_matrix() -> dict[str, Any]:
             "correlation": None,
         }
     if not isinstance(data, dict):
-        return {"status": "degraded", "message": "Leere oder ungueltige Antwort.", "correlation": None}
+        return {
+            "status": "degraded",
+            "message": "Leere oder ungueltige Antwort.",
+            "correlation": None,
+        }
     return data

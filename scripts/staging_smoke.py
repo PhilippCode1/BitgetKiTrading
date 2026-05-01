@@ -15,7 +15,7 @@ import sys
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 
@@ -25,7 +25,6 @@ if str(ROOT) not in sys.path:
 
 from tools.check_env_10_10_safety import load_dotenv  # noqa: E402
 from tools.check_staging_profile import validate_staging_profile  # noqa: E402
-
 
 SECRET_MARKERS = (
     "SECRET",
@@ -89,7 +88,13 @@ def git_sha() -> str:
         return "unknown"
 
 
-def http_json(url: str, *, method: str = "GET", headers: dict[str, str] | None = None, timeout: float = 20.0) -> tuple[int, object | str]:
+def http_json(
+    url: str,
+    *,
+    method: str = "GET",
+    headers: dict[str, str] | None = None,
+    timeout: float = 20.0,
+) -> tuple[int, object | str]:
     req = urllib.request.Request(url, method=method, headers=headers or {})
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
@@ -116,7 +121,9 @@ def build_check_plan(env: dict[str, str]) -> list[tuple[str, str, str]]:
     dashboard = env.get("HEALTH_URL_DASHBOARD") or env.get("FRONTEND_URL") or ""
     live_broker = env.get("HEALTH_URL_LIVE_BROKER") or ""
     llm = env.get("HEALTH_URL_LLM_ORCHESTRATOR") or ""
-    bitget = env.get("BITGET_READ_ONLY_HEALTH_URL") or f"{gateway}/v1/exchange/readiness"
+    bitget = (
+        env.get("BITGET_READ_ONLY_HEALTH_URL") or f"{gateway}/v1/exchange/readiness"
+    )
 
     return [
         ("gateway_health", f"{gateway}/health", ""),
@@ -132,18 +139,34 @@ def build_check_plan(env: dict[str, str]) -> list[tuple[str, str, str]]:
 def dry_run_results(env: dict[str, str]) -> list[CheckResult]:
     results: list[CheckResult] = []
     for name, target, _auth in build_check_plan(env):
-        if name == "bitget_read_only" and not truthy(env.get("BITGET_READ_ONLY_CHECK_ENABLED")):
-            results.append(CheckResult(name, redact_url(target), "skipped", "explicit opt-in is disabled"))
+        if name == "bitget_read_only" and not truthy(
+            env.get("BITGET_READ_ONLY_CHECK_ENABLED")
+        ):
+            results.append(
+                CheckResult(
+                    name, redact_url(target), "skipped", "explicit opt-in is disabled"
+                )
+            )
             continue
-        results.append(CheckResult(name, redact_url(target), "planned", "dry-run only; no network call"))
+        results.append(
+            CheckResult(
+                name, redact_url(target), "planned", "dry-run only; no network call"
+            )
+        )
     return results
 
 
 def network_results(env: dict[str, str]) -> list[CheckResult]:
     results: list[CheckResult] = []
     for name, target, auth in build_check_plan(env):
-        if name == "bitget_read_only" and not truthy(env.get("BITGET_READ_ONLY_CHECK_ENABLED")):
-            results.append(CheckResult(name, redact_url(target), "skipped", "explicit opt-in is disabled"))
+        if name == "bitget_read_only" and not truthy(
+            env.get("BITGET_READ_ONLY_CHECK_ENABLED")
+        ):
+            results.append(
+                CheckResult(
+                    name, redact_url(target), "skipped", "explicit opt-in is disabled"
+                )
+            )
             continue
         if not target:
             results.append(CheckResult(name, "", "failed", "target URL is missing"))
@@ -153,10 +176,14 @@ def network_results(env: dict[str, str]) -> list[CheckResult]:
         ok = code == 200
         detail = f"HTTP {code}"
         if isinstance(body, dict) and body:
-            detail = f"{detail}; keys={','.join(sorted(str(k) for k in body.keys())[:8])}"
+            detail = (
+                f"{detail}; keys={','.join(sorted(str(k) for k in body.keys())[:8])}"
+            )
         elif isinstance(body, str) and body:
             detail = f"{detail}; non-json body omitted"
-        results.append(CheckResult(name, redact_url(target), "passed" if ok else "failed", detail))
+        results.append(
+            CheckResult(name, redact_url(target), "passed" if ok else "failed", detail)
+        )
     return results
 
 
@@ -168,8 +195,10 @@ def report_markdown(
     results: list[CheckResult],
     dry_run: bool,
 ) -> str:
-    now = datetime.now(timezone.utc).isoformat(timespec="seconds")
-    failed = any(result.status == "failed" for result in results) or bool(validation_issues)
+    now = datetime.now(UTC).isoformat(timespec="seconds")
+    failed = any(result.status == "failed" for result in results) or bool(
+        validation_issues
+    )
     live_enabled = truthy(env.get("LIVE_TRADE_ENABLE"))
     go_no_go = "NO-GO" if failed or live_enabled else "GO-FOR-STAGING-ONLY"
     lines = [
@@ -182,7 +211,7 @@ def report_markdown(
         f"- DEPLOY_ENV: `{env.get('DEPLOY_ENV', '')}`",
         f"- Mode: `{'dry-run' if dry_run else 'network-smoke'}`",
         f"- Live trade enabled: `{str(live_enabled).lower()}`",
-        f"- Secret safety: raw secrets are redacted; no customer secrets are required by this report.",
+        "- Secret safety: raw secrets are redacted; no customer secrets are required by this report.",
         f"- Go/No-Go: `{go_no_go}`",
         "",
         "## Redacted Runtime Values",
@@ -208,9 +237,19 @@ def report_markdown(
             lines.append(f"- `{code}` `{key}`: {message}")
     else:
         lines.append("- none")
-    lines.extend(["", "## Checks", "", "| Check | Target | Status | Detail |", "| --- | --- | --- | --- |"])
+    lines.extend(
+        [
+            "",
+            "## Checks",
+            "",
+            "| Check | Target | Status | Detail |",
+            "| --- | --- | --- | --- |",
+        ]
+    )
     for result in results:
-        lines.append(f"| {result.name} | `{result.target}` | `{result.status}` | {result.detail} |")
+        lines.append(
+            f"| {result.name} | `{result.target}` | `{result.status}` | {result.detail} |"
+        )
     lines.extend(
         [
             "",
@@ -245,7 +284,9 @@ def main(argv: list[str] | None = None) -> int:
 
     env = load_dotenv(env_path)
     template_mode = args.dry_run and env_path.name.endswith(".example")
-    validation_issues = validate_staging_profile(env, template=template_mode, strict_runtime=not template_mode)
+    validation_issues = validate_staging_profile(
+        env, template=template_mode, strict_runtime=not template_mode
+    )
     results = dry_run_results(env) if args.dry_run else network_results(env)
 
     print("staging_smoke")
@@ -254,12 +295,16 @@ def main(argv: list[str] | None = None) -> int:
     for key in ("API_GATEWAY_URL", "FRONTEND_URL", "DASHBOARD_GATEWAY_AUTHORIZATION"):
         print(f"{key}={redact_value(key, env.get(key, ''))}")
     for issue in validation_issues:
-        print(f"ERROR {issue.code} {issue.key or '-'}: {issue.message}", file=sys.stderr)
+        print(
+            f"ERROR {issue.code} {issue.key or '-'}: {issue.message}", file=sys.stderr
+        )
     for result in results:
         print(f"{result.name}: {result.status} {result.target} ({result.detail})")
 
     if args.output_md:
-        output_path = args.output_md if args.output_md.is_absolute() else ROOT / args.output_md
+        output_path = (
+            args.output_md if args.output_md.is_absolute() else ROOT / args.output_md
+        )
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(
             report_markdown(
@@ -273,7 +318,9 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(f"report={output_path}")
 
-    failed = bool(validation_issues) or any(result.status == "failed" for result in results)
+    failed = bool(validation_issues) or any(
+        result.status == "failed" for result in results
+    )
     if truthy(env.get("LIVE_TRADE_ENABLE")):
         failed = True
     return 1 if failed else 0

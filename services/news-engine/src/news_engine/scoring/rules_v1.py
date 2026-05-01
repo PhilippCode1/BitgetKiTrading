@@ -92,7 +92,9 @@ def score_news(
         if "eth_defi" in tagset:
             score += 2
 
-    src_bonus = {"cryptopanic": 10, "coindesk": 10, "newsapi": 5, "gdelt": 5}.get(source, 0)
+    src_bonus = {"cryptopanic": 10, "coindesk": 10, "newsapi": 5, "gdelt": 5}.get(
+        source, 0
+    )
     score += src_bonus
 
     clock = now_ms if now_ms is not None else int(time.time() * 1000)

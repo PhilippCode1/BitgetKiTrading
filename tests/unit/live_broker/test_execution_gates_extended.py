@@ -52,19 +52,25 @@ class _FakeRepo:
     def record_execution_decision(self, record: dict):
         return {**record, "execution_id": str(uuid4())}
 
-    def record_execution_risk_snapshot(self, execution_decision_id: str, risk_decision: dict) -> None:
+    def record_execution_risk_snapshot(
+        self, execution_decision_id: str, risk_decision: dict
+    ) -> None:
         return None
 
     def record_shadow_live_assessment(self, **kwargs) -> None:
         return None
 
-    def list_latest_exchange_snapshots(self, snapshot_type: str, *, symbol=None, limit: int = 200):
+    def list_latest_exchange_snapshots(
+        self, snapshot_type: str, *, symbol=None, limit: int = 200
+    ):
         items = list(self.snapshots.get(snapshot_type, []))
         if symbol is not None:
             items = [i for i in items if i.get("symbol") == symbol]
         return items[:limit]
 
-    def list_exchange_snapshots_since(self, snapshot_type: str, *, since_ts_ms: int, limit: int = 5000):
+    def list_exchange_snapshots_since(
+        self, snapshot_type: str, *, since_ts_ms: int, limit: int = 5000
+    ):
         return self.list_latest_exchange_snapshots(snapshot_type, limit=limit)
 
     def latest_reconcile_snapshot(self):
@@ -110,18 +116,26 @@ def _clean_repo() -> _FakeRepo:
         {
             "symbol": "USDT",
             "raw_data": {
-                "items": [{"marginCoin": "USDT", "equity": "10000", "available": "9500"}],
+                "items": [
+                    {"marginCoin": "USDT", "equity": "10000", "available": "9500"}
+                ],
             },
         }
     ]
     repo.reconcile_snapshot = {
-        "details_json": {"drift": {"snapshot_health": {"missing_types": [], "stale_types": []}}}
+        "details_json": {
+            "drift": {"snapshot_health": {"missing_types": [], "stale_types": []}}
+        }
     }
     return repo
 
 
-def test_handle_signal_event_ignored_in_paper_mode(monkeypatch: pytest.MonkeyPatch) -> None:
-    settings = _settings(monkeypatch, EXECUTION_MODE="paper", SHADOW_TRADE_ENABLE="false")
+def test_handle_signal_event_ignored_in_paper_mode(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = _settings(
+        monkeypatch, EXECUTION_MODE="paper", SHADOW_TRADE_ENABLE="false"
+    )
     service = LiveExecutionService(settings, _FakeExchangeClient(), _clean_repo())  # type: ignore[arg-type]
     env = EventEnvelope(
         event_type="signal_created",
@@ -134,7 +148,9 @@ def test_handle_signal_event_ignored_in_paper_mode(monkeypatch: pytest.MonkeyPat
     assert out["decision_reason"] == "paper_mode_routes_to_paper_broker"
 
 
-def test_decision_blocks_leverage_7_without_approval_before_submit_gate(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_decision_blocks_leverage_7_without_approval_before_submit_gate(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     settings = _settings(monkeypatch, RISK_REQUIRE_7X_APPROVAL="true")
     repo = _clean_repo()
     service = LiveExecutionService(settings, _FakeExchangeClient(), repo)  # type: ignore[arg-type]
@@ -148,7 +164,7 @@ def test_decision_blocks_leverage_7_without_approval_before_submit_gate(monkeypa
         approved_7x=False,
         qty_base="0.001",
         entry_price="50000",
-            stop_loss="49550",
+        stop_loss="49550",
         take_profit="52000",
         payload={
             "signal_payload": {
@@ -173,7 +189,9 @@ def test_decision_blocks_leverage_7_without_approval_before_submit_gate(monkeypa
     assert out["decision_reason"] == "missing_7x_approval"
 
 
-def test_decision_allows_leverage_7_when_approved(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_decision_allows_leverage_7_when_approved(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     settings = _settings(
         monkeypatch,
         EXECUTION_MODE="live",
@@ -193,7 +211,7 @@ def test_decision_allows_leverage_7_when_approved(monkeypatch: pytest.MonkeyPatc
         approved_7x=True,
         qty_base="0.001",
         entry_price="50000",
-            stop_loss="49550",
+        stop_loss="49550",
         take_profit="52000",
         payload={
             "signal_payload": {

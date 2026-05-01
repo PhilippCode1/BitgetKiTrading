@@ -43,7 +43,9 @@ def build_embedding_router(settings: InferenceServerSettings) -> APIRouter:
         )
         ms = (time.perf_counter() - t0) * 1000.0
         logger.debug("embed count=%s backend=%s ms=%.2f", len(req.texts), backend, ms)
-        return EmbedResponse(vectors=vecs, dim=1024, backend=backend, wall_ms=round(ms, 3))
+        return EmbedResponse(
+            vectors=vecs, dim=1024, backend=backend, wall_ms=round(ms, 3)
+        )
 
     @r.get("/v1/embed/health")
     def embed_health() -> dict[str, Any]:

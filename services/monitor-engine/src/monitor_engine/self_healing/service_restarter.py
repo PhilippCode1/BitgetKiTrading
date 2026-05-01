@@ -28,9 +28,13 @@ class ServiceRestarter:
 
     @classmethod
     def from_settings(cls, settings: Any) -> "ServiceRestarter":
-        m = (getattr(settings, "monitor_self_healing_restarter_mode", "mock") or "mock").strip()
+        m = (
+            getattr(settings, "monitor_self_healing_restarter_mode", "mock") or "mock"
+        ).strip()
         m = m.lower() if m else "mock"
-        mraw = (getattr(settings, "monitor_self_healing_docker_name_map", "") or "").strip()
+        mraw = (
+            getattr(settings, "monitor_self_healing_docker_name_map", "") or ""
+        ).strip()
         return cls(mode=m, label_to_docker_id=mraw or None)
 
     def _map_name(self, service_name: str) -> str:
@@ -50,7 +54,11 @@ class ServiceRestarter:
         m = (self.mode or "mock").lower()
         dname = self._map_name(service_name)
         if m in ("0", "false", "mock", "dry_run", "dryrun"):
-            logger.info("self-healing restarter (mock) service_name=%r docker=%r", service_name, dname)
+            logger.info(
+                "self-healing restarter (mock) service_name=%r docker=%r",
+                service_name,
+                dname,
+            )
             return {
                 "ok": True,
                 "mode": "mock",
@@ -93,14 +101,24 @@ def _restart_docker_cli(dname: str, service_name: str) -> dict[str, Any]:
             "stderr": (cp.stderr or cp.stdout)[:500],
             "service_name": service_name,
         }
-    return {"ok": True, "mode": "docker", "container": dname, "service_name": service_name}
+    return {
+        "ok": True,
+        "mode": "docker",
+        "container": dname,
+        "service_name": service_name,
+    }
 
 
 def _restart_compose(dname: str, service_name: str) -> dict[str, Any]:
     cdir = (os.environ.get("MONITOR_SH_COMPOSE_CWD", "") or "").strip()
-    ffile = (os.environ.get("MONITOR_SH_COMPOSE_FILE", "docker-compose.yml") or "docker-compose.yml").strip()
+    ffile = (
+        os.environ.get("MONITOR_SH_COMPOSE_FILE", "docker-compose.yml")
+        or "docker-compose.yml"
+    ).strip()
     if not cdir or not os.path.isdir(cdir):
-        logger.info("MONITOR_SH_COMPOSE_CWD nicht gesetzt — compose_exec uebersprungen (mock)")
+        logger.info(
+            "MONITOR_SH_COMPOSE_CWD nicht gesetzt — compose_exec uebersprungen (mock)"
+        )
         return {
             "ok": True,
             "mode": "compose_exec_skipped_no_cwd",
@@ -116,7 +134,12 @@ def _restart_compose(dname: str, service_name: str) -> dict[str, Any]:
             cwd=cdir,
         )
     except (OSError, subprocess.TimeoutExpired) as exc:
-        return {"ok": False, "mode": "compose_exec", "error": str(exc)[:200], "service_name": service_name}
+        return {
+            "ok": False,
+            "mode": "compose_exec",
+            "error": str(exc)[:200],
+            "service_name": service_name,
+        }
     if cp.returncode != 0:
         return {
             "ok": False,

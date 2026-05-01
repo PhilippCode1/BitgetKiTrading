@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from math import isnan
-from typing import Sequence
 
 
 def rsi_sma(closes: Sequence[float], window: int) -> float:

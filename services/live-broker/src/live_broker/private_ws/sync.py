@@ -111,7 +111,9 @@ class ExchangeStateSyncService:
     ) -> list[dict[str, Any]]:
         grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
         for item in event.data:
-            grouped[str(key_getter(item) or event.inst_id or "default")].append(dict(item))
+            grouped[str(key_getter(item) or event.inst_id or "default")].append(
+                dict(item)
+            )
         if not grouped:
             grouped[str(event.inst_id or "default")] = []
         rows: list[dict[str, Any]] = []
@@ -145,11 +147,21 @@ class ExchangeStateSyncService:
     ) -> dict[str, Any]:
         existing = self._find_existing_order(item)
         internal_order_id = self._order_internal_id(item, existing)
-        product_type = self._text(item.get("productType")) or event.inst_type or self._settings.product_type
-        margin_coin = self._text(item.get("marginCoin")) or self._settings.effective_margin_coin
+        product_type = (
+            self._text(item.get("productType"))
+            or event.inst_type
+            or self._settings.product_type
+        )
+        margin_coin = (
+            self._text(item.get("marginCoin")) or self._settings.effective_margin_coin
+        )
         client_oid = self._text(item.get("clientOid"))
         exchange_order_id = self._text(item.get("orderId"))
-        status = self._text(item.get("status")) or (existing or {}).get("status") or "ws_synced"
+        status = (
+            self._text(item.get("status"))
+            or (existing or {}).get("status")
+            or "ws_synced"
+        )
         trace_json = {
             **((existing or {}).get("trace_json") or {}),
             "ws_channel": event.channel,
@@ -159,17 +171,32 @@ class ExchangeStateSyncService:
         return self._repo.upsert_order(
             {
                 "internal_order_id": internal_order_id,
-                "parent_internal_order_id": (existing or {}).get("parent_internal_order_id"),
-                "source_service": (existing or {}).get("source_service") or "exchange-sync",
-                "symbol": self._text(item.get("instId")) or event.inst_id or self._settings.symbol,
+                "parent_internal_order_id": (existing or {}).get(
+                    "parent_internal_order_id"
+                ),
+                "source_service": (existing or {}).get("source_service")
+                or "exchange-sync",
+                "symbol": self._text(item.get("instId"))
+                or event.inst_id
+                or self._settings.symbol,
                 "product_type": product_type,
-                "margin_mode": self._text(item.get("marginMode")) or (existing or {}).get("margin_mode") or "isolated",
+                "margin_mode": self._text(item.get("marginMode"))
+                or (existing or {}).get("margin_mode")
+                or "isolated",
                 "margin_coin": margin_coin,
-                "side": self._text(item.get("side")) or (existing or {}).get("side") or "buy",
-                "trade_side": self._text(item.get("tradeSide")) or (existing or {}).get("trade_side"),
-                "order_type": self._text(item.get("orderType")) or (existing or {}).get("order_type") or "limit",
+                "side": self._text(item.get("side"))
+                or (existing or {}).get("side")
+                or "buy",
+                "trade_side": self._text(item.get("tradeSide"))
+                or (existing or {}).get("trade_side"),
+                "order_type": self._text(item.get("orderType"))
+                or (existing or {}).get("order_type")
+                or "limit",
                 "force": self._text(item.get("force")) or (existing or {}).get("force"),
-                "reduce_only": self._bool_yes_no(item.get("reduceOnly"), default=bool((existing or {}).get("reduce_only"))),
+                "reduce_only": self._bool_yes_no(
+                    item.get("reduceOnly"),
+                    default=bool((existing or {}).get("reduce_only")),
+                ),
                 "size": self._text(item.get("size"))
                 or self._text(item.get("accBaseVolume"))
                 or self._text(item.get("baseVolume"))
@@ -180,8 +207,11 @@ class ExchangeStateSyncService:
                 or self._text(item.get("fillPrice"))
                 or (existing or {}).get("price"),
                 "note": (existing or {}).get("note") or "",
-                "client_oid": client_oid or (existing or {}).get("client_oid") or self._stable_order_seed(item),
-                "exchange_order_id": exchange_order_id or (existing or {}).get("exchange_order_id"),
+                "client_oid": client_oid
+                or (existing or {}).get("client_oid")
+                or self._stable_order_seed(item),
+                "exchange_order_id": exchange_order_id
+                or (existing or {}).get("exchange_order_id"),
                 "status": status,
                 "last_action": "ws_sync",
                 "last_http_status": (existing or {}).get("last_http_status"),
@@ -207,10 +237,13 @@ class ExchangeStateSyncService:
                     "internal_order_id": internal_order_id,
                     "parent_internal_order_id": None,
                     "source_service": "exchange-sync",
-                    "symbol": self._text(item.get("symbol")) or event.inst_id or self._settings.symbol,
+                    "symbol": self._text(item.get("symbol"))
+                    or event.inst_id
+                    or self._settings.symbol,
                     "product_type": event.inst_type or self._settings.product_type,
                     "margin_mode": "isolated",
-                    "margin_coin": self._first_fee_coin(item) or self._settings.effective_margin_coin,
+                    "margin_coin": self._first_fee_coin(item)
+                    or self._settings.effective_margin_coin,
                     "side": self._text(item.get("side")) or "buy",
                     "trade_side": self._text(item.get("tradeSide")),
                     "order_type": self._text(item.get("orderType")) or "market",
@@ -253,13 +286,17 @@ class ExchangeStateSyncService:
             {
                 "internal_order_id": internal_order_id,
                 "exchange_order_id": exchange_order_id,
-                "exchange_trade_id": self._text(item.get("tradeId")) or self._stable_fill_seed(item),
-                "symbol": self._text(item.get("symbol")) or event.inst_id or self._settings.symbol,
+                "exchange_trade_id": self._text(item.get("tradeId"))
+                or self._stable_fill_seed(item),
+                "symbol": self._text(item.get("symbol"))
+                or event.inst_id
+                or self._settings.symbol,
                 "side": self._text(item.get("side")) or "buy",
                 "price": self._text(item.get("price")) or "0",
                 "size": self._text(item.get("baseVolume")) or "0",
                 "fee": self._first_fee_amount(item),
-                "fee_coin": self._first_fee_coin(item) or self._settings.effective_margin_coin,
+                "fee_coin": self._first_fee_coin(item)
+                or self._settings.effective_margin_coin,
                 "is_maker": is_maker,
                 "exchange_ts_ms": self._text(item.get("uTime"))
                 or self._text(item.get("cTime"))
@@ -315,7 +352,9 @@ class ExchangeStateSyncService:
             for entry in fee_detail:
                 if not isinstance(entry, dict):
                     continue
-                value = self._text(entry.get("totalFee")) or self._text(entry.get("fee"))
+                value = self._text(entry.get("totalFee")) or self._text(
+                    entry.get("fee")
+                )
                 if value is not None:
                     return value
         return self._text(item.get("fillFee")) or self._text(item.get("fee")) or "0"

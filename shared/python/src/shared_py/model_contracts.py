@@ -13,7 +13,8 @@ from __future__ import annotations
 import hashlib
 import json
 import math
-from typing import Any, Mapping, Sequence
+from collections.abc import Mapping, Sequence
+from typing import Any
 
 from shared_py.playbook_registry import (
     PLAYBOOK_DECISION_MODE_VALUES,
@@ -42,7 +43,14 @@ _TIMEFRAME_ALIASES = {
     "4H": "4H",
 }
 
-MARKET_REGIME_VALUES = ("trend", "chop", "compression", "breakout", "shock", "dislocation")
+MARKET_REGIME_VALUES = (
+    "trend",
+    "chop",
+    "compression",
+    "breakout",
+    "shock",
+    "dislocation",
+)
 REGIME_BIAS_VALUES = ("long", "short", "neutral")
 _MARKET_REGIME_ALIASES = {
     "trend": "trend",
@@ -334,7 +342,9 @@ _FEATURE_SCHEMA_MANIFEST = {
     "fields": list(FEATURE_SNAPSHOT_FIELDS),
 }
 FEATURE_SCHEMA_HASH = hashlib.sha256(
-    json.dumps(_FEATURE_SCHEMA_MANIFEST, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    json.dumps(_FEATURE_SCHEMA_MANIFEST, sort_keys=True, separators=(",", ":")).encode(
+        "utf-8"
+    )
 ).hexdigest()
 FEATURE_FIELD_CATALOG_HASH = hashlib.sha256(
     json.dumps(
@@ -365,9 +375,9 @@ _MODEL_OUTPUT_SCHEMA_MANIFEST = {
     "fields": list(MODEL_OUTPUT_SNAPSHOT_FIELDS),
 }
 MODEL_OUTPUT_SCHEMA_HASH = hashlib.sha256(
-    json.dumps(_MODEL_OUTPUT_SCHEMA_MANIFEST, sort_keys=True, separators=(",", ":")).encode(
-        "utf-8"
-    )
+    json.dumps(
+        _MODEL_OUTPUT_SCHEMA_MANIFEST, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
 ).hexdigest()
 
 _MODEL_TARGET_SCHEMA_MANIFEST = {
@@ -377,9 +387,9 @@ _MODEL_TARGET_SCHEMA_MANIFEST = {
     "fields": list(MODEL_TARGET_FIELDS),
 }
 MODEL_TARGET_SCHEMA_HASH = hashlib.sha256(
-    json.dumps(_MODEL_TARGET_SCHEMA_MANIFEST, sort_keys=True, separators=(",", ":")).encode(
-        "utf-8"
-    )
+    json.dumps(
+        _MODEL_TARGET_SCHEMA_MANIFEST, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
 ).hexdigest()
 
 _FEATURE_REQUIRED_FIELDS = (
@@ -562,7 +572,9 @@ def build_feature_field_catalog() -> dict[str, dict[str, Any]]:
     catalog: dict[str, dict[str, Any]] = {}
     for group_name, fields in FEATURE_FIELD_GROUPS.items():
         for field in fields:
-            entry = catalog.setdefault(field, {"groups": [], "families": ["spot", "margin", "futures"]})
+            entry = catalog.setdefault(
+                field, {"groups": [], "families": ["spot", "margin", "futures"]}
+            )
             entry["groups"].append(group_name)
             if field in FEATURE_FIELD_FAMILY_SCOPE:
                 entry["families"] = list(FEATURE_FIELD_FAMILY_SCOPE[field])
@@ -614,7 +626,9 @@ def model_target_contract_descriptor() -> dict[str, Any]:
 
 
 def build_quality_gate(issues: Sequence[str] | None = None) -> dict[str, Any]:
-    normalized = sorted({str(item).strip() for item in issues or [] if str(item).strip()})
+    normalized = sorted(
+        {str(item).strip() for item in issues or [] if str(item).strip()}
+    )
     return {"passed": not normalized, "issues": normalized}
 
 
@@ -639,15 +653,21 @@ def build_model_contract_bundle(
     return out
 
 
-def normalize_feature_row(row: Mapping[str, Any] | None) -> tuple[dict[str, Any] | None, list[str]]:
+def normalize_feature_row(
+    row: Mapping[str, Any] | None,
+) -> tuple[dict[str, Any] | None, list[str]]:
     if row is None:
         return None, ["missing_feature_row"]
 
     raw = dict(row)
     issues: list[str] = []
     out: dict[str, Any] = {
-        "feature_schema_version": str(raw.get("feature_schema_version") or FEATURE_SCHEMA_VERSION),
-        "feature_schema_hash": str(raw.get("feature_schema_hash") or FEATURE_SCHEMA_HASH),
+        "feature_schema_version": str(
+            raw.get("feature_schema_version") or FEATURE_SCHEMA_VERSION
+        ),
+        "feature_schema_hash": str(
+            raw.get("feature_schema_hash") or FEATURE_SCHEMA_HASH
+        ),
     }
 
     if out["feature_schema_version"] != FEATURE_SCHEMA_VERSION:
@@ -675,7 +695,9 @@ def normalize_feature_row(row: Mapping[str, Any] | None) -> tuple[dict[str, Any]
     if timeframe not in MODEL_TIMEFRAMES:
         issues.append("feature_timeframe_invalid")
 
-    out["start_ts_ms"] = _coerce_positive_int(raw.get("start_ts_ms"), "feature_start_ts_invalid", issues)
+    out["start_ts_ms"] = _coerce_positive_int(
+        raw.get("start_ts_ms"), "feature_start_ts_invalid", issues
+    )
     out["computed_ts_ms"] = _coerce_positive_int(
         raw.get("computed_ts_ms"),
         "feature_computed_ts_invalid",
@@ -716,7 +738,10 @@ def normalize_feature_row(row: Mapping[str, Any] | None) -> tuple[dict[str, Any]
         value = out.get(field)
         if value is not None and not 0 <= value <= 1:
             issues.append(f"{field}_out_of_range")
-    if out["orderbook_imbalance"] is not None and not -1 <= out["orderbook_imbalance"] <= 1:
+    if (
+        out["orderbook_imbalance"] is not None
+        and not -1 <= out["orderbook_imbalance"] <= 1
+    ):
         issues.append("orderbook_imbalance_out_of_range")
     for field in (
         "range_score",
@@ -738,16 +763,18 @@ def normalize_feature_row(row: Mapping[str, Any] | None) -> tuple[dict[str, Any]
             issues.append(f"{field}_negative")
     if out["funding_rate"] is not None and not -1 <= out["funding_rate"] <= 1:
         issues.append("funding_rate_out_of_range")
-    if out["open_interest_change_pct"] is not None and out["open_interest_change_pct"] < -100:
+    if (
+        out["open_interest_change_pct"] is not None
+        and out["open_interest_change_pct"] < -100
+    ):
         issues.append("open_interest_change_pct_out_of_range")
     for field in ("funding_time_to_next_ms", "gap_count_lookback", "event_distance_ms"):
         value = out.get(field)
         if value is not None and value < 0:
             issues.append(f"{field}_negative")
-    if (
-        out["feature_quality_status"] is not None
-        and out["feature_quality_status"] not in {"ok", "degraded", "invalid"}
-    ):
+    if out["feature_quality_status"] is not None and out[
+        "feature_quality_status"
+    ] not in {"ok", "degraded", "invalid"}:
         issues.append("feature_quality_status_invalid")
     if market_family not in {"futures", "unknown"}:
         for field in (
@@ -790,7 +817,9 @@ def build_feature_snapshot(
     for tf in MODEL_TIMEFRAMES:
         normalized, row_issues = normalize_feature_row(combined_rows.get(tf))
         normalized_rows[tf] = normalized
-        issues.extend(f"{tf}:{item}" for item in row_issues if item != "missing_feature_row")
+        issues.extend(
+            f"{tf}:{item}" for item in row_issues if item != "missing_feature_row"
+        )
         if normalized is None:
             issues.append(f"missing_feature_tf_{tf}")
 
@@ -806,7 +835,7 @@ def build_feature_snapshot(
         "quality_gate": build_quality_gate(issues),
     }
     if snapshot["primary_tf"] is None:
-        snapshot["missing"] = True
+        snapshot["missing"] = True  # type: ignore
     return snapshot
 
 
@@ -822,7 +851,9 @@ def normalize_model_output_row(
         "model_output_schema_version": str(
             raw.get("model_output_schema_version") or MODEL_OUTPUT_SCHEMA_VERSION
         ),
-        "model_output_schema_hash": str(raw.get("model_output_schema_hash") or MODEL_OUTPUT_SCHEMA_HASH),
+        "model_output_schema_hash": str(
+            raw.get("model_output_schema_hash") or MODEL_OUTPUT_SCHEMA_HASH
+        ),
     }
 
     if out["model_output_schema_version"] != MODEL_OUTPUT_SCHEMA_VERSION:
@@ -848,23 +879,39 @@ def normalize_model_output_row(
         fallback=raw.get("market_regime"),
     )
     if out["take_trade_calibration_method"] is not None:
-        out["take_trade_calibration_method"] = out["take_trade_calibration_method"].lower()
+        out["take_trade_calibration_method"] = out[
+            "take_trade_calibration_method"
+        ].lower()
 
-    out["timeframe"] = normalize_model_timeframe(str(raw.get("timeframe") or "").strip())
-    out["analysis_ts_ms"] = _coerce_positive_int(raw.get("analysis_ts_ms"), "analysis_ts_invalid", issues)
+    out["timeframe"] = normalize_model_timeframe(
+        str(raw.get("timeframe") or "").strip()
+    )
+    out["analysis_ts_ms"] = _coerce_positive_int(
+        raw.get("analysis_ts_ms"), "analysis_ts_invalid", issues
+    )
     out["rejection_state"] = bool(raw.get("rejection_state"))
     out["model_ood_alert"] = bool(raw.get("model_ood_alert"))
     out["rejection_reasons_json"] = _as_list(raw.get("rejection_reasons_json"))
     out["regime_reasons_json"] = _as_list(raw.get("regime_reasons_json"))
-    out["regime_transition_reasons_json"] = _as_list(raw.get("regime_transition_reasons_json"))
-    out["target_projection_models_json"] = _as_list(raw.get("target_projection_models_json"))
+    out["regime_transition_reasons_json"] = _as_list(
+        raw.get("regime_transition_reasons_json")
+    )
+    out["target_projection_models_json"] = _as_list(
+        raw.get("target_projection_models_json")
+    )
     out["uncertainty_reasons_json"] = _as_list(raw.get("uncertainty_reasons_json"))
     out["ood_reasons_json"] = _as_list(raw.get("ood_reasons_json"))
     out["abstention_reasons_json"] = _as_list(raw.get("abstention_reasons_json"))
     out["reasons_json"] = _as_dict(raw.get("reasons_json"))
-    out["scoring_model_version"] = str(raw.get("scoring_model_version") or "").strip() or None
-    out["decision_policy_version"] = str(raw.get("decision_policy_version") or "").strip() or None
-    out["leverage_policy_version"] = str(raw.get("leverage_policy_version") or "").strip() or None
+    out["scoring_model_version"] = (
+        str(raw.get("scoring_model_version") or "").strip() or None
+    )
+    out["decision_policy_version"] = (
+        str(raw.get("decision_policy_version") or "").strip() or None
+    )
+    out["leverage_policy_version"] = (
+        str(raw.get("leverage_policy_version") or "").strip() or None
+    )
     out["leverage_cap_reasons_json"] = _as_list(raw.get("leverage_cap_reasons_json"))
     out["strategy_name"] = str(raw.get("strategy_name") or "").strip() or None
     out["playbook_id"] = str(raw.get("playbook_id") or "").strip() or None
@@ -872,31 +919,32 @@ def normalize_model_output_row(
     out["playbook_registry_version"] = (
         str(raw.get("playbook_registry_version") or "").strip() or None
     )
-    out["playbook_decision_mode"] = (
-        str(raw.get("playbook_decision_mode") or "").strip().lower()
-        or ("selected" if out["playbook_id"] else "playbookless")
-    )
+    out["playbook_decision_mode"] = str(
+        raw.get("playbook_decision_mode") or ""
+    ).strip().lower() or ("selected" if out["playbook_id"] else "playbookless")
     out["trade_action"] = str(raw.get("trade_action") or "").strip().lower() or None
-    out["meta_trade_lane"] = str(raw.get("meta_trade_lane") or "").strip().lower() or None
+    out["meta_trade_lane"] = (
+        str(raw.get("meta_trade_lane") or "").strip().lower() or None
+    )
     out["regime_state"] = (
         str(raw.get("regime_state") or "").strip().lower() or out["market_regime"]
     )
-    out["regime_substate"] = (
-        str(raw.get("regime_substate") or "").strip().lower()
-        or (f"{out['regime_state']}_default" if out["regime_state"] else None)
+    out["regime_substate"] = str(raw.get("regime_substate") or "").strip().lower() or (
+        f"{out['regime_state']}_default" if out["regime_state"] else None
     )
     out["regime_transition_state"] = (
         str(raw.get("regime_transition_state") or "").strip().lower() or "stable"
     )
     out["regime_policy_version"] = (
-        str(raw.get("regime_policy_version") or "").strip() or REGIME_ROUTING_POLICY_VERSION
+        str(raw.get("regime_policy_version") or "").strip()
+        or REGIME_ROUTING_POLICY_VERSION
     )
     regime_persistence_bars = raw.get("regime_persistence_bars")
     if regime_persistence_bars in (None, ""):
         out["regime_persistence_bars"] = 1
     else:
         try:
-            out["regime_persistence_bars"] = int(regime_persistence_bars)
+            out["regime_persistence_bars"] = int(regime_persistence_bars)  # type: ignore
         except (TypeError, ValueError):
             out["regime_persistence_bars"] = 1
             issues.append("regime_persistence_bars_invalid")
@@ -946,25 +994,43 @@ def normalize_model_output_row(
         issues.append("signal_class_invalid")
     if out["decision_state"] not in {"accepted", "downgraded", "rejected"}:
         issues.append("decision_state_invalid")
-    if out["signal_strength_0_100"] is not None and not 0 <= out["signal_strength_0_100"] <= 100:
+    if (
+        out["signal_strength_0_100"] is not None
+        and not 0 <= out["signal_strength_0_100"] <= 100
+    ):
         issues.append("signal_strength_out_of_range")
     if out["probability_0_1"] is not None and not 0 <= out["probability_0_1"] <= 1:
         issues.append("probability_out_of_range")
     if out["take_trade_prob"] is not None and not 0 <= out["take_trade_prob"] <= 1:
         issues.append("take_trade_prob_out_of_range")
-    if out["model_uncertainty_0_1"] is not None and not 0 <= out["model_uncertainty_0_1"] <= 1:
+    if (
+        out["model_uncertainty_0_1"] is not None
+        and not 0 <= out["model_uncertainty_0_1"] <= 1
+    ):
         issues.append("model_uncertainty_out_of_range")
-    if out["shadow_divergence_0_1"] is not None and not 0 <= out["shadow_divergence_0_1"] <= 1:
+    if (
+        out["shadow_divergence_0_1"] is not None
+        and not 0 <= out["shadow_divergence_0_1"] <= 1
+    ):
         issues.append("shadow_divergence_out_of_range")
-    if out["model_ood_score_0_1"] is not None and not 0 <= out["model_ood_score_0_1"] <= 1:
+    if (
+        out["model_ood_score_0_1"] is not None
+        and not 0 <= out["model_ood_score_0_1"] <= 1
+    ):
         issues.append("model_ood_score_out_of_range")
-    if out["decision_confidence_0_1"] is not None and not 0 <= out["decision_confidence_0_1"] <= 1:
+    if (
+        out["decision_confidence_0_1"] is not None
+        and not 0 <= out["decision_confidence_0_1"] <= 1
+    ):
         issues.append("decision_confidence_out_of_range")
     if out["expected_mae_bps"] is not None and out["expected_mae_bps"] < 0:
         issues.append("expected_mae_bps_negative")
     if out["expected_mfe_bps"] is not None and out["expected_mfe_bps"] < 0:
         issues.append("expected_mfe_bps_negative")
-    if out["regime_confidence_0_1"] is not None and not 0 <= out["regime_confidence_0_1"] <= 1:
+    if (
+        out["regime_confidence_0_1"] is not None
+        and not 0 <= out["regime_confidence_0_1"] <= 1
+    ):
         issues.append("regime_confidence_out_of_range")
     if (
         out["take_trade_calibration_method"] is not None
@@ -975,13 +1041,19 @@ def normalize_model_output_row(
         value = out.get(field)
         if value is not None and not 0 <= value <= 100:
             issues.append(f"{field}_out_of_range")
-    if out["expected_volatility_band"] is not None and out["expected_volatility_band"] < 0:
+    if (
+        out["expected_volatility_band"] is not None
+        and out["expected_volatility_band"] < 0
+    ):
         issues.append("expected_volatility_band_negative")
     if out["reward_risk_ratio"] is not None and out["reward_risk_ratio"] < 0:
         issues.append("reward_risk_ratio_negative")
     if out["playbook_decision_mode"] not in set(PLAYBOOK_DECISION_MODE_VALUES):
         issues.append("playbook_decision_mode_invalid")
-    if out["playbook_family"] is not None and out["playbook_family"] not in PLAYBOOK_FAMILY_SET:
+    if (
+        out["playbook_family"] is not None
+        and out["playbook_family"] not in PLAYBOOK_FAMILY_SET
+    ):
         issues.append("playbook_family_invalid")
     if out["playbook_decision_mode"] == "selected":
         if out["playbook_id"] is None:
@@ -993,7 +1065,9 @@ def normalize_model_output_row(
     if out["regime_persistence_bars"] < 1:
         issues.append("regime_persistence_bars_invalid")
     if out["trade_action"] is None:
-        out["trade_action"] = "do_not_trade" if out["decision_state"] == "rejected" else "allow_trade"
+        out["trade_action"] = (
+            "do_not_trade" if out["decision_state"] == "rejected" else "allow_trade"
+        )
     if out["trade_action"] not in {"allow_trade", "do_not_trade"}:
         issues.append("trade_action_invalid")
     if out["meta_trade_lane"] is not None:
@@ -1006,7 +1080,7 @@ def normalize_model_output_row(
         out["allowed_leverage"] = None
     else:
         try:
-            out["allowed_leverage"] = int(allowed_leverage)
+            out["allowed_leverage"] = int(allowed_leverage)  # type: ignore
         except (TypeError, ValueError):
             out["allowed_leverage"] = None
             issues.append("allowed_leverage_invalid")
@@ -1017,11 +1091,14 @@ def normalize_model_output_row(
         out["recommended_leverage"] = None
     else:
         try:
-            out["recommended_leverage"] = int(recommended_leverage)
+            out["recommended_leverage"] = int(recommended_leverage)  # type: ignore
         except (TypeError, ValueError):
             out["recommended_leverage"] = None
             issues.append("recommended_leverage_invalid")
-    if out["recommended_leverage"] is not None and not 7 <= out["recommended_leverage"] <= 75:
+    if (
+        out["recommended_leverage"] is not None
+        and not 7 <= out["recommended_leverage"] <= 75
+    ):
         issues.append("recommended_leverage_out_of_range")
 
     return out, sorted(set(issues))
@@ -1049,7 +1126,7 @@ def build_model_output_snapshot(
         **normalized,
         "quality_gate": build_quality_gate(issues),
     }
-    rj = row.get("reasons_json")
+    rj = row.get("reasons_json")  # type: ignore
     if isinstance(rj, dict):
         dcf = rj.get("decision_control_flow")
         if isinstance(dcf, dict):
@@ -1059,13 +1136,17 @@ def build_model_output_snapshot(
     return out
 
 
-def extract_active_models_from_signal_row(row: Mapping[str, Any] | None) -> list[dict[str, Any]]:
+def extract_active_models_from_signal_row(
+    row: Mapping[str, Any] | None,
+) -> list[dict[str, Any]]:
     if row is None:
         return []
     models: list[dict[str, Any]] = []
     version = str(row.get("take_trade_model_version") or "").strip() or None
     run_id = str(row.get("take_trade_model_run_id") or "").strip() or None
-    calibration_method = str(row.get("take_trade_calibration_method") or "").strip().lower() or None
+    calibration_method = (
+        str(row.get("take_trade_calibration_method") or "").strip().lower() or None
+    )
     if not (version is None and run_id is None and calibration_method is None):
         models.append(
             {
@@ -1092,7 +1173,9 @@ def extract_primary_feature_snapshot(raw: Any) -> dict[str, Any]:
         return primary
     timeframes = snapshot.get("timeframes")
     if isinstance(timeframes, dict):
-        primary_timeframe = normalize_model_timeframe(str(snapshot.get("primary_timeframe") or ""))
+        primary_timeframe = normalize_model_timeframe(
+            str(snapshot.get("primary_timeframe") or "")
+        )
         candidate = timeframes.get(primary_timeframe)
         if isinstance(candidate, dict):
             return candidate
@@ -1163,7 +1246,9 @@ def _as_dict(value: Any) -> dict[str, Any]:
     return {}
 
 
-def _normalize_active_models(active_models: Sequence[Mapping[str, Any]] | None) -> list[dict[str, Any]]:
+def _normalize_active_models(
+    active_models: Sequence[Mapping[str, Any]] | None,
+) -> list[dict[str, Any]]:
     normalized: list[dict[str, Any]] = []
     for item in active_models or []:
         model_name = str(item.get("model_name") or "").strip()

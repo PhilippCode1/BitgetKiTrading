@@ -47,15 +47,14 @@ export function SystemStatusCard({
     >
       <div className="system-comms-card__inner">
         <header className="system-comms-card__header">
-          <span
-            className="system-comms-card__phase-pill"
-            data-phase={phase}
-          >
+          <span className="system-comms-card__phase-pill" data-phase={phase}>
             {phaseLabel}
           </span>
           <h3 className="system-comms-card__title">{t(titleKey, titleVars)}</h3>
         </header>
-        <p className="system-comms-card__body muted small">{t(bodyKey, bodyVars)}</p>
+        <p className="system-comms-card__body muted small">
+          {t(bodyKey, bodyVars)}
+        </p>
         {stepKeys && stepKeys.length > 0 ? (
           <div className="system-comms-card__steps">
             <p className="system-comms-card__steps-label muted small">

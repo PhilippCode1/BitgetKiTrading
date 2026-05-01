@@ -8,7 +8,8 @@ Warmup-Flags und JSON-serialisierbare Provenance-Bundles fuer Downstream-Consume
 from __future__ import annotations
 
 import math
-from typing import Any, Mapping, Sequence
+from collections.abc import Mapping, Sequence
+from typing import Any
 
 TIMEFRAME_TO_MS: dict[str, int] = {
     "1m": 60_000,
@@ -51,7 +52,9 @@ def analyze_sorted_candle_starts(
     gaps_ge_1 = 0
     total_missing = 0
     for i in range(1, n):
-        delta = int(sorted_unique_start_ts_ms[i]) - int(sorted_unique_start_ts_ms[i - 1])
+        delta = int(sorted_unique_start_ts_ms[i]) - int(
+            sorted_unique_start_ts_ms[i - 1]
+        )
         if delta < step_ms:
             continue
         extra = (delta // step_ms) - 1
@@ -86,7 +89,9 @@ def feature_warmup_flags(
     }
 
 
-def realized_vol_std_log_returns(closes: Sequence[float], window: int = 20) -> float | None:
+def realized_vol_std_log_returns(
+    closes: Sequence[float], window: int = 20
+) -> float | None:
     """Std.dev der Log-Renditen ueber die letzten `window` Returns (window+1 Closes)."""
     if len(closes) < window + 1:
         return None
@@ -158,7 +163,9 @@ def build_feature_input_provenance(
     }
     if ret_10 is not None and not (math.isnan(ret_10) or math.isinf(ret_10)):
         out["signals"]["ret_10"] = float(ret_10)
-    if realized_vol_20 is not None and not (math.isnan(realized_vol_20) or math.isinf(realized_vol_20)):
+    if realized_vol_20 is not None and not (
+        math.isnan(realized_vol_20) or math.isinf(realized_vol_20)
+    ):
         out["signals"]["realized_vol_logret_20"] = float(realized_vol_20)
     if auxiliary_inputs:
         out["auxiliary_inputs"] = dict(auxiliary_inputs)
@@ -183,7 +190,9 @@ def build_structure_input_provenance(
     gap = analyze_sorted_candle_starts(sorted_bar_starts_ms, step_ms=step)
     max_gap = int(gap["max_gap_bars"])
     cov = coverage_ok(max_gap, max_allowed_gap_bars=max_allowed_gap_bars)
-    bos_choch_allowed = coverage_ok(max_gap, max_allowed_gap_bars=bos_choch_max_gap_bars)
+    bos_choch_allowed = coverage_ok(
+        max_gap, max_allowed_gap_bars=bos_choch_max_gap_bars
+    )
     return {
         "pipeline_version": PIPELINE_PROVENANCE_VERSION,
         "stage": "structure",

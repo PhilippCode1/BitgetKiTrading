@@ -18,10 +18,12 @@ for import_path in (ROOT, SHARED_SRC):
     if str(import_path) not in sys.path:
         sys.path.insert(0, str(import_path))
 
-from scripts.market_data_quality_report import evaluate_asset as evaluate_market_data_asset  # noqa: E402
+from scripts.market_data_quality_report import (
+    evaluate_asset as evaluate_market_data_asset,  # noqa: E402
+)
 from shared_py.asset_risk_tiers import (  # noqa: E402
-    asset_tier_allows_mode,
     asset_live_eligibility_reasons,
+    asset_tier_allows_mode,
     build_asset_risk_summary_de,
     validate_multi_asset_order_sizing,
 )
@@ -33,7 +35,10 @@ from shared_py.liquidity_scoring import (  # noqa: E402
     build_liquidity_assessment,
     build_liquidity_block_reasons_de,
 )
-from shared_py.live_preflight import LivePreflightContext, evaluate_live_preflight  # noqa: E402
+from shared_py.live_preflight import (  # noqa: E402
+    LivePreflightContext,
+    evaluate_live_preflight,
+)
 
 DEFAULT_GOVERNANCE = ROOT / "tests" / "fixtures" / "asset_governance_sample.json"
 DEFAULT_MARKET_DATA = ROOT / "tests" / "fixtures" / "market_data_quality_sample.json"
@@ -74,7 +79,9 @@ def _load_assets(path: Path) -> list[dict[str, Any]]:
 def _load_governance(path: Path) -> dict[str, AssetGovernanceRecord]:
     return {
         record.symbol.upper(): record
-        for record in (AssetGovernanceRecord.model_validate(item) for item in _load_assets(path))
+        for record in (
+            AssetGovernanceRecord.model_validate(item) for item in _load_assets(path)
+        )
     }
 
 
@@ -112,7 +119,9 @@ def _load_liquidity(path: Path) -> dict[str, dict[str, Any]]:
         )
         out[assessment.symbol.upper()] = {
             **asdict(assessment),
-            "block_reasons_de": build_liquidity_block_reasons_de(assessment.block_reasons),
+            "block_reasons_de": build_liquidity_block_reasons_de(
+                assessment.block_reasons
+            ),
             "requested_notional": float(item.get("requested_notional") or 0.0),
             "requested_leverage": int(item.get("requested_leverage") or 7),
         }
@@ -156,8 +165,18 @@ def _build_live_preflight_context_for_asset(
     owner_approved: bool,
 ) -> LivePreflightContext:
     governance_state = gov.state if gov else "missing"
-    terminal_or_unknown = governance_state in {"missing", "unknown", "blocked", "delisted", "suspended", "manual_review_required", "quarantine"}
-    slippage_reasons = set(liq.get("block_reasons", [])) if liq else {"slippage_unbekannt"}
+    terminal_or_unknown = governance_state in {
+        "missing",
+        "unknown",
+        "blocked",
+        "delisted",
+        "suspended",
+        "manual_review_required",
+        "quarantine",
+    }
+    slippage_reasons = (
+        set(liq.get("block_reasons", [])) if liq else {"slippage_unbekannt"}
+    )
     return LivePreflightContext(
         execution_mode_live=True,
         live_trade_enable=True,
@@ -165,11 +184,16 @@ def _build_live_preflight_context_for_asset(
         asset_in_catalog=gov is not None,
         asset_status_ok=not terminal_or_unknown,
         asset_live_allowed=bool(gov and gov.state == "live_allowed"),
-        instrument_contract_complete=bool(gov and gov.product_type and gov.market_family),
-        instrument_metadata_fresh=mdq is not None and mdq.get("quality_status") not in {"data_stale", "data_unknown"},
+        instrument_contract_complete=bool(
+            gov and gov.product_type and gov.market_family
+        ),
+        instrument_metadata_fresh=mdq is not None
+        and mdq.get("quality_status") not in {"data_stale", "data_unknown"},
         data_quality_status=_live_gate_status_from_data_quality(str(mdq.get("quality_status")) if mdq else None),  # type: ignore[arg-type]
         liquidity_status=_live_gate_status_from_liquidity(liq),  # type: ignore[arg-type]
-        slippage_ok=not bool(slippage_reasons & {"slippage_unbekannt", "slippage_zu_hoch"}),
+        slippage_ok=not bool(
+            slippage_reasons & {"slippage_unbekannt", "slippage_zu_hoch"}
+        ),
         risk_tier_live_allowed=asset_tier_allows_mode(risk_tier, "live"),
         order_sizing_ok=bool(sizing.get("valid")),
         portfolio_risk_ok=True,
@@ -215,7 +239,9 @@ def build_report_payload(
         data_quality_status = str(mdq.get("quality_status") if mdq else "data_unknown")
         liquidity_green = bool(liq and liq.get("live_allowed") is True)
         liquidity_status = "green" if liquidity_green else "red"
-        owner_approved = bool(gov and gov.state == "live_allowed" and gov.actor == "Philipp")
+        owner_approved = bool(
+            gov and gov.state == "live_allowed" and gov.actor == "Philipp"
+        )
         strategy_evidence_ready = bool(gov and gov.strategy_evidence_ready)
         account_context_fresh = bool(mdq and liq)
         spread_bps = liq.get("spread_bps") if liq else None
@@ -237,9 +263,17 @@ def build_report_payload(
             requested_leverage=requested_leverage,
             requested_notional_usdt=requested_notional,
         )
-        governance_reasons = live_block_reasons(gov) if gov else ["asset_governance_missing"]
-        data_reasons = list(mdq.get("block_reasons", [])) if mdq else ["market_data_quality_missing"]
-        liquidity_reasons = list(liq.get("block_reasons", [])) if liq else ["liquidity_quality_missing"]
+        governance_reasons = (
+            live_block_reasons(gov) if gov else ["asset_governance_missing"]
+        )
+        data_reasons = (
+            list(mdq.get("block_reasons", []))
+            if mdq
+            else ["market_data_quality_missing"]
+        )
+        liquidity_reasons = (
+            list(liq.get("block_reasons", [])) if liq else ["liquidity_quality_missing"]
+        )
         sizing_reasons = list(sizing.get("reasons", []))
         live_context = _build_live_preflight_context_for_asset(
             gov=gov,
@@ -288,19 +322,35 @@ def build_report_payload(
                 "precision_complete": "missing_precision" not in all_block_reasons,
                 "order_params_complete": not any(
                     reason in all_block_reasons
-                    for reason in ("missing_min_qty", "missing_min_notional", "order_sizing_not_safe")
+                    for reason in (
+                        "missing_min_qty",
+                        "missing_min_notional",
+                        "order_sizing_not_safe",
+                    )
                 ),
                 "liquidity_live_allowed": liquidity_green,
                 "requested_leverage": requested_leverage,
                 "requested_notional": requested_notional,
                 "sizing_valid": bool(sizing.get("valid")),
-                "live_preflight_status": "LIVE_ALLOWED" if not all_block_reasons and live_decision.submit_allowed else "LIVE_BLOCKED",
+                "live_preflight_status": (
+                    "LIVE_ALLOWED"
+                    if not all_block_reasons and live_decision.submit_allowed
+                    else "LIVE_BLOCKED"
+                ),
                 "decision": (
                     "BLOCK_ALL"
-                    if bool(gov and gov.state in {"quarantine", "delisted", "suspended", "unknown"})
+                    if bool(
+                        gov
+                        and gov.state
+                        in {"quarantine", "delisted", "suspended", "unknown"}
+                    )
                     else (
                         "ALLOW_FOR_SHADOW"
-                        if (not live_decision.submit_allowed and mdq is not None and liq is not None)
+                        if (
+                            not live_decision.submit_allowed
+                            and mdq is not None
+                            and liq is not None
+                        )
                         else "BLOCK_FOR_LIVE"
                     )
                 ),
@@ -319,7 +369,9 @@ def build_report_payload(
             }
         )
 
-    live_allowed = [row["symbol"] for row in rows if row["live_preflight_status"] == "LIVE_ALLOWED"]
+    live_allowed = [
+        row["symbol"] for row in rows if row["live_preflight_status"] == "LIVE_ALLOWED"
+    ]
     covered_preflight_reasons = sorted(
         {
             reason
@@ -329,7 +381,9 @@ def build_report_payload(
         }
     )
     missing_required_preflight_reasons = [
-        reason for reason in REQUIRED_ASSET_PREFLIGHT_REASONS if reason not in covered_preflight_reasons
+        reason
+        for reason in REQUIRED_ASSET_PREFLIGHT_REASONS
+        if reason not in covered_preflight_reasons
     ]
     return {
         "generated_at": datetime.now(tz=UTC).isoformat(),
@@ -395,8 +449,16 @@ def render_markdown(payload: dict[str, Any]) -> str:
             )
         )
     lines.extend(["", "## Live-Broker-Preflight-Coverage", ""])
-    covered = ", ".join(f"`{item}`" for item in payload["covered_live_preflight_reasons"]) or "-"
-    missing = ", ".join(f"`{item}`" for item in payload["missing_required_live_preflight_reasons"]) or "-"
+    covered = (
+        ", ".join(f"`{item}`" for item in payload["covered_live_preflight_reasons"])
+        or "-"
+    )
+    missing = (
+        ", ".join(
+            f"`{item}`" for item in payload["missing_required_live_preflight_reasons"]
+        )
+        or "-"
+    )
     lines.append(f"- Abgedeckt: {covered}")
     lines.append(f"- Fehlend: {missing}")
     lines.extend(["", "## Deutsche Risk-Hinweise", ""])
@@ -427,7 +489,9 @@ def main(argv: list[str] | None = None) -> int:
     )
     if args.output_json:
         args.output_json.parent.mkdir(parents=True, exist_ok=True)
-        args.output_json.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+        args.output_json.write_text(
+            json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
     if args.output_md:
         args.output_md.parent.mkdir(parents=True, exist_ok=True)
         args.output_md.write_text(render_markdown(payload), encoding="utf-8")

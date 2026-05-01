@@ -76,18 +76,35 @@ def test_report_keeps_live_no_go_and_covers_required_internal_reasons() -> None:
     assert payload["missing_instrument_block_reasons"] == []
     assert payload["missing_asset_universe_block_reasons"] == []
     assert payload["missing_live_preflight_reasons"] == []
-    assert set(REQUIRED_INSTRUMENT_BLOCK_REASONS).issubset(payload["covered_instrument_block_reasons"])
-    assert set(REQUIRED_ASSET_UNIVERSE_BLOCK_REASONS).issubset(payload["asset_universe_reasons"])
-    assert set(REQUIRED_LIVE_PREFLIGHT_REASONS).issubset(payload["covered_live_preflight_reasons"])
+    assert set(REQUIRED_INSTRUMENT_BLOCK_REASONS).issubset(
+        payload["covered_instrument_block_reasons"]
+    )
+    assert set(REQUIRED_ASSET_UNIVERSE_BLOCK_REASONS).issubset(
+        payload["asset_universe_reasons"]
+    )
+    assert set(REQUIRED_LIVE_PREFLIGHT_REASONS).issubset(
+        payload["covered_live_preflight_reasons"]
+    )
 
 
 def test_instrument_scenarios_block_submit_through_preflight() -> None:
     payload = build_report_payload()
 
-    assert all(row["is_live_allowed"] is False for row in payload["instrument_scenarios"])
-    assert any("missing_product_type_for_futures" in row["block_reasons"] for row in payload["instrument_scenarios"])
-    assert any("tier_4_shadow_only" in row["block_reasons"] for row in payload["instrument_scenarios"])
-    assert any("missing_owner_approval" in row["block_reasons"] for row in payload["instrument_scenarios"])
+    assert all(
+        row["is_live_allowed"] is False for row in payload["instrument_scenarios"]
+    )
+    assert any(
+        "missing_product_type_for_futures" in row["block_reasons"]
+        for row in payload["instrument_scenarios"]
+    )
+    assert any(
+        "tier_4_shadow_only" in row["block_reasons"]
+        for row in payload["instrument_scenarios"]
+    )
+    assert any(
+        "missing_owner_approval" in row["block_reasons"]
+        for row in payload["instrument_scenarios"]
+    )
     assert any(
         row["preflight"]["submit_allowed"] is False
         and "instrument_contract_missing" in row["preflight"]["blocking_reasons"]
@@ -102,8 +119,13 @@ def test_external_template_fails_until_real_bitget_evidence_exists() -> None:
     assert assessment["external_required"] is True
     assert "external_status_nicht_verified" in assessment["failures"]
     assert "key_permissions_ip_allowlist_enabled_nicht_belegt" in assessment["failures"]
-    assert "readonly_discovery_public_time_checked_nicht_belegt" in assessment["failures"]
-    assert "instrument_metadata_asset_universe_checked_nicht_belegt" in assessment["failures"]
+    assert (
+        "readonly_discovery_public_time_checked_nicht_belegt" in assessment["failures"]
+    )
+    assert (
+        "instrument_metadata_asset_universe_checked_nicht_belegt"
+        in assessment["failures"]
+    )
 
 
 def test_external_verified_payload_passes_without_live_writes_or_secrets() -> None:
@@ -122,7 +144,10 @@ def test_external_evidence_rejects_write_calls_and_secret_surfaces() -> None:
     assessment = assess_external_evidence(payload)
 
     assert assessment["status"] == "FAIL"
-    assert "readonly_discovery_darf_keine_write_endpoints_aufrufen" in assessment["failures"]
+    assert (
+        "readonly_discovery_darf_keine_write_endpoints_aufrufen"
+        in assessment["failures"]
+    )
     assert any("api_key" in item for item in assessment["failures"])
 
 
@@ -157,6 +182,8 @@ def test_cli_writes_report_and_template(tmp_path: Path) -> None:
         check=False,
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
-    assert "# Bitget Exchange Instrument Evidence Report" in out_md.read_text(encoding="utf-8")
+    assert "# Bitget Exchange Instrument Evidence Report" in out_md.read_text(
+        encoding="utf-8"
+    )
     payload = json.loads(out_json.read_text(encoding="utf-8"))
     assert payload["missing_live_preflight_reasons"] == []

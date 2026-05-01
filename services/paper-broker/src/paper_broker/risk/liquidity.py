@@ -18,7 +18,7 @@ def _parse_levels(raw: Any) -> list[tuple[Decimal, Decimal]]:
         return []
     out: list[tuple[Decimal, Decimal]] = []
     for row in raw:
-        if not isinstance(row, (list, tuple)) or len(row) < 2:
+        if not isinstance(row, list | tuple) or len(row) < 2:
             continue
         try:
             p = Decimal(str(row[0]))

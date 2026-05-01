@@ -66,7 +66,10 @@ def test_margin_usage_over_limit_blocks() -> None:
 
 def test_position_risk_over_limit_blocks() -> None:
     out = compute_order_qty_from_risk(_base(max_position_risk_pct=0.00001))
-    assert "keine_sichere_groesse_verfuegbar" in out.block_reasons or len(out.block_reasons) > 0
+    assert (
+        "keine_sichere_groesse_verfuegbar" in out.block_reasons
+        or len(out.block_reasons) > 0
+    )
 
 
 def test_daily_loss_limit_blocks() -> None:
@@ -91,7 +94,10 @@ def test_precision_rounding_cannot_increase_risk() -> None:
 
 def test_min_qty_and_min_notional_blocks() -> None:
     out = compute_order_qty_from_risk(_base(min_qty=5000.0, min_notional=5000.0))
-    assert "min_qty_unterschritten" in out.block_reasons or "min_notional_unterschritten" in out.block_reasons
+    assert (
+        "min_qty_unterschritten" in out.block_reasons
+        or "min_notional_unterschritten" in out.block_reasons
+    )
 
 
 def test_tier_d_e_assets_get_zero_size() -> None:

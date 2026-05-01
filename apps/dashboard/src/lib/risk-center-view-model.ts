@@ -99,7 +99,8 @@ export function computeRiskOverviewFromRuntime(
     weeklyLoss: weekly == null ? "—" : `${weekly.toFixed(2)} USDT`,
     drawdown: dd == null ? "—" : `${(dd * 100).toFixed(1)}%`,
     marginUsage: margin == null ? "—" : `${(margin * 100).toFixed(1)}%`,
-    portfolioExposure: exposure == null ? "—" : `${(exposure * 100).toFixed(1)}%`,
+    portfolioExposure:
+      exposure == null ? "—" : `${(exposure * 100).toFixed(1)}%`,
     topRisks,
   };
 }
@@ -115,8 +116,11 @@ export function computeLiveBlockers(params: {
   const { health, runtime, liveSignal, killSwitchCount, decisions } = params;
   if (!liveSignal) blockers.push("stale data");
   blockers.push(...toReasons(liveSignal?.live_execution_block_reasons_json));
-  blockers.push(...toReasons(liveSignal?.governor_universal_hard_block_reasons_json));
-  if ((runtime?.safety_latch_active ?? false) === true) blockers.push("safety latch");
+  blockers.push(
+    ...toReasons(liveSignal?.governor_universal_hard_block_reasons_json),
+  );
+  if ((runtime?.safety_latch_active ?? false) === true)
+    blockers.push("safety latch");
   if (killSwitchCount > 0) blockers.push("kill switch");
   const details = asRecord(runtime?.details);
   const acct = asRecord(details.risk_account_snapshot);
@@ -127,19 +131,26 @@ export function computeLiveBlockers(params: {
   if (health?.ops?.live_broker?.latest_reconcile_status == null) {
     blockers.push("no exchange truth");
   }
-  if (decisions.some((d) => (d.risk_primary_reason ?? "").toLowerCase().includes("quarant"))) {
+  if (
+    decisions.some((d) =>
+      (d.risk_primary_reason ?? "").toLowerCase().includes("quarant"),
+    )
+  ) {
     blockers.push("asset quarantined");
   }
   return Array.from(new Set(blockers));
 }
 
-export function computeOverallStatus(blockers: readonly string[]): RiskOverallStatus {
+export function computeOverallStatus(
+  blockers: readonly string[],
+): RiskOverallStatus {
   if (blockers.length > 0) return "blockiert";
   return "ok";
 }
 
 function riskTierFromSignal(signal: SignalRecentItem | undefined): string {
-  const direct = (signal as unknown as Record<string, unknown> | undefined)?.asset_risk_tier;
+  const direct = (signal as unknown as Record<string, unknown> | undefined)
+    ?.asset_risk_tier;
   if (typeof direct === "string" && direct.trim()) return direct.trim();
   const metadata = asRecord(signal?.signal_view);
   const fromMeta = metadata.asset_risk_tier;
@@ -155,7 +166,8 @@ function maxMode(signal: SignalRecentItem | undefined): string {
   const tier = riskTierFromSignal(signal).toLowerCase();
   if (tier.includes("tier 4") || tier.includes("tier 5")) return "Paper";
   const action = (signal.trade_action ?? "").toLowerCase();
-  if (action === "allow_trade" && signal.live_execution_clear_for_real_money) return "Live";
+  if (action === "allow_trade" && signal.live_execution_clear_for_real_money)
+    return "Live";
   if (action === "do_not_trade" || action === "blocked") return "Paper";
   return "Shadow";
 }
@@ -175,7 +187,9 @@ export function buildAssetRiskRows(params: {
     const oi = asNum(inst.raw_metadata?.open_interest_change_pct);
     const reasons = toReasons(signal?.live_execution_block_reasons_json);
     const tier = riskTierFromSignal(signal);
-    const tierBlocked = tier.toLowerCase().includes("tier 4") || tier.toLowerCase().includes("tier 5");
+    const tierBlocked =
+      tier.toLowerCase().includes("tier 4") ||
+      tier.toLowerCase().includes("tier 5");
     const rowReasons = [...reasons];
     if (tierBlocked) rowReasons.push("asset quarantined");
     return {
@@ -189,7 +203,10 @@ export function buildAssetRiskRows(params: {
           : "n/a",
       dataQuality: inst.metadata_verified ? "ok" : "warnung",
       maxMode: maxMode(signal),
-      blockReasons: rowReasons.length > 0 ? Array.from(new Set(rowReasons)) : ["Keine harten Blocker gemeldet."],
+      blockReasons:
+        rowReasons.length > 0
+          ? Array.from(new Set(rowReasons))
+          : ["Keine harten Blocker gemeldet."],
     };
   });
 }

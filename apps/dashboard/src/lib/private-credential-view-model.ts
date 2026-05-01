@@ -85,7 +85,9 @@ export function buildPrivateCredentialViewModel(
   const blockgruende: string[] = [];
   let status: PrivateCredentialStatus = "missing";
   if (!configured) {
-    blockgruende.push("Bitget Private-Credentials fehlen oder sind unvollständig.");
+    blockgruende.push(
+      "Bitget Private-Credentials fehlen oder sind unvollständig.",
+    );
   } else {
     status = "configured_redacted";
   }
@@ -104,7 +106,10 @@ export function buildPrivateCredentialViewModel(
     blockgruende.push("Withdrawal-Permission erkannt (P0, Live blockiert).");
   }
   if (authFail) {
-    status = s?.private_auth_classification === "expired_or_revoked" ? "expired_or_revoked" : "invalid";
+    status =
+      s?.private_auth_classification === "expired_or_revoked"
+        ? "expired_or_revoked"
+        : "invalid";
     blockgruende.push("Private Authentifizierung ungültig oder widerrufen.");
   }
   const liveFlagsOn =
@@ -116,12 +121,23 @@ export function buildPrivateCredentialViewModel(
     runtime?.safety_latch_active !== true &&
     (runtime?.active_kill_switches?.length ?? 0) === 0;
   const eligible =
-    tradingDetected && !withdrawalDetected && authOk && liveFlagsOn && allGatesOk;
+    tradingDetected &&
+    !withdrawalDetected &&
+    authOk &&
+    liveFlagsOn &&
+    allGatesOk;
   const liveWriteBlocked = !eligible;
   if (eligible) {
     status = "live_write_eligible_after_all_gates";
   } else {
-    if (!["missing", "invalid", "expired_or_revoked", "withdrawal_permission_detected"].includes(status)) {
+    if (
+      ![
+        "missing",
+        "invalid",
+        "expired_or_revoked",
+        "withdrawal_permission_detected",
+      ].includes(status)
+    ) {
       status = "live_write_blocked";
     }
     if (!liveFlagsOn) {

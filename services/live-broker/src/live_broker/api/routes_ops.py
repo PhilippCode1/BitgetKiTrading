@@ -3,14 +3,18 @@ from __future__ import annotations
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
-
-from live_broker.execution.models import (
-    ExecutionIntentRequest,
-    OperatorReleasePostBody,
+from shared_py.service_auth import (
+    InternalServiceAuthContext,
+    build_internal_service_dependency,
 )
+
 from live_broker.control_plane.models import (
     ControlPlaneReadHistoryRequest,
     ControlPlaneSetLeverageRequest,
+)
+from live_broker.execution.models import (
+    ExecutionIntentRequest,
+    OperatorReleasePostBody,
 )
 from live_broker.orders.models import (
     CancelAllOrdersRequest,
@@ -24,7 +28,6 @@ from live_broker.orders.models import (
     SafetyLatchReleaseRequest,
 )
 from live_broker.private_rest import BitgetRestError
-from shared_py.service_auth import InternalServiceAuthContext, build_internal_service_dependency
 
 
 def _clamp_limit(limit: int, *, default: int = 20, cap: int = 200) -> int:
@@ -47,7 +50,9 @@ def build_ops_router(runtime) -> APIRouter:
         _auth: InternalServiceAuthContext = Depends(require_internal),
     ) -> dict:
         return {
-            "items": runtime.execution_service.list_recent_decisions(_clamp_limit(limit)),
+            "items": runtime.execution_service.list_recent_decisions(
+                _clamp_limit(limit)
+            ),
         }
 
     @router.get("/reference/paper")
@@ -79,7 +84,9 @@ def build_ops_router(runtime) -> APIRouter:
         execution_id: UUID,
         _auth: InternalServiceAuthContext = Depends(require_internal),
     ) -> dict:
-        return runtime.execution_service.telegram_operator_release_summary(str(execution_id))
+        return runtime.execution_service.telegram_operator_release_summary(
+            str(execution_id)
+        )
 
     @router.post("/executions/{execution_id}/operator-release")
     def operator_release_execution(
@@ -122,7 +129,9 @@ def build_ops_router(runtime) -> APIRouter:
         _auth: InternalServiceAuthContext = Depends(require_internal),
     ) -> dict:
         return {
-            "items": runtime.order_service.list_recent_order_actions(_clamp_limit(limit))
+            "items": runtime.order_service.list_recent_order_actions(
+                _clamp_limit(limit)
+            )
         }
 
     @router.get("/kill-switch/active")
@@ -147,7 +156,9 @@ def build_ops_router(runtime) -> APIRouter:
         limit: int = 20,
         _auth: InternalServiceAuthContext = Depends(require_internal),
     ) -> dict:
-        return {"items": runtime.order_service.list_recent_audit_trails(_clamp_limit(limit))}
+        return {
+            "items": runtime.order_service.list_recent_audit_trails(_clamp_limit(limit))
+        }
 
     @router.get("/control-plane/capability-matrix")
     def capability_matrix(
@@ -161,7 +172,9 @@ def build_ops_router(runtime) -> APIRouter:
         body: ControlPlaneReadHistoryRequest,
         _auth: InternalServiceAuthContext = Depends(require_internal),
     ) -> dict:
-        return _wrap_bitget_error(lambda: runtime.control_plane.read_orders_history(body))
+        return _wrap_bitget_error(
+            lambda: runtime.control_plane.read_orders_history(body)
+        )
 
     @router.post("/control-plane/read/fill-history")
     def control_plane_read_fill_history(
@@ -175,7 +188,9 @@ def build_ops_router(runtime) -> APIRouter:
         body: ControlPlaneSetLeverageRequest,
         _auth: InternalServiceAuthContext = Depends(require_internal),
     ) -> dict:
-        return _wrap_bitget_error(lambda: runtime.control_plane.set_leverage_operator(body))
+        return _wrap_bitget_error(
+            lambda: runtime.control_plane.set_leverage_operator(body)
+        )
 
     @router.post("/orders/create")
     def create_order(
@@ -226,7 +241,9 @@ def build_ops_router(runtime) -> APIRouter:
         body: KillSwitchRequest,
         _auth: InternalServiceAuthContext = Depends(require_internal),
     ) -> dict:
-        return _wrap_bitget_error(lambda: runtime.order_service.release_kill_switch(body))
+        return _wrap_bitget_error(
+            lambda: runtime.order_service.release_kill_switch(body)
+        )
 
     @router.post("/orders/emergency-flatten")
     def emergency_flatten(
@@ -240,7 +257,9 @@ def build_ops_router(runtime) -> APIRouter:
         body: CancelAllOrdersRequest,
         _auth: InternalServiceAuthContext = Depends(require_internal),
     ) -> dict:
-        return _wrap_bitget_error(lambda: runtime.order_service.cancel_all_orders_operator(body))
+        return _wrap_bitget_error(
+            lambda: runtime.order_service.cancel_all_orders_operator(body)
+        )
 
     @router.post("/safety/safety-latch/release")
     def safety_latch_release(

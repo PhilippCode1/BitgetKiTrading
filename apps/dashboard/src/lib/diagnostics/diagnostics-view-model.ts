@@ -167,7 +167,9 @@ export function formatDiagnosticMarkdownReport(args: {
   lines.push("");
   const sorted = sortComponentsByBusinessPriority(snap.components);
   for (const tier of [0, 1, 2, 3] as const) {
-    const tierRows = sorted.filter((r) => businessTierForComponentId(r.id) === tier);
+    const tierRows = sorted.filter(
+      (r) => businessTierForComponentId(r.id) === tier,
+    );
     if (tierRows.length === 0) continue;
     lines.push(`## ${t("pages.diagnostics.exportTier", { tier: tier + 1 })}`);
     lines.push("");

@@ -66,9 +66,12 @@ def test_assess_external_template_passes_for_synthetic_verified() -> None:
 
 def test_assess_external_template_fails_for_template_status() -> None:
     load = json.loads(
-        (REPO / "docs" / "production_10_10" / "branch_protection_evidence.template.json").read_text(
-            encoding="utf-8"
-        )
+        (
+            REPO
+            / "docs"
+            / "production_10_10"
+            / "branch_protection_evidence.template.json"
+        ).read_text(encoding="utf-8")
     )
     r = assess_external_template(load)
     assert r["status"] == "FAIL"
@@ -114,7 +117,9 @@ def test_cli_strict_external_fails_with_repo_template() -> None:
     assert proc.returncode == 1
 
 
-def test_cli_strict_external_passes_with_synthetic_verified_json(tmp_path: Path) -> None:
+def test_cli_strict_external_passes_with_synthetic_verified_json(
+    tmp_path: Path,
+) -> None:
     ext = tmp_path / "verified.json"
     ext.write_text(json.dumps(_verified_external_dict(), indent=2), encoding="utf-8")
     out_json = tmp_path / "out.json"

@@ -48,7 +48,9 @@ def assess_model_uncertainty(
 
     data_issues_component = min(1.0, len(ctx.data_issues) / 4.0)
     if ctx.data_issues:
-        uncertainty_reasons.extend(f"data_issue:{issue}" for issue in ctx.data_issues[:8])
+        uncertainty_reasons.extend(
+            f"data_issue:{issue}" for issue in ctx.data_issues[:8]
+        )
 
     staleness_feat = _coerce_float(primary.get("staleness_score_0_1")) or 0.0
     completeness = _coerce_float(primary.get("data_completeness_0_1"))
@@ -74,8 +76,13 @@ def assess_model_uncertainty(
 
     orderbook_age = _coerce_float(primary.get("orderbook_age_ms"))
     orderbook_stale = 0.0
-    if orderbook_age is not None and orderbook_age > float(settings.signal_max_orderbook_age_ms):
-        orderbook_stale = min(1.0, (orderbook_age - float(settings.signal_max_orderbook_age_ms)) / 30_000.0)
+    if orderbook_age is not None and orderbook_age > float(
+        settings.signal_max_orderbook_age_ms
+    ):
+        orderbook_stale = min(
+            1.0,
+            (orderbook_age - float(settings.signal_max_orderbook_age_ms)) / 30_000.0,
+        )
         uncertainty_reasons.append("orderbook_age_exec_risk")
 
     data_uncertainty_0_1 = min(
@@ -108,14 +115,20 @@ def assess_model_uncertainty(
         else 0.0
     )
     depth_stress = 0.0
-    if depth_ratio is not None and depth_ratio < float(settings.leverage_signal_min_depth_ratio):
+    if depth_ratio is not None and depth_ratio < float(
+        settings.leverage_signal_min_depth_ratio
+    ):
         depth_stress = min(
             1.0,
             (float(settings.leverage_signal_min_depth_ratio) - depth_ratio)
             / max(float(settings.leverage_signal_min_depth_ratio), 1e-9),
         )
         uncertainty_reasons.append("execution_depth_thin")
-    book_context_gap = 0.25 if liquidity_source and not liquidity_source.startswith("orderbook_levels") else 0.0
+    book_context_gap = (
+        0.25
+        if liquidity_source and not liquidity_source.startswith("orderbook_levels")
+        else 0.0
+    )
 
     execution_uncertainty_0_1 = min(
         1.0,
@@ -131,7 +144,9 @@ def assess_model_uncertainty(
         uncertainty_reasons.append("regime_uncertain")
 
     probability = _coerce_float(take_trade_prediction.get("take_trade_prob"))
-    take_trade_diag = _as_dict(take_trade_prediction.get("take_trade_model_diagnostics"))
+    take_trade_diag = _as_dict(
+        take_trade_prediction.get("take_trade_model_diagnostics")
+    )
     classifier_confidence = _coerce_float(take_trade_diag.get("confidence_0_1"))
     margin_unc = 1.0 if classifier_confidence is None else 1.0 - classifier_confidence
     entropy_uncertainty = (
@@ -170,10 +185,17 @@ def assess_model_uncertainty(
         uncertainty_reasons.append("missing_shadow_baseline")
     else:
         structural_disagreement_0_1 = min(1.0, max(0.0, shadow_divergence * 2.15))
-    if shadow_divergence is not None and shadow_divergence >= settings.model_shadow_divergence_threshold:
+    if (
+        shadow_divergence is not None
+        and shadow_divergence >= settings.model_shadow_divergence_threshold
+    ):
         uncertainty_reasons.append("shadow_divergence_high")
 
-    model_internal_0_1 = max(classifier_uncertainty, regressor_uncertainty, structural_disagreement_0_1 * 0.92)
+    model_internal_0_1 = max(
+        classifier_uncertainty,
+        regressor_uncertainty,
+        structural_disagreement_0_1 * 0.92,
+    )
     if model_internal_0_1 >= 0.55:
         uncertainty_reasons.append("model_confidence_low")
 
@@ -181,7 +203,9 @@ def assess_model_uncertainty(
         _coerce_float(take_trade_diag.get("ood_score_0_1")) or 0.0,
         _coerce_float(target_diag.get("ood_score_0_1")) or 0.0,
     )
-    ood_alert = bool(take_trade_diag.get("ood_alert")) or bool(target_diag.get("ood_alert"))
+    ood_alert = bool(take_trade_diag.get("ood_alert")) or bool(
+        target_diag.get("ood_alert")
+    )
     ood_reasons = _unique_strs(
         list(take_trade_diag.get("ood_reasons_json") or [])
         + list(target_diag.get("ood_reasons_json") or [])
@@ -239,7 +263,10 @@ def assess_model_uncertainty(
     if uncertainty_score >= settings.model_max_uncertainty:
         hard_abstain = True
         abstention_reasons.append("uncertainty_above_threshold")
-    if shadow_divergence is not None and shadow_divergence >= settings.model_shadow_divergence_hard_abstain:
+    if (
+        shadow_divergence is not None
+        and shadow_divergence >= settings.model_shadow_divergence_hard_abstain
+    ):
         hard_abstain = True
         abstention_reasons.append("shadow_divergence_hard_abstain")
     if spread_ratio > 1.85 or exec_ratio > 1.75:
@@ -248,7 +275,9 @@ def assess_model_uncertainty(
 
     uncertainty_effective_for_leverage_0_1 = min(
         1.0,
-        uncertainty_score + 0.14 * execution_uncertainty_0_1 + 0.08 * data_uncertainty_0_1,
+        uncertainty_score
+        + 0.14 * execution_uncertainty_0_1
+        + 0.08 * data_uncertainty_0_1,
     )
 
     exit_execution_bias = "normal"
@@ -270,7 +299,10 @@ def assess_model_uncertainty(
         want_shadow = (
             uncertainty_score >= settings.model_uncertainty_shadow_lane
             or ood_score >= settings.model_ood_shadow_lane_score
-            or (shadow_divergence is not None and shadow_divergence >= settings.model_shadow_divergence_shadow_lane)
+            or (
+                shadow_divergence is not None
+                and shadow_divergence >= settings.model_shadow_divergence_shadow_lane
+            )
             or execution_uncertainty_0_1 >= 0.52
             or data_uncertainty_0_1 >= 0.58
         )
@@ -286,7 +318,10 @@ def assess_model_uncertainty(
                 lane_reasons.append("uncertainty_score_shadow_lane")
             if ood_score >= settings.model_ood_shadow_lane_score:
                 lane_reasons.append("ood_score_shadow_lane")
-            if shadow_divergence is not None and shadow_divergence >= settings.model_shadow_divergence_shadow_lane:
+            if (
+                shadow_divergence is not None
+                and shadow_divergence >= settings.model_shadow_divergence_shadow_lane
+            ):
                 lane_reasons.append("shadow_divergence_shadow_lane")
             if execution_uncertainty_0_1 >= 0.52:
                 lane_reasons.append("execution_uncertainty_shadow_lane")
@@ -326,14 +361,18 @@ def assess_model_uncertainty(
     return {
         "policy_version": UNCERTAINTY_POLICY_VERSION,
         "model_uncertainty_0_1": uncertainty_score,
-        "shadow_divergence_0_1": shadow_divergence if shadow_divergence is not None else 1.0,
+        "shadow_divergence_0_1": (
+            shadow_divergence if shadow_divergence is not None else 1.0
+        ),
         "model_ood_score_0_1": ood_score,
         "model_ood_alert": ood_alert,
         "data_uncertainty_0_1": data_uncertainty_0_1,
         "regime_uncertainty_0_1": regime_uncertainty_0_1,
         "execution_uncertainty_0_1": execution_uncertainty_0_1,
         "policy_uncertainty_0_1": policy_uncertainty_0_1,
-        "uncertainty_effective_for_leverage_0_1": round(uncertainty_effective_for_leverage_0_1, 6),
+        "uncertainty_effective_for_leverage_0_1": round(
+            uncertainty_effective_for_leverage_0_1, 6
+        ),
         "uncertainty_components": components_v2,
         "uncertainty_reasons_json": _unique_strs(uncertainty_reasons),
         "ood_reasons_json": ood_reasons,
@@ -399,7 +438,9 @@ def assess_model_uncertainty(
 def _regime_uncertainty(signal_row: dict[str, Any]) -> float:
     regime = str(signal_row.get("market_regime") or "").strip().lower()
     regime_state = str(signal_row.get("regime_state") or "").strip().lower() or regime
-    transition_state = str(signal_row.get("regime_transition_state") or "").strip().lower()
+    transition_state = (
+        str(signal_row.get("regime_transition_state") or "").strip().lower()
+    )
     confidence = _coerce_float(signal_row.get("regime_confidence_0_1"))
     base = 0.5 if confidence is None else 1.0 - confidence
     if regime_state == "shock":
@@ -423,7 +464,9 @@ def _regime_uncertainty(signal_row: dict[str, Any]) -> float:
     return min(1.0, max(0.0, base))
 
 
-def _shadow_divergence(signal_row: dict[str, Any], take_trade_prob: float | None) -> float | None:
+def _shadow_divergence(
+    signal_row: dict[str, Any], take_trade_prob: float | None
+) -> float | None:
     heuristic = _coerce_float(signal_row.get("probability_0_1"))
     if heuristic is None or take_trade_prob is None:
         return None

@@ -66,7 +66,9 @@ def test_verify_live_trading_bypasses_gateway_internal_key() -> None:
 
 def test_verify_live_trading_403_when_db_denies() -> None:
     auth = _ctx(roles={"operator:mutate", "emergency:mutate"})
-    with patch("api_gateway.deps.get_gateway_settings", return_value=_mock_settings(ttl=0)):
+    with patch(
+        "api_gateway.deps.get_gateway_settings", return_value=_mock_settings(ttl=0)
+    ):
         with patch(
             "api_gateway.deps._read_live_ok_from_cache",
             return_value=None,
@@ -85,7 +87,10 @@ def test_verify_live_trading_403_when_db_denies() -> None:
 
 
 def test_verify_skipped_when_enforce_off() -> None:
-    with patch("api_gateway.deps.get_gateway_settings", return_value=_mock_settings(enforce=False)):
+    with patch(
+        "api_gateway.deps.get_gateway_settings",
+        return_value=_mock_settings(enforce=False),
+    ):
         with patch("api_gateway.deps._live_policy_db_check") as m:
             verify_live_trading_capability(_ctx(roles={"operator:mutate"}))
     m.assert_not_called()

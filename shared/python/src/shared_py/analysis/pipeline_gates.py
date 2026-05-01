@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from decimal import Decimal, InvalidOperation
-from typing import Literal, Sequence
+from typing import Literal
 
 from shared_py.bitget.instruments import (
     BitgetInstrumentCatalogEntry,
@@ -132,7 +133,7 @@ def sanitize_ticker_snapshot_for_family(
     if not hasattr(snapshot, "__dataclass_fields__"):
         return snapshot
 
-    data = {f.name: getattr(snapshot, f.name) for f in fields(snapshot)}
+    data = {f.name: getattr(snapshot, f.name) for f in fields(snapshot)}  # type: ignore
     if fam != "futures":
         for key in (
             "mark_price",
@@ -147,7 +148,7 @@ def sanitize_ticker_snapshot_for_family(
     if fam != "futures" or not supports_open_interest:
         if "holding_amount" in data:
             data["holding_amount"] = None
-    return snap_type(**{k: data[k] for k in (f.name for f in fields(snapshot))})
+    return snap_type(**{k: data[k] for k in (f.name for f in fields(snapshot))})  # type: ignore
 
 
 def compute_data_completeness_0_1(

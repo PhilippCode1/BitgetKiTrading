@@ -31,8 +31,18 @@ def test_missing_exchange_truth_blocks_live() -> None:
 
 
 def test_emergency_flatten_is_reduce_only_safe_modeled() -> None:
-    assert emergency_flatten_is_reduce_only(reduce_only=True, requested_qty=1.0, position_qty=2.0) is True
-    assert emergency_flatten_is_reduce_only(reduce_only=False, requested_qty=1.0, position_qty=2.0) is False
+    assert (
+        emergency_flatten_is_reduce_only(
+            reduce_only=True, requested_qty=1.0, position_qty=2.0
+        )
+        is True
+    )
+    assert (
+        emergency_flatten_is_reduce_only(
+            reduce_only=False, requested_qty=1.0, position_qty=2.0
+        )
+        is False
+    )
 
 
 def test_ui_payload_contains_no_secrets_and_labels_are_german() -> None:

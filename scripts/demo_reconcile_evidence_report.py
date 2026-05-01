@@ -47,12 +47,23 @@ def _safe_list(payload: dict[str, Any]) -> list[dict[str, Any]]:
     return []
 
 
-def _extract_position(positions: list[dict[str, Any]], symbol: str) -> dict[str, Any] | None:
+def _extract_position(
+    positions: list[dict[str, Any]], symbol: str
+) -> dict[str, Any] | None:
     wanted = symbol.upper()
     for pos in positions:
         if str(pos.get("symbol") or "").upper() == wanted:
-            size_raw = str(pos.get("total") or pos.get("holdSize") or pos.get("available") or "0").strip()
-            if size_raw and size_raw not in ("0", "0.0", "0.00", "0.000", "0.0000", "0.00000"):
+            size_raw = str(
+                pos.get("total") or pos.get("holdSize") or pos.get("available") or "0"
+            ).strip()
+            if size_raw and size_raw not in (
+                "0",
+                "0.0",
+                "0.00",
+                "0.000",
+                "0.0000",
+                "0.00000",
+            ):
                 return pos
     return None
 
@@ -68,18 +79,38 @@ def _detect_position_side(pos: dict[str, Any]) -> str:
 
 
 def _position_size(pos: dict[str, Any]) -> str:
-    return str(pos.get("total") or pos.get("holdSize") or pos.get("available") or "0").strip() or "0"
+    return (
+        str(
+            pos.get("total") or pos.get("holdSize") or pos.get("available") or "0"
+        ).strip()
+        or "0"
+    )
 
 
-def build_close_order_payload(env: dict[str, str], position: dict[str, Any]) -> dict[str, Any]:
-    product_type = str(env.get("DEMO_DEFAULT_PRODUCT_TYPE") or env.get("BITGET_PRODUCT_TYPE") or "USDT-FUTURES").strip()
+def build_close_order_payload(
+    env: dict[str, str], position: dict[str, Any]
+) -> dict[str, Any]:
+    product_type = str(
+        env.get("DEMO_DEFAULT_PRODUCT_TYPE")
+        or env.get("BITGET_PRODUCT_TYPE")
+        or "USDT-FUTURES"
+    ).strip()
     margin_coin = str(
         position.get("marginCoin")
         or env.get("DEMO_DEFAULT_MARGIN_COIN")
         or env.get("BITGET_FUTURES_DEFAULT_MARGIN_COIN")
         or "USDT"
     ).strip()
-    symbol = str(position.get("symbol") or env.get("DEMO_RECONCILE_SYMBOL") or env.get("BITGET_SYMBOL") or "BTCUSDT").strip().upper()
+    symbol = (
+        str(
+            position.get("symbol")
+            or env.get("DEMO_RECONCILE_SYMBOL")
+            or env.get("BITGET_SYMBOL")
+            or "BTCUSDT"
+        )
+        .strip()
+        .upper()
+    )
     side_detected = _detect_position_side(position)
     position_mode = str(env.get("DEMO_POSITION_MODE") or "hedge").strip().lower()
     if position_mode == "hedge":
@@ -112,7 +143,9 @@ def build_close_order_payload(env: dict[str, str], position: dict[str, Any]) -> 
     payload: dict[str, Any] = {
         "symbol": symbol,
         "productType": product_type,
-        "marginMode": str(env.get("DEMO_DEFAULT_MARGIN_MODE") or "isolated").strip().lower(),
+        "marginMode": str(env.get("DEMO_DEFAULT_MARGIN_MODE") or "isolated")
+        .strip()
+        .lower(),
         "marginCoin": margin_coin,
         "size": size,
         "side": close_side,
@@ -127,7 +160,9 @@ def build_close_order_payload(env: dict[str, str], position: dict[str, Any]) -> 
     return payload
 
 
-def _base_checks(env: dict[str, str], mode: str) -> tuple[list[str], list[str], dict[str, Any]]:
+def _base_checks(
+    env: dict[str, str], mode: str
+) -> tuple[list[str], list[str], dict[str, Any]]:
     blockers: list[str] = []
     warnings: list[str] = []
     checks: dict[str, Any] = {"mode": mode}
@@ -135,8 +170,18 @@ def _base_checks(env: dict[str, str], mode: str) -> tuple[list[str], list[str], 
     live_trade_enable = _truthy(env.get("LIVE_TRADE_ENABLE"))
     demo_enabled = _truthy(env.get("BITGET_DEMO_ENABLED"))
     paptrading = str(env.get("BITGET_DEMO_PAPTRADING_HEADER") or "").strip()
-    demo_key_ok = all(_present(env.get(k)) for k in ("BITGET_DEMO_API_KEY", "BITGET_DEMO_API_SECRET", "BITGET_DEMO_API_PASSPHRASE"))
-    live_keys_present = any(_present(env.get(k)) for k in ("BITGET_API_KEY", "BITGET_API_SECRET", "BITGET_API_PASSPHRASE"))
+    demo_key_ok = all(
+        _present(env.get(k))
+        for k in (
+            "BITGET_DEMO_API_KEY",
+            "BITGET_DEMO_API_SECRET",
+            "BITGET_DEMO_API_PASSPHRASE",
+        )
+    )
+    live_keys_present = any(
+        _present(env.get(k))
+        for k in ("BITGET_API_KEY", "BITGET_API_SECRET", "BITGET_API_PASSPHRASE")
+    )
     checks["execution_mode"] = exec_mode or "missing"
     checks["live_trade_enable"] = str(live_trade_enable).lower()
     checks["bitget_demo_enabled"] = str(demo_enabled).lower()
@@ -179,12 +224,22 @@ def build_reconcile_report(
     allow_close_demo_position: bool = False,
 ) -> DemoReconcileEvidence:
     blockers, warnings, checks = _base_checks(env, mode)
-    symbol = str(env.get("DEMO_RECONCILE_SYMBOL") or env.get("BITGET_SYMBOL") or "BTCUSDT").strip().upper()
-    product_type = str(env.get("DEMO_DEFAULT_PRODUCT_TYPE") or env.get("BITGET_PRODUCT_TYPE") or "USDT-FUTURES").strip()
+    symbol = (
+        str(env.get("DEMO_RECONCILE_SYMBOL") or env.get("BITGET_SYMBOL") or "BTCUSDT")
+        .strip()
+        .upper()
+    )
+    product_type = str(
+        env.get("DEMO_DEFAULT_PRODUCT_TYPE")
+        or env.get("BITGET_PRODUCT_TYPE")
+        or "USDT-FUTURES"
+    ).strip()
     checks["detected_symbol"] = symbol
     checks["detected_position_side"] = "none"
     checks["detected_size"] = "0"
-    checks["detected_margin_coin"] = str(env.get("DEMO_DEFAULT_MARGIN_COIN") or "USDT").strip()
+    checks["detected_margin_coin"] = str(
+        env.get("DEMO_DEFAULT_MARGIN_COIN") or "USDT"
+    ).strip()
     checks["account_ok"] = "false"
     checks["positions_http"] = "not_run"
     checks["positions_code"] = "not_run"
@@ -196,14 +251,20 @@ def build_reconcile_report(
     checks["order_history_code"] = "endpoint_missing"
     checks["order_history_count"] = "0"
     checks["close_mode_flag_required"] = str(mode == "close-smoke").lower()
-    checks["demo_evidence_stage"] = "demo_reconcile_verified" if mode in ("readonly", "close-dry-run") else "implemented"
+    checks["demo_evidence_stage"] = (
+        "demo_reconcile_verified"
+        if mode in ("readonly", "close-dry-run")
+        else "implemented"
+    )
 
     base_url = str(env.get("BITGET_DEMO_REST_BASE_URL") or "").rstrip("/")
     if not base_url.startswith("https://"):
         blockers.append("BITGET_DEMO_REST_BASE_URL ist unklar.")
 
     if mode == "close-smoke" and not allow_close_demo_position:
-        blockers.append("Close-Smoke braucht Flag --i-understand-this-closes-demo-position.")
+        blockers.append(
+            "Close-Smoke braucht Flag --i-understand-this-closes-demo-position."
+        )
 
     positions: list[dict[str, Any]] = []
     open_orders: list[dict[str, Any]] = []
@@ -218,16 +279,31 @@ def build_reconcile_report(
                     blockers.append("Demo/Public-Serverzeit nicht erreichbar.")
         except Exception as exc:
             checks["server_time_http"] = "error"
-            blockers.append(f"Demo/Public-Serverzeit nicht erreichbar: {type(exc).__name__}")
+            blockers.append(
+                f"Demo/Public-Serverzeit nicht erreichbar: {type(exc).__name__}"
+            )
 
     if not blockers:
         with httpx.Client(timeout=10.0) as client:
-            account_http, account_payload = _private_get(client, env, "/api/v2/mix/account/accounts", {"productType": product_type})
-            checks["account_ok"] = str(account_http < 400 and str(account_payload.get("code") or "") in ("00000", "0")).lower()
+            account_http, account_payload = _private_get(
+                client,
+                env,
+                "/api/v2/mix/account/accounts",
+                {"productType": product_type},
+            )
+            checks["account_ok"] = str(
+                account_http < 400
+                and str(account_payload.get("code") or "") in ("00000", "0")
+            ).lower()
             checks["account_http"] = str(account_http)
             checks["account_code"] = str(account_payload.get("code") or "missing")
 
-            pos_http, pos_payload = _private_get(client, env, "/api/v2/mix/position/all-position", {"productType": product_type})
+            pos_http, pos_payload = _private_get(
+                client,
+                env,
+                "/api/v2/mix/position/all-position",
+                {"productType": product_type},
+            )
             checks["positions_http"] = str(pos_http)
             checks["positions_code"] = str(pos_payload.get("code") or "missing")
             positions = _safe_list(pos_payload)
@@ -256,17 +332,25 @@ def build_reconcile_report(
 
             position = _extract_position(positions, symbol)
             if position:
-                checks["detected_symbol"] = str(position.get("symbol") or symbol).upper()
+                checks["detected_symbol"] = str(
+                    position.get("symbol") or symbol
+                ).upper()
                 checks["detected_position_side"] = _detect_position_side(position)
                 checks["detected_size"] = _position_size(position)
-                checks["detected_margin_coin"] = str(position.get("marginCoin") or checks["detected_margin_coin"]).strip()
+                checks["detected_margin_coin"] = str(
+                    position.get("marginCoin") or checks["detected_margin_coin"]
+                ).strip()
                 checks["close_order_required"] = "true"
                 close_payload = build_close_order_payload(env, position)
                 close_rule = str(close_payload.pop("closeOrderSideRule", "not_set"))
                 checks["close_order_payload"] = close_payload
                 checks["close_order_side_rule"] = close_rule
-                checks["close_order_payload_side"] = str(close_payload.get("side") or "")
-                checks["close_order_payload_tradeSide"] = str(close_payload.get("tradeSide") or "")
+                checks["close_order_payload_side"] = str(
+                    close_payload.get("side") or ""
+                )
+                checks["close_order_payload_tradeSide"] = str(
+                    close_payload.get("tradeSide") or ""
+                )
                 if checks["detected_position_side"] not in ("long", "short"):
                     blockers.append("Position side unknown; close order blocked.")
                 if str(close_payload.get("tradeSide") or "").lower() == "open":
@@ -276,28 +360,56 @@ def build_reconcile_report(
                 checks["close_order_required"] = "false"
 
             if mode == "close-smoke" and not blockers and position:
-                close_payload = checks["close_order_payload"] if isinstance(checks["close_order_payload"], dict) else {}
-                position_mode = str(env.get("DEMO_POSITION_MODE") or "hedge").strip().lower()
-                if position_mode == "hedge" and str(close_payload.get("tradeSide") or "").lower() != "close":
-                    blockers.append("Close-Smoke darf in hedge nur tradeSide=close senden.")
-                if position_mode != "hedge" and str(close_payload.get("tradeSide") or "").strip():
-                    blockers.append("Close-Smoke darf in one_way kein tradeSide senden.")
+                close_payload = (
+                    checks["close_order_payload"]
+                    if isinstance(checks["close_order_payload"], dict)
+                    else {}
+                )
+                position_mode = (
+                    str(env.get("DEMO_POSITION_MODE") or "hedge").strip().lower()
+                )
+                if (
+                    position_mode == "hedge"
+                    and str(close_payload.get("tradeSide") or "").lower() != "close"
+                ):
+                    blockers.append(
+                        "Close-Smoke darf in hedge nur tradeSide=close senden."
+                    )
+                if (
+                    position_mode != "hedge"
+                    and str(close_payload.get("tradeSide") or "").strip()
+                ):
+                    blockers.append(
+                        "Close-Smoke darf in one_way kein tradeSide senden."
+                    )
                 elif not _truthy(env.get("DEMO_CLOSE_POSITION_ENABLE")):
-                    blockers.append("DEMO_CLOSE_POSITION_ENABLE muss true sein fuer close-smoke mit Position.")
+                    blockers.append(
+                        "DEMO_CLOSE_POSITION_ENABLE muss true sein fuer close-smoke mit Position."
+                    )
                 else:
-                    close_http, close_result = _private_post(client, env, "/api/v2/mix/order/place-order", close_payload)
+                    close_http, close_result = _private_post(
+                        client, env, "/api/v2/mix/order/place-order", close_payload
+                    )
                     checks["close_order_http"] = str(close_http)
-                    checks["close_order_code"] = str(close_result.get("code") or "missing")
+                    checks["close_order_code"] = str(
+                        close_result.get("code") or "missing"
+                    )
                     checks["close_order_msg"] = str(close_result.get("msg") or "")
                     if checks["close_order_code"] == "22002":
                         checks["close_order_hint"] = (
                             "Bitget 22002: No position to close. In Hedge Mode bedeutet das oft, dass side/tradeSide "
                             "nicht zur offenen Positionsrichtung passt oder die Position bereits geschlossen ist."
                         )
-                    if close_http < 400 and checks["close_order_code"] in ("00000", "0"):
+                    if close_http < 400 and checks["close_order_code"] in (
+                        "00000",
+                        "0",
+                    ):
                         checks["close_order_executed"] = "true"
                     else:
-                        blockers.append(checks["close_order_hint"] or "Demo-Close-Order wurde nicht erfolgreich angenommen.")
+                        blockers.append(
+                            checks["close_order_hint"]
+                            or "Demo-Close-Order wurde nicht erfolgreich angenommen."
+                        )
 
     if blockers:
         reconcile_status = "FAILED"
@@ -338,7 +450,12 @@ def build_reconcile_report(
     checks["reconcile_status"] = reconcile_status
     if reconcile_status == "CLOSE_VERIFIED":
         checks["demo_evidence_stage"] = "demo_close_verified"
-    elif reconcile_status in ("OPEN_POSITION_DETECTED", "OPEN_ORDERS_DETECTED", "CLOSE_READY", "CLEAN"):
+    elif reconcile_status in (
+        "OPEN_POSITION_DETECTED",
+        "OPEN_ORDERS_DETECTED",
+        "CLOSE_READY",
+        "CLEAN",
+    ):
         checks["demo_evidence_stage"] = "demo_reconcile_verified"
 
     return DemoReconcileEvidence(
@@ -379,8 +496,12 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--env-file", type=Path, default=Path(".env.demo"))
     p.add_argument("--mode", choices=tuple(sorted(SAFE_MODES)), default="readonly")
     p.add_argument("--i-understand-this-closes-demo-position", action="store_true")
-    p.add_argument("--output-md", type=Path, default=Path("reports/demo_reconcile_evidence.md"))
-    p.add_argument("--output-json", type=Path, default=Path("reports/demo_reconcile_evidence.json"))
+    p.add_argument(
+        "--output-md", type=Path, default=Path("reports/demo_reconcile_evidence.md")
+    )
+    p.add_argument(
+        "--output-json", type=Path, default=Path("reports/demo_reconcile_evidence.json")
+    )
     p.add_argument("--archive-success", action="store_true")
     p.add_argument("--json", action="store_true")
     args = p.parse_args(argv)
@@ -402,18 +523,26 @@ def main(argv: list[str] | None = None) -> int:
     args.output_json.write_text(json_content, encoding="utf-8")
     if args.archive_success and rep.result in ("CLOSE_VERIFIED", "CLEAN"):
         stable_md = args.output_md.with_name(f"demo_reconcile_evidence_{rep.result}.md")
-        stable_json = args.output_json.with_name(f"demo_reconcile_evidence_{rep.result}.json")
+        stable_json = args.output_json.with_name(
+            f"demo_reconcile_evidence_{rep.result}.json"
+        )
         stable_md.write_text(md_content, encoding="utf-8")
         stable_json.write_text(json_content, encoding="utf-8")
         ts = time.strftime("%Y%m%d_%H%M%S")
-        ts_md = args.output_md.with_name(f"demo_reconcile_evidence_{rep.result}_{ts}.md")
-        ts_json = args.output_json.with_name(f"demo_reconcile_evidence_{rep.result}_{ts}.json")
+        ts_md = args.output_md.with_name(
+            f"demo_reconcile_evidence_{rep.result}_{ts}.md"
+        )
+        ts_json = args.output_json.with_name(
+            f"demo_reconcile_evidence_{rep.result}_{ts}.json"
+        )
         ts_md.write_text(md_content, encoding="utf-8")
         ts_json.write_text(json_content, encoding="utf-8")
     if args.json:
         print(json.dumps(asdict(rep), ensure_ascii=False, indent=2, sort_keys=True))
     else:
-        print(f"demo_reconcile_evidence: result={rep.result} reconcile_status={rep.reconcile_status}")
+        print(
+            f"demo_reconcile_evidence: result={rep.result} reconcile_status={rep.reconcile_status}"
+        )
     return 1 if rep.result in ("FAILED", "NOT_ENOUGH_EVIDENCE") else 0
 
 

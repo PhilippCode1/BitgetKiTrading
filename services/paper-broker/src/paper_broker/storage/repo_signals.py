@@ -6,7 +6,9 @@ from uuid import UUID
 import psycopg
 
 
-def fetch_signal_v1(conn: psycopg.Connection[Any], signal_id: UUID) -> dict[str, Any] | None:
+def fetch_signal_v1(
+    conn: psycopg.Connection[Any], signal_id: UUID
+) -> dict[str, Any] | None:
     row = conn.execute(
         "SELECT * FROM app.signals_v1 WHERE signal_id = %s",
         (str(signal_id),),

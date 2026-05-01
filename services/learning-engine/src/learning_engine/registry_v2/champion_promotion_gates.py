@@ -10,15 +10,16 @@ import json
 from dataclasses import dataclass
 from typing import Any
 
-from learning_engine.config import LearningEngineSettings
-from learning_engine.registry_v2.model_run_governance import (
-    evaluate_training_run_governance,
-    parse_online_drift_promotion_block_tiers,
-)
 from shared_py.model_registry_policy import parse_metadata_json
 from shared_py.take_trade_model import (
     MARKET_REGIME_CLASSIFIER_MODEL_NAME,
     TAKE_TRADE_MODEL_NAME,
+)
+
+from learning_engine.config import LearningEngineSettings
+from learning_engine.registry_v2.model_run_governance import (
+    evaluate_training_run_governance,
+    parse_online_drift_promotion_block_tiers,
 )
 
 
@@ -51,7 +52,9 @@ _CHAMPION_CHALLENGER_BACKTEST_ALIASES = (
 )
 
 
-def get_champion_challenger_backtest_block(meta: dict[str, Any]) -> dict[str, Any] | None:
+def get_champion_challenger_backtest_block(
+    meta: dict[str, Any]
+) -> dict[str, Any] | None:
     raw = meta.get(_CHAMPION_CHALLENGER_BACKTEST_KEY)
     if not isinstance(raw, dict):
         for w in _CHAMPION_CHALLENGER_BACKTEST_ALIASES:
@@ -83,7 +86,12 @@ def evaluate_champion_challenger_backtest_gate(
         return PromotionGateResult(
             True,
             (),
-            {"champion_challenger_backtest": {"skipped": True, "reason": "gate_disabled"}},
+            {
+                "champion_challenger_backtest": {
+                    "skipped": True,
+                    "reason": "gate_disabled",
+                }
+            },
         )
 
     meta = parse_metadata_json(metadata_json)
@@ -127,7 +135,10 @@ def evaluate_champion_challenger_backtest_gate(
 
     for label, v in (("champion_sharpe", sh_h), ("challenger_sharpe", sh_c)):
         details["champion_challenger_backtest"][label] = v
-    for label, v in (("champion_max_drawdown", dd_h), ("challenger_max_drawdown", dd_c)):
+    for label, v in (
+        ("champion_max_drawdown", dd_h),
+        ("challenger_max_drawdown", dd_c),
+    ):
         details["champion_challenger_backtest"][label] = v
     for label, v in (("champion_win_rate", wr_h), ("challenger_win_rate", wr_c)):
         details["champion_challenger_backtest"][label] = v
@@ -178,7 +189,9 @@ def evaluate_champion_promotion_gates(
     promotion_scope_key: str = "",
 ) -> PromotionGateResult:
     if not settings.model_promotion_gates_enabled:
-        return PromotionGateResult(True, (), {"skipped": True, "reason": "gates_disabled"})
+        return PromotionGateResult(
+            True, (), {"skipped": True, "reason": "gates_disabled"}
+        )
 
     mn = (model_name or "").strip()
     mj = _as_metrics_dict(metrics_json)
@@ -186,12 +199,17 @@ def evaluate_champion_promotion_gates(
     reasons: list[str] = []
     details: dict[str, Any] = {"model_name": mn}
 
-    if settings.model_promotion_require_adversarial_stress and mn == TAKE_TRADE_MODEL_NAME:
+    if (
+        settings.model_promotion_require_adversarial_stress
+        and mn == TAKE_TRADE_MODEL_NAME
+    ):
         mpath = (settings.risk_toxicity_classifier_model_path or "").strip()
         if not mpath:
             reasons.append("risk_toxicity_classifier_missing")
         else:
-            from learning_engine.stress_test.adversarial_stress_pipeline import run_adversarial_stress_suite
+            from learning_engine.stress_test.adversarial_stress_pipeline import (
+                run_adversarial_stress_suite,
+            )
 
             try:
                 sr = run_adversarial_stress_suite(settings)
@@ -255,7 +273,9 @@ def evaluate_champion_promotion_gates(
             reasons.append("test_brier_missing")
 
         if settings.model_promotion_fail_on_cv_symbol_leakage_take_trade:
-            max_ov = int(settings.model_promotion_max_cv_symbol_overlap_folds_take_trade)
+            max_ov = int(
+                settings.model_promotion_max_cv_symbol_overlap_folds_take_trade
+            )
             cvsum = mj.get("cv_summary")
             if not isinstance(cvsum, dict):
                 cvsum = {}
@@ -286,7 +306,9 @@ def evaluate_champion_promotion_gates(
             except (TypeError, ValueError):
                 tr_sym = 0
             details["train_rows_for_symbol_scope"] = tr_sym
-            details["specialist_symbol_min_rows"] = int(settings.specialist_symbol_min_rows)
+            details["specialist_symbol_min_rows"] = int(
+                settings.specialist_symbol_min_rows
+            )
             if tr_sym < int(settings.specialist_symbol_min_rows):
                 reasons.append("symbol_scope_insufficient_train_rows")
 
@@ -296,7 +318,9 @@ def evaluate_champion_promotion_gates(
                 reasons.append("trade_relevance_summary_missing")
             else:
                 hcfp = trs.get("high_confidence_false_positive_rate")
-                cap = float(settings.model_promotion_trade_relevance_max_high_conf_fp_rate)
+                cap = float(
+                    settings.model_promotion_trade_relevance_max_high_conf_fp_rate
+                )
                 details["trade_relevance_high_conf_fp_rate"] = hcfp
                 details["trade_relevance_high_conf_fp_cap"] = cap
                 if hcfp is None:
@@ -317,7 +341,9 @@ def evaluate_champion_promotion_gates(
         details["cv_summary"] = cv
         if acc_wf is not None:
             try:
-                if float(acc_wf) < float(settings.model_promotion_min_walk_forward_mean_accuracy_regime):
+                if float(acc_wf) < float(
+                    settings.model_promotion_min_walk_forward_mean_accuracy_regime
+                ):
                     reasons.append("walk_forward_mean_accuracy_below_minimum")
             except (TypeError, ValueError):
                 reasons.append("walk_forward_mean_accuracy_unparseable")
@@ -325,7 +351,9 @@ def evaluate_champion_promotion_gates(
             reasons.append("walk_forward_mean_accuracy_missing")
         if acc_pk is not None:
             try:
-                if float(acc_pk) < float(settings.model_promotion_min_purged_kfold_mean_accuracy_regime):
+                if float(acc_pk) < float(
+                    settings.model_promotion_min_purged_kfold_mean_accuracy_regime
+                ):
                     reasons.append("purged_kfold_mean_accuracy_below_minimum")
             except (TypeError, ValueError):
                 reasons.append("purged_kfold_mean_accuracy_unparseable")
@@ -367,7 +395,10 @@ def evaluate_champion_promotion_gates(
         if eff in blocked:
             reasons.append("online_drift_blocks_champion_promotion")
 
-    if settings.model_challenger_champion_backtest_gate_enabled and mn == TAKE_TRADE_MODEL_NAME:
+    if (
+        settings.model_challenger_champion_backtest_gate_enabled
+        and mn == TAKE_TRADE_MODEL_NAME
+    ):
         cbt = evaluate_champion_challenger_backtest_gate(
             metadata_json=metadata_json,
             settings=settings,

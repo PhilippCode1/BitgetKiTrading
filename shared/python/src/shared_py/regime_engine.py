@@ -13,7 +13,7 @@ Es gibt zwei Ebenen:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from shared_py.regime_policy import (
@@ -99,7 +99,7 @@ def coerce_news_sentiment_float(value: Any) -> float | None:
         return None
     if isinstance(value, bool):
         return None
-    if isinstance(value, (int, float)):
+    if isinstance(value, int | float):
         return float(value)
     s = str(value).strip().lower()
     mapping = {
@@ -139,24 +139,43 @@ def classify_regime(inp: RegimeEngineInputs) -> RegimeEngineResult:
     impulse_ratio = _feature_float(inp.primary_feature, "impulse_body_ratio")
     ret_1 = _feature_float(inp.primary_feature, "ret_1")
     confluence = _feature_float(inp.primary_feature, "confluence_score_0_100")
-    mean_reversion_pressure = _feature_float(inp.primary_feature, "mean_reversion_pressure_0_100")
-    breakout_compression = _feature_float(inp.primary_feature, "breakout_compression_score_0_100")
-    realized_vol_cluster = _feature_float(inp.primary_feature, "realized_vol_cluster_0_100")
+    mean_reversion_pressure = _feature_float(
+        inp.primary_feature, "mean_reversion_pressure_0_100"
+    )
+    breakout_compression = _feature_float(
+        inp.primary_feature, "breakout_compression_score_0_100"
+    )
+    realized_vol_cluster = _feature_float(
+        inp.primary_feature, "realized_vol_cluster_0_100"
+    )
     data_completeness = _feature_float(inp.primary_feature, "data_completeness_0_1")
     staleness_score = _feature_float(inp.primary_feature, "staleness_score_0_1")
     event_distance_ms = _feature_float(inp.primary_feature, "event_distance_ms")
-    feature_quality_status = str(inp.primary_feature.get("feature_quality_status") or "").strip().lower()
-    liquidity_source = str(inp.primary_feature.get("liquidity_source") or "").strip().lower()
+    feature_quality_status = (
+        str(inp.primary_feature.get("feature_quality_status") or "").strip().lower()  # type: ignore
+    )
+    liquidity_source = (
+        str(inp.primary_feature.get("liquidity_source") or "").strip().lower()  # type: ignore
+    )
     market_family = (
-        str(inp.market_family or inp.primary_feature.get("market_family") or "unknown").strip().lower()
+        str(inp.market_family or inp.primary_feature.get("market_family") or "unknown")  # type: ignore
+        .strip()
+        .lower()
     )
     canonical_instrument_id = (
-        str(inp.canonical_instrument_id or inp.primary_feature.get("canonical_instrument_id") or "").strip()
+        str(
+            inp.canonical_instrument_id
+            or inp.primary_feature.get("canonical_instrument_id")  # type: ignore
+            or ""
+        ).strip()
         or None
     )
 
     breakout_event = _latest_event(
-        inp.structure_events, "BREAKOUT", max_age_ms=recent_window_ms, analysis_ts_ms=inp.analysis_ts_ms
+        inp.structure_events,
+        "BREAKOUT",
+        max_age_ms=recent_window_ms,
+        analysis_ts_ms=inp.analysis_ts_ms,
     )
     false_breakout_event = _latest_event(
         inp.structure_events,
@@ -175,7 +194,10 @@ def classify_regime(inp: RegimeEngineInputs) -> RegimeEngineResult:
     false_breakout_side = _event_side(false_breakout_event)
     prebreak_side = _prebreak_bias(box.get("prebreak_side"))
     pending_false = box.get("pending_false")
-    pending_false_active = isinstance(pending_false, dict) and int(pending_false.get("bars_remaining") or 0) > 0
+    pending_false_active = (
+        isinstance(pending_false, dict)
+        and int(pending_false.get("bars_remaining") or 0) > 0
+    )
 
     mtf_alignment_ratio = _mtf_alignment_ratio(inp.features_by_tf, structure_trend)
 
@@ -217,7 +239,9 @@ def classify_regime(inp: RegimeEngineInputs) -> RegimeEngineResult:
         dislocation_signals += 1
         dislocation_reasons.append("funding_bps_stress")
 
-    funding_stress = funding_bps is not None and abs(funding_bps) >= _FUNDING_STRESS_FOR_COMBO
+    funding_stress = (
+        funding_bps is not None and abs(funding_bps) >= _FUNDING_STRESS_FOR_COMBO
+    )
 
     market_regime = "chop"
     regime_bias = _trend_bias(structure_trend)
@@ -287,8 +311,16 @@ def classify_regime(inp: RegimeEngineInputs) -> RegimeEngineResult:
     ):
         market_regime = "compression"
         regime_bias = prebreak_side or regime_bias or "neutral"
-        substate = "compression_structure_flag" if compression_flag else "compression_range_proxy"
-        reasons.append("compression_state_active" if compression_flag else "compression_proxy_from_features")
+        substate = (
+            "compression_structure_flag"
+            if compression_flag
+            else "compression_range_proxy"
+        )
+        reasons.append(
+            "compression_state_active"
+            if compression_flag
+            else "compression_proxy_from_features"
+        )
         if box:
             reasons.append("breakout_box_present")
         if prebreak_side:
@@ -309,7 +341,9 @@ def classify_regime(inp: RegimeEngineInputs) -> RegimeEngineResult:
     ):
         market_regime = "trend"
         regime_bias = _trend_bias(structure_trend)
-        substate = "trend_mtf_aligned" if mtf_alignment_ratio >= 0.75 else "trend_mtf_partial"
+        substate = (
+            "trend_mtf_aligned" if mtf_alignment_ratio >= 0.75 else "trend_mtf_partial"
+        )
         reasons.append(f"structure_trend={structure_trend.lower()}")
         reasons.append(f"mtf_alignment_ratio={mtf_alignment_ratio:.2f}")
         if confluence is not None and confluence >= 60.0:
@@ -380,15 +414,19 @@ def classify_regime(inp: RegimeEngineInputs) -> RegimeEngineResult:
         data_completeness=data_completeness,
         staleness_score=staleness_score,
     )
-    effective_regime_state, transition_state, transition_reasons, persistence_bars, pending_state = (
-        _apply_transition_policy(
-            raw_regime_state=raw_regime_state,
-            confidence=confidence,
-            previous_snapshot=inp.previous_regime_snapshot,
-            feature_quality_status=feature_quality_status,
-            data_completeness=data_completeness,
-            staleness_score=staleness_score,
-        )
+    (
+        effective_regime_state,
+        transition_state,
+        transition_reasons,
+        persistence_bars,
+        pending_state,
+    ) = _apply_transition_policy(
+        raw_regime_state=raw_regime_state,
+        confidence=confidence,
+        previous_snapshot=inp.previous_regime_snapshot,
+        feature_quality_status=feature_quality_status,
+        data_completeness=data_completeness,
+        staleness_score=staleness_score,
     )
     reasons.extend(regime_state_reasons)
     reasons.extend(transition_reasons)
@@ -446,7 +484,9 @@ def classify_regime(inp: RegimeEngineInputs) -> RegimeEngineResult:
         "near_hourly_boundary": _near_hourly_boundary(inp.analysis_ts_ms),
         "dislocation_signal_count": dislocation_signals,
         "dislocation_signal_tags": dislocation_reasons,
-        "recent_structure_event_types": [str(ev.get("type") or "") for ev in inp.structure_events[:8]],
+        "recent_structure_event_types": [
+            str(ev.get("type") or "") for ev in inp.structure_events[:8]
+        ],
         "reasons": reasons,
     }
     return RegimeEngineResult(
@@ -560,7 +600,9 @@ def _news_bias(sentiment: float | None) -> str | None:
     return "neutral"
 
 
-def _mtf_alignment_ratio(features_by_tf: dict[str, dict[str, Any] | None], structure_trend: str) -> float:
+def _mtf_alignment_ratio(
+    features_by_tf: dict[str, dict[str, Any] | None], structure_trend: str
+) -> float:
     want = 1 if structure_trend == "UP" else -1 if structure_trend == "DOWN" else 0
     if want == 0:
         return 0.0
@@ -620,7 +662,11 @@ def _derive_regime_state(
         (spread is not None and spread >= spread_limit)
         or (execution_cost is not None and execution_cost >= exec_limit)
         or (depth_ratio is not None and depth_ratio < depth_min)
-        or (market_family == "futures" and liquidity_source and not liquidity_source.startswith("orderbook_levels"))
+        or (
+            market_family == "futures"
+            and liquidity_source
+            and not liquidity_source.startswith("orderbook_levels")
+        )
         or (staleness_score is not None and staleness_score >= 0.7)
     )
     delivery_sensitive = (
@@ -639,7 +685,9 @@ def _derive_regime_state(
         and news_sentiment is not None
         and abs(news_sentiment) >= _NEWS_DRIVEN_SENTIMENT_ABS
     )
-    session_transition = session_label is not None or _near_hourly_boundary(analysis_ts_ms)
+    session_transition = session_label is not None or _near_hourly_boundary(
+        analysis_ts_ms
+    )
     range_grind = (
         structure_trend == "RANGE"
         and range_score is not None
@@ -660,7 +708,10 @@ def _derive_regime_state(
     expansion = market_regime == "breakout" or (
         (impulse_ratio is not None and impulse_ratio >= _EXPANSION_IMPULSE)
         and (
-            (realized_vol_cluster is not None and realized_vol_cluster >= _EXPANSION_CLUSTER)
+            (
+                realized_vol_cluster is not None
+                and realized_vol_cluster >= _EXPANSION_CLUSTER
+            )
             or (breakout_compression is not None and breakout_compression >= 60.0)
         )
     )
@@ -671,7 +722,12 @@ def _derive_regime_state(
         state = "shock"
         substate = "shock_news_event"
         reasons.append("state_from_market_regime_shock")
-    elif low_liquidity and market_regime in {"dislocation", "breakout", "chop", "compression"}:
+    elif low_liquidity and market_regime in {
+        "dislocation",
+        "breakout",
+        "chop",
+        "compression",
+    }:
         state = "low_liquidity"
         substate = (
             "low_liquidity_dislocation_stack"
@@ -691,7 +747,12 @@ def _derive_regime_state(
         state = "news_driven"
         substate = "news_driven_context"
         reasons.append("state_from_news_context")
-    elif session_transition and market_regime in {"trend", "breakout", "compression", "chop"}:
+    elif session_transition and market_regime in {
+        "trend",
+        "breakout",
+        "compression",
+        "chop",
+    }:
         state = "session_transition"
         substate = f"session_transition_{session_label or 'hourly'}"
         reasons.append("state_from_session_window")
@@ -736,7 +797,11 @@ def _apply_transition_policy(
     staleness_score: float | None,
 ) -> tuple[str, str, list[str], int, str | None]:
     prev = previous_snapshot if isinstance(previous_snapshot, dict) else {}
-    prev_state = str(prev.get("effective_regime_state") or prev.get("regime_state") or "").strip().lower()
+    prev_state = (
+        str(prev.get("effective_regime_state") or prev.get("regime_state") or "")
+        .strip()
+        .lower()
+    )
     prev_pending = str(prev.get("pending_regime_state") or "").strip().lower()
     prev_persistence = _coerce_int(prev.get("regime_persistence_bars")) or 1
     reasons: list[str] = []
@@ -749,17 +814,36 @@ def _apply_transition_policy(
         return raw_regime_state, "stable", ["transition_no_prior_state"], 1, None
     if raw_regime_state == prev_state:
         return raw_regime_state, "stable", [], min(prev_persistence + 1, 999), None
-    if raw_regime_state in _IMMEDIATE_TRANSITION_STATES and confidence >= _TRANSITION_CONFIRM_CONFIDENCE:
+    if (
+        raw_regime_state in _IMMEDIATE_TRANSITION_STATES
+        and confidence >= _TRANSITION_CONFIRM_CONFIDENCE
+    ):
         reasons.append("transition_immediate_regime")
         return raw_regime_state, "switch_immediate", reasons, 1, None
     if quality_fragile:
         reasons.append("transition_hold_due_quality")
-        return prev_state, "sticky_hold", reasons, min(prev_persistence + 1, 999), raw_regime_state
-    if prev_pending and prev_pending == raw_regime_state and confidence >= _TRANSITION_CONFIRM_CONFIDENCE:
+        return (
+            prev_state,
+            "sticky_hold",
+            reasons,
+            min(prev_persistence + 1, 999),
+            raw_regime_state,
+        )
+    if (
+        prev_pending
+        and prev_pending == raw_regime_state
+        and confidence >= _TRANSITION_CONFIRM_CONFIDENCE
+    ):
         reasons.append("transition_confirmed_consecutive_candidate")
         return raw_regime_state, "switch_confirmed", reasons, 1, None
     reasons.append("transition_pending_confirmation")
-    return prev_state, "entering", reasons, min(prev_persistence + 1, 999), raw_regime_state
+    return (
+        prev_state,
+        "entering",
+        reasons,
+        min(prev_persistence + 1, 999),
+        raw_regime_state,
+    )
 
 
 def _coerce_int(value: Any) -> int | None:
@@ -772,7 +856,7 @@ def _coerce_int(value: Any) -> int | None:
 
 
 def _session_window_label(analysis_ts_ms: int) -> str | None:
-    dt = datetime.fromtimestamp(int(analysis_ts_ms) / 1000.0, tz=timezone.utc)
+    dt = datetime.fromtimestamp(int(analysis_ts_ms) / 1000.0, tz=UTC)
     minute_of_day = dt.hour * 60 + dt.minute
     windows = {
         "asia_open": 0,
@@ -786,5 +870,5 @@ def _session_window_label(analysis_ts_ms: int) -> str | None:
 
 
 def _near_hourly_boundary(analysis_ts_ms: int) -> bool:
-    dt = datetime.fromtimestamp(int(analysis_ts_ms) / 1000.0, tz=timezone.utc)
+    dt = datetime.fromtimestamp(int(analysis_ts_ms) / 1000.0, tz=UTC)
     return dt.minute <= 5 or dt.minute >= 55

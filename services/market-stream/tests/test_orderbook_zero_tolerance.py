@@ -107,6 +107,7 @@ def test_rebuild_from_rest_restores_book() -> None:
 def test_resync_log_message() -> None:
     """Beweis-String im Runtime-Pfad (app): siehe _resync_orderbook."""
     from pathlib import Path
+
     p = Path(__file__).resolve().parent.parent / "src" / "market_stream" / "app.py"
     text = p.read_text(encoding="utf-8")
     assert "Desynchronized - Rebuilding" in text

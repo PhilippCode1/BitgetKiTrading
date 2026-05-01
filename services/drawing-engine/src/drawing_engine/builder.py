@@ -24,7 +24,11 @@ from drawing_engine.ids import stable_parent_id
 def _default_style(drawing_type: str) -> dict[str, Any]:
     palette = {
         "support_zone": {"stroke": "#2ecc71", "fill": "#2ecc71", "fillOpacity": 0.12},
-        "resistance_zone": {"stroke": "#e74c3c", "fill": "#e74c3c", "fillOpacity": 0.12},
+        "resistance_zone": {
+            "stroke": "#e74c3c",
+            "fill": "#e74c3c",
+            "fillOpacity": 0.12,
+        },
         "trendline": {"stroke": "#3498db", "lineWidth": 2},
         "breakout_box": {"stroke": "#f39c12", "fill": "#f39c12", "fillOpacity": 0.08},
         "liquidity_zone": {"stroke": "#9b59b6", "fill": "#9b59b6", "fillOpacity": 0.1},
@@ -120,7 +124,9 @@ def build_drawing_records(
     out: list[dict[str, Any]] = []
 
     # --- Support / Resistance Zonen (Swing-Cluster) ---
-    for idx, cluster in enumerate(cluster_sorted_prices(low_prices, cluster_bps=zone_cluster_bps)):
+    for idx, cluster in enumerate(
+        cluster_sorted_prices(low_prices, cluster_bps=zone_cluster_bps)
+    ):
         zl, zh = zone_from_cluster(cluster, pad_bps=zone_pad_bps)
         pid = stable_parent_id(symbol, timeframe, "support", str(idx))
         conf = float(confidence_from_touch_count(len(cluster)))
@@ -138,7 +144,9 @@ def build_drawing_records(
             )
         )
 
-    for idx, cluster in enumerate(cluster_sorted_prices(high_prices, cluster_bps=zone_cluster_bps)):
+    for idx, cluster in enumerate(
+        cluster_sorted_prices(high_prices, cluster_bps=zone_cluster_bps)
+    ):
         zl, zh = zone_from_cluster(cluster, pad_bps=zone_pad_bps)
         pid = stable_parent_id(symbol, timeframe, "resistance", str(idx))
         conf = float(confidence_from_touch_count(len(cluster)))
@@ -205,7 +213,11 @@ def build_drawing_records(
             )
 
     # --- Breakout-Box ---
-    if breakout_box and breakout_box.get("high") is not None and breakout_box.get("low") is not None:
+    if (
+        breakout_box
+        and breakout_box.get("high") is not None
+        and breakout_box.get("low") is not None
+    ):
         try:
             bh = Decimal(str(breakout_box["high"]))
             bl = Decimal(str(breakout_box["low"]))
@@ -268,9 +280,9 @@ def build_drawing_records(
                     )
                 )
     else:
-        for idx, cluster in enumerate(cluster_sorted_prices(low_prices, cluster_bps=zone_cluster_bps)[
-            :3
-        ]):
+        for idx, cluster in enumerate(
+            cluster_sorted_prices(low_prices, cluster_bps=zone_cluster_bps)[:3]
+        ):
             zl, zh = zone_from_cluster(cluster, pad_bps=zone_pad_bps)
             pid = stable_parent_id(symbol, timeframe, "liquidity_fb", "low", str(idx))
             out.append(
@@ -286,9 +298,9 @@ def build_drawing_records(
                     ts_ms=ts_ms,
                 )
             )
-        for idx, cluster in enumerate(cluster_sorted_prices(high_prices, cluster_bps=zone_cluster_bps)[
-            :3
-        ]):
+        for idx, cluster in enumerate(
+            cluster_sorted_prices(high_prices, cluster_bps=zone_cluster_bps)[:3]
+        ):
             zl, zh = zone_from_cluster(cluster, pad_bps=zone_pad_bps)
             pid = stable_parent_id(symbol, timeframe, "liquidity_fb", "high", str(idx))
             out.append(
@@ -315,7 +327,9 @@ def build_drawing_records(
 
     # --- Targets & Stops ---
     if trend_dir == "UP":
-        for rank, z in enumerate(pick_zones_above(last_close, resist_bounds)[:2], start=1):
+        for rank, z in enumerate(
+            pick_zones_above(last_close, resist_bounds)[:2], start=1
+        ):
             zl, zh = z
             pid = stable_parent_id(symbol, timeframe, "target", "up", str(rank))
             out.append(
@@ -351,7 +365,9 @@ def build_drawing_records(
                 )
             )
     elif trend_dir == "DOWN":
-        for rank, z in enumerate(pick_zones_below(last_close, support_bounds)[:2], start=1):
+        for rank, z in enumerate(
+            pick_zones_below(last_close, support_bounds)[:2], start=1
+        ):
             zl, zh = z
             pid = stable_parent_id(symbol, timeframe, "target", "down", str(rank))
             out.append(

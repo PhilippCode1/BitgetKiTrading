@@ -15,7 +15,9 @@ DOC = Path("docs/production_10_10/bitget_exchange_readiness.md")
 SCRIPT = Path("scripts/bitget_readiness_check.py")
 TOOL = Path("tools/check_bitget_exchange_readiness.py")
 KEY_PERMISSION_TOOL = Path("tools/check_bitget_key_permission_evidence.py")
-KEY_PERMISSION_TEMPLATE = Path("docs/production_10_10/bitget_key_permission_evidence.template.json")
+KEY_PERMISSION_TEMPLATE = Path(
+    "docs/production_10_10/bitget_key_permission_evidence.template.json"
+)
 SCRIPT_TEST = Path("tests/scripts/test_bitget_readiness_check.py")
 SECURITY_TEST = Path("tests/security/test_bitget_exchange_readiness_contracts.py")
 TOOL_TEST = Path("tests/tools/test_check_bitget_exchange_readiness.py")
@@ -64,7 +66,16 @@ def _read(path: Path) -> str:
 
 def validate(root: Path = ROOT, *, strict: bool = False) -> list[CheckIssue]:
     issues: list[CheckIssue] = []
-    required = (DOC, SCRIPT, TOOL, KEY_PERMISSION_TOOL, KEY_PERMISSION_TEMPLATE, SCRIPT_TEST, SECURITY_TEST, TOOL_TEST)
+    required = (
+        DOC,
+        SCRIPT,
+        TOOL,
+        KEY_PERMISSION_TOOL,
+        KEY_PERMISSION_TEMPLATE,
+        SCRIPT_TEST,
+        SECURITY_TEST,
+        TOOL_TEST,
+    )
     for rel in required:
         if not (root / rel).is_file():
             _issue(issues, "required_file_missing", f"missing {rel.as_posix()}")
@@ -80,17 +91,37 @@ def validate(root: Path = ROOT, *, strict: bool = False) -> list[CheckIssue]:
                 _issue(issues, "doc_term_missing", f"doc missing term: {term}")
         for pattern in SECRET_PATTERNS:
             if pattern.search(doc):
-                _issue(issues, "doc_secret_like_value", "doc contains secret-like value")
+                _issue(
+                    issues, "doc_secret_like_value", "doc contains secret-like value"
+                )
 
     if (root / SCRIPT).is_file():
         script = _read(root / SCRIPT).lower()
-        forbidden_calls = ("place_order(", "cancel_order(", "replace_order(", "submit_order(")
+        forbidden_calls = (
+            "place_order(",
+            "cancel_order(",
+            "replace_order(",
+            "submit_order(",
+        )
         for call in forbidden_calls:
             if call in script:
-                _issue(issues, "script_write_call_forbidden", f"readiness script contains {call}")
-        for required_phrase in ("public", "readonly", "demo-readonly", "demo-trade-smoke", "live-readonly", "live_write_allowed"):
+                _issue(
+                    issues,
+                    "script_write_call_forbidden",
+                    f"readiness script contains {call}",
+                )
+        for required_phrase in (
+            "public",
+            "readonly",
+            "demo-readonly",
+            "demo-trade-smoke",
+            "live-readonly",
+            "live_write_allowed",
+        ):
             if required_phrase not in script:
-                _issue(issues, "script_mode_missing", f"script missing {required_phrase}")
+                _issue(
+                    issues, "script_mode_missing", f"script missing {required_phrase}"
+                )
 
     if (root / EVIDENCE).is_file():
         evidence = _read(root / EVIDENCE)
@@ -106,7 +137,11 @@ def validate(root: Path = ROOT, *, strict: bool = False) -> list[CheckIssue]:
             "tests/tools/test_check_bitget_key_permission_evidence.py",
         ):
             if ref not in evidence:
-                _issue(issues, "evidence_reference_missing", f"evidence matrix missing {ref}")
+                _issue(
+                    issues,
+                    "evidence_reference_missing",
+                    f"evidence matrix missing {ref}",
+                )
 
     if (root / NO_GO).is_file():
         no_go = _read(root / NO_GO).lower()
@@ -117,7 +152,11 @@ def validate(root: Path = ROOT, *, strict: bool = False) -> list[CheckIssue]:
     if strict and (root / SCRIPT).is_file():
         script = _read(root / SCRIPT)
         if "WRITE_ORDER_ALLOWED_DEFAULT" not in script:
-            _issue(issues, "write_default_missing", "script must import/use WRITE_ORDER_ALLOWED_DEFAULT")
+            _issue(
+                issues,
+                "write_default_missing",
+                "script must import/use WRITE_ORDER_ALLOWED_DEFAULT",
+            )
     return issues
 
 

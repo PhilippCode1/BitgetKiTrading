@@ -13,11 +13,9 @@ from __future__ import annotations
 import argparse
 import json
 import re
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-
 
 TRUTHY = {"1", "true", "yes", "on"}
 FALSY = {"0", "false", "no", "off"}
@@ -50,7 +48,11 @@ def _parse_env_file(env_file: Path) -> dict[str, str]:
         value = value.strip()
         if not key:
             continue
-        if value.startswith(("'", '"')) and value.endswith(("'", '"')) and len(value) >= 2:
+        if (
+            value.startswith(("'", '"'))
+            and value.endswith(("'", '"'))
+            and len(value) >= 2
+        ):
             value = value[1:-1]
         if "#" in value:
             value = value.split("#", 1)[0].strip()
@@ -82,7 +84,9 @@ def _check_bool(env: dict[str, str], key: str, expected: bool) -> GateCheck:
     actual = _norm_bool(actual_raw)
     ok = actual == expected_txt
     reason = "ok" if ok else f"{key} erwartet {expected_txt!r}, ist {actual_raw!r}"
-    return GateCheck(key=key, expected=expected_txt, actual=actual_raw or "", ok=ok, reason=reason)
+    return GateCheck(
+        key=key, expected=expected_txt, actual=actual_raw or "", ok=ok, reason=reason
+    )
 
 
 def _check_leverage_caps(env: dict[str, str]) -> list[GateCheck]:
@@ -119,7 +123,11 @@ def _check_leverage_caps(env: dict[str, str]) -> list[GateCheck]:
             expected="<=7",
             actual=allowed_raw,
             ok=allowed <= 7,
-            reason="ok" if allowed <= 7 else "Startprofil verletzt: RISK_ALLOWED_LEVERAGE_MAX > 7",
+            reason=(
+                "ok"
+                if allowed <= 7
+                else "Startprofil verletzt: RISK_ALLOWED_LEVERAGE_MAX > 7"
+            ),
         )
     )
     out.append(
@@ -200,8 +208,12 @@ def main() -> int:
         default=".env.production.example",
         help="Pfad zur ENV-Datei (Default: .env.production.example)",
     )
-    parser.add_argument("--strict", action="store_true", help="Exit != 0 bei NOT_READY/FAIL")
-    parser.add_argument("--dry-run", action="store_true", help="Immer JSON-Report ausgeben")
+    parser.add_argument(
+        "--strict", action="store_true", help="Exit != 0 bei NOT_READY/FAIL"
+    )
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Immer JSON-Report ausgeben"
+    )
     args = parser.parse_args()
 
     env_path = Path(args.env_file)

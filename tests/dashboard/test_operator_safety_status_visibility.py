@@ -3,7 +3,15 @@ from __future__ import annotations
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-STATUSBAR = ROOT / "apps" / "dashboard" / "src" / "components" / "layout" / "MainConsoleStatusBar.tsx"
+STATUSBAR = (
+    ROOT
+    / "apps"
+    / "dashboard"
+    / "src"
+    / "components"
+    / "layout"
+    / "MainConsoleStatusBar.tsx"
+)
 
 
 def test_main_console_status_bar_shows_operator_safety_labels() -> None:

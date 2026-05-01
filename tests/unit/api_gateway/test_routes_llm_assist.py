@@ -74,8 +74,14 @@ def test_assist_admin_operations_turn(mock_post, _audit, client: TestClient) -> 
     mock_post.return_value = {
         "ok": True,
         "provider": "fake",
-        "result": {"assistant_reply_de": "Antwort.", "assist_role_echo": "admin_operations"},
-        "assist_session": {"assist_role": "admin_operations", "history_message_count": 2},
+        "result": {
+            "assistant_reply_de": "Antwort.",
+            "assist_role_echo": "admin_operations",
+        },
+        "assist_session": {
+            "assist_role": "admin_operations",
+            "history_message_count": 2,
+        },
     }
     r = client.post(
         "/v1/llm/assist/admin-operations/turn",

@@ -313,8 +313,8 @@ function StrategySignalExplainPanelInner({ signalContextJson }: Props) {
       ) : null}
       {explanationMissing ? (
         <p className="muted small" role="status">
-          Der LLM-Text fehlt in dieser Antwort. Signalstatus, Risk-Gates und Trade-Action
-          bleiben unveraendert.
+          Der LLM-Text fehlt in dieser Antwort. Signalstatus, Risk-Gates und
+          Trade-Action bleiben unveraendert.
         </p>
       ) : null}
       {showResult && result && envelope ? (

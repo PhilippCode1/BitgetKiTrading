@@ -1,23 +1,19 @@
 from __future__ import annotations
 
 import logging
+import random
 import time
 from dataclasses import asdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
-import random
 from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
 import psycopg
 from psycopg.rows import dict_row
-from shared_py.billing_wallet import fetch_prepaid_balance_list_usd, prepaid_allows_new_trade
-from shared_py.modul_mate_db_gates import assert_execution_allowed, fetch_tenant_modul_mate_gates
-from shared_py.product_policy import (
-    ExecutionPolicyViolationError,
-    demo_trading_allowed,
-    live_trading_allowed,
-    order_placement_permissions,
+from shared_py.billing_wallet import (
+    fetch_prepaid_balance_list_usd,
+    prepaid_allows_new_trade,
 )
 from shared_py.bitget import (
     BitgetInstrumentCatalog,
@@ -31,40 +27,41 @@ from shared_py.bitget.execution_guards import (
     reduce_only_position_consistency_reasons,
     replace_size_safety_reasons,
 )
-from shared_py.bitget.instruments import BitgetEndpointProfile, MarginAccountMode, endpoint_profile_for
+from shared_py.bitget.instruments import (
+    BitgetEndpointProfile,
+    MarginAccountMode,
+    endpoint_profile_for,
+)
 from shared_py.eventbus import RedisStreamBus
+from shared_py.modul_mate_db_gates import (
+    assert_execution_allowed,
+    fetch_tenant_modul_mate_gates,
+)
 from shared_py.observability.apex_trace import (
     finalize_apex_deltas,
     log_apex_chain_ms,
     new_apex_trace,
-    set_hop,
     now_ns,
+    set_hop,
 )
 from shared_py.observability.execution_forensic import redact_nested_mapping
-
+from shared_py.product_policy import (
+    ExecutionPolicyViolationError,
+    order_placement_permissions,
+)
 from shared_py.shadow_live_divergence import get_shadow_match_latch_read_status
 
 from live_broker.config import LiveBrokerSettings
+from live_broker.control_plane.capabilities import assert_write_capability
+from live_broker.events import publish_system_alert
 from live_broker.exceptions import ShadowDivergenceError
 from live_broker.execution.liquidity_guard import (
     InsufficientLiquidityError,
     verify_execution_liquidity,
 )
-from live_broker.control_plane.capabilities import assert_write_capability
-from live_broker.events import publish_system_alert
 from live_broker.global_halt_latch import (
     GlobalHaltLatch,
     try_publish_global_halt_state,
-)
-from live_broker.orders.passive_order_manager import (
-    chase_price_within_slippage,
-    coalesce_orderflow_imbalance,
-    orderflow_wall_against_side,
-    passive_limit_price,
-    passive_maker_trace_enabled,
-    passive_params_from_sources,
-    passive_anchor_decimal,
-    plan_iceberg_sizes,
 )
 from live_broker.orders.models import (
     CancelAllOrdersRequest,
@@ -76,6 +73,16 @@ from live_broker.orders.models import (
     OrderReplaceRequest,
     ReduceOnlyOrderRequest,
     SafetyLatchReleaseRequest,
+)
+from live_broker.orders.passive_order_manager import (
+    chase_price_within_slippage,
+    coalesce_orderflow_imbalance,
+    orderflow_wall_against_side,
+    passive_anchor_decimal,
+    passive_limit_price,
+    passive_maker_trace_enabled,
+    passive_params_from_sources,
+    plan_iceberg_sizes,
 )
 from live_broker.persistence.repo import LiveBrokerRepository
 from live_broker.private_rest import (
@@ -136,10 +143,10 @@ class LiveBrokerOrderService:
         self._exit_service: LiveExitService | None = None
         self._exchange_client: BitgetExchangeClient | None = None
 
-    def set_exchange_client(self, client: "BitgetExchangeClient | None") -> None:
+    def set_exchange_client(self, client: BitgetExchangeClient | None) -> None:
         self._exchange_client = client
 
-    def set_exit_service(self, exit_service: "LiveExitService") -> None:
+    def set_exit_service(self, exit_service: LiveExitService) -> None:
         self._exit_service = exit_service
 
     def trade_root_internal_order_id(self, internal_order_id: str) -> str:
@@ -159,7 +166,9 @@ class LiveBrokerOrderService:
         if not dsn:
             return
         tid = (self._settings.billing_prepaid_tenant_id or "default").strip()
-        min_act = Decimal(str(self._settings.billing_min_balance_new_trade_usd.strip() or "50"))
+        min_act = Decimal(
+            str(self._settings.billing_min_balance_new_trade_usd.strip() or "50")
+        )
         with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
             bal = fetch_prepaid_balance_list_usd(conn, tenant_id=tid)
         ok, msg = prepaid_allows_new_trade(bal, min_activation_usd=min_act)
@@ -193,7 +202,9 @@ class LiveBrokerOrderService:
                 assert_execution_allowed(conn, tenant_id=tid, mode=mode)
         except ExecutionPolicyViolationError as pe:
             self._modul_mate_violation_audit(
-                exc=pe, tenant_id=tid, bitget_demo_enabled=self._settings.bitget_demo_enabled
+                exc=pe,
+                tenant_id=tid,
+                bitget_demo_enabled=self._settings.bitget_demo_enabled,
             )
             if pe.reason == "tenant_modul_mate_gates_missing":
                 raise BitgetRestError(
@@ -323,16 +334,26 @@ class LiveBrokerOrderService:
         *,
         priority: bool = False,
     ) -> dict[str, Any]:
-        identity = self._resolve_identity(request.internal_order_id, request.order_id, request.client_oid)
+        identity = self._resolve_identity(
+            request.internal_order_id, request.order_id, request.client_oid
+        )
         symbol = request.symbol or identity.get("symbol")
-        product_type = request.product_type or identity.get("product_type") or self._settings.product_type
+        product_type = (
+            request.product_type
+            or identity.get("product_type")
+            or self._settings.product_type
+        )
         if not symbol:
             raise BitgetRestError(
                 classification="validation",
                 message="cancel_order braucht symbol oder ein lokales internal_order_id mit Symbol",
                 retryable=False,
             )
-        margin_coin = request.margin_coin or identity.get("margin_coin") or self._settings.effective_margin_coin
+        margin_coin = (
+            request.margin_coin
+            or identity.get("margin_coin")
+            or self._settings.effective_margin_coin
+        )
         order_family = str(
             request.market_family
             or identity.get("market_family")
@@ -341,9 +362,13 @@ class LiveBrokerOrderService:
         ma_mode = identity.get("margin_account_mode")
         if order_family == "margin" and not ma_mode:
             ma_mode = self._settings.margin_account_mode
-        profile = self._order_endpoint_profile(order_family, str(ma_mode).lower() if ma_mode else None)
+        profile = self._order_endpoint_profile(
+            order_family, str(ma_mode).lower() if ma_mode else None
+        )
         assert_write_capability(profile, "order_cancel")
-        cancel_path = profile.private_cancel_order_path or "/api/v2/mix/order/cancel-order"
+        cancel_path = (
+            profile.private_cancel_order_path or "/api/v2/mix/order/cancel-order"
+        )
         body = self._build_cancel_body(
             symbol=symbol,
             product_type=product_type,
@@ -389,8 +414,10 @@ class LiveBrokerOrderService:
                 "size": identity.get("size") or "0.00000001",
                 "price": identity.get("price"),
                 "note": identity.get("note") or "",
-                "client_oid": identity.get("client_oid") or response.payload.get("data", {}).get("clientOid"),
-                "exchange_order_id": identity.get("exchange_order_id") or response.payload.get("data", {}).get("orderId"),
+                "client_oid": identity.get("client_oid")
+                or response.payload.get("data", {}).get("clientOid"),
+                "exchange_order_id": identity.get("exchange_order_id")
+                or response.payload.get("data", {}).get("orderId"),
                 "status": "canceled",
                 "last_action": "cancel",
                 "last_http_status": response.http_status,
@@ -405,7 +432,11 @@ class LiveBrokerOrderService:
         )
         if self._exit_service is not None:
             self._exit_service.on_order_canceled(order=stored)
-        return {"ok": True, "item": stored, "exchange": self._response_to_dict(response)}
+        return {
+            "ok": True,
+            "item": stored,
+            "exchange": self._response_to_dict(response),
+        }
 
     def replace_order(
         self,
@@ -431,12 +462,18 @@ class LiveBrokerOrderService:
                 message="LIVE_TRADE_ENABLE=false",
                 retryable=False,
             )
-        self._assert_submit_runtime_gates(allow_safety_bypass=False, operation="replace")
+        self._assert_submit_runtime_gates(
+            allow_safety_bypass=False, operation="replace"
+        )
         existing = self._require_local_order(str(request.internal_order_id))
         if request.new_price is not None:
             tj = dict(existing.get("trace_json") or {})
             pm = tj.get("predatory_passive_maker")
-            if isinstance(pm, dict) and pm.get("enabled") and pm.get("rewritten_from") == "market":
+            if (
+                isinstance(pm, dict)
+                and pm.get("enabled")
+                and pm.get("rewritten_from") == "market"
+            ):
                 anchor = passive_anchor_decimal(tj, str(existing.get("price") or ""))
                 if anchor is not None and anchor > 0:
                     np = self._to_decimal(request.new_price)
@@ -558,7 +595,9 @@ class LiveBrokerOrderService:
                 "margin_coin": existing["margin_coin"],
                 "market_family": existing.get("market_family"),
                 "margin_account_mode": existing.get("margin_account_mode"),
-                "source_execution_decision_id": existing.get("source_execution_decision_id"),
+                "source_execution_decision_id": existing.get(
+                    "source_execution_decision_id"
+                ),
                 "side": existing["side"],
                 "trade_side": existing.get("trade_side"),
                 "order_type": existing["order_type"],
@@ -568,13 +607,17 @@ class LiveBrokerOrderService:
                 "price": request.new_price or existing.get("price"),
                 "note": request.note or existing.get("note") or "",
                 "client_oid": new_client_oid,
-                "exchange_order_id": self._extract_exchange_order_id(response.payload, detail),
+                "exchange_order_id": self._extract_exchange_order_id(
+                    response.payload, detail
+                ),
                 "status": self._extract_order_state(detail) or "replace_ack",
                 "last_action": "replace",
                 "last_http_status": response.http_status,
                 "last_exchange_code": str(response.payload.get("code") or ""),
                 "last_exchange_msg": str(response.payload.get("msg") or ""),
-                "last_response_json": detail.payload if detail is not None else response.payload,
+                "last_response_json": (
+                    detail.payload if detail is not None else response.payload
+                ),
                 "trace_json": {
                     **(existing.get("trace_json") or {}),
                     **request.trace,
@@ -595,9 +638,15 @@ class LiveBrokerOrderService:
         }
 
     def query_order(self, request: OrderQueryRequest) -> dict[str, Any]:
-        identity = self._resolve_identity(request.internal_order_id, request.order_id, request.client_oid)
+        identity = self._resolve_identity(
+            request.internal_order_id, request.order_id, request.client_oid
+        )
         symbol = request.symbol or identity.get("symbol")
-        product_type = request.product_type or identity.get("product_type") or self._settings.product_type
+        product_type = (
+            request.product_type
+            or identity.get("product_type")
+            or self._settings.product_type
+        )
         if not symbol:
             raise BitgetRestError(
                 classification="validation",
@@ -646,7 +695,9 @@ class LiveBrokerOrderService:
             exchange_order_id=identity.get("exchange_order_id"),
             exchange_mutation=False,
         )
-        data = response.payload.get("data") if isinstance(response.payload, dict) else {}
+        data = (
+            response.payload.get("data") if isinstance(response.payload, dict) else {}
+        )
         if not isinstance(data, dict):
             data = {}
         stored = self._repo.upsert_order(
@@ -656,19 +707,27 @@ class LiveBrokerOrderService:
                 "source_service": identity.get("source_service") or "live-broker",
                 "symbol": symbol,
                 "product_type": product_type,
-                "margin_mode": identity.get("margin_mode") or (data.get("marginMode") or "isolated"),
-                "margin_coin": identity.get("margin_coin") or (data.get("marginCoin") or self._settings.effective_margin_coin),
+                "margin_mode": identity.get("margin_mode")
+                or (data.get("marginMode") or "isolated"),
+                "margin_coin": identity.get("margin_coin")
+                or (data.get("marginCoin") or self._settings.effective_margin_coin),
                 "side": identity.get("side") or (data.get("side") or "buy"),
                 "trade_side": identity.get("trade_side") or data.get("tradeSide"),
-                "order_type": identity.get("order_type") or (data.get("orderType") or "limit"),
+                "order_type": identity.get("order_type")
+                or (data.get("orderType") or "limit"),
                 "force": identity.get("force") or data.get("force"),
-                "reduce_only": self._extract_reduce_only(data, identity.get("reduce_only")),
+                "reduce_only": self._extract_reduce_only(
+                    data, identity.get("reduce_only")
+                ),
                 "size": identity.get("size") or (data.get("size") or "0.00000001"),
                 "price": identity.get("price") or data.get("price"),
                 "note": identity.get("note") or "",
                 "client_oid": data.get("clientOid") or identity.get("client_oid"),
-                "exchange_order_id": data.get("orderId") or identity.get("exchange_order_id"),
-                "status": self._extract_order_state(response) or identity.get("status") or "unknown",
+                "exchange_order_id": data.get("orderId")
+                or identity.get("exchange_order_id"),
+                "status": self._extract_order_state(response)
+                or identity.get("status")
+                or "unknown",
                 "last_action": "query",
                 "last_http_status": response.http_status,
                 "last_exchange_code": str(response.payload.get("code") or ""),
@@ -677,7 +736,11 @@ class LiveBrokerOrderService:
                 "trace_json": identity.get("trace_json") or {},
             }
         )
-        return {"ok": True, "item": stored, "exchange": self._response_to_dict(response)}
+        return {
+            "ok": True,
+            "item": stored,
+            "exchange": self._response_to_dict(response),
+        }
 
     def list_recent_orders(self, limit: int) -> list[dict[str, Any]]:
         return self._repo.list_recent_orders(limit)
@@ -707,7 +770,9 @@ class LiveBrokerOrderService:
     ) -> list[dict[str, Any]]:
         return self._repo.list_recent_audit_trails(limit, category=category)
 
-    def cancel_all_orders_operator(self, request: CancelAllOrdersRequest) -> dict[str, Any]:
+    def cancel_all_orders_operator(
+        self, request: CancelAllOrdersRequest
+    ) -> dict[str, Any]:
         self._require_kill_switch_feature()
         if not self._settings.live_broker_enabled:
             raise BitgetRestError(
@@ -775,9 +840,15 @@ class LiveBrokerOrderService:
                 "local_cancel_count": local.get("count"),
             },
         )
-        return {"ok": True, "exchange": self._response_to_dict(response), "local": local}
+        return {
+            "ok": True,
+            "exchange": self._response_to_dict(response),
+            "local": local,
+        }
 
-    def release_safety_latch(self, request: SafetyLatchReleaseRequest) -> dict[str, Any]:
+    def release_safety_latch(
+        self, request: SafetyLatchReleaseRequest
+    ) -> dict[str, Any]:
         if not self._repo.safety_latch_is_active():
             return {"ok": True, "idempotent": True}
         self._record_audit(
@@ -807,7 +878,12 @@ class LiveBrokerOrderService:
         )
         existing = self._matching_kill_switch(scope, scope_key)
         if existing is not None:
-            return {"ok": True, "idempotent": True, "item": existing, "auto_cancel": None}
+            return {
+                "ok": True,
+                "idempotent": True,
+                "item": existing,
+                "auto_cancel": None,
+            }
         event = self._repo.record_kill_switch_event(
             {
                 "scope": scope,
@@ -895,7 +971,12 @@ class LiveBrokerOrderService:
                 severity="critical",
                 title="live-broker kill switch auto-cancel failed",
                 message=f"Kill switch ist aktiv, Auto-Cancel schlug fehl fuer {scope_key}.",
-                details={"scope": scope, "scope_key": scope_key, "reason": request.reason, "error": str(exc)},
+                details={
+                    "scope": scope,
+                    "scope_key": scope_key,
+                    "reason": request.reason,
+                    "error": str(exc),
+                },
             )
         return {"ok": True, "item": event, "auto_cancel": auto_cancel}
 
@@ -952,7 +1033,9 @@ class LiveBrokerOrderService:
 
     def emergency_flatten(self, request: EmergencyFlattenRequest) -> dict[str, Any]:
         self._require_emergency_flatten_allowed()
-        internal_order_id = str(request.internal_order_id) if request.internal_order_id else None
+        internal_order_id = (
+            str(request.internal_order_id) if request.internal_order_id else None
+        )
         symbol = request.symbol
         product_type = request.product_type or self._settings.product_type
         margin_coin = request.margin_coin or self._settings.effective_margin_coin
@@ -1048,7 +1131,10 @@ class LiveBrokerOrderService:
                     "product_type": product_type,
                     "margin_coin": margin_coin,
                     "internal_order_id": internal_order_id,
-                    "details_json": {"cancel_summary": cancel_summary, "note": request.note},
+                    "details_json": {
+                        "cancel_summary": cancel_summary,
+                        "note": request.note,
+                    },
                 }
             )
             self._record_audit(
@@ -1219,7 +1305,7 @@ class LiveBrokerOrderService:
         timeout_sec = getattr(self._settings, "live_order_timeout_sec", 0)
         if timeout_sec <= 0:
             return {"ok": True, "checked": 0, "timed_out": 0, "items": []}
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         candidates = self._repo.list_active_orders(limit=_OPEN_ORDER_SCAN_LIMIT)
         timed_out: list[dict[str, Any]] = []
         errors: list[dict[str, Any]] = []
@@ -1237,7 +1323,10 @@ class LiveBrokerOrderService:
                         symbol=order.get("symbol"),
                         product_type=order.get("product_type"),
                         margin_coin=order.get("margin_coin"),
-                        trace={"timeout_sec": timeout_sec, "order_age_sec": round(age_sec, 3)},
+                        trace={
+                            "timeout_sec": timeout_sec,
+                            "order_age_sec": round(age_sec, 3),
+                        },
                     ),
                     priority=True,
                 )
@@ -1255,7 +1344,10 @@ class LiveBrokerOrderService:
                     source="live-broker",
                     internal_order_id=str(order["internal_order_id"]),
                     symbol=order.get("symbol"),
-                    details={"timeout_sec": timeout_sec, "order_age_sec": round(age_sec, 3)},
+                    details={
+                        "timeout_sec": timeout_sec,
+                        "order_age_sec": round(age_sec, 3),
+                    },
                 )
                 timed_out.append(stored)
             except Exception as exc:
@@ -1430,7 +1522,9 @@ class LiveBrokerOrderService:
         margin_coin = request.margin_coin or self._settings.effective_margin_coin
         return "account", f"{product_type}:{margin_coin}"
 
-    def _matching_kill_switch(self, scope: str, scope_key: str) -> dict[str, Any] | None:
+    def _matching_kill_switch(
+        self, scope: str, scope_key: str
+    ) -> dict[str, Any] | None:
         for item in self._repo.active_kill_switches():
             if item.get("scope") == scope and item.get("scope_key") == scope_key:
                 return item
@@ -1456,7 +1550,11 @@ class LiveBrokerOrderService:
                 out.append(item)
             elif scope == "account" and scope_key == f"{product_type}:{margin_coin}":
                 out.append(item)
-            elif scope == "trade" and trade_scope_key is not None and scope_key == trade_scope_key:
+            elif (
+                scope == "trade"
+                and trade_scope_key is not None
+                and scope_key == trade_scope_key
+            ):
                 out.append(item)
         return out
 
@@ -1546,7 +1644,9 @@ class LiveBrokerOrderService:
         self._assert_kill_switch_allows_submit(
             operation=operation,
             product_type=str(order.get("product_type") or self._settings.product_type),
-            margin_coin=str(order.get("margin_coin") or self._settings.effective_margin_coin),
+            margin_coin=str(
+                order.get("margin_coin") or self._settings.effective_margin_coin
+            ),
             internal_order_id=str(order.get("internal_order_id") or ""),
             reduce_only=bool(order.get("reduce_only")),
             symbol=str(order.get("symbol") or self._settings.symbol),
@@ -1665,7 +1765,8 @@ class LiveBrokerOrderService:
             matches = [
                 order
                 for order in matches
-                if self._trade_scope_key(str(order.get("internal_order_id") or "")) == trade_scope_key
+                if self._trade_scope_key(str(order.get("internal_order_id") or ""))
+                == trade_scope_key
             ]
         items: list[dict[str, Any]] = []
         for order in matches:
@@ -1676,11 +1777,21 @@ class LiveBrokerOrderService:
                         symbol=order.get("symbol"),
                         product_type=order.get("product_type"),
                         margin_coin=order.get("margin_coin"),
-                        trace={"safety_reason": reason, "scope": scope, "scope_key": scope_key},
+                        trace={
+                            "safety_reason": reason,
+                            "scope": scope,
+                            "scope_key": scope_key,
+                        },
                     ),
                     priority=True,
                 )
-                items.append({"ok": True, "internal_order_id": order["internal_order_id"], "item": result["item"]})
+                items.append(
+                    {
+                        "ok": True,
+                        "internal_order_id": order["internal_order_id"],
+                        "item": result["item"],
+                    }
+                )
             except Exception as exc:
                 self._record_audit(
                     category="kill_switch",
@@ -1693,7 +1804,13 @@ class LiveBrokerOrderService:
                     symbol=order.get("symbol"),
                     details={"reason": reason, "error": str(exc)},
                 )
-                items.append({"ok": False, "internal_order_id": order["internal_order_id"], "error": str(exc)})
+                items.append(
+                    {
+                        "ok": False,
+                        "internal_order_id": order["internal_order_id"],
+                        "error": str(exc),
+                    }
+                )
         return {"count": len(matches), "items": items}
 
     def _record_audit(
@@ -1750,7 +1867,7 @@ class LiveBrokerOrderService:
         if value is None:
             return None
         if isinstance(value, datetime):
-            return value.astimezone(timezone.utc)
+            return value.astimezone(UTC)
         if isinstance(value, str):
             normalized = value.replace("Z", "+00:00")
             try:
@@ -1758,8 +1875,8 @@ class LiveBrokerOrderService:
             except ValueError:
                 return None
             if parsed.tzinfo is None:
-                return parsed.replace(tzinfo=timezone.utc)
-            return parsed.astimezone(timezone.utc)
+                return parsed.replace(tzinfo=UTC)
+            return parsed.astimezone(UTC)
         return None
 
     def _trade_scope_key(self, internal_order_id: str) -> str:
@@ -1842,7 +1959,9 @@ class LiveBrokerOrderService:
             for item in items:
                 if not isinstance(item, dict):
                     continue
-                item_symbol = str(item.get("instId") or snapshot.get("symbol") or "").strip()
+                item_symbol = str(
+                    item.get("instId") or snapshot.get("symbol") or ""
+                ).strip()
                 if item_symbol and item_symbol != symbol:
                     continue
                 total = self._to_decimal(item.get("total"))
@@ -1878,10 +1997,10 @@ class LiveBrokerOrderService:
             if size is None:
                 continue
             seen_fill = True
-            is_open = (
-                "open" in trade_side
-                or trade_side in {"buy_single", "sell_single"}
-            )
+            is_open = "open" in trade_side or trade_side in {
+                "buy_single",
+                "sell_single",
+            }
             if is_open:
                 net_size += size if side == "buy" else -size
             else:
@@ -2016,7 +2135,9 @@ class LiveBrokerOrderService:
         fam = str(market_family).lower()
         mode: MarginAccountMode = "cash"
         if fam == "margin":
-            raw = (margin_account_mode or self._settings.margin_account_mode or "isolated").lower()
+            raw = (
+                margin_account_mode or self._settings.margin_account_mode or "isolated"
+            ).lower()
             mode = "crossed" if raw == "crossed" else "isolated"
         return endpoint_profile_for(fam, margin_account_mode=mode)
 
@@ -2093,7 +2214,10 @@ class LiveBrokerOrderService:
                 message=f"reconcile_status_fail_blockiert_{operation}",
                 retryable=False,
             )
-        if self._settings.live_block_submit_on_reconcile_degraded and status == "degraded":
+        if (
+            self._settings.live_block_submit_on_reconcile_degraded
+            and status == "degraded"
+        ):
             self._publish_safety_alert(
                 alert_key="live-broker:execution-guard:reconcile_degraded_block",
                 severity="warn",
@@ -2113,7 +2237,9 @@ class LiveBrokerOrderService:
         if self._exchange_client is None:
             return
         probe = self._exchange_client.probe_exchange()
-        if self._settings.live_require_exchange_health and not probe.get("public_api_ok"):
+        if self._settings.live_require_exchange_health and not probe.get(
+            "public_api_ok"
+        ):
             self._publish_safety_alert(
                 alert_key="live-broker:execution-guard:public_probe_fail",
                 severity="critical",
@@ -2127,7 +2253,9 @@ class LiveBrokerOrderService:
                 retryable=False,
             )
 
-    def _assert_submit_runtime_gates(self, *, allow_safety_bypass: bool, operation: str) -> None:
+    def _assert_submit_runtime_gates(
+        self, *, allow_safety_bypass: bool, operation: str
+    ) -> None:
         if allow_safety_bypass:
             return
         if not self._settings.live_order_submission_enabled:
@@ -2176,7 +2304,11 @@ class LiveBrokerOrderService:
                 "Bitget meldete duplicate, lokale Order fehlt und Remote-Detail nicht lesbar — "
                 "Safety-Latch gesetzt (LIVE_SAFETY_LATCH_ON_DUPLICATE_RECOVERY_FAIL)."
             ),
-            details={"internal_order_id": internal_order_id, "client_oid": client_oid, "symbol": symbol},
+            details={
+                "internal_order_id": internal_order_id,
+                "client_oid": client_oid,
+                "symbol": symbol,
+            },
         )
 
     def _evaluate_post_preflight_execution_guards(
@@ -2229,7 +2361,9 @@ class LiveBrokerOrderService:
                     snap = self._exchange_client.get_market_snapshot_for_family(
                         request.symbol,
                         market_family=effective_family,
-                        product_type=product_type if effective_family == "futures" else None,
+                        product_type=(
+                            product_type if effective_family == "futures" else None
+                        ),
                         margin_account_mode=margin_mode_for_profile,
                     )
                     trace_merged["execution_guard_market_snapshot"] = {
@@ -2371,9 +2505,10 @@ class LiveBrokerOrderService:
                     ),
                     retryable=False,
                 )
-        if self._settings.require_shadow_match_before_live and (
-            self._settings.redis_url or ""
-        ).strip():
+        if (
+            self._settings.require_shadow_match_before_live
+            and (self._settings.redis_url or "").strip()
+        ):
             rurl = str(self._settings.redis_url)
             st = get_shadow_match_latch_read_status(rurl, eid)
             if st == "redis_unavailable":
@@ -2404,12 +2539,18 @@ class LiveBrokerOrderService:
     ) -> None:
         if allow_safety_bypass or not opening_order:
             return
-        raw_state = str(
-            trace_merged.get("portfolio_risk_state")
-            or trace_merged.get("risk_state")
-            or "unknown_blocked"
-        ).strip().lower()
-        opening_allowed = bool(trace_merged.get("portfolio_opening_orders_allowed", False))
+        raw_state = (
+            str(
+                trace_merged.get("portfolio_risk_state")
+                or trace_merged.get("risk_state")
+                or "unknown_blocked"
+            )
+            .strip()
+            .lower()
+        )
+        opening_allowed = bool(
+            trace_merged.get("portfolio_opening_orders_allowed", False)
+        )
         risk_check_fresh = bool(trace_merged.get("portfolio_risk_check_fresh", False))
         if self._global_halt is not None and self._global_halt.is_halted:
             raise BitgetRestError(
@@ -2423,7 +2564,12 @@ class LiveBrokerOrderService:
                 message="portfolio_risk_state_unknown_or_stale",
                 retryable=False,
             )
-        if raw_state in {"unknown_blocked", "global_halt", "halt_new_entries", "degraded"}:
+        if raw_state in {
+            "unknown_blocked",
+            "global_halt",
+            "halt_new_entries",
+            "degraded",
+        }:
             raise BitgetRestError(
                 classification="validation",
                 message=f"portfolio_risk_state_blocks_opening:{raw_state}",
@@ -2450,7 +2596,11 @@ class LiveBrokerOrderService:
                 message="Instrument unterstuetzt keine reduce-only Orders fuer diese Marktfamilie",
                 retryable=False,
             )
-        if effective_family == "spot" and request.trade_side == "open" and request.side == "sell":
+        if (
+            effective_family == "spot"
+            and request.trade_side == "open"
+            and request.side == "sell"
+        ):
             raise BitgetRestError(
                 classification="validation",
                 message="spot: open-short (sell+open) nicht unterstuetzt",
@@ -2525,7 +2675,9 @@ class LiveBrokerOrderService:
         total = self._to_decimal(request.size)
         if total is None or total <= 0:
             return request
-        seed = hash((str(trace_merged.get("correlation_id") or ""), str(internal_order_id))) % (2**32)
+        seed = hash(
+            (str(trace_merged.get("correlation_id") or ""), str(internal_order_id))
+        ) % (2**32)
         rng = random.Random(seed)
         slices = plan_iceberg_sizes(total, params.iceberg_slices, rng)
         first = slices[0]
@@ -2601,11 +2753,14 @@ class LiveBrokerOrderService:
                         if family == "futures"
                         else None
                     ),
-                    margin_account_mode=str(
-                        request.margin_account_mode or self._settings.margin_account_mode
-                    )
-                    if family == "margin"
-                    else None,
+                    margin_account_mode=(
+                        str(
+                            request.margin_account_mode
+                            or self._settings.margin_account_mode
+                        )
+                        if family == "margin"
+                        else None
+                    ),
                     refresh_if_missing=True,
                 )
             except UnknownInstrumentError as exc:
@@ -2632,7 +2787,10 @@ class LiveBrokerOrderService:
                         else None
                     ),
                     margin_account_mode=(
-                        str(request.margin_account_mode or self._settings.margin_account_mode)
+                        str(
+                            request.margin_account_mode
+                            or self._settings.margin_account_mode
+                        )
                         if family == "margin"
                         else None
                     ),
@@ -2664,41 +2822,52 @@ class LiveBrokerOrderService:
         if effective_family == "margin":
             margin_mode_for_profile = str(
                 request.margin_account_mode
-                or (catalog_entry.margin_account_mode if catalog_entry is not None else None)
+                or (
+                    catalog_entry.margin_account_mode
+                    if catalog_entry is not None
+                    else None
+                )
                 or self._settings.margin_account_mode
             ).lower()
-        profile = self._order_endpoint_profile(effective_family, margin_mode_for_profile)
+        profile = self._order_endpoint_profile(
+            effective_family, margin_mode_for_profile
+        )
         assert_write_capability(
             profile,
             "reduce_only" if request.reduce_only else "order_create",
         )
         if effective_family == "futures":
-            product_type = (
-                request.product_type
-                or (catalog_entry.product_type if catalog_entry is not None else None)
+            product_type = request.product_type or (
+                catalog_entry.product_type if catalog_entry is not None else None
             )
         else:
-            product_type = (
-                request.product_type
-                or (catalog_entry.product_type if catalog_entry is not None else None)
+            product_type = request.product_type or (
+                catalog_entry.product_type if catalog_entry is not None else None
             )
-        margin_coin = (
-            request.margin_coin
-            or (catalog_entry.margin_coin if catalog_entry is not None else None)
+        margin_coin = request.margin_coin or (
+            catalog_entry.margin_coin if catalog_entry is not None else None
         )
-        if effective_family in {"futures", "margin"} and not str(product_type or "").strip():
+        if (
+            effective_family in {"futures", "margin"}
+            and not str(product_type or "").strip()
+        ):
             raise BitgetRestError(
                 classification="validation",
                 message="missing_product_type_fail_closed",
                 retryable=False,
             )
-        if effective_family in {"futures", "margin"} and not str(margin_coin or "").strip():
+        if (
+            effective_family in {"futures", "margin"}
+            and not str(margin_coin or "").strip()
+        ):
             raise BitgetRestError(
                 classification="validation",
                 message="missing_margin_coin_fail_closed",
                 retryable=False,
             )
-        self._assert_catalog_order_capabilities(catalog_entry, request, effective_family)
+        self._assert_catalog_order_capabilities(
+            catalog_entry, request, effective_family
+        )
         self._assert_live_open_governance(
             request,
             opening_order=not bool(request.reduce_only),
@@ -2726,7 +2895,11 @@ class LiveBrokerOrderService:
             vside = str(request.side or "").lower()
             if (vsize or Decimal("0")) > 0 and vside in ("buy", "sell"):
                 try:
-                    cap = Decimal(str(self._settings.live_liquidity_guard_max_slippage_bps or "50"))
+                    cap = Decimal(
+                        str(
+                            self._settings.live_liquidity_guard_max_slippage_bps or "50"
+                        )
+                    )
                 except (InvalidOperation, TypeError, ValueError):
                     cap = Decimal("50")
                 try:
@@ -2750,9 +2923,8 @@ class LiveBrokerOrderService:
                         message=msg,
                         retryable=True,
                     ) from exc
-        elif (
-            str(request.order_type or "").lower() == "market"
-            and not bool(request.reduce_only)
+        elif str(request.order_type or "").lower() == "market" and not bool(
+            request.reduce_only
         ):
             # Opening-Market ohne aktivierten Slippage-/Orderbook-Pre-Flight: fail-closed.
             # Reduce-only Market (Flatten/Close) darf ohne diesen Gate laufen; Slippage-Risiko
@@ -2809,15 +2981,26 @@ class LiveBrokerOrderService:
             if not preflight.valid:
                 raise BitgetRestError(
                     classification="validation",
-                    message="instrument metadata preflight failed: " + ",".join(preflight.reasons),
+                    message="instrument metadata preflight failed: "
+                    + ",".join(preflight.reasons),
                     retryable=False,
                 )
-            trace_merged["instrument_metadata"] = preflight.metadata.model_dump(mode="json")
-            trace_merged["instrument_metadata_snapshot_id"] = preflight.metadata.snapshot_id
-            trace_merged["instrument_preflight_notional_quote"] = preflight.computed_notional_quote
+            trace_merged["instrument_metadata"] = preflight.metadata.model_dump(
+                mode="json"
+            )
+            trace_merged["instrument_metadata_snapshot_id"] = (
+                preflight.metadata.snapshot_id
+            )
+            trace_merged["instrument_preflight_notional_quote"] = (
+                preflight.computed_notional_quote
+            )
             if body.get("price") is not None and preflight.normalized_price is not None:
                 body["price"] = preflight.normalized_price
-            size_key = "size" if "size" in body else ("baseSize" if "baseSize" in body else "quoteSize")
+            size_key = (
+                "size"
+                if "size" in body
+                else ("baseSize" if "baseSize" in body else "quoteSize")
+            )
             body[size_key] = preflight.normalized_size
         self._evaluate_post_preflight_execution_guards(
             request=request,
@@ -2886,7 +3069,9 @@ class LiveBrokerOrderService:
                             "margin_coin": margin_coin,
                             "market_family": effective_family,
                             "margin_account_mode": (
-                                margin_mode_for_profile if effective_family == "margin" else None
+                                margin_mode_for_profile
+                                if effective_family == "margin"
+                                else None
                             ),
                             "source_execution_decision_id": (
                                 str(request.source_execution_decision_id)
@@ -2896,13 +3081,16 @@ class LiveBrokerOrderService:
                             "side": request.side,
                             "trade_side": request.trade_side,
                             "order_type": request.order_type,
-                            "force": request.force or ("gtc" if request.order_type == "limit" else None),
+                            "force": request.force
+                            or ("gtc" if request.order_type == "limit" else None),
                             "reduce_only": request.reduce_only,
                             "size": request.size,
                             "price": request.price,
                             "note": request.note,
                             "client_oid": client_oid,
-                            "exchange_order_id": self._extract_exchange_order_id({}, detail),
+                            "exchange_order_id": self._extract_exchange_order_id(
+                                {}, detail
+                            ),
                             "status": self._extract_order_state(detail) or "submitted",
                             "last_action": action,
                             "last_http_status": detail.http_status,
@@ -2934,7 +3122,9 @@ class LiveBrokerOrderService:
                     "margin_coin": margin_coin,
                     "market_family": effective_family,
                     "margin_account_mode": (
-                        margin_mode_for_profile if effective_family == "margin" else None
+                        margin_mode_for_profile
+                        if effective_family == "margin"
+                        else None
                     ),
                     "source_execution_decision_id": (
                         str(request.source_execution_decision_id)
@@ -2944,7 +3134,8 @@ class LiveBrokerOrderService:
                     "side": request.side,
                     "trade_side": request.trade_side,
                     "order_type": request.order_type,
-                    "force": request.force or ("gtc" if request.order_type == "limit" else None),
+                    "force": request.force
+                    or ("gtc" if request.order_type == "limit" else None),
                     "reduce_only": request.reduce_only,
                     "size": request.size,
                     "price": request.price,
@@ -2966,7 +3157,9 @@ class LiveBrokerOrderService:
         at0 = trace_merged.get("apex_trace")
         if not isinstance(at0, dict) or not at0:
             at0 = new_apex_trace()
-        trace_merged["apex_trace"] = finalize_apex_deltas(set_hop(at0, "bitget", t_bit0, t_bit1))
+        trace_merged["apex_trace"] = finalize_apex_deltas(
+            set_hop(at0, "bitget", t_bit0, t_bit1)
+        )
         log_apex_chain_ms(trace_merged["apex_trace"], stage="bitget_place_order")
         detail = None
         exchange_order_id = self._extract_exchange_order_id(response.payload, None)
@@ -2978,7 +3171,9 @@ class LiveBrokerOrderService:
                 market_family=effective_family,
                 margin_account_mode=margin_mode_for_profile,
             )
-            exchange_order_id = self._extract_exchange_order_id(response.payload, detail)
+            exchange_order_id = self._extract_exchange_order_id(
+                response.payload, detail
+            )
         stored = self._repo.upsert_order(
             {
                 "internal_order_id": str(internal_order_id),
@@ -3000,7 +3195,8 @@ class LiveBrokerOrderService:
                 "side": request.side,
                 "trade_side": request.trade_side,
                 "order_type": request.order_type,
-                "force": request.force or ("gtc" if request.order_type == "limit" else None),
+                "force": request.force
+                or ("gtc" if request.order_type == "limit" else None),
                 "reduce_only": request.reduce_only,
                 "size": request.size,
                 "price": request.price,
@@ -3012,7 +3208,9 @@ class LiveBrokerOrderService:
                 "last_http_status": response.http_status,
                 "last_exchange_code": str(response.payload.get("code") or ""),
                 "last_exchange_msg": str(response.payload.get("msg") or ""),
-                "last_response_json": detail.payload if detail is not None else response.payload,
+                "last_response_json": (
+                    detail.payload if detail is not None else response.payload
+                ),
                 "trace_json": trace_merged,
             }
         )
@@ -3031,7 +3229,9 @@ class LiveBrokerOrderService:
             },
         )
         if self._exit_service is not None:
-            self._exit_service.persist_order_exit_plan(order=stored, preview=exit_plan_preview)
+            self._exit_service.persist_order_exit_plan(
+                order=stored, preview=exit_plan_preview
+            )
         return {
             "ok": True,
             "idempotent": False,
@@ -3157,7 +3357,8 @@ class LiveBrokerOrderService:
                 "action": action,
                 "request_path": request_path,
                 "client_oid": client_oid,
-                "exchange_order_id": exchange_order_id or self._extract_exchange_order_id(response.payload, None),
+                "exchange_order_id": exchange_order_id
+                or self._extract_exchange_order_id(response.payload, None),
                 "http_status": response.http_status,
                 "exchange_code": str(response.payload.get("code") or ""),
                 "exchange_msg": str(response.payload.get("msg") or ""),
@@ -3225,7 +3426,7 @@ class LiveBrokerOrderService:
         elif family == "margin":
             params["symbol"] = symbol
         if family == "margin":
-            now_ms = int(datetime.now(tz=timezone.utc).timestamp() * 1000)
+            now_ms = int(datetime.now(tz=UTC).timestamp() * 1000)
             params.setdefault("startTime", str(now_ms - 90 * 24 * 60 * 60 * 1000))
             params.setdefault("endTime", str(now_ms))
             params.setdefault("limit", "1")
@@ -3277,7 +3478,10 @@ class LiveBrokerOrderService:
             if request.preset_stop_loss_price is not None:
                 body["presetStopLossPrice"] = request.preset_stop_loss_price
             return body
-        body["loanType"] = str(trace_merged.get("margin_loan_type") or self._settings.bitget_margin_loan_type)
+        body["loanType"] = str(
+            trace_merged.get("margin_loan_type")
+            or self._settings.bitget_margin_loan_type
+        )
         qty_key = (
             endpoint_profile.market_buy_quantity_field
             if request.order_type == "market" and request.side == "buy"
@@ -3295,7 +3499,9 @@ class LiveBrokerOrderService:
         if isinstance(data, dict) and data.get("orderId"):
             return str(data["orderId"])
         if detail is not None:
-            detail_data = detail.payload.get("data") if isinstance(detail.payload, dict) else None
+            detail_data = (
+                detail.payload.get("data") if isinstance(detail.payload, dict) else None
+            )
             if isinstance(detail_data, dict) and detail_data.get("orderId"):
                 return str(detail_data["orderId"])
         return None
@@ -3303,7 +3509,9 @@ class LiveBrokerOrderService:
     def _extract_order_state(self, response: BitgetRestResponse | None) -> str | None:
         if response is None:
             return None
-        data = response.payload.get("data") if isinstance(response.payload, dict) else None
+        data = (
+            response.payload.get("data") if isinstance(response.payload, dict) else None
+        )
         if not isinstance(data, dict):
             return None
         return str(data.get("state") or data.get("status") or "").strip() or None
@@ -3314,7 +3522,9 @@ class LiveBrokerOrderService:
         value = str(data.get("reduceOnly") or "").strip().lower()
         return value in ("yes", "true", "1")
 
-    def _response_to_dict(self, response: BitgetRestResponse | None) -> dict[str, Any] | None:
+    def _response_to_dict(
+        self, response: BitgetRestResponse | None
+    ) -> dict[str, Any] | None:
         if response is None:
             return None
         return {

@@ -124,7 +124,9 @@ class _DynamicBatcher:
 
 
 class TimesFmInferenceServicer(pb2_grpc.TimesFmInferenceServicer):
-    def __init__(self, settings: InferenceServerSettings, engine: TimesFmModelEngine) -> None:
+    def __init__(
+        self, settings: InferenceServerSettings, engine: TimesFmModelEngine
+    ) -> None:
         self._settings = settings
         self._engine = engine
         self._sem = asyncio.Semaphore(settings.timesfm_max_inflight_batches)
@@ -145,7 +147,9 @@ class TimesFmInferenceServicer(pb2_grpc.TimesFmInferenceServicer):
 
     def _set_trailing(self, context: Any) -> None:
         try:
-            context.set_trailing_metadata(inference_telemetry.trailing_metadata_tuples())
+            context.set_trailing_metadata(
+                inference_telemetry.trailing_metadata_tuples()
+            )
         except Exception:  # noqa: BLE001
             pass
 
@@ -155,7 +159,7 @@ class TimesFmInferenceServicer(pb2_grpc.TimesFmInferenceServicer):
                 self._sem.acquire(),
                 timeout=self._settings.timesfm_batch_semaphore_wait_sec,
             )
-        except asyncio.TimeoutError as exc:
+        except TimeoutError as exc:
             for w in work:
                 if not w.done.done():
                     w.done.set_exception(exc)
@@ -165,7 +169,11 @@ class TimesFmInferenceServicer(pb2_grpc.TimesFmInferenceServicer):
             merged: list[np.ndarray] = []
             horizons: list[int] = []
             for w in work:
-                h = int(w.request.forecast_horizon) if w.request.forecast_horizon else 16
+                h = (
+                    int(w.request.forecast_horizon)
+                    if w.request.forecast_horizon
+                    else 16
+                )
                 h = max(1, min(h, 512))
                 horizons.append(h)
                 for a in w.arrays:
@@ -192,7 +200,11 @@ class TimesFmInferenceServicer(pb2_grpc.TimesFmInferenceServicer):
             off = 0
             for w in work:
                 n = len(w.arrays)
-                h_req = int(w.request.forecast_horizon) if w.request.forecast_horizon else 16
+                h_req = (
+                    int(w.request.forecast_horizon)
+                    if w.request.forecast_horizon
+                    else 16
+                )
                 h_req = max(1, min(int(h_req), 512))
                 part = outs[off : off + n]
                 off += n
@@ -242,7 +254,7 @@ class TimesFmInferenceServicer(pb2_grpc.TimesFmInferenceServicer):
                 self._sem.acquire(),
                 timeout=self._settings.timesfm_batch_semaphore_wait_sec,
             )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             await context.abort(
                 grpc.StatusCode.RESOURCE_EXHAUSTED,
                 "inference-server: batch limit / semaphore timeout",
@@ -302,7 +314,9 @@ class TimesFmInferenceServicer(pb2_grpc.TimesFmInferenceServicer):
                 raise RuntimeError("abort")
             arrays.append(arr)
         if self._batcher is not None and len(request.series) > 0:
-            return await self._batcher.submit(request=request, context=context, arrays=arrays)
+            return await self._batcher.submit(
+                request=request, context=context, arrays=arrays
+            )
         return await self._predict_batch_direct(request, context)
 
     async def StreamTicks(

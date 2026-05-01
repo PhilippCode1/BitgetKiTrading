@@ -7,9 +7,9 @@ from shared_py.bitget.instruments import endpoint_profile_for
 
 from live_broker.control_plane.capabilities import (
     CONTROL_PLANE_MATRIX_VERSION,
-    capability_matrix_for_profile,
     assert_read_capability,
     assert_write_capability,
+    capability_matrix_for_profile,
 )
 from live_broker.control_plane.models import (
     ControlPlaneReadHistoryRequest,
@@ -39,9 +39,9 @@ class BitgetControlPlaneService:
 
     def __init__(
         self,
-        settings: "LiveBrokerSettings",
+        settings: LiveBrokerSettings,
         private: BitgetPrivateRestClient,
-        repo: "LiveBrokerRepository",
+        repo: LiveBrokerRepository,
     ) -> None:
         self._settings = settings
         self._private = private
@@ -66,7 +66,9 @@ class BitgetControlPlaneService:
             "categories": capability_matrix_for_profile(profile),
         }
 
-    def read_orders_history(self, body: ControlPlaneReadHistoryRequest) -> dict[str, Any]:
+    def read_orders_history(
+        self, body: ControlPlaneReadHistoryRequest
+    ) -> dict[str, Any]:
         profile = self._runtime_profile()
         assert_read_capability(profile, "order_history")
         params: dict[str, Any] = {"limit": str(body.limit)}
@@ -76,7 +78,10 @@ class BitgetControlPlaneService:
             params["startTime"] = body.start_time_ms
         if body.end_time_ms:
             params["endTime"] = body.end_time_ms
-        if str(profile.market_family).lower() == "futures" and self._settings.rest_product_type_param:
+        if (
+            str(profile.market_family).lower() == "futures"
+            and self._settings.rest_product_type_param
+        ):
             params["productType"] = self._settings.product_type
         req_path = profile.private_order_history_path or ""
         snapshot = {
@@ -119,7 +124,10 @@ class BitgetControlPlaneService:
             params["startTime"] = body.start_time_ms
         if body.end_time_ms:
             params["endTime"] = body.end_time_ms
-        if str(profile.market_family).lower() == "futures" and self._settings.rest_product_type_param:
+        if (
+            str(profile.market_family).lower() == "futures"
+            and self._settings.rest_product_type_param
+        ):
             params["productType"] = self._settings.product_type
         if str(profile.market_family).lower() == "futures":
             params.setdefault("marginCoin", self._settings.effective_margin_coin)
@@ -154,7 +162,9 @@ class BitgetControlPlaneService:
         )
         return {"ok": True, "exchange": _response_to_audit(resp)}
 
-    def set_leverage_operator(self, body: ControlPlaneSetLeverageRequest) -> dict[str, Any]:
+    def set_leverage_operator(
+        self, body: ControlPlaneSetLeverageRequest
+    ) -> dict[str, Any]:
         if not self._settings.live_order_submission_enabled:
             raise BitgetRestError(
                 classification="service_disabled",
@@ -229,7 +239,9 @@ class BitgetControlPlaneService:
         except Exception as exc:
             logger.warning("control_plane audit_trail failed: %s", exc)
 
-    def _dead_letter(self, request_snapshot: dict[str, Any], exc: BitgetRestError) -> None:
+    def _dead_letter(
+        self, request_snapshot: dict[str, Any], exc: BitgetRestError
+    ) -> None:
         if exc.retryable:
             return
         try:

@@ -5,7 +5,6 @@ from typing import Any, Literal, Self
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator, model_validator
-
 from shared_py.bitget import ProductType
 from shared_py.bitget.instruments import MarginAccountMode, MarketFamily
 
@@ -125,7 +124,13 @@ class OrderCreateRequest(BaseModel):
             return value.strip().lower()
         return value
 
-    @field_validator("size", "price", "preset_stop_surplus_price", "preset_stop_loss_price", mode="before")
+    @field_validator(
+        "size",
+        "price",
+        "preset_stop_surplus_price",
+        "preset_stop_loss_price",
+        mode="before",
+    )
     @classmethod
     def _normalize_numeric_values(cls, value: object, info) -> object:
         return _normalize_decimal_text(value, str(info.field_name))
@@ -146,7 +151,9 @@ class OrderCreateRequest(BaseModel):
         if self.order_type == "market" and self.force is not None:
             raise ValueError("force ist nur fuer limit orders erlaubt")
         if self.reduce_only and self.trade_side == "open":
-            raise ValueError("reduce_only darf nicht mit trade_side=open kombiniert werden")
+            raise ValueError(
+                "reduce_only darf nicht mit trade_side=open kombiniert werden"
+            )
         return self
 
 
@@ -193,13 +200,19 @@ class OrderCancelRequest(BaseModel):
     def _normalize_optional_text(cls, value: object) -> object:
         if isinstance(value, str):
             normalized = value.strip()
-            return normalized.upper() if normalized and normalized.isalpha() else normalized or None
+            return (
+                normalized.upper()
+                if normalized and normalized.isalpha()
+                else normalized or None
+            )
         return value
 
     @model_validator(mode="after")
     def _validate_identity(self) -> Self:
         if not (self.internal_order_id or self.order_id or self.client_oid):
-            raise ValueError("cancel request braucht internal_order_id oder order_id oder client_oid")
+            raise ValueError(
+                "cancel request braucht internal_order_id oder order_id oder client_oid"
+            )
         return self
 
 
@@ -243,7 +256,9 @@ class OrderReplaceRequest(BaseModel):
         ):
             raise ValueError("replace request braucht mindestens eine Aenderung")
         if (self.new_size is None) != (self.new_price is None):
-            raise ValueError("Bitget Modify Order verlangt newSize und newPrice gemeinsam")
+            raise ValueError(
+                "Bitget Modify Order verlangt newSize und newPrice gemeinsam"
+            )
         return self
 
 
@@ -290,7 +305,9 @@ class OrderQueryRequest(BaseModel):
     @model_validator(mode="after")
     def _validate_query(self) -> Self:
         if not (self.internal_order_id or self.order_id or self.client_oid):
-            raise ValueError("query request braucht internal_order_id oder order_id oder client_oid")
+            raise ValueError(
+                "query request braucht internal_order_id oder order_id oder client_oid"
+            )
         return self
 
 
@@ -435,9 +452,7 @@ class EmergencyFlattenRequest(BaseModel):
                 "emergency flatten braucht side+size gemeinsam oder beides leer fuer Auto-Resolve"
             )
         if self.internal_order_id is None and not self.symbol:
-            raise ValueError(
-                "emergency flatten braucht symbol oder internal_order_id"
-            )
+            raise ValueError("emergency flatten braucht symbol oder internal_order_id")
         return self
 
 

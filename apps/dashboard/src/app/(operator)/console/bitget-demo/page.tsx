@@ -1,5 +1,9 @@
 import { Header } from "@/components/layout/Header";
-import { fetchDemoAssets, fetchDemoReadiness, fetchDemoStatus } from "@/lib/api";
+import {
+  fetchDemoAssets,
+  fetchDemoReadiness,
+  fetchDemoStatus,
+} from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
@@ -26,10 +30,16 @@ export default async function BitgetDemoPage() {
       <section className="panel">
         <h2>Modusstatus</h2>
         <p>
-          Echtes Live-Trading: <strong>{asBool(mode.live_trade_enable) ? "AN (blockiert)" : "AUS"}</strong>
+          Echtes Live-Trading:{" "}
+          <strong>
+            {asBool(mode.live_trade_enable) ? "AN (blockiert)" : "AUS"}
+          </strong>
         </p>
         <p>
-          Demo-Trading: <strong>{asBool(mode.bitget_demo_enabled) ? "AKTIV" : "NICHT AKTIV"}</strong>
+          Demo-Trading:{" "}
+          <strong>
+            {asBool(mode.bitget_demo_enabled) ? "AKTIV" : "NICHT AKTIV"}
+          </strong>
         </p>
         <p>
           Readiness: <strong>{String(readiness.result ?? "unbekannt")}</strong>
@@ -38,7 +48,9 @@ export default async function BitgetDemoPage() {
       <section className="panel" style={{ marginTop: 16 }}>
         <h2>Demo-Asset-Status</h2>
         {rows.length === 0 ? (
-          <p className="muted small">Keine Demo-Assets verfügbar oder Endpoint liefert noch keine Daten.</p>
+          <p className="muted small">
+            Keine Demo-Assets verfügbar oder Endpoint liefert noch keine Daten.
+          </p>
         ) : (
           <div className="table-wrap">
             <table>

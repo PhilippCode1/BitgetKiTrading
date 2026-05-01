@@ -33,7 +33,9 @@ def test_stale_blocks() -> None:
 
 
 def test_exchange_unreachable_blocks() -> None:
-    d = evaluate_reconcile_truth(_ctx(exchange_reachable=False, global_status="exchange_unreachable"))
+    d = evaluate_reconcile_truth(
+        _ctx(exchange_reachable=False, global_status="exchange_unreachable")
+    )
     assert "exchange_unreachable" in d.blocking_reasons
 
 
@@ -43,27 +45,37 @@ def test_auth_failed_blocks() -> None:
 
 
 def test_unknown_order_state_blocks() -> None:
-    d = evaluate_reconcile_truth(_ctx(unknown_order_state=True, global_status="unknown_order_state"))
+    d = evaluate_reconcile_truth(
+        _ctx(unknown_order_state=True, global_status="unknown_order_state")
+    )
     assert "unknown_order_state" in d.blocking_reasons
 
 
 def test_position_mismatch_blocks() -> None:
-    d = evaluate_reconcile_truth(_ctx(position_mismatch=True, global_status="position_mismatch"))
+    d = evaluate_reconcile_truth(
+        _ctx(position_mismatch=True, global_status="position_mismatch")
+    )
     assert "position_mismatch" in d.blocking_reasons
 
 
 def test_fill_mismatch_requires_safety_latch_or_block() -> None:
-    d = evaluate_reconcile_truth(_ctx(fill_mismatch=True, global_status="fill_mismatch"))
+    d = evaluate_reconcile_truth(
+        _ctx(fill_mismatch=True, global_status="fill_mismatch")
+    )
     assert reconcile_requires_safety_latch(d) is True
 
 
 def test_exchange_order_missing_requires_reconcile() -> None:
-    d = evaluate_reconcile_truth(_ctx(exchange_order_missing=True, global_status="exchange_order_missing"))
+    d = evaluate_reconcile_truth(
+        _ctx(exchange_order_missing=True, global_status="exchange_order_missing")
+    )
     assert d.reconcile_required is True
 
 
 def test_local_order_missing_requires_reconcile() -> None:
-    d = evaluate_reconcile_truth(_ctx(local_order_missing=True, global_status="local_order_missing"))
+    d = evaluate_reconcile_truth(
+        _ctx(local_order_missing=True, global_status="local_order_missing")
+    )
     assert d.reconcile_required is True
 
 
@@ -74,6 +86,8 @@ def test_ok_allows_next_gate_only() -> None:
 
 
 def test_german_drift_reasons() -> None:
-    d = evaluate_reconcile_truth(_ctx(position_mismatch=True, global_status="position_mismatch"))
+    d = evaluate_reconcile_truth(
+        _ctx(position_mismatch=True, global_status="position_mismatch")
+    )
     reasons = build_reconcile_drift_reasons_de(d)
     assert any("Positionsabweichung" in r for r in reasons)

@@ -29,7 +29,9 @@ const SEV_RANK: Record<OperatorSeverity, number> = {
   P3: 3,
 };
 
-export function normalizeSeverity(raw: string | null | undefined): OperatorSeverity {
+export function normalizeSeverity(
+  raw: string | null | undefined,
+): OperatorSeverity {
   const s = (raw ?? "").trim().toUpperCase();
   if (s === "P0" || s === "P1" || s === "P2" || s === "P3") return s;
   return "P1";
@@ -69,7 +71,9 @@ function mk(
   };
 }
 
-export function sortOperatorAlerts(alerts: readonly OperatorAlertView[]): OperatorAlertView[] {
+export function sortOperatorAlerts(
+  alerts: readonly OperatorAlertView[],
+): OperatorAlertView[] {
   return [...alerts].sort((a, b) => {
     const ar = a.aktiv ? 0 : 1;
     const br = b.aktiv ? 0 : 1;
@@ -106,8 +110,10 @@ export function buildOperatorAlertsFromConsoleSnapshot(input: {
         live_blockiert: true,
         betroffene_komponente: "gateway / health",
         betroffene_assets: [],
-        empfohlene_aktion_de: "Netzwerk, Gateway-Logs und Autorisierung prüfen.",
-        nächster_sicherer_schritt_de: "Health erneut laden; bis dahin kein Live-Opening.",
+        empfohlene_aktion_de:
+          "Netzwerk, Gateway-Logs und Autorisierung prüfen.",
+        nächster_sicherer_schritt_de:
+          "Health erneut laden; bis dahin kein Live-Opening.",
         technische_details_redacted: "",
       }),
     );
@@ -124,8 +130,10 @@ export function buildOperatorAlertsFromConsoleSnapshot(input: {
           live_blockiert: true,
           betroffene_komponente: "redis",
           betroffene_assets: [],
-          empfohlene_aktion_de: "Redis-Instanz und Verbindungsstring prüfen (ohne Secrets zu loggen).",
-          nächster_sicherer_schritt_de: "Runbook „Redis“; danach Health erneut abfragen.",
+          empfohlene_aktion_de:
+            "Redis-Instanz und Verbindungsstring prüfen (ohne Secrets zu loggen).",
+          nächster_sicherer_schritt_de:
+            "Runbook „Redis“; danach Health erneut abfragen.",
           technische_details_redacted: redactTechnicalDetails(redis),
         }),
       );
@@ -139,9 +147,13 @@ export function buildOperatorAlertsFromConsoleSnapshot(input: {
           live_blockiert: true,
           betroffene_komponente: "postgres",
           betroffene_assets: [],
-          empfohlene_aktion_de: "DB-Erreichbarkeit und Migrationsschema prüfen.",
-          nächster_sicherer_schritt_de: "Kein Live bis DB wieder grün laut Health.",
-          technische_details_redacted: redactTechnicalDetails(health.database_schema ?? ""),
+          empfohlene_aktion_de:
+            "DB-Erreichbarkeit und Migrationsschema prüfen.",
+          nächster_sicherer_schritt_de:
+            "Kein Live bis DB wieder grün laut Health.",
+          technische_details_redacted: redactTechnicalDetails(
+            health.database_schema ?? "",
+          ),
         }),
       );
     }
@@ -164,24 +176,31 @@ export function buildOperatorAlertsFromConsoleSnapshot(input: {
           betroffene_komponente: "execution / live_release",
           betroffene_assets: [],
           empfohlene_aktion_de: "Freigaben und Evidence in Ops prüfen.",
-          nächster_sicherer_schritt_de: "Live-Flags reduzieren oder dokumentierte Freigabe einholen.",
+          nächster_sicherer_schritt_de:
+            "Live-Flags reduzieren oder dokumentierte Freigabe einholen.",
           technische_details_redacted: "",
         }),
       );
     }
 
     const wb = warnBlob(health);
-    if (wb.includes("secret") && (wb.includes("leak") || wb.includes("verdacht"))) {
+    if (
+      wb.includes("secret") &&
+      (wb.includes("leak") || wb.includes("verdacht"))
+    ) {
       alerts.push(
         mk({
           titel_de: "Verdacht auf Secret-Leak",
-          beschreibung_de: "Health-Warnungen deuten auf exponierte Secrets hin.",
+          beschreibung_de:
+            "Health-Warnungen deuten auf exponierte Secrets hin.",
           severity: "P0",
           live_blockiert: true,
           betroffene_komponente: "security / secrets",
           betroffene_assets: [],
-          empfohlene_aktion_de: "Quelle abstellen, Logs redigieren, Vault prüfen.",
-          nächster_sicherer_schritt_de: "Incident-Review; kein Live bis geklärt.",
+          empfohlene_aktion_de:
+            "Quelle abstellen, Logs redigieren, Vault prüfen.",
+          nächster_sicherer_schritt_de:
+            "Incident-Review; kein Live bis geklärt.",
           technische_details_redacted: "",
         }),
       );
@@ -198,7 +217,8 @@ export function buildOperatorAlertsFromConsoleSnapshot(input: {
           betroffene_komponente: "alert-engine / outbox",
           betroffene_assets: [],
           empfohlene_aktion_de: "Monitor- und Alert-Versand prüfen.",
-          nächster_sicherer_schritt_de: "Wiederholung vermeiden; keine Entwarnung ohne Quittung.",
+          nächster_sicherer_schritt_de:
+            "Wiederholung vermeiden; keine Entwarnung ohne Quittung.",
           technische_details_redacted: String(outFail),
         }),
       );
@@ -225,13 +245,15 @@ export function buildOperatorAlertsFromConsoleSnapshot(input: {
     alerts.push(
       mk({
         titel_de: "Safety-Latch aktiv",
-        beschreibung_de: "Die Plattform hat die automatische Live-Execution angehalten (Safety-Latch).",
+        beschreibung_de:
+          "Die Plattform hat die automatische Live-Execution angehalten (Safety-Latch).",
         severity: "P0",
         live_blockiert: true,
         betroffene_komponente: "live-broker / safety-latch",
         betroffene_assets: [],
         empfohlene_aktion_de: "Reconcile und Audit prüfen.",
-        nächster_sicherer_schritt_de: "Latch-Release nur nach Freigabe und Dokumentation.",
+        nächster_sicherer_schritt_de:
+          "Latch-Release nur nach Freigabe und Dokumentation.",
         technische_details_redacted: "",
       }),
     );
@@ -263,7 +285,8 @@ export function buildOperatorAlertsFromConsoleSnapshot(input: {
           betroffene_komponente: "live-broker / reconcile",
           betroffene_assets: [],
           empfohlene_aktion_de: "Live-Broker und Gateway-Zeit prüfen.",
-          nächster_sicherer_schritt_de: "Fail-closed: kein Live bis Status verifiziert.",
+          nächster_sicherer_schritt_de:
+            "Fail-closed: kein Live bis Status verifiziert.",
           technische_details_redacted: redactTechnicalDetails(runtime.status),
         }),
       );
@@ -273,7 +296,8 @@ export function buildOperatorAlertsFromConsoleSnapshot(input: {
       alerts.push(
         mk({
           titel_de: "Exchange-Truth fehlt oder ist unklar",
-          beschreibung_de: "Upstream-/Private-API-Status reicht nicht für sichere Live-Entscheidungen.",
+          beschreibung_de:
+            "Upstream-/Private-API-Status reicht nicht für sichere Live-Entscheidungen.",
           severity: "P0",
           live_blockiert: true,
           betroffene_komponente: "live-broker / exchange",
@@ -286,19 +310,28 @@ export function buildOperatorAlertsFromConsoleSnapshot(input: {
     }
 
     const bp = runtime.bitget_private_status;
-    if (bp && bp.private_api_configured === true && bp.private_auth_ok === false) {
+    if (
+      bp &&
+      bp.private_api_configured === true &&
+      bp.private_auth_ok === false
+    ) {
       alerts.push(
         mk({
           titel_de: "Bitget private API: Authentifizierung fehlgeschlagen",
-          beschreibung_de: bp.private_auth_detail_de?.trim() || "Private Authentifizierung ist fehlgeschlagen.",
+          beschreibung_de:
+            bp.private_auth_detail_de?.trim() ||
+            "Private Authentifizierung ist fehlgeschlagen.",
           severity: "P0",
           live_blockiert: true,
           betroffene_komponente: "live-broker / bitget-private",
           betroffene_assets: [],
-          empfohlene_aktion_de: "Schlüsselrechte und Signatur prüfen (ohne Secrets in Logs).",
+          empfohlene_aktion_de:
+            "Schlüsselrechte und Signatur prüfen (ohne Secrets in Logs).",
           nächster_sicherer_schritt_de: "Readiness erneut; kein Live-Submit.",
           technische_details_redacted: redactTechnicalDetails(
-            [bp.private_auth_classification, bp.private_auth_exchange_code].filter(Boolean).join(" "),
+            [bp.private_auth_classification, bp.private_auth_exchange_code]
+              .filter(Boolean)
+              .join(" "),
           ),
         }),
       );
@@ -326,20 +359,25 @@ export function buildOperatorAlertsFromConsoleSnapshot(input: {
       alerts.push(
         mk({
           titel_de: "Instrumentenkatalog mit Fehlern",
-          beschreibung_de: "Der Asset-/Instrumentenpfad meldet Fehler — Datenqualität kann für Live gefährdet sein.",
+          beschreibung_de:
+            "Der Asset-/Instrumentenpfad meldet Fehler — Datenqualität kann für Live gefährdet sein.",
           severity: "P0",
           live_blockiert: true,
           betroffene_komponente: "instrument-catalog",
           betroffene_assets: errs.slice(0, 8),
           empfohlene_aktion_de: "Katalog-Refresh und Bitget-Readiness prüfen.",
-          nächster_sicherer_schritt_de: "Livefähige Assets nur nach grünem Gate.",
+          nächster_sicherer_schritt_de:
+            "Livefähige Assets nur nach grünem Gate.",
           technische_details_redacted: redactTechnicalDetails(errs.join("; ")),
         }),
       );
     }
 
     const lane = runtime.operator_live_submission?.lane ?? "";
-    if (lane === "live_lane_blocked_upstream" || lane === "live_lane_blocked_exchange") {
+    if (
+      lane === "live_lane_blocked_upstream" ||
+      lane === "live_lane_blocked_exchange"
+    ) {
       alerts.push(
         mk({
           titel_de: "Liquiditäts- oder Exchange-Pfad blockiert",
@@ -349,17 +387,23 @@ export function buildOperatorAlertsFromConsoleSnapshot(input: {
           live_blockiert: true,
           betroffene_komponente: "live-broker / liquidity-guard",
           betroffene_assets: [],
-          empfohlene_aktion_de: "Orderbuch-Stream und private Verbindung prüfen.",
-          nächster_sicherer_schritt_de: "Kein Live-Opening bis Lane wieder frei.",
+          empfohlene_aktion_de:
+            "Orderbuch-Stream und private Verbindung prüfen.",
+          nächster_sicherer_schritt_de:
+            "Kein Live-Opening bis Lane wieder frei.",
           technische_details_redacted: redactTechnicalDetails(lane),
         }),
       );
     }
 
-    const reasons = (runtime.operator_live_submission?.reasons_de ?? []).join(" ").toLowerCase();
+    const reasons = (runtime.operator_live_submission?.reasons_de ?? [])
+      .join(" ")
+      .toLowerCase();
     if (
       (runtime.live_trade_enable || runtime.live_order_submission_enabled) &&
-      (reasons.includes("unsicher") || reasons.includes("env") || reasons.includes("production"))
+      (reasons.includes("unsicher") ||
+        reasons.includes("env") ||
+        reasons.includes("production"))
     ) {
       alerts.push(
         mk({
@@ -371,7 +415,8 @@ export function buildOperatorAlertsFromConsoleSnapshot(input: {
           betroffene_komponente: "runtime / env",
           betroffene_assets: [],
           empfohlene_aktion_de: "ENV-Validatoren und Ops-Checkliste ausführen.",
-          nächster_sicherer_schritt_de: "Konfiguration korrigieren; kein Live bis dokumentierte Freigabe.",
+          nächster_sicherer_schritt_de:
+            "Konfiguration korrigieren; kein Live bis dokumentierte Freigabe.",
           technische_details_redacted: redactTechnicalDetails(
             runtime.operator_live_submission?.reasons_de?.join(" | ") ?? "",
           ),
@@ -380,7 +425,9 @@ export function buildOperatorAlertsFromConsoleSnapshot(input: {
     }
   }
 
-  const hasHigh = alerts.some((a) => a.severity === "P0" || a.severity === "P1");
+  const hasHigh = alerts.some(
+    (a) => a.severity === "P0" || a.severity === "P1",
+  );
   if (health && !hasHigh) {
     alerts.push(
       mk({
@@ -391,8 +438,10 @@ export function buildOperatorAlertsFromConsoleSnapshot(input: {
         live_blockiert: false,
         betroffene_komponente: "main-console / incidents-view",
         betroffene_assets: [],
-        empfohlene_aktion_de: "Weitere Quellen (Audit, Datenqualität) separat prüfen.",
-        nächster_sicherer_schritt_de: "Vollständige Evidence vor Live beibehalten.",
+        empfohlene_aktion_de:
+          "Weitere Quellen (Audit, Datenqualität) separat prüfen.",
+        nächster_sicherer_schritt_de:
+          "Vollständige Evidence vor Live beibehalten.",
         technische_details_redacted: "",
       }),
     );

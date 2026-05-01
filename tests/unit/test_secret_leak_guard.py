@@ -23,7 +23,9 @@ def test_scrub_plaintext_bitget_env_line() -> None:
 
 
 def test_scrub_audit_payload_masks_secret_keys() -> None:
-    d = scrub_audit_payload({"api_key": "x", "nested": {"password": "y", "ok": 1}}, max_depth=4)
+    d = scrub_audit_payload(
+        {"api_key": "x", "nested": {"password": "y", "ok": 1}}, max_depth=4
+    )
     assert isinstance(d, dict)
     assert d.get("api_key") == "***"
     assert d.get("nested", {}).get("password") == "***"

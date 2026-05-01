@@ -12,12 +12,12 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from redis import Redis
-
-from learning_engine.config import LearningEngineSettings
 from shared_py.service_auth import (
     InternalServiceAuthContext,
     build_internal_service_dependency,
 )
+
+from learning_engine.config import LearningEngineSettings
 
 logger = logging.getLogger("learning_engine.api.self_healing")
 
@@ -64,18 +64,25 @@ def build_self_healing_router(settings: LearningEngineSettings) -> APIRouter:
         if not settings.self_healing_apply_enabled:
             raise HTTPException(
                 status_code=403,
-                detail={"code": "SELF_HEALING_APPLY_DISABLED", "message": "SELF_HEALING_APPLY_ENABLED=false"},
+                detail={
+                    "code": "SELF_HEALING_APPLY_DISABLED",
+                    "message": "SELF_HEALING_APPLY_ENABLED=false",
+                },
             )
         if not body.confirm:
             raise HTTPException(status_code=400, detail="confirm muss true sein")
-        rcli = Redis.from_url(settings.redis_url, decode_responses=True, socket_timeout=5)
+        rcli = Redis.from_url(
+            settings.redis_url, decode_responses=True, socket_timeout=5
+        )
         try:
             tok = rcli.get(f"self_healing:apply:{body.proposal_id}")
             patch = rcli.get(f"self_healing:patch:{body.proposal_id}")
         finally:
             rcli.close()
         if not tok or not patch:
-            raise HTTPException(status_code=404, detail="proposal abgelaufen oder unbekannt")
+            raise HTTPException(
+                status_code=404, detail="proposal abgelaufen oder unbekannt"
+            )
         if tok.strip() != body.apply_token.strip():
             raise HTTPException(status_code=403, detail="apply_token ungueltig")
         prefixes = _allowed_prefixes(settings)
@@ -83,7 +90,11 @@ def build_self_healing_router(settings: LearningEngineSettings) -> APIRouter:
             if not _path_allowed(p, prefixes):
                 raise HTTPException(
                     status_code=400,
-                    detail={"code": "PATH_NOT_ALLOWED", "path": p, "prefixes": list(prefixes)},
+                    detail={
+                        "code": "PATH_NOT_ALLOWED",
+                        "path": p,
+                        "prefixes": list(prefixes),
+                    },
                 )
         repo = _repo_root()
         if not (repo / ".git").is_dir():
@@ -118,7 +129,11 @@ def build_self_healing_router(settings: LearningEngineSettings) -> APIRouter:
 
         restart_out: str | None = None
         svc = (settings.self_healing_docker_restart or "").strip()
-        if svc and os.environ.get("SELF_HEALING_DOCKER_CLI", "").lower() in ("1", "true", "yes"):
+        if svc and os.environ.get("SELF_HEALING_DOCKER_CLI", "").lower() in (
+            "1",
+            "true",
+            "yes",
+        ):
             try:
                 dr = subprocess.run(
                     ["docker", "compose", "restart", svc],
@@ -132,7 +147,9 @@ def build_self_healing_router(settings: LearningEngineSettings) -> APIRouter:
                 restart_out = f"docker_restart_error:{exc}"[:2000]
 
         try:
-            rcli = Redis.from_url(settings.redis_url, decode_responses=True, socket_timeout=5)
+            rcli = Redis.from_url(
+                settings.redis_url, decode_responses=True, socket_timeout=5
+            )
             rcli.delete(f"self_healing:apply:{body.proposal_id}")
             rcli.delete(f"self_healing:patch:{body.proposal_id}")
         finally:

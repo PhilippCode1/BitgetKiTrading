@@ -186,7 +186,7 @@ def _try_consume_locked(buf: memoryview) -> tuple[int, bytes] | None:
 
 
 def _arrow_encode_stream_envelope(stream: str, env: EventEnvelope) -> bytes:
-    import pyarrow as pa
+    import pyarrow as pa  # type: ignore
     from pyarrow import ipc
 
     schema = pa.schema(
@@ -197,13 +197,16 @@ def _arrow_encode_stream_envelope(stream: str, env: EventEnvelope) -> bytes:
     )
     raw = event_envelope_to_canonical_json_text(env).encode("utf-8")
     batch = pa.record_batch(
-        {"stream": pa.array([stream], type=pa.string()), "envelope_bin": pa.array([raw])},
+        {
+            "stream": pa.array([stream], type=pa.string()),
+            "envelope_bin": pa.array([raw]),
+        },
         schema=schema,
     )
     sink = pa.BufferOutputStream()
     with ipc.new_stream(sink, batch.schema) as writer:
         writer.write_batch(batch)
-    return sink.getvalue().to_pybytes()
+    return sink.getvalue().to_pybytes()  # type: ignore
 
 
 def _arrow_decode_stream_envelope(blob: bytes) -> tuple[str, EventEnvelope]:
@@ -216,7 +219,7 @@ def _arrow_decode_stream_envelope(blob: bytes) -> tuple[str, EventEnvelope]:
         raise ValueError("leerer Arrow-IPC Batch")
     stream = batch.column(0)[0].as_py()
     raw = batch.column(1)[0].as_py()
-    if not isinstance(stream, str) or not isinstance(raw, (bytes, memoryview)):
+    if not isinstance(stream, str) or not isinstance(raw, bytes | memoryview):
         raise ValueError("unexpected Arrow columns")
     if isinstance(raw, memoryview):
         raw = raw.tobytes()
@@ -227,7 +230,7 @@ def _normalize_original_payload(original: Any) -> dict[str, Any]:
     if isinstance(original, EventEnvelope):
         return original.model_dump(mode="json")
     if isinstance(original, dict):
-        return json.loads(json.dumps(original, default=str))
+        return json.loads(json.dumps(original, default=str))  # type: ignore
     return {"raw": str(original)}
 
 
@@ -276,11 +279,14 @@ class SharedMemoryBus:
             socket_connect_timeout=5,
             socket_timeout=5,
         )
-        shm_name = _sanitize_shm_name(os.environ.get("EVENTBUS_SHM_NAME", "bgt_eventbus"))
+        shm_name = _sanitize_shm_name(
+            os.environ.get("EVENTBUS_SHM_NAME", "bgt_eventbus")
+        )
         slot_count = max(1, int(os.environ.get("EVENTBUS_SHM_SLOTS", "4096")))
         max_payload = max(64, int(os.environ.get("EVENTBUS_SHM_MAX_PAYLOAD", "65536")))
         shm_stream = (
-            os.environ.get("EVENTBUS_SHM_STREAM", STREAM_MARKET_TICK).strip() or STREAM_MARKET_TICK
+            os.environ.get("EVENTBUS_SHM_STREAM", STREAM_MARKET_TICK).strip()
+            or STREAM_MARKET_TICK
         )
         lock_path = str(
             Path(tempfile.gettempdir()) / "bgt_eventbus_locks" / f"{shm_name}.lock"
@@ -360,8 +366,7 @@ class SharedMemoryBus:
         expected_stream = env.default_stream()
         if stream != expected_stream:
             raise ValueError(
-                f"event_type={env.event_type} darf nicht auf {stream} publiziert werden "
-                f"(erwartet {expected_stream})"
+                f"event_type={env.event_type} darf nicht auf {stream} publiziert werden (erwartet {expected_stream})"
             )
         if env.dedupe_key and self.dedupe_ttl_sec > 0:
             key = f"dedupe:{stream}:{env.dedupe_key}"
@@ -377,7 +382,11 @@ class SharedMemoryBus:
                     return f"shm-{seq}"
                 time.sleep(self._shm_publish_backoff_sec)
             raise ValueError("shm_ring_voll")
-        return str(self.redis.xadd(stream, {"data": event_envelope_to_canonical_json_text(env)}))
+        return str(
+            self.redis.xadd(
+                stream, {"data": event_envelope_to_canonical_json_text(env)}
+            )
+        )
 
     def ensure_group(self, stream: str, group: str) -> None:
         _validate_stream_name(stream)
@@ -406,7 +415,7 @@ class SharedMemoryBus:
             count=count or self.default_count,
             block=block_ms or self.default_block_ms,
         )
-        return self._redis_messages_to_consumed(group, items)
+        return self._redis_messages_to_consumed(group, items)  # type: ignore
 
     def _consume_shm(
         self, stream: str, count: int | None, block_ms: int | None
@@ -482,7 +491,7 @@ class SharedMemoryBus:
         _validate_stream_name(stream)
         if message_id.startswith("shm-"):
             return 1
-        return int(self.redis.xack(stream, group, message_id))
+        return int(self.redis.xack(stream, group, message_id))  # type: ignore
 
     def publish_dlq(self, original: Any, error_info: dict[str, Any]) -> str:
         original_payload = _normalize_original_payload(original)
@@ -505,7 +514,11 @@ class SharedMemoryBus:
             key = f"dedupe:{STREAM_DLQ}:{envelope.dedupe_key}"
             if self.redis.set(key, "1", nx=True, ex=self.dedupe_ttl_sec) is None:
                 return "deduped"
-        return str(self.redis.xadd(STREAM_DLQ, {"data": event_envelope_to_canonical_json_text(envelope)}))
+        return str(
+            self.redis.xadd(
+                STREAM_DLQ, {"data": event_envelope_to_canonical_json_text(envelope)}
+            )
+        )
 
 
 def _optional_str(value: Any) -> str | None:

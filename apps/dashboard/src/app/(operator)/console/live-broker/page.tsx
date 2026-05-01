@@ -225,8 +225,12 @@ export default async function LiveBrokerOpsPage({
     orderCount: orders.length,
   });
   const unknownStates = brokerUnknownStates({ runtime, health });
-  const lastOrderAction = brokerLastOrderActionSummary({ orders, orderActions });
-  const reconcileStatus = health?.ops?.live_broker?.latest_reconcile_status ?? "unbekannt";
+  const lastOrderAction = brokerLastOrderActionSummary({
+    orders,
+    orderActions,
+  });
+  const reconcileStatus =
+    health?.ops?.live_broker?.latest_reconcile_status ?? "unbekannt";
   const reconcileOk = reconcileStatus === "ok";
   const killSwitchActive = (runtime?.active_kill_switches?.length ?? 0) > 0;
   const safetyLatchActive = runtime?.safety_latch_active === true;
@@ -431,7 +435,10 @@ export default async function LiveBrokerOpsPage({
                 {runtime.bitget_private_status.private_auth_detail_de}
               </p>
             ) : null}
-            <div className="panel" style={{ marginTop: "1rem", padding: "0.8rem" }}>
+            <div
+              className="panel"
+              style={{ marginTop: "1rem", padding: "0.8rem" }}
+            >
               <h3 className="small">Bitget-Verbindung</h3>
               <ul className="news-list">
                 <li>
@@ -441,16 +448,22 @@ export default async function LiveBrokerOpsPage({
                 <li>
                   Demo/Live-Modus:{" "}
                   <strong>
-                    {privateCredentialVm.demoModus ? "demo_only" : "live_or_paper"}
+                    {privateCredentialVm.demoModus
+                      ? "demo_only"
+                      : "live_or_paper"}
                   </strong>
                 </li>
                 <li>
                   Read-only geprüft:{" "}
-                  <strong>{String(privateCredentialVm.readOnlyGeprueft)}</strong>
+                  <strong>
+                    {String(privateCredentialVm.readOnlyGeprueft)}
+                  </strong>
                 </li>
                 <li>
                   Trading-Permission erkannt:{" "}
-                  <strong>{String(privateCredentialVm.tradingPermissionErkannt)}</strong>
+                  <strong>
+                    {String(privateCredentialVm.tradingPermissionErkannt)}
+                  </strong>
                 </li>
                 <li>
                   Withdrawal-Permission erkannt:{" "}
@@ -482,7 +495,9 @@ export default async function LiveBrokerOpsPage({
                 </li>
                 <li>
                   Runtime-Profil:{" "}
-                  <strong>{publicEnv.deploymentProfile || "local_private"}</strong>
+                  <strong>
+                    {publicEnv.deploymentProfile || "local_private"}
+                  </strong>
                 </li>
               </ul>
               {privateCredentialVm.blockgruendeDe.length ? (

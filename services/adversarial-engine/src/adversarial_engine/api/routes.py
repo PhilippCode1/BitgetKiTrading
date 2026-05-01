@@ -11,7 +11,10 @@ from pydantic import BaseModel, Field
 
 from adversarial_engine.arrow_ipc import encode_table_ipc_stream
 from adversarial_engine.config import AdversarialEngineSettings
-from adversarial_engine.market_stresser import build_stress_tick_table, tensor_paths_to_numpy
+from adversarial_engine.market_stresser import (
+    build_stress_tick_table,
+    tensor_paths_to_numpy,
+)
 from adversarial_engine.models.wgan_gp import AdversarialMarketSimulator
 
 
@@ -81,7 +84,11 @@ def build_router(settings: AdversarialEngineSettings) -> APIRouter:
             rho=body.price_depth_rho,
         )
         r_np, d_np = tensor_paths_to_numpy(paths)
-        ts0 = int(body.ts_start_ms) if body.ts_start_ms is not None else int(time.time() * 1000)
+        ts0 = (
+            int(body.ts_start_ms)
+            if body.ts_start_ms is not None
+            else int(time.time() * 1000)
+        )
         table = build_stress_tick_table(
             r_np,
             d_np,
@@ -118,7 +125,11 @@ def build_router(settings: AdversarialEngineSettings) -> APIRouter:
         d = -1.6 * np.sin(math.pi * t) ** 3
         return {
             "schema": "ams_reference_extreme_v1",
-            "moments": {"log_return": _moments(r), "depth_imbalance": _moments(d), "corr": _pearson(r, d)},
+            "moments": {
+                "log_return": _moments(r),
+                "depth_imbalance": _moments(d),
+                "corr": _pearson(r, d),
+            },
         }
 
     return r

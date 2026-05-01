@@ -118,7 +118,11 @@ def _evaluate_commercial_feature_access(
                 "balance_list_usd": str(bal),
             },
         )
-    return True, "ok", {"feature": feature_name, "plan_id": str(trow.get("plan_id") or "")}
+    return (
+        True,
+        "ok",
+        {"feature": feature_name, "plan_id": str(trow.get("plan_id") or "")},
+    )
 
 
 def commercial_feature_access_check_or_http(

@@ -4,7 +4,9 @@ import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-TEMPLATE = ROOT / "docs" / "production_10_10" / "owner_private_live_release.template.json"
+TEMPLATE = (
+    ROOT / "docs" / "production_10_10" / "owner_private_live_release.template.json"
+)
 
 
 def test_owner_release_template_contains_required_fields() -> None:

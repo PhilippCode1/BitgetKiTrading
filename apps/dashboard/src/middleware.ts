@@ -41,7 +41,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (LEGACY_SCOPE_BLOCKED_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
+  if (
+    LEGACY_SCOPE_BLOCKED_PREFIXES.some((prefix) => pathname.startsWith(prefix))
+  ) {
     const url = request.nextUrl.clone();
     url.pathname = "/console";
     url.search = "";
@@ -68,12 +70,10 @@ export async function middleware(request: NextRequest) {
     }
     if (pathname.startsWith("/console/admin")) {
       const adminFeatureOff =
-        (process.env.NEXT_PUBLIC_ENABLE_ADMIN ?? "true").trim().toLowerCase() ===
-        "false";
-      if (
-        adminFeatureOff ||
-        !(await hasAdminSessionFromDashboardEnv())
-      ) {
+        (process.env.NEXT_PUBLIC_ENABLE_ADMIN ?? "true")
+          .trim()
+          .toLowerCase() === "false";
+      if (adminFeatureOff || !(await hasAdminSessionFromDashboardEnv())) {
         const url = request.nextUrl.clone();
         url.pathname = "/console";
         return NextResponse.redirect(url);
@@ -84,8 +84,7 @@ export async function middleware(request: NextRequest) {
 
   const url = request.nextUrl.clone();
   url.pathname = "/welcome";
-  const returnTo =
-    pathname === "/" ? CONSOLE_BASE : `${pathname}${search}`;
+  const returnTo = pathname === "/" ? CONSOLE_BASE : `${pathname}${search}`;
   if (returnTo && returnTo !== "/welcome") {
     url.searchParams.set("returnTo", returnTo);
   }

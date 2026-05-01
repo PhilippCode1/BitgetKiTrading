@@ -32,9 +32,7 @@ class AssistConversationStore:
         self._max = max(2, min(max_messages, 200))
         self._prefix = key_prefix
 
-    def _key(
-        self, partition_id: str, assist_role: str, conversation_id: str
-    ) -> str:
+    def _key(self, partition_id: str, assist_role: str, conversation_id: str) -> str:
         rp = _sanitize_partition(partition_id)
         rr = _sanitize_partition(assist_role)
         return f"{self._prefix}:{rp}:{rr}:{conversation_id}"

@@ -54,7 +54,9 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
 
 @patch("api_gateway.routes_llm_operator.record_gateway_audit_line")
 @patch("api_gateway.routes_llm_operator.post_llm_orchestrator_json")
-def test_operator_explain_returns_upstream_payload(mock_post, mock_audit, client: TestClient) -> None:
+def test_operator_explain_returns_upstream_payload(
+    mock_post, mock_audit, client: TestClient
+) -> None:
     mock_post.return_value = {
         "ok": True,
         "provider": "fake",
@@ -91,8 +93,12 @@ def test_operator_explain_returns_upstream_payload(mock_post, mock_audit, client
 
 @patch("api_gateway.routes_llm_operator.record_gateway_audit_line")
 @patch("api_gateway.routes_llm_operator.post_llm_orchestrator_json")
-def test_operator_explain_503_on_runtime_config_error(mock_post, _audit, client: TestClient) -> None:
-    mock_post.side_effect = RuntimeError("INTERNAL_API_KEY fehlt fuer LLM-Orchestrator-Forward")
+def test_operator_explain_503_on_runtime_config_error(
+    mock_post, _audit, client: TestClient
+) -> None:
+    mock_post.side_effect = RuntimeError(
+        "INTERNAL_API_KEY fehlt fuer LLM-Orchestrator-Forward"
+    )
     r = client.post(
         "/v1/llm/operator/explain",
         json={"question_de": "Kurze Frage hier?", "readonly_context_json": {}},
@@ -112,7 +118,9 @@ def test_operator_explain_422_short_question(client: TestClient) -> None:
 
 @patch("api_gateway.routes_llm_operator.record_gateway_audit_line")
 @patch("api_gateway.routes_llm_operator.post_llm_orchestrator_json")
-def test_strategy_signal_explain_returns_upstream_payload(mock_post, _audit, client: TestClient) -> None:
+def test_strategy_signal_explain_returns_upstream_payload(
+    mock_post, _audit, client: TestClient
+) -> None:
     mock_post.return_value = {
         "ok": True,
         "provider": "fake",
@@ -139,7 +147,9 @@ def test_strategy_signal_explain_returns_upstream_payload(mock_post, _audit, cli
     assert call_kw[0][1] == "/llm/analyst/strategy_signal_explain"
 
 
-def test_strategy_signal_explain_422_empty_snapshot_and_short_focus(client: TestClient) -> None:
+def test_strategy_signal_explain_422_empty_snapshot_and_short_focus(
+    client: TestClient,
+) -> None:
     r = client.post(
         "/v1/llm/operator/strategy-signal-explain",
         json={"signal_context_json": {}, "focus_question_de": "ab"},

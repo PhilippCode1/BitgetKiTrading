@@ -199,7 +199,9 @@ def profit_share_fee_cents(profit_basis_cents: int, rate_basis_points: int) -> i
     Gewinnbeteiligung in Cent. rate_basis_points: 10000 = 100 %, 2000 = 20 %.
     """
     if profit_basis_cents < 0 or rate_basis_points < 0:
-        raise ValueError("profit_basis_cents and rate_basis_points must be non-negative")
+        raise ValueError(
+            "profit_basis_cents and rate_basis_points must be non-negative"
+        )
     raw = Decimal(profit_basis_cents) * Decimal(rate_basis_points) / Decimal(10000)
     return int(raw.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
 
@@ -239,7 +241,9 @@ class CustomerAccountRecord(BaseModel):
 
     id: str = Field(min_length=1)
     user_id: str = Field(min_length=1)
-    customer_number: str = Field(min_length=1, description="Menschenlesbare Kundennummer")
+    customer_number: str = Field(
+        min_length=1, description="Menschenlesbare Kundennummer"
+    )
 
 
 class TrialPeriodRecord(BaseModel):
@@ -349,7 +353,9 @@ class InvoiceRecord(BaseModel):
     due_at: datetime | None = None
     currency: str = Field(default="EUR", min_length=3, max_length=3)
     subtotal_net_cents: int = Field(ge=0)
-    vat_rate: Decimal = Field(default=DE_VAT_RATE_STANDARD, description="Anzeige; Zeilen koennen abweichen")
+    vat_rate: Decimal = Field(
+        default=DE_VAT_RATE_STANDARD, description="Anzeige; Zeilen koennen abweichen"
+    )
     vat_amount_cents: int = Field(ge=0)
     total_gross_cents: int = Field(ge=0)
     status: InvoiceStatus = InvoiceStatus.DRAFT

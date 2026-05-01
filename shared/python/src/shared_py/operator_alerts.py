@@ -160,7 +160,9 @@ def alert_from_bitget_private_auth_error(*, detail: str | None = None) -> Operat
     )
 
 
-def alert_from_redis_or_db_live_critical(*, component: str, detail: str | None = None) -> OperatorAlert:
+def alert_from_redis_or_db_live_critical(
+    *, component: str, detail: str | None = None
+) -> OperatorAlert:
     rid = str(uuid.uuid4())
     return OperatorAlert(
         titel_de="Redis oder Datenbank im livekritischen Pfad ausgefallen",
@@ -196,7 +198,9 @@ def alert_from_data_quality_fail(*, assets: list[str]) -> OperatorAlert:
     )
 
 
-def alert_from_liquidity_guard_no_orderbook(*, symbol: str | None = None) -> OperatorAlert:
+def alert_from_liquidity_guard_no_orderbook(
+    *, symbol: str | None = None
+) -> OperatorAlert:
     rid = str(uuid.uuid4())
     assets = [symbol] if symbol else []
     return OperatorAlert(
@@ -287,7 +291,9 @@ def alert_from_live_without_owner_release() -> OperatorAlert:
     )
 
 
-def alert_informational_p3(*, titel: str, beschreibung: str, component: str) -> OperatorAlert:
+def alert_informational_p3(
+    *, titel: str, beschreibung: str, component: str
+) -> OperatorAlert:
     rid = str(uuid.uuid4())
     return OperatorAlert(
         titel_de=titel,

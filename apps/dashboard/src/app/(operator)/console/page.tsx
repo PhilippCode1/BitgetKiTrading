@@ -205,10 +205,7 @@ const PRO_SECTIONS: ProSection[] = [
   },
 ];
 
-type ConsoleHomeSearchParams = Record<
-  string,
-  string | string[] | undefined
->;
+type ConsoleHomeSearchParams = Record<string, string | string[] | undefined>;
 
 export default async function ConsoleHomePage({
   searchParams,
@@ -306,7 +303,9 @@ export default async function ConsoleHomePage({
         title={t("consoleHome.pro.title")}
         subtitle={t("consoleHome.pro.subtitle")}
       />
-      {homeHealthModel ? <LiveDataSituationBar model={homeHealthModel} /> : null}
+      {homeHealthModel ? (
+        <LiveDataSituationBar model={homeHealthModel} />
+      ) : null}
       <div
         className="console-page-notice-stack"
         aria-label={t("console.pageNoticesGroupAria")}

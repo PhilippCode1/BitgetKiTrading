@@ -10,7 +10,9 @@ from pathlib import Path
 def _load_checker():
     root = Path(__file__).resolve().parents[2]
     checker_path = root / "tools" / "check_single_owner_scope.py"
-    spec = importlib.util.spec_from_file_location("check_single_owner_scope", checker_path)
+    spec = importlib.util.spec_from_file_location(
+        "check_single_owner_scope", checker_path
+    )
     if spec is None or spec.loader is None:
         raise AssertionError("checker import failed")
     mod = importlib.util.module_from_spec(spec)
@@ -24,8 +26,14 @@ def _write(p: Path, content: str) -> None:
 
 
 def _minimal_repo(tmp_path: Path) -> Path:
-    _write(tmp_path / "docs/production_10_10/single_owner_product_scope.md", "Philipp Crljic\nkein SaaS\n")
-    _write(tmp_path / "docs/production_10_10/main_console_product_direction.md", "private Owner-Nutzung\n")
+    _write(
+        tmp_path / "docs/production_10_10/single_owner_product_scope.md",
+        "Philipp Crljic\nkein SaaS\n",
+    )
+    _write(
+        tmp_path / "docs/production_10_10/main_console_product_direction.md",
+        "private Owner-Nutzung\n",
+    )
     _write(
         tmp_path / "apps/dashboard/src/middleware.ts",
         'const LEGACY_SCOPE_BLOCKED_PREFIXES=["/portal","/console/account/billing","/console/account/payments","/console/admin/billing","/console/admin/commerce-payments","/console/admin/customers"];',
@@ -34,8 +42,14 @@ def _minimal_repo(tmp_path: Path) -> Path:
         tmp_path / "apps/dashboard/src/lib/main-console/navigation.ts",
         'export const MAIN_CONSOLE_PRIMARY_SECTIONS=[{links:[{href:"/console/health"}]}];',
     )
-    _write(tmp_path / "apps/dashboard/src/components/layout/SidebarNav.tsx", "export const x = 1;")
-    _write(tmp_path / "apps/dashboard/src/messages/de.json", '{"console":{"nav":{"health":"Systemzustand"}}}')
+    _write(
+        tmp_path / "apps/dashboard/src/components/layout/SidebarNav.tsx",
+        "export const x = 1;",
+    )
+    _write(
+        tmp_path / "apps/dashboard/src/messages/de.json",
+        '{"console":{"nav":{"health":"Systemzustand"}}}',
+    )
     _write(tmp_path / "README.md", "Private Nutzung ohne Kundenrollen.")
     _write(tmp_path / ".env.example", "PAYMENT_STRIPE_ENABLED=false\n")
     return tmp_path
@@ -86,7 +100,9 @@ def test_private_scope_doc_recognized(tmp_path: Path) -> None:
 def test_old_customer_live_text_detected(tmp_path: Path) -> None:
     mod = _load_checker()
     root = _minimal_repo(tmp_path)
-    _write(root / "apps/dashboard/src/app/(operator)/console/customer-live/page.tsx", "x")
+    _write(
+        root / "apps/dashboard/src/app/(operator)/console/customer-live/page.tsx", "x"
+    )
     out = mod.analyze(root, strict=True)
     assert any(i["code"] == "active_route_sales_term" for i in out["issues"])
 
@@ -94,7 +110,10 @@ def test_old_customer_live_text_detected(tmp_path: Path) -> None:
 def test_owner_gate_term_allowed(tmp_path: Path) -> None:
     mod = _load_checker()
     root = _minimal_repo(tmp_path)
-    _write(root / "apps/dashboard/src/app/(operator)/console/ops/page.tsx", "owner_gate private_runtime_gate")
+    _write(
+        root / "apps/dashboard/src/app/(operator)/console/ops/page.tsx",
+        "owner_gate private_runtime_gate",
+    )
     out = mod.analyze(root, strict=True)
     assert out["error_count"] == 0
 
@@ -116,11 +135,15 @@ def test_checker_json_parseable() -> None:
 def test_strict_fails_on_sales_language(tmp_path: Path) -> None:
     mod = _load_checker()
     root = _minimal_repo(tmp_path)
-    _write(root / "apps/dashboard/src/app/(operator)/console/subscription/page.tsx", "x")
+    _write(
+        root / "apps/dashboard/src/app/(operator)/console/subscription/page.tsx", "x"
+    )
     out = mod.analyze(root, strict=True)
     assert out["ok"] is False
 
 
 def test_tests_do_not_require_new_customer_billing() -> None:
-    checker = Path("tools/check_single_owner_scope.py").read_text(encoding="utf-8").lower()
+    checker = (
+        Path("tools/check_single_owner_scope.py").read_text(encoding="utf-8").lower()
+    )
     assert "customer_payment_required" not in checker

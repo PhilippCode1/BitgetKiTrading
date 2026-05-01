@@ -106,7 +106,9 @@ def test_high_vwap_slippage_blocks() -> None:
         requested_notional=100.0,
         status="active",
     )
-    assert ("slippage_zu_hoch" in out.block_reasons) or ("slippage_unbekannt" in out.block_reasons)
+    assert ("slippage_zu_hoch" in out.block_reasons) or (
+        "slippage_unbekannt" in out.block_reasons
+    )
 
 
 def test_insufficient_depth_blocks() -> None:
@@ -160,8 +162,12 @@ def test_tier4_blocks_live() -> None:
 
 
 def test_recommended_max_size_drops_when_depth_low() -> None:
-    low = recommended_max_order_notional(liquidity_tier="TIER_3", depth_notional_top5=1000.0)
-    high = recommended_max_order_notional(liquidity_tier="TIER_3", depth_notional_top5=20_000.0)
+    low = recommended_max_order_notional(
+        liquidity_tier="TIER_3", depth_notional_top5=1000.0
+    )
+    high = recommended_max_order_notional(
+        liquidity_tier="TIER_3", depth_notional_top5=20_000.0
+    )
     assert low < high
 
 
@@ -177,12 +183,12 @@ def test_synthetic_evidence_never_live_allowed() -> None:
             "symbol": "BTCUSDT",
             "order_type": "market",
             "requested_size": 0.1,
-                "requested_notional": 100.0,
+            "requested_notional": 100.0,
             "best_bid": 60000.0,
             "best_ask": 60001.0,
             "bids": [{"price": 60000.0, "qty": 1.0}],
             "asks": [{"price": 60001.0, "qty": 1.0}],
-                "orderbook_depth_top_10": 5000.0,
+            "orderbook_depth_top_10": 5000.0,
             "timestamp_age_ms": 500,
             "max_orderbook_age_ms": 10_000,
             "estimated_slippage_bps": 8.0,

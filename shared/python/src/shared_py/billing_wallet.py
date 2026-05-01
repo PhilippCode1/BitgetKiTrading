@@ -40,8 +40,7 @@ def prepaid_allows_new_trade(
         return True, ""
     return (
         False,
-        f"prepaid_balance_list_usd {balance_list_usd} < min_activation_usd "
-        f"{min_activation_usd} (API-Billing)",
+        f"prepaid_balance_list_usd {balance_list_usd} < min_activation_usd {min_activation_usd} (API-Billing)",
     )
 
 

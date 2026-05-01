@@ -4,9 +4,9 @@ import logging
 from typing import Any
 
 import httpx
+from shared_py.service_auth import INTERNAL_SERVICE_HEADER
 
 from alert_engine.config import Settings
-from shared_py.service_auth import INTERNAL_SERVICE_HEADER
 
 logger = logging.getLogger("alert_engine.live_broker_client")
 
@@ -24,7 +24,9 @@ class LiveBrokerOpsClient:
     def _headers(self) -> dict[str, str]:
         return {INTERNAL_SERVICE_HEADER: self._key, "Content-Type": "application/json"}
 
-    def get_execution_telegram_summary(self, execution_id: str) -> tuple[int, dict[str, Any]]:
+    def get_execution_telegram_summary(
+        self, execution_id: str
+    ) -> tuple[int, dict[str, Any]]:
         url = f"{self._base}/live-broker/executions/{execution_id}/telegram-summary"
         try:
             with httpx.Client(timeout=20.0) as client:
@@ -49,7 +51,9 @@ class LiveBrokerOpsClient:
                     data = r.json() if r.content else {}
                 except Exception:
                     data = {"raw": r.text[:500]}
-                return r.status_code, dict(data) if isinstance(data, dict) else {"data": data}
+                return r.status_code, (
+                    dict(data) if isinstance(data, dict) else {"data": data}
+                )
         except httpx.HTTPError as exc:
             logger.warning("live-broker POST operator-release failed: %s", exc)
             return 0, {"error": str(exc)}
@@ -64,7 +68,9 @@ class LiveBrokerOpsClient:
             logger.warning("live-broker GET decisions/recent failed: %s", exc)
             return 0, {"error": str(exc)}
 
-    def post_emergency_flatten(self, body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
+    def post_emergency_flatten(
+        self, body: dict[str, Any]
+    ) -> tuple[int, dict[str, Any]]:
         url = f"{self._base}/live-broker/orders/emergency-flatten"
         try:
             with httpx.Client(timeout=60.0) as client:
@@ -73,7 +79,9 @@ class LiveBrokerOpsClient:
                     data = r.json() if r.content else {}
                 except Exception:
                     data = {"raw": r.text[:500]}
-                return r.status_code, dict(data) if isinstance(data, dict) else {"data": data}
+                return r.status_code, (
+                    dict(data) if isinstance(data, dict) else {"data": data}
+                )
         except httpx.HTTPError as exc:
             logger.warning("live-broker POST emergency-flatten failed: %s", exc)
             return 0, {"error": str(exc)}

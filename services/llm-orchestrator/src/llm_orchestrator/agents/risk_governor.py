@@ -66,9 +66,13 @@ class RiskGovernorAgent(BaseTradingAgent):
         super().__init__(agent_id=agent_id)
         self._risk_settings = risk_settings or default_risk_governor_settings()
         self._llm = llm_settings or LLMOrchestratorSettings()
-        self._ams_mode: Literal["live", "simulation", "off"] = self._llm.risk_governor_ams_mode
+        self._ams_mode: Literal["live", "simulation", "off"] = (
+            self._llm.risk_governor_ams_mode
+        )
         self._tox_thresh = float(self._llm.risk_governor_toxicity_veto_threshold_0_1)
-        self._vpin_mode: Literal["live", "simulation", "off"] = self._llm.risk_governor_vpin_mode
+        self._vpin_mode: Literal["live", "simulation", "off"] = (
+            self._llm.risk_governor_vpin_mode
+        )
         self._vpin_thresh = float(self._llm.risk_governor_vpin_veto_threshold_0_1)
         self._tox = ToxicityClassifier(self._llm.risk_governor_toxicity_model_path)
 
@@ -152,13 +156,13 @@ class RiskGovernorAgent(BaseTradingAgent):
 
         vpin_score: float | None = None
         raw_vpin = context.get("vpin_toxicity_0_1")
-        if isinstance(raw_vpin, (int, float)):
+        if isinstance(raw_vpin, int | float):
             vpin_score = float(raw_vpin)
         else:
             tf = context.get("toxicity_features")
             if isinstance(tf, dict):
                 rv = tf.get("vpin_toxicity_0_1")
-                if isinstance(rv, (int, float)):
+                if isinstance(rv, int | float):
                     vpin_score = float(rv)
 
         ams_eval["vpin_eval"] = {
@@ -166,7 +170,11 @@ class RiskGovernorAgent(BaseTradingAgent):
             "vpin_toxicity_0_1": vpin_score,
             "vpin_veto_threshold_0_1": self._vpin_thresh,
         }
-        if self._vpin_mode == "simulation" and vpin_score is not None and vpin_score >= self._vpin_thresh:
+        if (
+            self._vpin_mode == "simulation"
+            and vpin_score is not None
+            and vpin_score >= self._vpin_thresh
+        ):
             ams_eval["vpin_eval"]["would_veto_in_live"] = True
 
         vpin_override = False

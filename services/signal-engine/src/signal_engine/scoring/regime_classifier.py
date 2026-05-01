@@ -3,7 +3,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from shared_py.regime_engine import RegimeEngineInputs, RegimeEngineResult, classify_regime
+from shared_py.regime_engine import (
+    RegimeEngineInputs,
+    RegimeEngineResult,
+    classify_regime,
+)
 
 from signal_engine.models import ScoringContext
 

@@ -91,7 +91,9 @@ def latest_ticker_prices(
     }
 
 
-def fetch_bitget_symbol_price(settings: PaperBrokerSettings, symbol: str) -> dict[str, Decimal | None]:
+def fetch_bitget_symbol_price(
+    settings: PaperBrokerSettings, symbol: str
+) -> dict[str, Decimal | None]:
     base = settings.bitget_api_base_url.rstrip("/")
     url = f"{base}{settings.endpoint_profile.public_ticker_path}"
     params = {"symbol": symbol}

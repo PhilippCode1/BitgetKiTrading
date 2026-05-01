@@ -59,7 +59,12 @@ def test_execution_runtime_snapshot_shadow(monkeypatch: pytest.MonkeyPatch) -> N
     assert snap["paths"]["shadow_path_active"] is True
     assert snap["capabilities"]["shadow_decision_journal"] is True
     assert snap["capabilities"]["exchange_order_submit_automated"] is False
-    assert snap["configuration"]["market_universe"]["catalog_policy"]["unknown_instrument_action"] == "no_trade_no_subscribe"
+    assert (
+        snap["configuration"]["market_universe"]["catalog_policy"][
+            "unknown_instrument_action"
+        ]
+        == "no_trade_no_subscribe"
+    )
 
 
 def test_execution_runtime_live_requires_auto_for_automated_submit(
@@ -85,7 +90,9 @@ def test_execution_runtime_live_requires_auto_for_automated_submit(
     assert snap2["live_release"]["fully_released_for_automated_exchange_orders"] is True
 
 
-def test_shadow_mode_without_shadow_flag_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_shadow_mode_without_shadow_flag_rejected(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     _minimal_env(monkeypatch, EXECUTION_MODE="shadow", SHADOW_TRADE_ENABLE="false")
     with pytest.raises(ValueError, match="EXECUTION_MODE=shadow"):
         BaseServiceSettings()

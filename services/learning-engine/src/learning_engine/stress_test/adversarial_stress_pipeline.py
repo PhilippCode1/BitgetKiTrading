@@ -16,7 +16,10 @@ import numpy as np
 
 from learning_engine.config import LearningEngineSettings
 from learning_engine.stress_test.features import features_from_ams_moments
-from learning_engine.stress_test.schemas import AdversarialAttackOutcomeV1, AdversarialStressRunResultV1
+from learning_engine.stress_test.schemas import (
+    AdversarialAttackOutcomeV1,
+    AdversarialStressRunResultV1,
+)
 
 
 def _load_classifier(path: str | None) -> Any | None:
@@ -45,10 +48,16 @@ def run_adversarial_stress_suite(
     """
     r = rng or random.Random()
     n = int(attack_count or settings.adversarial_stress_attack_count)
-    thr = float(trap_toxicity_threshold or settings.adversarial_stress_trap_toxicity_threshold)
-    min_ok = float(min_resilience or settings.model_promotion_min_resilience_score_0_100)
+    thr = float(
+        trap_toxicity_threshold or settings.adversarial_stress_trap_toxicity_threshold
+    )
+    min_ok = float(
+        min_resilience or settings.model_promotion_min_resilience_score_0_100
+    )
     base = (settings.adversarial_engine_base_url or "").strip().rstrip("/")
-    clf = _load_classifier((settings.risk_toxicity_classifier_model_path or "").strip() or None)
+    clf = _load_classifier(
+        (settings.risk_toxicity_classifier_model_path or "").strip() or None
+    )
 
     url = f"{base}/ams/v1/toxic-batch"
     headers: dict[str, str] = {}
@@ -141,7 +150,9 @@ def run_adversarial_stress_suite(
     )
 
 
-def resilience_to_dashboard_dict(result: AdversarialStressRunResultV1) -> dict[str, Any]:
+def resilience_to_dashboard_dict(
+    result: AdversarialStressRunResultV1,
+) -> dict[str, Any]:
     """JSON fuer Dashboard / API (validierbar gegen ``resilience_score.schema.json``)."""
     return {
         "schema_version": "resilience_score_v1",

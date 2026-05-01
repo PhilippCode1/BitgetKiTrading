@@ -3,10 +3,9 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import ClassVar
 
+from config.settings import BaseServiceSettings, StrategyExecutionMode, TriggerType
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import SettingsConfigDict
-
-from config.settings import BaseServiceSettings, StrategyExecutionMode, TriggerType
 from shared_py.bitget.instruments import (
     BitgetInstrumentIdentity,
     MarginAccountMode,
@@ -42,11 +41,17 @@ class PaperBrokerSettings(BaseServiceSettings):
         alias="PAPER_SHADOW_MATCH_REDIS_TTL_SEC",
     )
     paper_broker_port: int = Field(default=8085, alias="PAPER_BROKER_PORT")
-    paper_account_initial_equity_usdt: str = Field(default="10000", alias="PAPER_ACCOUNT_INITIAL_EQUITY_USDT")
-    paper_default_margin_mode: str = Field(default="isolated", alias="PAPER_DEFAULT_MARGIN_MODE")
+    paper_account_initial_equity_usdt: str = Field(
+        default="10000", alias="PAPER_ACCOUNT_INITIAL_EQUITY_USDT"
+    )
+    paper_default_margin_mode: str = Field(
+        default="isolated", alias="PAPER_DEFAULT_MARGIN_MODE"
+    )
     paper_default_leverage: int = Field(default=7, alias="PAPER_DEFAULT_LEVERAGE")
     paper_max_leverage: int = Field(default=75, alias="PAPER_MAX_LEVERAGE")
-    paper_default_slippage_bps: str = Field(default="3", alias="PAPER_DEFAULT_SLIPPAGE_BPS")
+    paper_default_slippage_bps: str = Field(
+        default="3", alias="PAPER_DEFAULT_SLIPPAGE_BPS"
+    )
     paper_atrp_slippage_bps_per_0_1: str = Field(
         default="25",
         alias="PAPER_ATRP_SLIPPAGE_BPS_PER_0_1",
@@ -74,11 +79,19 @@ class PaperBrokerSettings(BaseServiceSettings):
     )
     paper_orderbook_levels: int = Field(default=25, alias="PAPER_ORDERBOOK_LEVELS")
     paper_fee_source: str = Field(default="contract_config", alias="PAPER_FEE_SOURCE")
-    paper_default_maker_fee: str = Field(default="0.0002", alias="PAPER_DEFAULT_MAKER_FEE")
-    paper_default_taker_fee: str = Field(default="0.0006", alias="PAPER_DEFAULT_TAKER_FEE")
-    paper_funding_source: str = Field(default="events_or_rest", alias="PAPER_FUNDING_SOURCE")
+    paper_default_maker_fee: str = Field(
+        default="0.0002", alias="PAPER_DEFAULT_MAKER_FEE"
+    )
+    paper_default_taker_fee: str = Field(
+        default="0.0006", alias="PAPER_DEFAULT_TAKER_FEE"
+    )
+    paper_funding_source: str = Field(
+        default="events_or_rest", alias="PAPER_FUNDING_SOURCE"
+    )
     paper_mmr_base: str = Field(default="0.005", alias="PAPER_MMR_BASE")
-    paper_liq_fee_buffer_usdt: str = Field(default="5", alias="PAPER_LIQ_FEE_BUFFER_USDT")
+    paper_liq_fee_buffer_usdt: str = Field(
+        default="5", alias="PAPER_LIQ_FEE_BUFFER_USDT"
+    )
     leverage_stop_distance_scale_bps: float = Field(
         default=1500.0,
         alias="LEVERAGE_STOP_DISTANCE_SCALE_BPS",
@@ -88,7 +101,9 @@ class PaperBrokerSettings(BaseServiceSettings):
         default="35",
         alias="LEVERAGE_MIN_LIQUIDATION_BUFFER_BPS",
     )
-    bitget_api_base_url: str = Field(default="https://api.bitget.com", alias="BITGET_API_BASE_URL")
+    bitget_api_base_url: str = Field(
+        default="https://api.bitget.com", alias="BITGET_API_BASE_URL"
+    )
     bitget_market_family: MarketFamily | None = Field(
         default=None,
         alias="BITGET_MARKET_FAMILY",
@@ -153,7 +168,9 @@ class PaperBrokerSettings(BaseServiceSettings):
     )
     exit_runner_enabled: bool = Field(default=True, alias="EXIT_RUNNER_ENABLED")
     min_rr_for_trade: str = Field(default="1.2", alias="MIN_RR_FOR_TRADE")
-    default_atr_fallback_bps: str = Field(default="50", alias="DEFAULT_ATR_FALLBACK_BPS")
+    default_atr_fallback_bps: str = Field(
+        default="50", alias="DEFAULT_ATR_FALLBACK_BPS"
+    )
 
     strategy_exec_enabled: bool = Field(default=False, alias="STRATEGY_EXEC_ENABLED")
     strat_base_qty_btc: str = Field(default="0.02", alias="STRAT_BASE_QTY_BTC")
@@ -161,17 +178,32 @@ class PaperBrokerSettings(BaseServiceSettings):
     gross_size_mult: str = Field(default="2.0", alias="GROSS_SIZE_MULT")
     news_shock_score: int = Field(default=80, alias="NEWS_SHOCK_SCORE")
     news_cooldown_sec: int = Field(default=1800, alias="NEWS_COOLDOWN_SEC")
-    close_partial_on_news_shock_pct: str = Field(default="0.50", alias="CLOSE_PARTIAL_ON_NEWS_SHOCK_PCT")
-    use_drawing_target_updates: bool = Field(default=True, alias="USE_DRAWING_TARGET_UPDATES")
+    close_partial_on_news_shock_pct: str = Field(
+        default="0.50", alias="CLOSE_PARTIAL_ON_NEWS_SHOCK_PCT"
+    )
+    use_drawing_target_updates: bool = Field(
+        default=True, alias="USE_DRAWING_TARGET_UPDATES"
+    )
     use_structure_flip_exit: bool = Field(default=True, alias="USE_STRUCTURE_FLIP_EXIT")
-    structure_flip_full_close: bool = Field(default=False, alias="STRUCTURE_FLIP_FULL_CLOSE")
-    structure_flip_tighten_bps: str = Field(default="25", alias="STRUCTURE_FLIP_TIGHTEN_BPS")
-    strategy_default_account_id: str | None = Field(default=None, alias="PAPER_STRATEGY_ACCOUNT_ID")
-    strategy_signal_queue_max: int = Field(default=50, alias="STRATEGY_SIGNAL_QUEUE_MAX")
+    structure_flip_full_close: bool = Field(
+        default=False, alias="STRUCTURE_FLIP_FULL_CLOSE"
+    )
+    structure_flip_tighten_bps: str = Field(
+        default="25", alias="STRUCTURE_FLIP_TIGHTEN_BPS"
+    )
+    strategy_default_account_id: str | None = Field(
+        default=None, alias="PAPER_STRATEGY_ACCOUNT_ID"
+    )
+    strategy_signal_queue_max: int = Field(
+        default=50, alias="STRATEGY_SIGNAL_QUEUE_MAX"
+    )
 
-    strategy_registry_enabled: bool = Field(default=False, alias="STRATEGY_REGISTRY_ENABLED")
+    strategy_registry_enabled: bool = Field(
+        default=False, alias="STRATEGY_REGISTRY_ENABLED"
+    )
     strategy_registry_event_stream: str = Field(
-        default="events:strategy_registry_updated", alias="STRATEGY_REGISTRY_EVENT_STREAM"
+        default="events:strategy_registry_updated",
+        alias="STRATEGY_REGISTRY_EVENT_STREAM",
     )
 
     billing_prepaid_gate_enabled: bool = Field(
@@ -213,7 +245,9 @@ class PaperBrokerSettings(BaseServiceSettings):
     def _margin_mode(cls, v: str) -> str:
         x = v.strip().lower()
         if x not in ("isolated", "crossed"):
-            raise ValueError("PAPER_DEFAULT_MARGIN_MODE muss isolated oder crossed sein")
+            raise ValueError(
+                "PAPER_DEFAULT_MARGIN_MODE muss isolated oder crossed sein"
+            )
         return x
 
     @field_validator("paper_broker_port")
@@ -295,18 +329,22 @@ class PaperBrokerSettings(BaseServiceSettings):
     @classmethod
     def _validate_break_even_index(cls, value: int) -> int:
         if value < 0 or value > 2:
-            raise ValueError("EXIT_BREAK_EVEN_AFTER_TP_INDEX muss im Bereich 0..2 liegen")
+            raise ValueError(
+                "EXIT_BREAK_EVEN_AFTER_TP_INDEX muss im Bereich 0..2 liegen"
+            )
         return value
 
     @model_validator(mode="after")
-    def _validate_leverage_bounds(self) -> "PaperBrokerSettings":
+    def _validate_leverage_bounds(self) -> PaperBrokerSettings:
         if self.paper_default_leverage > self.paper_max_leverage:
             raise ValueError(
                 "PAPER_DEFAULT_LEVERAGE darf PAPER_MAX_LEVERAGE nicht uebersteigen"
             )
         if self.bitget_market_family is None:
             families = self.bitget_universe_market_families_list()
-            object.__setattr__(self, "bitget_market_family", families[0] if families else "spot")
+            object.__setattr__(
+                self, "bitget_market_family", families[0] if families else "spot"
+            )
         if self.bitget_market_family == "futures" and not self.bitget_product_type:
             object.__setattr__(
                 self,
@@ -319,7 +357,11 @@ class PaperBrokerSettings(BaseServiceSettings):
             object.__setattr__(
                 self,
                 "bitget_margin_account_mode",
-                "isolated" if self.bitget_market_family == "futures" else self.bitget_margin_default_account_mode,
+                (
+                    "isolated"
+                    if self.bitget_market_family == "futures"
+                    else self.bitget_margin_default_account_mode
+                ),
             )
         if not self.paper_default_symbol:
             object.__setattr__(
@@ -391,14 +433,21 @@ class PaperBrokerSettings(BaseServiceSettings):
     def candle_granularity(self, timeframe: str) -> str:
         return self.endpoint_profile.rest_candle_granularity(timeframe)
 
-    def instrument_identity(self, *, symbol: str | None = None) -> BitgetInstrumentIdentity:
+    def instrument_identity(
+        self, *, symbol: str | None = None
+    ) -> BitgetInstrumentIdentity:
         return BitgetInstrumentIdentity(
             market_family=self.bitget_market_family,
             symbol=symbol or self.paper_default_symbol,
-            product_type=self.bitget_product_type if self.bitget_market_family == "futures" else None,
+            product_type=(
+                self.bitget_product_type
+                if self.bitget_market_family == "futures"
+                else None
+            ),
             margin_account_mode=self.bitget_margin_account_mode,
             public_ws_inst_type=self.public_ws_inst_type,
-            private_ws_inst_type=self.endpoint_profile.private_ws_inst_type or self.public_ws_inst_type,
+            private_ws_inst_type=self.endpoint_profile.private_ws_inst_type
+            or self.public_ws_inst_type,
             metadata_source="paper_broker.runtime_config",
             metadata_verified=False,
             supports_funding=self.endpoint_profile.supports_funding,

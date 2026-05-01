@@ -38,7 +38,10 @@ export async function GET(
     });
     const text = await res.text();
     const ct = res.headers.get("content-type") ?? "application/json";
-    return new NextResponse(text, { status: res.status, headers: { "Content-Type": ct } });
+    return new NextResponse(text, {
+      status: res.status,
+      headers: { "Content-Type": ct },
+    });
   } catch (e) {
     return upstreamFetchFailedResponse(e);
   }

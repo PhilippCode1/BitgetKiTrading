@@ -41,6 +41,7 @@ def _is_pii_or_raw_llm_key(name: str) -> bool:
         return True
     return s.startswith("messages_") and "idempotency" not in s
 
+
 # Bekannte ENV-/Log-Zeilen: vollstaendiger Wert -> *** (Bitget, JWT, BFF, …)
 _REDACT_FULL_ASSIGN: re.Pattern[str] = re.compile(
     r"(?im)^(\s*)(?P<k>"
@@ -118,8 +119,10 @@ def _is_llm_key(name: str) -> bool:
     s = str(name).lower()
     if s in _LLM_PREFIXES or any(s == p or s.startswith(p) for p in _LLM_PREFIXES):
         return True
-    return s.startswith("prompt_") or s.startswith("raw_llm") or s.startswith(
-        "completion_"
+    return (
+        s.startswith("prompt_")
+        or s.startswith("raw_llm")
+        or s.startswith("completion_")
     )
 
 

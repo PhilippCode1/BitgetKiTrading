@@ -105,7 +105,7 @@ def test_capabilities_trial_full_demo_no_live() -> None:
         email_verified=True,
         trial_clock_active=True,
     )
-    assert cap.demo_trading
+    assert cap.demo_trading is False
     assert cap.telegram_info_messages
     assert not cap.execute_live_orders
 

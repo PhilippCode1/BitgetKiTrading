@@ -18,7 +18,10 @@ for import_path in (ROOT, SHARED_SRC):
     if str(import_path) not in sys.path:
         sys.path.insert(0, str(import_path))
 
-from shared_py.live_preflight import LivePreflightContext, evaluate_live_preflight  # noqa: E402
+from shared_py.live_preflight import (  # noqa: E402
+    LivePreflightContext,
+    evaluate_live_preflight,
+)
 from shared_py.multi_asset_strategy_evidence import (  # noqa: E402
     MultiAssetStrategyEvidence,
     evaluate_multi_asset_strategy_evidence,
@@ -36,9 +39,15 @@ from shared_py.strategy_asset_evidence import (  # noqa: E402
     validate_strategy_asset_evidence,
 )
 
-DEFAULT_STRATEGY_ASSET_INPUT = ROOT / "tests" / "fixtures" / "strategy_asset_evidence_sample.json"
-DEFAULT_MULTI_ASSET_INPUT = ROOT / "tests" / "fixtures" / "multi_asset_strategy_evidence_sample.json"
-DEFAULT_EXTERNAL_TEMPLATE = ROOT / "docs" / "production_10_10" / "portfolio_strategy_evidence.template.json"
+DEFAULT_STRATEGY_ASSET_INPUT = (
+    ROOT / "tests" / "fixtures" / "strategy_asset_evidence_sample.json"
+)
+DEFAULT_MULTI_ASSET_INPUT = (
+    ROOT / "tests" / "fixtures" / "multi_asset_strategy_evidence_sample.json"
+)
+DEFAULT_EXTERNAL_TEMPLATE = (
+    ROOT / "docs" / "production_10_10" / "portfolio_strategy_evidence.template.json"
+)
 
 EXTERNAL_SCHEMA_VERSION = 1
 
@@ -88,11 +97,20 @@ REQUIRED_MULTI_ASSET_STRATEGY_REASONS = (
     "Negative oder null Expectancy nach Kosten.",
 )
 
-SECRET_LIKE_KEYS = ("secret", "api_key", "passphrase", "token", "password", "authorization")
+SECRET_LIKE_KEYS = (
+    "secret",
+    "api_key",
+    "passphrase",
+    "token",
+    "password",
+    "authorization",
+)
 
 
 def _now() -> str:
-    return datetime.now(tz=UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return (
+        datetime.now(tz=UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    )
 
 
 def _git_sha() -> str:
@@ -169,19 +187,31 @@ def _contains_secret_surface(value: Any, path: str = "") -> list[str]:
         for key, child in value.items():
             child_path = f"{path}.{key}" if path else str(key)
             if any(marker in str(key).lower() for marker in SECRET_LIKE_KEYS):
-                if isinstance(child, str) and child not in {None, "", "REDACTED", "CHANGE_ME_REDACTED"}:
+                if isinstance(child, str) and child not in {
+                    None,
+                    "",
+                    "REDACTED",
+                    "CHANGE_ME_REDACTED",
+                }:
                     issues.append(f"{child_path} muss redacted sein")
             issues.extend(_contains_secret_surface(child, child_path))
     elif isinstance(value, list):
         for idx, child in enumerate(value):
             issues.extend(_contains_secret_surface(child, f"{path}[{idx}]"))
-    elif isinstance(value, str) and any(marker in value.lower() for marker in ("bitget_", "sk-", "eyj")):
+    elif isinstance(value, str) and any(
+        marker in value.lower() for marker in ("bitget_", "sk-", "eyj")
+    ):
         issues.append(f"{path} enthaelt secret-aehnlichen Wert")
     return issues
 
 
 def _missing_or_template(value: Any) -> bool:
-    return value is None or value == "" or value == [] or str(value).startswith("CHANGE_ME")
+    return (
+        value is None
+        or value == ""
+        or value == []
+        or str(value).startswith("CHANGE_ME")
+    )
 
 
 def assess_external_evidence(payload: dict[str, Any]) -> dict[str, Any]:
@@ -244,7 +274,11 @@ def assess_external_evidence(payload: dict[str, Any]) -> dict[str, Any]:
     shadow_burn_in = payload.get("shadow_burn_in") or {}
     if shadow_burn_in.get("shadow_passed") is not True:
         failures.append("shadow_burn_in_nicht_passed")
-    for key in ("real_shadow_period_started_at", "real_shadow_period_ended_at", "divergence_report_uri"):
+    for key in (
+        "real_shadow_period_started_at",
+        "real_shadow_period_ended_at",
+        "divergence_report_uri",
+    ):
         value = shadow_burn_in.get(key)
         if _missing_or_template(value):
             failures.append(f"shadow_burn_in_{key}_fehlt")
@@ -322,9 +356,13 @@ def _portfolio_scenarios() -> dict[str, PortfolioSnapshot | None]:
         "missing_snapshot": None,
         "stale_snapshot": _snapshot(snapshot_fresh=False),
         "invalid_equity": _snapshot(account_equity=0.0),
-        "total_exposure_over_limit": _snapshot(open_positions=[_item("BTCUSDT", 30_000.0)]),
+        "total_exposure_over_limit": _snapshot(
+            open_positions=[_item("BTCUSDT", 30_000.0)]
+        ),
         "margin_usage_over_limit": _snapshot(used_margin=7_000.0),
-        "largest_position_risk_over_limit": _snapshot(open_positions=[_item("BTCUSDT", 3_000.0, risk_pct=0.08)]),
+        "largest_position_risk_over_limit": _snapshot(
+            open_positions=[_item("BTCUSDT", 3_000.0, risk_pct=0.08)]
+        ),
         "max_concurrent_positions": _snapshot(
             open_positions=[
                 _item("BTCUSDT", 1_000.0),
@@ -334,20 +372,34 @@ def _portfolio_scenarios() -> dict[str, PortfolioSnapshot | None]:
             ]
         ),
         "pending_orders_over_limit": _snapshot(
-            pending_orders=[_item("AUSDT", 500.0), _item("BUSDT", 500.0), _item("CUSDT", 500.0)]
+            pending_orders=[
+                _item("AUSDT", 500.0),
+                _item("BUSDT", 500.0),
+                _item("CUSDT", 500.0),
+            ]
         ),
         "pending_live_candidates_over_limit": _snapshot(
             pending_live_candidates=[_item("SOLUSDT", 500.0), _item("ADAUSDT", 500.0)]
         ),
-        "net_long_exposure_over_limit": _snapshot(open_positions=[_item("BTCUSDT", 13_000.0)]),
-        "net_short_exposure_over_limit": _snapshot(open_positions=[_item("BTCUSDT", 13_000.0, side="short")]),
+        "net_long_exposure_over_limit": _snapshot(
+            open_positions=[_item("BTCUSDT", 13_000.0)]
+        ),
+        "net_short_exposure_over_limit": _snapshot(
+            open_positions=[_item("BTCUSDT", 13_000.0, side="short")]
+        ),
         "correlation_stress_over_limit": _snapshot(correlation_stress=0.90),
-        "funding_concentration_over_limit": _snapshot(open_positions=[_item("BTCUSDT", 1_000.0, funding_rate_abs=0.04)]),
-        "family_exposure_over_limit": _snapshot(open_positions=[_item("BTCUSDT", 16_000.0, family="futures")]),
+        "funding_concentration_over_limit": _snapshot(
+            open_positions=[_item("BTCUSDT", 1_000.0, funding_rate_abs=0.04)]
+        ),
+        "family_exposure_over_limit": _snapshot(
+            open_positions=[_item("BTCUSDT", 16_000.0, family="futures")]
+        ),
     }
 
 
-def _preflight_decision(*, portfolio_ok: bool = True, strategy_ok: bool = True) -> dict[str, Any]:
+def _preflight_decision(
+    *, portfolio_ok: bool = True, strategy_ok: bool = True
+) -> dict[str, Any]:
     decision = evaluate_live_preflight(
         LivePreflightContext(
             execution_mode_live=True,
@@ -437,12 +489,17 @@ def build_report_payload(
                 "cap_reasons": result.cap_reasons,
                 "portfolio_result": asdict(result),
                 "summary_de": build_portfolio_risk_summary_de(result),
-                "preflight": _preflight_decision(portfolio_ok=not bool(result.block_reasons)),
+                "preflight": _preflight_decision(
+                    portfolio_ok=not bool(result.block_reasons)
+                ),
             }
         )
 
     strategy_asset_rows: list[dict[str, Any]] = []
-    for item in [*_load_strategy_asset_items(strategy_asset_input), *_synthetic_strategy_asset_items()]:
+    for item in [
+        *_load_strategy_asset_items(strategy_asset_input),
+        *_synthetic_strategy_asset_items(),
+    ]:
         reasons = validate_strategy_asset_evidence(item)
         strategy_asset_rows.append(
             {
@@ -501,14 +558,27 @@ def build_report_payload(
         }
     )
 
-    missing_portfolio = [reason for reason in REQUIRED_PORTFOLIO_BLOCK_REASONS if reason not in covered_portfolio_reasons]
-    missing_strategy = [reason for reason in REQUIRED_STRATEGY_BLOCK_REASONS if reason not in covered_strategy_reasons]
+    missing_portfolio = [
+        reason
+        for reason in REQUIRED_PORTFOLIO_BLOCK_REASONS
+        if reason not in covered_portfolio_reasons
+    ]
+    missing_strategy = [
+        reason
+        for reason in REQUIRED_STRATEGY_BLOCK_REASONS
+        if reason not in covered_strategy_reasons
+    ]
     missing_multi_asset = [
-        reason for reason in REQUIRED_MULTI_ASSET_STRATEGY_REASONS if reason not in covered_multi_asset_reasons
+        reason
+        for reason in REQUIRED_MULTI_ASSET_STRATEGY_REASONS
+        if reason not in covered_multi_asset_reasons
     ]
     missing_preflight = [
         reason
-        for reason in ("portfolio_risk_not_safe", "strategy_evidence_missing_or_invalid")
+        for reason in (
+            "portfolio_risk_not_safe",
+            "strategy_evidence_missing_or_invalid",
+        )
         if reason not in covered_live_preflight_reasons
     ]
 
@@ -563,12 +633,25 @@ def render_markdown(payload: dict[str, Any]) -> str:
         "## Portfolio-Risk-Coverage",
         "",
         "- Abgedeckt: "
-        + (", ".join(f"`{item}`" for item in payload["covered_portfolio_block_reasons"]) or "-"),
-        "- Fehlend: " + (", ".join(f"`{item}`" for item in payload["missing_portfolio_block_reasons"]) or "-"),
+        + (
+            ", ".join(
+                f"`{item}`" for item in payload["covered_portfolio_block_reasons"]
+            )
+            or "-"
+        ),
+        "- Fehlend: "
+        + (
+            ", ".join(
+                f"`{item}`" for item in payload["missing_portfolio_block_reasons"]
+            )
+            or "-"
+        ),
         "",
     ]
     for row in payload["portfolio_scenarios"]:
-        lines.append(f"- `{row['id']}`: blockiert=`{row['blocks_live']}`, Gruende={', '.join(row['block_reasons']) or '-'}")
+        lines.append(
+            f"- `{row['id']}`: blockiert=`{row['blocks_live']}`, Gruende={', '.join(row['block_reasons']) or '-'}"
+        )
 
     lines.extend(["", "## Strategy-Asset-Evidence", ""])
     for row in payload["strategy_asset_scenarios"]:
@@ -589,7 +672,13 @@ def render_markdown(payload: dict[str, Any]) -> str:
         "- Assessment: "
         f"`{payload['external_evidence_assessment']['status']}`; "
         "Fehler="
-        + (", ".join(f"`{item}`" for item in payload["external_evidence_assessment"]["failures"]) or "-")
+        + (
+            ", ".join(
+                f"`{item}`"
+                for item in payload["external_evidence_assessment"]["failures"]
+            )
+            or "-"
+        )
     )
     lines.extend(["", "## Erforderlich vor Private Live", ""])
     lines.extend(f"- {item}" for item in payload["external_required"])
@@ -601,9 +690,15 @@ def render_markdown(payload: dict[str, Any]) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--strategy-asset-input", type=Path, default=DEFAULT_STRATEGY_ASSET_INPUT)
-    parser.add_argument("--multi-asset-input", type=Path, default=DEFAULT_MULTI_ASSET_INPUT)
-    parser.add_argument("--external-evidence-json", type=Path, default=DEFAULT_EXTERNAL_TEMPLATE)
+    parser.add_argument(
+        "--strategy-asset-input", type=Path, default=DEFAULT_STRATEGY_ASSET_INPUT
+    )
+    parser.add_argument(
+        "--multi-asset-input", type=Path, default=DEFAULT_MULTI_ASSET_INPUT
+    )
+    parser.add_argument(
+        "--external-evidence-json", type=Path, default=DEFAULT_EXTERNAL_TEMPLATE
+    )
     parser.add_argument("--write-template", type=Path)
     parser.add_argument("--output-md", type=Path)
     parser.add_argument("--output-json", type=Path)
@@ -613,10 +708,13 @@ def main(argv: list[str] | None = None) -> int:
     if args.write_template:
         args.write_template.parent.mkdir(parents=True, exist_ok=True)
         args.write_template.write_text(
-            json.dumps(build_external_evidence_template(), indent=2, ensure_ascii=False) + "\n",
+            json.dumps(build_external_evidence_template(), indent=2, ensure_ascii=False)
+            + "\n",
             encoding="utf-8",
         )
-        print(f"portfolio_strategy_evidence_report: wrote template {args.write_template}")
+        print(
+            f"portfolio_strategy_evidence_report: wrote template {args.write_template}"
+        )
         return 0
 
     payload = build_report_payload(
@@ -626,7 +724,9 @@ def main(argv: list[str] | None = None) -> int:
     )
     if args.output_json:
         args.output_json.parent.mkdir(parents=True, exist_ok=True)
-        args.output_json.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+        args.output_json.write_text(
+            json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
     if args.output_md:
         args.output_md.parent.mkdir(parents=True, exist_ok=True)
         args.output_md.write_text(render_markdown(payload), encoding="utf-8")

@@ -126,7 +126,9 @@ def _reason_text_de(reasons: list[str]) -> str:
     return " ".join(mapping.get(reason, reason) for reason in reasons)
 
 
-def _audit_event(*, scenario_id: str, git_sha: str, reasons: list[str]) -> dict[str, Any]:
+def _audit_event(
+    *, scenario_id: str, git_sha: str, reasons: list[str]
+) -> dict[str, Any]:
     return {
         "event_id": f"main-console-safety-{scenario_id}",
         "event_type": "private_decision_audit",
@@ -144,8 +146,16 @@ def _audit_event(*, scenario_id: str, git_sha: str, reasons: list[str]) -> dict[
         "risk_tier": "portfolio",
         "liquidity_tier": "not_applicable",
         "data_quality_status": "not_applicable",
-        "exchange_truth_status": "blocked" if "exchange_truth_blocks_live" in reasons else "checked_or_not_applicable",
-        "reconcile_status": "blocked" if "reconcile_status_blocks_live" in reasons else "checked_or_not_applicable",
+        "exchange_truth_status": (
+            "blocked"
+            if "exchange_truth_blocks_live" in reasons
+            else "checked_or_not_applicable"
+        ),
+        "reconcile_status": (
+            "blocked"
+            if "reconcile_status_blocks_live" in reasons
+            else "checked_or_not_applicable"
+        ),
         "operator_context": "philipp",
         "trace_id": f"trace-{scenario_id}",
         "correlation_id": f"corr-{scenario_id}",
@@ -187,7 +197,9 @@ def build_report_payload() -> dict[str, Any]:
             }
         )
 
-    missing_visible_gates = [gate for gate in REQUIRED_VISIBLE_GATES if gate not in visible_gate_coverage]
+    missing_visible_gates = [
+        gate for gate in REQUIRED_VISIBLE_GATES if gate not in visible_gate_coverage
+    ]
     blocking_failures = [
         row["id"]
         for row in scenarios
@@ -261,7 +273,9 @@ def main(argv: list[str] | None = None) -> int:
     payload = build_report_payload()
     if args.output_json:
         args.output_json.parent.mkdir(parents=True, exist_ok=True)
-        args.output_json.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+        args.output_json.write_text(
+            json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
     if args.output_md:
         args.output_md.parent.mkdir(parents=True, exist_ok=True)
         args.output_md.write_text(render_markdown(payload), encoding="utf-8")

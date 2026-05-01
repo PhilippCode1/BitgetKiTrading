@@ -60,7 +60,14 @@ def assess_permissions(permissions: dict[str, Any] | None) -> PermissionAssessme
         value = normalized.get(name)
         if isinstance(value, bool):
             return value
-        return str(value).strip().lower() in {"1", "true", "yes", "on", "enabled", "allow"}
+        return str(value).strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+            "enabled",
+            "allow",
+        }
 
     withdrawal_keys = (
         "withdraw",
@@ -87,13 +94,17 @@ def assess_permissions(permissions: dict[str, Any] | None) -> PermissionAssessme
         warnings.append("trading_permission_unknown_live_write_blocked")
 
     if blockers:
-        return PermissionAssessment(status="blocker", blockers=blockers, warnings=warnings)
+        return PermissionAssessment(
+            status="blocker", blockers=blockers, warnings=warnings
+        )
     if warnings:
         return PermissionAssessment(status="warning", warnings=warnings)
     return PermissionAssessment(status="ok")
 
 
-def assess_external_key_evidence(evidence: dict[str, Any] | None) -> ExternalKeyEvidenceAssessment:
+def assess_external_key_evidence(
+    evidence: dict[str, Any] | None,
+) -> ExternalKeyEvidenceAssessment:
     if not evidence:
         return ExternalKeyEvidenceAssessment(
             status="FAIL",
@@ -136,7 +147,9 @@ def assess_external_key_evidence(evidence: dict[str, Any] | None) -> ExternalKey
     )
 
 
-def server_time_skew_blockers(offset_ms: int | None, *, max_skew_ms: int = MAX_SERVER_TIME_SKEW_MS) -> list[str]:
+def server_time_skew_blockers(
+    offset_ms: int | None, *, max_skew_ms: int = MAX_SERVER_TIME_SKEW_MS
+) -> list[str]:
     if offset_ms is None:
         return ["server_time_skew_unknown"]
     if abs(int(offset_ms)) > max_skew_ms:

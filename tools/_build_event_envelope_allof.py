@@ -1,4 +1,5 @@
 """event_envelope.schema.json aus Katalog-Map: allOf + if/then fuer Payload-Refs."""
+
 from __future__ import annotations
 
 import json
@@ -12,11 +13,7 @@ def main() -> None:
     m: dict[str, str] = json.loads(map_path.read_text(encoding="utf-8"))
     env_path = sc / "event_envelope.schema.json"
     raw: dict = json.loads(env_path.read_text(encoding="utf-8"))
-    if (
-        "allOf" in raw
-        and isinstance(raw["allOf"], list)
-        and len(raw["allOf"]) > 0
-    ):
+    if "allOf" in raw and isinstance(raw["allOf"], list) and len(raw["allOf"]) > 0:
         new_base = json.loads(json.dumps(raw["allOf"][0]))  # deep copy
     else:
         new_base = {k: v for k, v in raw.items() if k not in ("$schema", "$id")}

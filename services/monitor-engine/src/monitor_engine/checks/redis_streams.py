@@ -155,7 +155,9 @@ def check_stream_groups(
             status = "ok"
             if pending > thresh_pending or (lag is not None and lag > thresh_lag):
                 status = "degraded"
-            if pending > thresh_pending * 5 or (lag is not None and lag > thresh_lag * 5):
+            if pending > thresh_pending * 5 or (
+                lag is not None and lag > thresh_lag * 5
+            ):
                 status = "fail"
             results.append(
                 StreamGroupCheckResult(

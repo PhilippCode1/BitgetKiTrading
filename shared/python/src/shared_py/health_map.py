@@ -103,12 +103,17 @@ def evaluate_health_map(components: list[HealthMapComponent]) -> dict[str, Any]:
         # Harte Regeln (fail-closed)
         if c.blockiert_live:
             blockers.append(f"{c.name}: {c.live_auswirkung_de}")
-        if c.name in {"Market-Stream", "Signal-Engine"} and c.freshness_status in {"stale", "missing"}:
+        if c.name in {"Market-Stream", "Signal-Engine"} and c.freshness_status in {
+            "stale",
+            "missing",
+        }:
             blockers.append(f"{c.name}: Daten nicht frisch fuer Live-Entscheidungen.")
         if c.name == "Reconcile" and c.freshness_status in {"stale", "missing"}:
             blockers.append("Reconcile: stale/missing blockiert Live-Openings.")
         if c.name == "Redis/Eventbus" and c.status in {"fail", "unknown"}:
-            blockers.append("Redis/Eventbus: Shadow-Match/Liquidity/Signals nicht verlässlich.")
+            blockers.append(
+                "Redis/Eventbus: Shadow-Match/Liquidity/Signals nicht verlässlich."
+            )
         if c.name == "Postgres" and c.status in {"fail", "unknown"}:
             blockers.append("Postgres: livekritische Pfade ohne DB-Wahrheit.")
         if c.name in {"Live-Broker", "Reconcile"} and c.status == "unknown":
@@ -131,12 +136,23 @@ def evaluate_health_map(components: list[HealthMapComponent]) -> dict[str, Any]:
         "live_blockiert": live_blockiert,
         "blocker_gründe_de": blockers,
         "bewertet_ts": _now_iso(),
-        "komponenten": [component_payload(c) for c in sorted(components, key=lambda x: _STATUS_ORDER[x.status])],
+        "komponenten": [
+            component_payload(c)
+            for c in sorted(components, key=lambda x: _STATUS_ORDER[x.status])
+        ],
     }
 
 
 def assert_no_commercial_terms(text: str) -> None:
     lowered = text.lower()
-    for token in ("billing", "kunde", "kunden", "abo", "subscription", "saas", "payment"):
+    for token in (
+        "billing",
+        "kunde",
+        "kunden",
+        "abo",
+        "subscription",
+        "saas",
+        "payment",
+    ):
         if token in lowered:
             raise ValueError(f"verbotener_begriff:{token}")

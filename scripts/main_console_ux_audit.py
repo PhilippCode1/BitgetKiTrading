@@ -9,7 +9,9 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 APP_CONSOLE_DIR = ROOT / "apps" / "dashboard" / "src" / "app" / "(operator)" / "console"
-NAV_FILE = ROOT / "apps" / "dashboard" / "src" / "lib" / "main-console" / "navigation.ts"
+NAV_FILE = (
+    ROOT / "apps" / "dashboard" / "src" / "lib" / "main-console" / "navigation.ts"
+)
 DE_MESSAGES = ROOT / "apps" / "dashboard" / "src" / "messages" / "de.json"
 
 FORBIDDEN_TERMS = ("billing", "customer", "pricing", "saas")
@@ -67,7 +69,9 @@ def build_audit() -> dict[str, Any]:
     potentially_dead_routes: list[str] = [
         r for r in routes if (r != "/console" and r not in nav_links)
     ]
-    billing_hits: list[str] = [r for r in routes if any(t in r.lower() for t in FORBIDDEN_TERMS)]
+    billing_hits: list[str] = [
+        r for r in routes if any(t in r.lower() for t in FORBIDDEN_TERMS)
+    ]
     english_label_hits: list[str] = []
     for token in ("overview", "health map", "safety center", "reports", "settings"):
         if token in labels_text.lower():
@@ -150,7 +154,13 @@ def to_markdown(payload: dict[str, Any]) -> str:
         "## Routeninventar",
     ]
     lines.extend(f"- `{r}`" for r in payload["known_routes"])
-    lines.extend(["", "## Navigation & Labels", f"- Navigationseinträge: `{len(payload['navigation_links'])}`"])
+    lines.extend(
+        [
+            "",
+            "## Navigation & Labels",
+            f"- Navigationseinträge: `{len(payload['navigation_links'])}`",
+        ]
+    )
     lines.extend(f"- `{r}`" for r in payload["navigation_links"])
     lines.extend(["", "## Tote oder unklare Seiten"])
     if payload["potentially_dead_routes"]:
@@ -182,7 +192,9 @@ def to_markdown(payload: dict[str, Any]) -> str:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Main Console UX-Audit (Routen, Navigation, States).")
+    parser = argparse.ArgumentParser(
+        description="Main Console UX-Audit (Routen, Navigation, States)."
+    )
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--output-md")
     parser.add_argument("--json", action="store_true")

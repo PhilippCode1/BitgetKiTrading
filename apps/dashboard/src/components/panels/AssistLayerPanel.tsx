@@ -314,7 +314,9 @@ function AssistLayerPanelInner({
       {enableOpsRiskForensicLoader && activeSegment === "ops-risk" ? (
         <div className="block-label" style={{ marginBottom: "0.75rem" }}>
           <span>{t("pages.health.assistOpsRiskLoadLabel")}</span>
-          <p className="muted small">{t("pages.health.assistOpsRiskLoadHelp")}</p>
+          <p className="muted small">
+            {t("pages.health.assistOpsRiskLoadHelp")}
+          </p>
           <div
             style={{
               display: "flex",
@@ -327,7 +329,11 @@ function AssistLayerPanelInner({
             <input
               type="text"
               className="console-textarea mono-small"
-              style={{ minWidth: 280, maxWidth: "100%", padding: "0.4rem 0.5rem" }}
+              style={{
+                minWidth: 280,
+                maxWidth: "100%",
+                padding: "0.4rem 0.5rem",
+              }}
               value={executionIdForRisk}
               onChange={(e) => setExecutionIdForRisk(e.target.value)}
               disabled={loading || loadingContext}

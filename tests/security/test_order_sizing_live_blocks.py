@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from shared_py.order_sizing import OrderSizingInput, compute_order_qty_from_risk, order_sizing_blocks_live
+from shared_py.order_sizing import (
+    OrderSizingInput,
+    compute_order_qty_from_risk,
+    order_sizing_blocks_live,
+)
 
 
 def _input(**overrides: object) -> OrderSizingInput:

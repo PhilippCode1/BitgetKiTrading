@@ -33,12 +33,18 @@ from learning_engine.api.routes_patterns import build_patterns_router
 from learning_engine.api.routes_recommendations import build_recommendations_router
 from learning_engine.api.routes_e2e import build_e2e_router
 from learning_engine.api.routes_governance import build_governance_router
-from learning_engine.api.routes_research_benchmark import build_research_benchmark_router
+from learning_engine.api.routes_research_benchmark import (
+    build_research_benchmark_router,
+)
 from learning_engine.api.routes_summary import build_summary_router
 from learning_engine.api.routes_trades import build_trades_router
 from learning_engine.api.routes_self_healing import build_self_healing_router
-from learning_engine.api.routes_tsfm_war_room_audit import build_tsfm_war_room_audit_router
-from learning_engine.api.routes_war_room_precision import build_war_room_precision_router
+from learning_engine.api.routes_tsfm_war_room_audit import (
+    build_tsfm_war_room_audit_router,
+)
+from learning_engine.api.routes_war_room_precision import (
+    build_war_room_precision_router,
+)
 from learning_engine.api.routes_adversarial import build_adversarial_proxy_router
 from learning_engine.api.routes_resilience import build_resilience_router
 from learning_engine.backtest.routes import build_backtests_router

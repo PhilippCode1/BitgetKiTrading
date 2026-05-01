@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from shared_py.strategy_asset_evidence import StrategyAssetEvidence, validate_strategy_asset_evidence
+from shared_py.strategy_asset_evidence import (
+    StrategyAssetEvidence,
+    validate_strategy_asset_evidence,
+)
 
 
 def test_strategy_version_without_hash_blocks_live_contract() -> None:

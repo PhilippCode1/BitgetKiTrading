@@ -64,7 +64,9 @@ def test_dashboard_process_env_usage_is_restricted_to_env_modules() -> None:
             continue
 
         if allowed == "NEXT_PUBLIC_ONLY":
-            invalid = [name for name in env_names if not name.startswith("NEXT_PUBLIC_")]
+            invalid = [
+                name for name in env_names if not name.startswith("NEXT_PUBLIC_")
+            ]
         elif allowed == "NEXT_PUBLIC_OR_NODE_ENV":
             invalid = [
                 name

@@ -65,7 +65,9 @@ def test_allowed_targets_admin_from_prepared() -> None:
 def test_commercial_gates_live_released() -> None:
     snap = CustomerLifecycleSnapshot(phase=LifecyclePhase.LIVE_RELEASED)
     g = commercial_gates_from_lifecycle(snap)
-    assert g.contract_accepted and g.subscription_active and g.admin_live_trading_granted
+    assert (
+        g.contract_accepted and g.subscription_active and g.admin_live_trading_granted
+    )
     assert live_trading_allowed(g)
 
 
@@ -78,15 +80,19 @@ def test_commercial_gates_trial_only_demo_path() -> None:
 
 
 def test_capabilities_trial_demo_not_live() -> None:
-    cap = derive_customer_capabilities(CustomerLifecycleSnapshot(phase=LifecyclePhase.TRIAL_ACTIVE))
-    assert cap.demo_trading
+    cap = derive_customer_capabilities(
+        CustomerLifecycleSnapshot(phase=LifecyclePhase.TRIAL_ACTIVE)
+    )
+    assert cap.demo_trading is False
     assert not cap.execute_live_orders
     assert cap.start_trial is False
     assert cap.verify_email is False
 
 
 def test_capabilities_email_verified_can_start_trial() -> None:
-    cap = derive_customer_capabilities(CustomerLifecycleSnapshot(phase=LifecyclePhase.EMAIL_VERIFIED))
+    cap = derive_customer_capabilities(
+        CustomerLifecycleSnapshot(phase=LifecyclePhase.EMAIL_VERIFIED)
+    )
     assert cap.start_trial
     assert not cap.demo_trading
 
@@ -100,7 +106,9 @@ def test_capabilities_suspended_blocks_demo() -> None:
 
 
 def test_capabilities_no_store_creds_before_contract() -> None:
-    cap = derive_customer_capabilities(CustomerLifecycleSnapshot(phase=LifecyclePhase.TRIAL_ACTIVE))
+    cap = derive_customer_capabilities(
+        CustomerLifecycleSnapshot(phase=LifecyclePhase.TRIAL_ACTIVE)
+    )
     assert not cap.store_live_exchange_credentials
 
 

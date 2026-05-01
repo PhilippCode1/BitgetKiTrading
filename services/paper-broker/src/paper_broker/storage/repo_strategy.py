@@ -7,7 +7,9 @@ from uuid import UUID, uuid4
 import psycopg
 
 
-def get_strategy_state(conn: psycopg.Connection[Any], key: str) -> dict[str, Any] | None:
+def get_strategy_state(
+    conn: psycopg.Connection[Any], key: str
+) -> dict[str, Any] | None:
     row = conn.execute(
         "SELECT * FROM paper.strategy_state WHERE key = %s",
         (key,),
@@ -44,7 +46,9 @@ def upsert_strategy_state(
     )
 
 
-def set_strategy_paused(conn: psycopg.Connection[Any], key: str, paused: bool, now_ms: int) -> None:
+def set_strategy_paused(
+    conn: psycopg.Connection[Any], key: str, paused: bool, now_ms: int
+) -> None:
     row = get_strategy_state(conn, key)
     if row is None:
         upsert_strategy_state(
@@ -61,7 +65,9 @@ def set_strategy_paused(conn: psycopg.Connection[Any], key: str, paused: bool, n
         key=key,
         paused=paused,
         risk_off_until_ts_ms=int(row["risk_off_until_ts_ms"] or 0),
-        last_signal_id=UUID(str(row["last_signal_id"])) if row.get("last_signal_id") else None,
+        last_signal_id=(
+            UUID(str(row["last_signal_id"])) if row.get("last_signal_id") else None
+        ),
         updated_ts_ms=now_ms,
     )
 
@@ -71,7 +77,9 @@ def set_risk_off_until(
 ) -> None:
     row = get_strategy_state(conn, key)
     paused = bool(row["paused"]) if row else False
-    last_sid = UUID(str(row["last_signal_id"])) if row and row.get("last_signal_id") else None
+    last_sid = (
+        UUID(str(row["last_signal_id"])) if row and row.get("last_signal_id") else None
+    )
     upsert_strategy_state(
         conn,
         key=key,

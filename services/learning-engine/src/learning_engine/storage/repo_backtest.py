@@ -53,7 +53,9 @@ def insert_backtest_run(
     )
 
 
-def delete_backtest_folds_for_run(conn: psycopg.Connection[Any], *, run_id: UUID) -> None:
+def delete_backtest_folds_for_run(
+    conn: psycopg.Connection[Any], *, run_id: UUID
+) -> None:
     conn.execute("DELETE FROM learn.backtest_folds WHERE run_id = %s", (str(run_id),))
 
 
@@ -106,7 +108,9 @@ def insert_backtest_fold(
     )
 
 
-def list_backtest_runs(conn: psycopg.Connection[Any], *, limit: int) -> list[dict[str, Any]]:
+def list_backtest_runs(
+    conn: psycopg.Connection[Any], *, limit: int
+) -> list[dict[str, Any]]:
     rows = conn.execute(
         """
         SELECT run_id, symbol, timeframes_json, mode, from_ts_ms, to_ts_ms,
@@ -120,7 +124,9 @@ def list_backtest_runs(conn: psycopg.Connection[Any], *, limit: int) -> list[dic
     return [dict(r) for r in rows]
 
 
-def get_backtest_run(conn: psycopg.Connection[Any], run_id: UUID) -> dict[str, Any] | None:
+def get_backtest_run(
+    conn: psycopg.Connection[Any], run_id: UUID
+) -> dict[str, Any] | None:
     row = conn.execute(
         """
         SELECT run_id, symbol, timeframes_json, mode, from_ts_ms, to_ts_ms,
@@ -132,7 +138,9 @@ def get_backtest_run(conn: psycopg.Connection[Any], run_id: UUID) -> dict[str, A
     return dict(row) if row else None
 
 
-def list_folds_for_run(conn: psycopg.Connection[Any], run_id: UUID) -> list[dict[str, Any]]:
+def list_folds_for_run(
+    conn: psycopg.Connection[Any], run_id: UUID
+) -> list[dict[str, Any]]:
     rows = conn.execute(
         """
         SELECT fold_id, run_id, fold_index, train_range_json, test_range_json, metrics_json

@@ -3,10 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import ClassVar, Self
 
+from config.settings import BaseServiceSettings, StrategyRegistryStatus
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import SettingsConfigDict
-
-from config.settings import BaseServiceSettings, StrategyRegistryStatus
 
 _TAKE_TRADE_CALIBRATION_METHODS = ("sigmoid", "isotonic")
 
@@ -29,22 +28,40 @@ class LearningEngineSettings(BaseServiceSettings):
     learning_engine_port: int = Field(default=8090, alias="LEARNING_ENGINE_PORT")
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
 
-    learn_consumer_group: str = Field(default="learning-engine", alias="LEARN_CONSUMER_GROUP")
+    learn_consumer_group: str = Field(
+        default="learning-engine", alias="LEARN_CONSUMER_GROUP"
+    )
     learn_consumer_name: str = Field(default="le-1", alias="LEARN_CONSUMER_NAME")
-    learn_stream_trade_closed: str = Field(default="events:trade_closed", alias="LEARN_STREAM_TRADE_CLOSED")
-    learn_stream_trade_opened: str = Field(default="events:trade_opened", alias="LEARN_STREAM_TRADE_OPENED")
-    learn_stream_trade_updated: str = Field(default="events:trade_updated", alias="LEARN_STREAM_TRADE_UPDATED")
-    learn_stream_signal_created: str = Field(default="events:signal_created", alias="LEARN_STREAM_SIGNAL_CREATED")
-    learn_stream_news_scored: str = Field(default="events:news_scored", alias="LEARN_STREAM_NEWS_SCORED")
+    learn_stream_trade_closed: str = Field(
+        default="events:trade_closed", alias="LEARN_STREAM_TRADE_CLOSED"
+    )
+    learn_stream_trade_opened: str = Field(
+        default="events:trade_opened", alias="LEARN_STREAM_TRADE_OPENED"
+    )
+    learn_stream_trade_updated: str = Field(
+        default="events:trade_updated", alias="LEARN_STREAM_TRADE_UPDATED"
+    )
+    learn_stream_signal_created: str = Field(
+        default="events:signal_created", alias="LEARN_STREAM_SIGNAL_CREATED"
+    )
+    learn_stream_news_scored: str = Field(
+        default="events:news_scored", alias="LEARN_STREAM_NEWS_SCORED"
+    )
     learn_stream_structure_updated: str = Field(
         default="events:structure_updated", alias="LEARN_STREAM_STRUCTURE_UPDATED"
     )
     learn_stream_drawing_updated: str = Field(
         default="events:drawing_updated", alias="LEARN_STREAM_DRAWING_UPDATED"
     )
-    learn_stream_risk_alert: str = Field(default="events:risk_alert", alias="LEARN_STREAM_RISK_ALERT")
-    learn_consume_optional_streams: bool = Field(default=True, alias="LEARN_CONSUME_OPTIONAL_STREAMS")
-    learn_stream_system_alert: str = Field(default="events:system_alert", alias="LEARN_STREAM_SYSTEM_ALERT")
+    learn_stream_risk_alert: str = Field(
+        default="events:risk_alert", alias="LEARN_STREAM_RISK_ALERT"
+    )
+    learn_consume_optional_streams: bool = Field(
+        default=True, alias="LEARN_CONSUME_OPTIONAL_STREAMS"
+    )
+    learn_stream_system_alert: str = Field(
+        default="events:system_alert", alias="LEARN_STREAM_SYSTEM_ALERT"
+    )
 
     self_healing_enabled: bool = Field(default=False, alias="SELF_HEALING_ENABLED")
     self_healing_trigger_svc_critical: bool = Field(
@@ -84,10 +101,16 @@ class LearningEngineSettings(BaseServiceSettings):
         description="Optional: Compose-Service-Name fuer docker compose restart (leer=aus).",
     )
 
-    news_context_lookback_ms: int = Field(default=3_600_000, alias="NEWS_CONTEXT_LOOKBACK_MS")
-    news_context_lookahead_ms: int = Field(default=900_000, alias="NEWS_CONTEXT_LOOKAHEAD_MS")
+    news_context_lookback_ms: int = Field(
+        default=3_600_000, alias="NEWS_CONTEXT_LOOKBACK_MS"
+    )
+    news_context_lookahead_ms: int = Field(
+        default=900_000, alias="NEWS_CONTEXT_LOOKAHEAD_MS"
+    )
     learn_stop_min_atr_mult: str = Field(default="0.6", alias="LEARN_STOP_MIN_ATR_MULT")
-    learn_false_breakout_window_ms: int = Field(default=600_000, alias="LEARN_FALSE_BREAKOUT_WINDOW_MS")
+    learn_false_breakout_window_ms: int = Field(
+        default=600_000, alias="LEARN_FALSE_BREAKOUT_WINDOW_MS"
+    )
     learn_stale_signal_ms: int = Field(default=3_600_000, alias="LEARN_STALE_SIGNAL_MS")
     learn_ai_attribution_enabled: bool = Field(
         default=True,
@@ -99,7 +122,9 @@ class LearningEngineSettings(BaseServiceSettings):
         alias="LEARN_AI_ATTRIBUTION_WINDOW_MS",
         description="Attributions-Fenster (ms) ab decision_ts_ms, default 4h.",
     )
-    learn_max_feature_age_ms: int = Field(default=3_600_000, alias="LEARN_MAX_FEATURE_AGE_MS")
+    learn_max_feature_age_ms: int = Field(
+        default=3_600_000, alias="LEARN_MAX_FEATURE_AGE_MS"
+    )
     learn_apex_war_room_feedback_in_dataset: bool = Field(
         default=True,
         alias="LEARN_APEX_WAR_ROOM_FEEDBACK_IN_DATASET",
@@ -107,17 +132,22 @@ class LearningEngineSettings(BaseServiceSettings):
     )
     learn_multi_tf_threshold: int = Field(default=40, alias="LEARN_MULTI_TF_THRESHOLD")
     paper_mmr_base: str = Field(default="0.005", alias="PAPER_MMR_BASE")
-    paper_liq_fee_buffer_usdt: str = Field(default="5", alias="PAPER_LIQ_FEE_BUFFER_USDT")
+    paper_liq_fee_buffer_usdt: str = Field(
+        default="5", alias="PAPER_LIQ_FEE_BUFFER_USDT"
+    )
     eventbus_block_ms: int = Field(default=2000, alias="EVENTBUS_DEFAULT_BLOCK_MS")
     eventbus_count: int = Field(default=20, alias="EVENTBUS_DEFAULT_COUNT")
 
-    strategy_registry_enabled: bool = Field(default=True, alias="STRATEGY_REGISTRY_ENABLED")
+    strategy_registry_enabled: bool = Field(
+        default=True, alias="STRATEGY_REGISTRY_ENABLED"
+    )
     strategy_registry_default_status: StrategyRegistryStatus = Field(
         default="shadow",
         alias="STRATEGY_REGISTRY_DEFAULT_STATUS",
     )
     strategy_registry_event_stream: str = Field(
-        default="events:strategy_registry_updated", alias="STRATEGY_REGISTRY_EVENT_STREAM"
+        default="events:strategy_registry_updated",
+        alias="STRATEGY_REGISTRY_EVENT_STREAM",
     )
 
     @field_validator("strategy_registry_default_status")
@@ -134,7 +164,9 @@ class LearningEngineSettings(BaseServiceSettings):
         allowed = "events:strategy_registry_updated"
         x = v.strip()
         if x != allowed:
-            raise ValueError(f"STRATEGY_REGISTRY_EVENT_STREAM muss {allowed!r} sein (Redis-Whitelist)")
+            raise ValueError(
+                f"STRATEGY_REGISTRY_EVENT_STREAM muss {allowed!r} sein (Redis-Whitelist)"
+            )
         return x
 
     learning_window_list: str = Field(default="1d,7d,30d", alias="LEARNING_WINDOW_LIST")
@@ -142,7 +174,9 @@ class LearningEngineSettings(BaseServiceSettings):
     learning_retire_pf: float = Field(default=0.9, alias="LEARNING_RETIRE_PF")
     learning_max_dd: float = Field(default=0.15, alias="LEARNING_MAX_DD")
     learning_enable_adwin: bool = Field(default=True, alias="LEARNING_ENABLE_ADWIN")
-    learning_adwin_metric: str = Field(default="pnl_net_usdt", alias="LEARNING_ADWIN_METRIC")
+    learning_adwin_metric: str = Field(
+        default="pnl_net_usdt", alias="LEARNING_ADWIN_METRIC"
+    )
     learning_enable_mlflow: bool = Field(default=False, alias="LEARNING_ENABLE_MLFLOW")
     mlflow_tracking_uri: str = Field(default="", alias="MLFLOW_TRACKING_URI")
 
@@ -185,7 +219,9 @@ class LearningEngineSettings(BaseServiceSettings):
     def _adwin_m(cls, v: str) -> str:
         x = v.strip().lower()
         if x not in ("pnl_net_usdt", "win_rate"):
-            raise ValueError("LEARNING_ADWIN_METRIC muss pnl_net_usdt oder win_rate sein")
+            raise ValueError(
+                "LEARNING_ADWIN_METRIC muss pnl_net_usdt oder win_rate sein"
+            )
         return x
 
     @field_validator(
@@ -202,7 +238,9 @@ class LearningEngineSettings(BaseServiceSettings):
             raise ValueError("LEARN_*/NEWS_* Zeitfenster muessen > 0 sein")
         return v
 
-    backtest_artifacts_dir: str = Field(default="artifacts/backtests", alias="BACKTEST_ARTIFACTS_DIR")
+    backtest_artifacts_dir: str = Field(
+        default="artifacts/backtests", alias="BACKTEST_ARTIFACTS_DIR"
+    )
     research_benchmark_artifacts_dir: str = Field(
         default="artifacts/research",
         alias="RESEARCH_BENCHMARK_ARTIFACTS_DIR",
@@ -221,7 +259,9 @@ class LearningEngineSettings(BaseServiceSettings):
         alias="RESEARCH_BENCHMARK_READ_SECRET",
         description="Wenn gesetzt: GET /learning/research/benchmark-evidence erfordert X-Research-Benchmark-Secret.",
     )
-    model_artifacts_dir: str = Field(default="artifacts/models", alias="MODEL_ARTIFACTS_DIR")
+    model_artifacts_dir: str = Field(
+        default="artifacts/models", alias="MODEL_ARTIFACTS_DIR"
+    )
     take_trade_model_artifacts_dir: str | None = Field(
         default=None,
         alias="TAKE_TRADE_MODEL_ARTIFACTS_DIR",
@@ -234,7 +274,9 @@ class LearningEngineSettings(BaseServiceSettings):
         default=None,
         alias="REGIME_CLASSIFIER_MODEL_ARTIFACTS_DIR",
     )
-    take_trade_model_min_rows: int = Field(default=80, alias="TAKE_TRADE_MODEL_MIN_ROWS")
+    take_trade_model_min_rows: int = Field(
+        default=80, alias="TAKE_TRADE_MODEL_MIN_ROWS"
+    )
     expected_bps_model_min_rows: int = Field(
         default=96,
         alias="EXPECTED_BPS_MODEL_MIN_ROWS",
@@ -247,8 +289,12 @@ class LearningEngineSettings(BaseServiceSettings):
         default="sigmoid",
         alias="TAKE_TRADE_MODEL_CALIBRATION_METHOD",
     )
-    backtest_default_cv: str = Field(default="walk_forward", alias="BACKTEST_DEFAULT_CV")
-    backtest_purged_embargo_pct: float = Field(default=0.05, alias="BACKTEST_PURGED_EMBARGO_PCT")
+    backtest_default_cv: str = Field(
+        default="walk_forward", alias="BACKTEST_DEFAULT_CV"
+    )
+    backtest_purged_embargo_pct: float = Field(
+        default=0.05, alias="BACKTEST_PURGED_EMBARGO_PCT"
+    )
     backtest_kfolds: int = Field(default=5, alias="BACKTEST_KFOLDS")
     train_cv_kfolds: int = Field(default=5, alias="TRAIN_CV_KFOLDS")
     train_cv_embargo_pct: float = Field(default=0.05, alias="TRAIN_CV_EMBARGO_PCT")
@@ -302,11 +348,19 @@ class LearningEngineSettings(BaseServiceSettings):
         alias="SPECIALIST_SYMBOL_MIN_ROWS",
         description="Mindest-Trainingszeilen pro Symbol fuer Symbol-Scoped Champion/Promotion.",
     )
-    regime_classifier_min_rows: int = Field(default=120, alias="REGIME_CLASSIFIER_MIN_ROWS")
-    regime_classifier_min_per_class: int = Field(default=8, alias="REGIME_CLASSIFIER_MIN_PER_CLASS")
+    regime_classifier_min_rows: int = Field(
+        default=120, alias="REGIME_CLASSIFIER_MIN_ROWS"
+    )
+    regime_classifier_min_per_class: int = Field(
+        default=8, alias="REGIME_CLASSIFIER_MIN_PER_CLASS"
+    )
     replay_speed_factor: float = Field(default=60.0, alias="REPLAY_SPEED_FACTOR")
-    model_calibration_required: bool = Field(default=False, alias="MODEL_CALIBRATION_REQUIRED")
-    model_champion_name: str = Field(default="take_trade_prob", alias="MODEL_CHAMPION_NAME")
+    model_calibration_required: bool = Field(
+        default=False, alias="MODEL_CALIBRATION_REQUIRED"
+    )
+    model_champion_name: str = Field(
+        default="take_trade_prob", alias="MODEL_CHAMPION_NAME"
+    )
     learning_drift_retrain_window_days: int = Field(
         default=30,
         alias="LEARNING_DRIFT_RETRAIN_WINDOW_DAYS",
@@ -341,7 +395,9 @@ class LearningEngineSettings(BaseServiceSettings):
         description="Nur DB-Stubs + PENDING_EVAL, kein Sklearn-Training (CI/Schnelltests).",
     )
 
-    model_promotion_gates_enabled: bool = Field(default=False, alias="MODEL_PROMOTION_GATES_ENABLED")
+    model_promotion_gates_enabled: bool = Field(
+        default=False, alias="MODEL_PROMOTION_GATES_ENABLED"
+    )
     model_promotion_min_walk_forward_mean_roc_auc: float = Field(
         default=0.52,
         alias="MODEL_PROMOTION_MIN_WALK_FORWARD_MEAN_ROC_AUC",
@@ -457,8 +513,12 @@ class LearningEngineSettings(BaseServiceSettings):
         description="Wenn gesetzt: POST /learning/governance/context-signals erfordert X-Learning-Context-Ingest-Secret.",
     )
 
-    online_drift_lookback_minutes: int = Field(default=60, alias="ONLINE_DRIFT_LOOKBACK_MINUTES")
-    online_drift_max_signals_sample: int = Field(default=400, alias="ONLINE_DRIFT_MAX_SIGNALS_SAMPLE")
+    online_drift_lookback_minutes: int = Field(
+        default=60, alias="ONLINE_DRIFT_LOOKBACK_MINUTES"
+    )
+    online_drift_max_signals_sample: int = Field(
+        default=400, alias="ONLINE_DRIFT_MAX_SIGNALS_SAMPLE"
+    )
     online_drift_min_samples: int = Field(default=25, alias="ONLINE_DRIFT_MIN_SAMPLES")
     online_drift_evaluate_on_analytics_run: bool = Field(
         default=True,
@@ -468,18 +528,42 @@ class LearningEngineSettings(BaseServiceSettings):
         default=300_000,
         alias="ONLINE_DRIFT_FEATURE_STALE_AGE_MS",
     )
-    online_drift_ood_mean_warn: float = Field(default=0.28, alias="ONLINE_DRIFT_OOD_MEAN_WARN")
-    online_drift_ood_mean_shadow: float = Field(default=0.40, alias="ONLINE_DRIFT_OOD_MEAN_SHADOW")
-    online_drift_ood_mean_block: float = Field(default=0.52, alias="ONLINE_DRIFT_OOD_MEAN_BLOCK")
-    online_drift_regime_tv_warn: float = Field(default=0.22, alias="ONLINE_DRIFT_REGIME_TV_WARN")
-    online_drift_regime_tv_shadow: float = Field(default=0.38, alias="ONLINE_DRIFT_REGIME_TV_SHADOW")
-    online_drift_regime_tv_block: float = Field(default=0.52, alias="ONLINE_DRIFT_REGIME_TV_BLOCK")
-    online_drift_stale_frac_warn: float = Field(default=0.20, alias="ONLINE_DRIFT_STALE_FRAC_WARN")
-    online_drift_stale_frac_shadow: float = Field(default=0.40, alias="ONLINE_DRIFT_STALE_FRAC_SHADOW")
-    online_drift_stale_frac_block: float = Field(default=0.60, alias="ONLINE_DRIFT_STALE_FRAC_BLOCK")
-    online_drift_prob_std_warn: float = Field(default=0.14, alias="ONLINE_DRIFT_PROB_STD_WARN")
-    online_drift_prob_std_shadow: float = Field(default=0.22, alias="ONLINE_DRIFT_PROB_STD_SHADOW")
-    online_drift_prob_std_block: float = Field(default=0.32, alias="ONLINE_DRIFT_PROB_STD_BLOCK")
+    online_drift_ood_mean_warn: float = Field(
+        default=0.28, alias="ONLINE_DRIFT_OOD_MEAN_WARN"
+    )
+    online_drift_ood_mean_shadow: float = Field(
+        default=0.40, alias="ONLINE_DRIFT_OOD_MEAN_SHADOW"
+    )
+    online_drift_ood_mean_block: float = Field(
+        default=0.52, alias="ONLINE_DRIFT_OOD_MEAN_BLOCK"
+    )
+    online_drift_regime_tv_warn: float = Field(
+        default=0.22, alias="ONLINE_DRIFT_REGIME_TV_WARN"
+    )
+    online_drift_regime_tv_shadow: float = Field(
+        default=0.38, alias="ONLINE_DRIFT_REGIME_TV_SHADOW"
+    )
+    online_drift_regime_tv_block: float = Field(
+        default=0.52, alias="ONLINE_DRIFT_REGIME_TV_BLOCK"
+    )
+    online_drift_stale_frac_warn: float = Field(
+        default=0.20, alias="ONLINE_DRIFT_STALE_FRAC_WARN"
+    )
+    online_drift_stale_frac_shadow: float = Field(
+        default=0.40, alias="ONLINE_DRIFT_STALE_FRAC_SHADOW"
+    )
+    online_drift_stale_frac_block: float = Field(
+        default=0.60, alias="ONLINE_DRIFT_STALE_FRAC_BLOCK"
+    )
+    online_drift_prob_std_warn: float = Field(
+        default=0.14, alias="ONLINE_DRIFT_PROB_STD_WARN"
+    )
+    online_drift_prob_std_shadow: float = Field(
+        default=0.22, alias="ONLINE_DRIFT_PROB_STD_SHADOW"
+    )
+    online_drift_prob_std_block: float = Field(
+        default=0.32, alias="ONLINE_DRIFT_PROB_STD_BLOCK"
+    )
     online_drift_ood_alert_frac_warn: float = Field(
         default=0.12,
         alias="ONLINE_DRIFT_OOD_ALERT_FRAC_WARN",
@@ -529,7 +613,9 @@ class LearningEngineSettings(BaseServiceSettings):
     @classmethod
     def _bt_k(cls, v: int) -> int:
         if v < 2 or v > 20:
-            raise ValueError("KFolds muss 2..20 sein (BACKTEST_KFOLDS / TRAIN_CV_KFOLDS)")
+            raise ValueError(
+                "KFolds muss 2..20 sein (BACKTEST_KFOLDS / TRAIN_CV_KFOLDS)"
+            )
         return v
 
     @field_validator("train_cv_embargo_pct", "backtest_purged_embargo_pct")
@@ -539,7 +625,9 @@ class LearningEngineSettings(BaseServiceSettings):
             raise ValueError("Embargo-Anteil muss 0..1 sein")
         return v
 
-    @field_validator("research_benchmark_default_eval_limit", "research_benchmark_default_e2e_limit")
+    @field_validator(
+        "research_benchmark_default_eval_limit", "research_benchmark_default_e2e_limit"
+    )
     @classmethod
     def _research_limits(cls, v: int) -> int:
         if v < 1 or v > 50_000:
@@ -566,11 +654,19 @@ class LearningEngineSettings(BaseServiceSettings):
     def _default_model_artifact_subdirs(self) -> Self:
         root = Path(self.model_artifacts_dir)
         if self.take_trade_model_artifacts_dir is None:
-            object.__setattr__(self, "take_trade_model_artifacts_dir", str(root / "take_trade_prob"))
+            object.__setattr__(
+                self, "take_trade_model_artifacts_dir", str(root / "take_trade_prob")
+            )
         if self.expected_bps_model_artifacts_dir is None:
-            object.__setattr__(self, "expected_bps_model_artifacts_dir", str(root / "expected_bps"))
+            object.__setattr__(
+                self, "expected_bps_model_artifacts_dir", str(root / "expected_bps")
+            )
         if self.regime_classifier_model_artifacts_dir is None:
-            object.__setattr__(self, "regime_classifier_model_artifacts_dir", str(root / "regime_classifier"))
+            object.__setattr__(
+                self,
+                "regime_classifier_model_artifacts_dir",
+                str(root / "regime_classifier"),
+            )
         return self
 
     @field_validator(
@@ -644,14 +740,18 @@ class LearningEngineSettings(BaseServiceSettings):
     @classmethod
     def _promotion_thresholds_sane(cls, v: float) -> float:
         if v < 0 or v > 1.0:
-            raise ValueError("Promotions-Schwellen fuer AUC/Accuracy/Brier muessen 0..1 sein")
+            raise ValueError(
+                "Promotions-Schwellen fuer AUC/Accuracy/Brier muessen 0..1 sein"
+            )
         return v
 
     @field_validator("model_promotion_max_cv_symbol_overlap_folds_take_trade")
     @classmethod
     def _cv_symbol_overlap_non_negative(cls, v: int) -> int:
         if v < 0:
-            raise ValueError("MODEL_PROMOTION_MAX_CV_SYMBOL_OVERLAP_FOLDS_TAKE_TRADE muss >= 0 sein")
+            raise ValueError(
+                "MODEL_PROMOTION_MAX_CV_SYMBOL_OVERLAP_FOLDS_TAKE_TRADE muss >= 0 sein"
+            )
         return v
 
     @field_validator("take_trade_model_calibration_method")

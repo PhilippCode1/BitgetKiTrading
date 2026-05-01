@@ -15,7 +15,10 @@ for import_path in (ROOT, SHARED_SRC):
     if str(import_path) not in sys.path:
         sys.path.insert(0, str(import_path))
 
-from shared_py.liquidity_scoring import evaluate_liquidity_gate, liquidity_score_to_dict  # noqa: E402
+from shared_py.liquidity_scoring import (  # noqa: E402
+    evaluate_liquidity_gate,
+    liquidity_score_to_dict,
+)
 
 DEFAULT_INPUT = ROOT / "tests" / "fixtures" / "liquidity_quality_sample.json"
 
@@ -56,7 +59,9 @@ def build_payload(input_path: Path) -> dict[str, Any]:
                 "best_ask": item.get("ask"),
                 "bids": item.get("bids"),
                 "asks": item.get("asks"),
-                "orderbook_depth_top_10": item.get("orderbook_depth_top_10", item.get("requested_notional", 0.0)),
+                "orderbook_depth_top_10": item.get(
+                    "orderbook_depth_top_10", item.get("requested_notional", 0.0)
+                ),
                 "timestamp_age_ms": item.get("orderbook_age_ms"),
                 "max_orderbook_age_ms": item.get("max_orderbook_age_ms"),
                 "estimated_slippage_bps": item.get("estimated_slippage_bps"),
@@ -71,11 +76,17 @@ def build_payload(input_path: Path) -> dict[str, Any]:
         )
         row = liquidity_score_to_dict(result)
         row["asset"] = str(item.get("symbol") or "").upper()
-        row["allowed_order_size"] = float(item.get("planned_qty") or 0.0) if result.live_allowed else 0.0
-        row["blocked_order_size"] = 0.0 if result.live_allowed else float(item.get("planned_qty") or 0.0)
+        row["allowed_order_size"] = (
+            float(item.get("planned_qty") or 0.0) if result.live_allowed else 0.0
+        )
+        row["blocked_order_size"] = (
+            0.0 if result.live_allowed else float(item.get("planned_qty") or 0.0)
+        )
         rows.append(row)
     status = "not_enough_evidence"
-    if rows and all(r.get("status") == "pass" and r.get("evidence_level") == "runtime" for r in rows):
+    if rows and all(
+        r.get("status") == "pass" and r.get("evidence_level") == "runtime" for r in rows
+    ):
         status = "verified"
     return {
         "checked_at": datetime.now(tz=UTC).isoformat(),
@@ -84,7 +95,11 @@ def build_payload(input_path: Path) -> dict[str, Any]:
         "live_allowed_count": sum(1 for r in rows if r["live_allowed"]),
         "status": status if status != "verified" else "implemented",
         "decision": "not_enough_evidence" if status != "verified" else "verified",
-        "evidence_level": "runtime" if rows and all(r["evidence_level"] == "runtime" for r in rows) else "synthetic",
+        "evidence_level": (
+            "runtime"
+            if rows and all(r["evidence_level"] == "runtime" for r in rows)
+            else "synthetic"
+        ),
         "assets": rows,
     }
 
@@ -133,7 +148,9 @@ def render_markdown(payload: dict[str, Any]) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Erzeugt Liquidity/Spread/Slippage Evidence-Report.")
+    parser = argparse.ArgumentParser(
+        description="Erzeugt Liquidity/Spread/Slippage Evidence-Report."
+    )
     parser.add_argument("--input-json", type=Path, default=DEFAULT_INPUT)
     parser.add_argument("--output-md", type=Path, required=True)
     parser.add_argument("--output-json", type=Path, required=True)
@@ -141,7 +158,9 @@ def main(argv: list[str] | None = None) -> int:
 
     payload = build_payload(args.input_json)
     args.output_json.parent.mkdir(parents=True, exist_ok=True)
-    args.output_json.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    args.output_json.write_text(
+        json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
     args.output_md.parent.mkdir(parents=True, exist_ok=True)
     args.output_md.write_text(render_markdown(payload), encoding="utf-8")
     print(

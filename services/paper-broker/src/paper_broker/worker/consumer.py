@@ -46,7 +46,9 @@ def run_consumer_loop(
             bus.ensure_group(s, group)
         except Exception as exc:
             logger.warning("ensure_group %s: %s", s, exc)
-    logger.info("paper-broker consumer started group=%s streams=%s", group, len(streams))
+    logger.info(
+        "paper-broker consumer started group=%s streams=%s", group, len(streams)
+    )
     while not stop.is_set():
         had_work = False
         for stream in streams:
@@ -71,7 +73,9 @@ def run_consumer_loop(
                         broker.apply_envelope_funding(env)
                     elif strategy_engine is not None and settings.strategy_exec_enabled:
                         if env.event_type == "signal_created":
-                            strategy_engine.handle_signal_created(env.payload, env.symbol)
+                            strategy_engine.handle_signal_created(
+                                env.payload, env.symbol
+                            )
                         elif env.event_type == "news_scored":
                             strategy_engine.handle_news_scored(env.payload, env.symbol)
                         elif env.event_type == "drawing_updated":

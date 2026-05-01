@@ -70,12 +70,12 @@ from llm_orchestrator.prompt_governance import (
 from llm_orchestrator.prompt_governance.templates import (
     build_assistant_turn_user_prompt,
 )
+from llm_orchestrator.providers.fake_provider import FakeProvider
+from llm_orchestrator.providers.openai_provider import OpenAIProvider
 from llm_orchestrator.quality_feedback_trace import (
     persist_operator_explain_row,
     persist_strategy_signal_explain_row,
 )
-from llm_orchestrator.providers.fake_provider import FakeProvider
-from llm_orchestrator.providers.openai_provider import OpenAIProvider
 from llm_orchestrator.retry.backoff import openai_circuit_trip_on_status, sleep_backoff
 from llm_orchestrator.retry.circuit import CircuitBreaker
 from llm_orchestrator.validation.schema_validate import (
@@ -181,7 +181,9 @@ class LLMService:
             "ai_strategy_proposal_draft.schema.json"
         )
         self._schema_journal = load_json_schema("strategy_journal_summary.schema.json")
-        self._schema_assistant_turn_base = load_json_schema("assistant_turn.schema.json")
+        self._schema_assistant_turn_base = load_json_schema(
+            "assistant_turn.schema.json"
+        )
         self._assist_conv = AssistConversationStore(
             self._redis,
             ttl_sec=settings.llm_assist_conversation_ttl_sec,
@@ -696,6 +698,7 @@ class LLMService:
                 continue
 
             for attempt in range(self._settings.llm_max_retries):
+
                 def _validate_out(obj: dict[str, Any]) -> None:
                     validate_against_schema(schema_json, obj)
                     validate_task_output(obj, task_type=task_type)
@@ -762,7 +765,10 @@ class LLMService:
                         prov_key,
                         exc,
                     )
-                    if time.perf_counter() + self._backoff_duration_sec(attempt) > deadline:
+                    if (
+                        time.perf_counter() + self._backoff_duration_sec(attempt)
+                        > deadline
+                    ):
                         return self._graceful_degradation_out(
                             schema_json=schema_json,
                             prompt=prompt,
@@ -982,10 +988,7 @@ class LLMService:
 
         le = (last_error or "").lower()
         is_timeoutish = (
-            "timeout" in le
-            or "504" in le
-            or "zeiti" in le
-            or "deadline" in le
+            "timeout" in le or "504" in le or "zeiti" in le or "deadline" in le
         )
         if is_timeoutish:
             llm_code = "LLM_ORCHESTRATOR_TIMEOUT"
@@ -1158,9 +1161,7 @@ class LLMService:
             ro = merge_fetched_onchain_into_context(ro, fetched)
         except Exception as exc:
             logger.warning("operator_explain: onchain_macro fetch: %s", exc)
-        qctx = format_operator_readonly_pro_symbol(
-            ro, max_total_chars=10_000
-        )
+        qctx = format_operator_readonly_pro_symbol(ro, max_total_chars=10_000)
         rq = f"{question_de}\n{qctx}"
         rchunks = self._retriever.retrieve("operator_explain", rq)
         rag = self._retriever.format_for_prompt(rchunks)
@@ -1251,7 +1252,7 @@ class LLMService:
             exs = (res.get("expected_scenario_de") or "").strip()
             if not exs:
                 src = (res.get("strategy_explanation_de") or "").strip()
-                res["expected_scenario_de"] = (src[:2000] if src else "—")
+                res["expected_scenario_de"] = src[:2000] if src else "—"
             ca = res.get("chart_annotations")
             if ca is not None:
                 fixed, n_ms_fix = sanitize_strategy_chart_annotations(ca)
@@ -1261,7 +1262,9 @@ class LLMService:
                     if isinstance(prov, dict):
                         prov["chart_annotation_unix_ms_corrected"] = n_ms_fix
         ex_u: UUID | None = execution_id if isinstance(execution_id, UUID) else None
-        sig_u: UUID | None = source_signal_id if isinstance(source_signal_id, UUID) else None
+        sig_u: UUID | None = (
+            source_signal_id if isinstance(source_signal_id, UUID) else None
+        )
         if ex_u is None and sig_u is None and isinstance(signal_context_json, dict):
             raw = signal_context_json.get("signal_id")
             if raw is not None:
@@ -1339,9 +1342,7 @@ class LLMService:
             conversation_id=conversation_id,
         )
         qctx = self._trunc_json(filtered, max_chars=14_000)
-        hist_digest = "\n".join(
-            (m.get("content_de") or "")[:400] for m in hist[-8:]
-        )
+        hist_digest = "\n".join((m.get("content_de") or "")[:400] for m in hist[-8:])
         rq = f"{user_message_de}\n{qctx}\n{hist_digest}"
         rchunks = self._retriever.retrieve(task_type, rq)
         rag = self._retriever.format_for_prompt(rchunks)

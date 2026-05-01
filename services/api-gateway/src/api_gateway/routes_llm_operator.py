@@ -44,7 +44,9 @@ class SafetyIncidentDiagnosisGatewayBody(BaseModel):
 def llm_operator_explain(
     request: Request,
     body: OperatorExplainGatewayBody,
-    auth: Annotated[GatewayAuthContext, Depends(require_commercial_entitlement("AI_DEEP_ANALYSIS"))],
+    auth: Annotated[
+        GatewayAuthContext, Depends(require_commercial_entitlement("AI_DEEP_ANALYSIS"))
+    ],
 ) -> dict[str, Any]:
     """
     Operator-Hilfe: Frage (DE) + optionaler Readonly-Kontext → strukturierte Erklaerung.
@@ -85,13 +87,17 @@ def llm_operator_explain(
         ) from exc
     except LLMOrchestratorForwardHttpError as exc:
         if exc.status_code in (413, 422):
-            raise HTTPException(status_code=exc.status_code, detail=exc.payload) from exc
+            raise HTTPException(
+                status_code=exc.status_code, detail=exc.payload
+            ) from exc
         if exc.status_code == 502:
             raise HTTPException(
                 status_code=502,
-                detail=exc.payload
-                if isinstance(exc.payload, dict)
-                else {"message": str(exc.payload)},
+                detail=(
+                    exc.payload
+                    if isinstance(exc.payload, dict)
+                    else {"message": str(exc.payload)}
+                ),
             ) from exc
         raise HTTPException(
             status_code=502,
@@ -107,7 +113,9 @@ def llm_operator_explain(
 def llm_operator_safety_incident_diagnosis(
     request: Request,
     body: SafetyIncidentDiagnosisGatewayBody,
-    auth: Annotated[GatewayAuthContext, Depends(require_commercial_entitlement("AI_DEEP_ANALYSIS"))],
+    auth: Annotated[
+        GatewayAuthContext, Depends(require_commercial_entitlement("AI_DEEP_ANALYSIS"))
+    ],
 ) -> dict[str, Any]:
     """
     Sicherheits-Diagnose: Readonly Health/Alerts-Kontext + Frage → strukturierte Ursachen/Plaene.
@@ -148,13 +156,17 @@ def llm_operator_safety_incident_diagnosis(
         ) from exc
     except LLMOrchestratorForwardHttpError as exc:
         if exc.status_code in (413, 422):
-            raise HTTPException(status_code=exc.status_code, detail=exc.payload) from exc
+            raise HTTPException(
+                status_code=exc.status_code, detail=exc.payload
+            ) from exc
         if exc.status_code == 502:
             raise HTTPException(
                 status_code=502,
-                detail=exc.payload
-                if isinstance(exc.payload, dict)
-                else {"message": str(exc.payload)},
+                detail=(
+                    exc.payload
+                    if isinstance(exc.payload, dict)
+                    else {"message": str(exc.payload)}
+                ),
             ) from exc
         raise HTTPException(
             status_code=502,
@@ -170,7 +182,9 @@ def llm_operator_safety_incident_diagnosis(
 def llm_operator_strategy_signal_explain(
     request: Request,
     body: StrategySignalExplainGatewayBody,
-    auth: Annotated[GatewayAuthContext, Depends(require_commercial_entitlement("AI_DEEP_ANALYSIS"))],
+    auth: Annotated[
+        GatewayAuthContext, Depends(require_commercial_entitlement("AI_DEEP_ANALYSIS"))
+    ],
 ) -> dict[str, Any]:
     """
     Strategie-/Signal-Erklaerung: Readonly-Snapshot (JSON) + optionale Fokusfrage → strukturierte Antwort.
@@ -226,13 +240,17 @@ def llm_operator_strategy_signal_explain(
         ) from exc
     except LLMOrchestratorForwardHttpError as exc:
         if exc.status_code in (413, 422):
-            raise HTTPException(status_code=exc.status_code, detail=exc.payload) from exc
+            raise HTTPException(
+                status_code=exc.status_code, detail=exc.payload
+            ) from exc
         if exc.status_code == 502:
             raise HTTPException(
                 status_code=502,
-                detail=exc.payload
-                if isinstance(exc.payload, dict)
-                else {"message": str(exc.payload)},
+                detail=(
+                    exc.payload
+                    if isinstance(exc.payload, dict)
+                    else {"message": str(exc.payload)}
+                ),
             ) from exc
         raise HTTPException(
             status_code=502,
@@ -248,7 +266,9 @@ def llm_operator_strategy_signal_explain(
 def llm_operator_ai_strategy_proposal_draft(
     request: Request,
     body: AiStrategyProposalDraftGatewayBody,
-    auth: Annotated[GatewayAuthContext, Depends(require_commercial_entitlement("AI_DEEP_ANALYSIS"))],
+    auth: Annotated[
+        GatewayAuthContext, Depends(require_commercial_entitlement("AI_DEEP_ANALYSIS"))
+    ],
 ) -> dict[str, Any]:
     """
     KI-Strategie-/Szenario-Entwurf (strukturiert, execution_authority none).
@@ -304,13 +324,17 @@ def llm_operator_ai_strategy_proposal_draft(
         ) from exc
     except LLMOrchestratorForwardHttpError as exc:
         if exc.status_code in (413, 422):
-            raise HTTPException(status_code=exc.status_code, detail=exc.payload) from exc
+            raise HTTPException(
+                status_code=exc.status_code, detail=exc.payload
+            ) from exc
         if exc.status_code == 502:
             raise HTTPException(
                 status_code=502,
-                detail=exc.payload
-                if isinstance(exc.payload, dict)
-                else {"message": str(exc.payload)},
+                detail=(
+                    exc.payload
+                    if isinstance(exc.payload, dict)
+                    else {"message": str(exc.payload)}
+                ),
             ) from exc
         raise HTTPException(
             status_code=502,

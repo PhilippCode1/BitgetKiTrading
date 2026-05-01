@@ -18,15 +18,23 @@ if str(ROOT) not in sys.path:
 
 from scripts.dr_postgres_restore_test import (  # noqa: E402
     DEFAULT_EVIDENCE_TEMPLATE as RESTORE_TEMPLATE,
+)
+from scripts.dr_postgres_restore_test import (
     assess_external_restore_evidence,
     build_restore_evidence,
+)
+from scripts.dr_postgres_restore_test import (
     secret_surface_issues as restore_secret_surface_issues,
 )
 from scripts.live_safety_drill import (  # noqa: E402
     DEFAULT_DRILL_TEMPLATE as SAFETY_TEMPLATE,
+)
+from scripts.live_safety_drill import (
     assess_external_safety_drill,
-    secret_surface_issues as safety_secret_surface_issues,
     simulate_safety_drill,
+)
+from scripts.live_safety_drill import (
+    secret_surface_issues as safety_secret_surface_issues,
 )
 
 REQUIRED_RESTORE_BLOCKERS = (
@@ -84,8 +92,12 @@ def build_report_payload() -> dict[str, Any]:
     restore_dry_run = build_restore_evidence(database_url="", dry_run=True)
     safety_simulation = simulate_safety_drill("simulated")
 
-    restore_missing_blockers = sorted(set(REQUIRED_RESTORE_BLOCKERS) - set(restore_assessment.blockers))
-    safety_missing_blockers = sorted(set(REQUIRED_SAFETY_BLOCKERS) - set(safety_assessment.blockers))
+    restore_missing_blockers = sorted(
+        set(REQUIRED_RESTORE_BLOCKERS) - set(restore_assessment.blockers)
+    )
+    safety_missing_blockers = sorted(
+        set(REQUIRED_SAFETY_BLOCKERS) - set(safety_assessment.blockers)
+    )
     failures: list[str] = []
     if restore_assessment.status != "FAIL":
         failures.append("restore_template_must_fail_until_external_evidence")
@@ -193,7 +205,9 @@ def main(argv: list[str] | None = None) -> int:
     payload = build_report_payload()
     if args.output_json:
         args.output_json.parent.mkdir(parents=True, exist_ok=True)
-        args.output_json.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+        args.output_json.write_text(
+            json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
     if args.output_md:
         args.output_md.parent.mkdir(parents=True, exist_ok=True)
         args.output_md.write_text(render_markdown(payload), encoding="utf-8")

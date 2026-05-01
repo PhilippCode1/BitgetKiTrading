@@ -27,7 +27,9 @@ logger = logging.getLogger("learning_engine.training.cli")
 
 def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
-    p = argparse.ArgumentParser(description="Learning-Engine Trainingspipeline (reproduzierbar)")
+    p = argparse.ArgumentParser(
+        description="Learning-Engine Trainingspipeline (reproduzierbar)"
+    )
     p.add_argument(
         "job",
         nargs="?",
@@ -55,7 +57,9 @@ def main(argv: list[str] | None = None) -> int:
         help="Purge/Embargo Walk-Forward zeitlich pruefen (DoD Prompt 47, kein DB-Training)",
     )
     p.add_argument("--symbol", default=None, help="z.B. <example_symbol>")
-    p.add_argument("--no-promote", action="store_true", help="Kein promoted_bool in Registry")
+    p.add_argument(
+        "--no-promote", action="store_true", help="Kein promoted_bool in Registry"
+    )
     p.add_argument(
         "--summary-out",
         default=None,

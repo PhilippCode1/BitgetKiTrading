@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from decimal import Decimal, ROUND_DOWN
+from decimal import ROUND_DOWN, Decimal
 from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
@@ -63,7 +63,9 @@ class InstrumentOrderRequest(BaseModel):
     reduce_only: bool = False
     requested_leverage: int | None = None
 
-    @field_validator("symbol", "product_type", "margin_coin", "margin_account_mode", mode="before")
+    @field_validator(
+        "symbol", "product_type", "margin_coin", "margin_account_mode", mode="before"
+    )
     @classmethod
     def _normalize_upper(cls, value: object) -> object:
         if value is None:
@@ -107,7 +109,9 @@ def round_qty_to_lot(qty: str, lot_size: str) -> str:
     return format(rounded, "f")
 
 
-def validate_min_qty_and_notional(*, qty: str, price: str, min_qty: str, min_notional: str) -> list[str]:
+def validate_min_qty_and_notional(
+    *, qty: str, price: str, min_qty: str, min_notional: str
+) -> list[str]:
     reasons: list[str] = []
     q = _to_decimal(qty)
     p = _to_decimal(price)
@@ -137,13 +141,25 @@ def validate_instrument_order_contract(
         reasons.append("futures_margin_coin_fehlt")
     if context.market_family == "margin" and not context.margin_account_mode:
         reasons.append("margin_account_mode_fehlt")
-    if context.market_family == "spot" and request.requested_leverage not in (None, 0, 1):
+    if context.market_family == "spot" and request.requested_leverage not in (
+        None,
+        0,
+        1,
+    ):
         reasons.append("spot_mit_futures_leverage_kontext")
     if context.source_freshness_status in {"stale", "unknown"}:
         reasons.append("instrument_metadaten_stale")
-    if request.product_type and context.product_type and request.product_type != context.product_type:
+    if (
+        request.product_type
+        and context.product_type
+        and request.product_type != context.product_type
+    ):
         reasons.append("product_type_mismatch")
-    if request.margin_coin and context.margin_coin and request.margin_coin != context.margin_coin:
+    if (
+        request.margin_coin
+        and context.margin_coin
+        and request.margin_coin != context.margin_coin
+    ):
         reasons.append("margin_coin_mismatch")
     if context.price_precision is None or context.quantity_precision is None:
         reasons.append("unknown_precision")
@@ -160,7 +176,9 @@ def validate_instrument_order_contract(
         rounded_price = round_price_to_tick(request.price, context.tick_size)
         rounded_qty = round_qty_to_lot(request.qty, context.lot_size)
         # Niemals risk-erhoehend aufrunden.
-        if Decimal(rounded_price) > Decimal(request.price) or Decimal(rounded_qty) > Decimal(request.qty):
+        if Decimal(rounded_price) > Decimal(request.price) or Decimal(
+            rounded_qty
+        ) > Decimal(request.qty):
             reasons.append("risk_erhoehendes_rounding_verboten")
         if context.min_qty and context.min_notional:
             reasons.extend(
@@ -206,5 +224,8 @@ def build_instrument_contract_block_reason_de(reasons: list[str]) -> list[str]:
     for reason in reasons:
         out.append(mapping.get(reason, f"Unbekannter Blockgrund: {reason}"))
     # Keine sensiblen Werte im Fehlerkontext.
-    sanitized = [item.replace("SECRET", "***").replace("TOKEN", "***").replace("PASSWORD", "***") for item in out]
+    sanitized = [
+        item.replace("SECRET", "***").replace("TOKEN", "***").replace("PASSWORD", "***")
+        for item in out
+    ]
     return sanitized

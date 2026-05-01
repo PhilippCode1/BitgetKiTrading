@@ -13,7 +13,10 @@ from decimal import Decimal
 from enum import Enum
 from typing import Final
 
-from shared_py.commercial_data_model import DE_VAT_RATE_STANDARD, vat_amounts_from_net_cents
+from shared_py.commercial_data_model import (
+    DE_VAT_RATE_STANDARD,
+    vat_amounts_from_net_cents,
+)
 from shared_py.customer_lifecycle import LifecyclePhase
 from shared_py.customer_portal_contract import SubscriptionIntervalId
 

@@ -77,7 +77,9 @@ def insert_version(
     return dict(row)
 
 
-def fetch_strategy_by_id(conn: psycopg.Connection[Any], strategy_id: UUID) -> dict[str, Any] | None:
+def fetch_strategy_by_id(
+    conn: psycopg.Connection[Any], strategy_id: UUID
+) -> dict[str, Any] | None:
     return conn.execute(
         """
         SELECT s.strategy_id, s.name, s.description, s.scope_json, s.created_ts, s.updated_ts,
@@ -118,7 +120,9 @@ def list_strategies(
     return [dict(r) for r in rows]
 
 
-def list_versions(conn: psycopg.Connection[Any], strategy_id: UUID) -> list[dict[str, Any]]:
+def list_versions(
+    conn: psycopg.Connection[Any], strategy_id: UUID
+) -> list[dict[str, Any]]:
     rows = conn.execute(
         """
         SELECT strategy_version_id, strategy_id, version, definition_json, parameters_json,

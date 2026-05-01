@@ -11,18 +11,21 @@ import {
 } from "@/lib/console-paths";
 
 const LINKS: readonly { href: string; messageKey: string }[] = [
-    { href: PORTAL_BASE, messageKey: "customerPortal.nav.overview" },
-    { href: portalPath("trial"), messageKey: "customerPortal.nav.trial" },
-    { href: portalPath("risk"), messageKey: "customerPortal.nav.risk" },
-    { href: portalPath("exchange"), messageKey: "customerPortal.nav.exchange" },
-    { href: portalPath("performance"), messageKey: "customerPortal.nav.performance" },
-    {
-      href: portalAccountPath("billing"),
-      messageKey: "customerPortal.nav.contractAndBilling",
-    },
-    { href: portalPath("trading"), messageKey: "customerPortal.nav.trading" },
-    { href: portalPath("help"), messageKey: "customerPortal.nav.helpSupport" },
-  ];
+  { href: PORTAL_BASE, messageKey: "customerPortal.nav.overview" },
+  { href: portalPath("trial"), messageKey: "customerPortal.nav.trial" },
+  { href: portalPath("risk"), messageKey: "customerPortal.nav.risk" },
+  { href: portalPath("exchange"), messageKey: "customerPortal.nav.exchange" },
+  {
+    href: portalPath("performance"),
+    messageKey: "customerPortal.nav.performance",
+  },
+  {
+    href: portalAccountPath("billing"),
+    messageKey: "customerPortal.nav.contractAndBilling",
+  },
+  { href: portalPath("trading"), messageKey: "customerPortal.nav.trading" },
+  { href: portalPath("help"), messageKey: "customerPortal.nav.helpSupport" },
+];
 
 export function CustomerSidebarNav() {
   const pathname = usePathname();

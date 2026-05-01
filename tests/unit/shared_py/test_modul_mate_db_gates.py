@@ -40,7 +40,7 @@ def test_fetch_maps_row_to_gates() -> None:
     g = fetch_tenant_modul_mate_gates(conn, tenant_id="t1")
     assert isinstance(g, CustomerCommercialGates)
     assert g.trial_active is True
-    assert demo_trading_allowed(g)
+    assert demo_trading_allowed(g) is False
     assert not live_trading_allowed(g)
 
 

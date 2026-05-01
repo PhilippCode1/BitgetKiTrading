@@ -67,14 +67,9 @@ export function buildProductMessageFromFetchError(
   const prefix = baseKeys(kind);
   const severity = severityForFetchKind(kind);
 
-  const code =
-    isApiFetchError(err) && err.code
-      ? String(err.code)
-      : undefined;
+  const code = isApiFetchError(err) && err.code ? String(err.code) : undefined;
   const status =
-    isApiFetchError(err) && err.status != null
-      ? String(err.status)
-      : undefined;
+    isApiFetchError(err) && err.status != null ? String(err.status) : undefined;
   const dedupeKey = `fetch:${kind}:${code ?? status ?? "na"}`;
 
   return {

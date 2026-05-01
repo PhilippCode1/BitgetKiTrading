@@ -9,7 +9,8 @@ Semantik:
 
 from __future__ import annotations
 
-from typing import Any, Mapping
+from collections.abc import Mapping
+from typing import Any
 
 SIGNAL_API_CONTRACT_VERSION = "1.2.0"
 
@@ -23,7 +24,11 @@ def reasons_json_shape_summary(reasons_json: Any) -> dict[str, Any]:
         return {"kind": "null"}
     if isinstance(reasons_json, dict):
         keys = sorted(str(k) for k in reasons_json.keys())
-        return {"kind": "object", "top_level_keys": keys[:48], "truncated": len(keys) > 48}
+        return {
+            "kind": "object",
+            "top_level_keys": keys[:48],
+            "truncated": len(keys) > 48,
+        }
     if isinstance(reasons_json, list):
         return {"kind": "array", "length": len(reasons_json)}
     return {"kind": "scalar"}

@@ -137,9 +137,9 @@ def canonical_from_raw_public_message(
 ) -> BitgetWsCanonicalEvent:
     """Parse arg + action aus Rohtext-JSON (wie von Bitget WS)."""
     arg = message.get("arg") if isinstance(message.get("arg"), dict) else {}
-    ch = arg.get("channel")
-    inst = arg.get("instId")
-    it = arg.get("instType")
+    ch = arg.get("channel")  # type: ignore
+    inst = arg.get("instId")  # type: ignore
+    it = arg.get("instType")  # type: ignore
     action = str(message.get("action") or "update")
     ex_ts: int | None = None
     for key in ("ts", "timestamp"):

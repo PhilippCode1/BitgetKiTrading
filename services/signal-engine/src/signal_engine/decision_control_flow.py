@@ -57,7 +57,9 @@ def _as_dict(value: Any) -> dict[str, Any]:
     return {}
 
 
-def _specialists_bundle(db_row: dict[str, Any], rj: dict[str, Any], snap: dict[str, Any]) -> dict[str, Any]:
+def _specialists_bundle(
+    db_row: dict[str, Any], rj: dict[str, Any], snap: dict[str, Any]
+) -> dict[str, Any]:
     spec = rj.get("specialists")
     if isinstance(spec, dict) and spec:
         return spec
@@ -65,7 +67,9 @@ def _specialists_bundle(db_row: dict[str, Any], rj: dict[str, Any], snap: dict[s
     return dict(spec2) if isinstance(spec2, dict) else {}
 
 
-def _end_decision_binding(db_row: dict[str, Any], spec: dict[str, Any]) -> dict[str, Any]:
+def _end_decision_binding(
+    db_row: dict[str, Any], spec: dict[str, Any]
+) -> dict[str, Any]:
     """Gebundene Endentscheidung: Playbook + konservative Ausfuehrungs-Hints aus Ensemble-Proposals."""
     exit_ranked: list[str] = []
     stop_budgets: list[float] = []
@@ -88,7 +92,7 @@ def _end_decision_binding(db_row: dict[str, Any], spec: dict[str, Any]) -> dict[
         if not isinstance(prop, dict):
             continue
         sb = prop.get("stop_budget_0_1")
-        if isinstance(sb, (int, float)):
+        if isinstance(sb, int | float):
             stop_budgets.append(float(sb))
         for ex in prop.get("exit_families_ranked") or []:
             if isinstance(ex, str) and ex.strip() and ex not in exit_ranked:
@@ -104,18 +108,37 @@ def _end_decision_binding(db_row: dict[str, Any], spec: dict[str, Any]) -> dict[
             except (TypeError, ValueError):
                 pass
 
-    router = spec.get("router_arbitration") if isinstance(spec.get("router_arbitration"), dict) else {}
-    adv = spec.get("adversary_check") if isinstance(spec.get("adversary_check"), dict) else {}
+    router = (
+        spec.get("router_arbitration")
+        if isinstance(spec.get("router_arbitration"), dict)
+        else {}
+    )
+    adv = (
+        spec.get("adversary_check")
+        if isinstance(spec.get("adversary_check"), dict)
+        else {}
+    )
 
     exit_primary = None
-    pb_prop = spec.get("playbook_specialist") if isinstance(spec.get("playbook_specialist"), dict) else {}
+    pb_prop = (
+        spec.get("playbook_specialist")
+        if isinstance(spec.get("playbook_specialist"), dict)
+        else {}
+    )
     pp = pb_prop.get("proposal") if isinstance(pb_prop.get("proposal"), dict) else {}
-    if isinstance(pp.get("exit_family_primary"), str) and pp.get("exit_family_primary").strip():
+    if (
+        isinstance(pp.get("exit_family_primary"), str)
+        and pp.get("exit_family_primary").strip()
+    ):
         exit_primary = pp.get("exit_family_primary").strip()
     elif exit_ranked:
         exit_primary = exit_ranked[0]
-    base_prop = spec.get("base_model") if isinstance(spec.get("base_model"), dict) else {}
-    bp = base_prop.get("proposal") if isinstance(base_prop.get("proposal"), dict) else {}
+    base_prop = (
+        spec.get("base_model") if isinstance(spec.get("base_model"), dict) else {}
+    )
+    bp = (
+        base_prop.get("proposal") if isinstance(base_prop.get("proposal"), dict) else {}
+    )
     if exit_primary is None and isinstance(bp.get("exit_family_primary"), str):
         exit_primary = (bp.get("exit_family_primary") or "").strip() or None
 
@@ -137,9 +160,11 @@ def _end_decision_binding(db_row: dict[str, Any], spec: dict[str, Any]) -> dict[
         },
         "allowed_leverage": db_row.get("allowed_leverage"),
         "recommended_leverage": db_row.get("recommended_leverage"),
-        "ensemble_router_version": (spec.get("ensemble_contract") or {}).get("ensemble_router_version")
-        if isinstance(spec.get("ensemble_contract"), dict)
-        else None,
+        "ensemble_router_version": (
+            (spec.get("ensemble_contract") or {}).get("ensemble_router_version")
+            if isinstance(spec.get("ensemble_contract"), dict)
+            else None
+        ),
         "router_pre_adversary_trade_action": router.get("pre_adversary_trade_action"),
         "router_selected_trade_action": router.get("selected_trade_action"),
         "adversary_hard_veto": adv.get("hard_veto_recommended"),
@@ -234,17 +259,28 @@ def build_decision_control_flow(db_row: dict[str, Any]) -> dict[str, Any]:
 
     take_prob = db_row.get("take_trade_prob")
     models_ok = take_prob is not None and all(
-        db_row.get(k) is not None for k in ("expected_return_bps", "expected_mae_bps", "expected_mfe_bps")
+        db_row.get(k) is not None
+        for k in ("expected_return_bps", "expected_mae_bps", "expected_mfe_bps")
     )
 
-    unc_phase = str(db_row.get("uncertainty_gate_phase") or ug.get("gate_phase") or "full")
+    unc_phase = str(
+        db_row.get("uncertainty_gate_phase") or ug.get("gate_phase") or "full"
+    )
     trade_action = str(db_row.get("trade_action") or "").strip().lower()
 
-    drift_blocked = "online_drift_hard_block" in (db_row.get("rejection_reasons_json") or [])
+    drift_blocked = "online_drift_hard_block" in (
+        db_row.get("rejection_reasons_json") or []
+    )
 
-    router_arb = spec.get("router_arbitration") if isinstance(spec.get("router_arbitration"), dict) else {}
+    router_arb = (
+        spec.get("router_arbitration")
+        if isinstance(spec.get("router_arbitration"), dict)
+        else {}
+    )
     pre_adv = str(router_arb.get("pre_adversary_trade_action") or "").strip().lower()
-    post_router = str(router_arb.get("selected_trade_action") or trade_action).strip().lower()
+    post_router = (
+        str(router_arb.get("selected_trade_action") or trade_action).strip().lower()
+    )
     specialist_outcome = "skipped"
     if spec:
         if post_router == "do_not_trade" and pre_adv == "allow_trade":
@@ -270,7 +306,10 @@ def build_decision_control_flow(db_row: dict[str, Any]) -> dict[str, Any]:
                 if not q_ok
                 else "Quality-Gate bestanden oder nicht gesetzt"
             ),
-            "evidence": {"quality_gate_passed": q_pass, "data_issues": snap.get("data_issues") or []},
+            "evidence": {
+                "quality_gate_passed": q_pass,
+                "data_issues": snap.get("data_issues") or [],
+            },
         }
     )
 
@@ -330,7 +369,9 @@ def build_decision_control_flow(db_row: dict[str, Any]) -> dict[str, Any]:
                 "expected_return_bps": db_row.get("expected_return_bps"),
                 "expected_mae_bps": db_row.get("expected_mae_bps"),
                 "expected_mfe_bps": db_row.get("expected_mfe_bps"),
-                "take_trade_calibration_method": db_row.get("take_trade_calibration_method"),
+                "take_trade_calibration_method": db_row.get(
+                    "take_trade_calibration_method"
+                ),
             },
         }
     )
@@ -341,8 +382,14 @@ def build_decision_control_flow(db_row: dict[str, Any]) -> dict[str, Any]:
 
     ua = snap.get("uncertainty_assessment")
     ua = ua if isinstance(ua, dict) else {}
-    comp_v2 = ua.get("components_v2") if isinstance(ua.get("components_v2"), dict) else {}
-    mon = ua.get("monitoring_hooks") if isinstance(ua.get("monitoring_hooks"), dict) else {}
+    comp_v2 = (
+        ua.get("components_v2") if isinstance(ua.get("components_v2"), dict) else {}
+    )
+    mon = (
+        ua.get("monitoring_hooks")
+        if isinstance(ua.get("monitoring_hooks"), dict)
+        else {}
+    )
 
     phases.append(
         {
@@ -361,7 +408,11 @@ def build_decision_control_flow(db_row: dict[str, Any]) -> dict[str, Any]:
                     "uncertainty_effective_for_leverage_0_1"
                 ),
                 "components_v2": comp_v2,
-                "exit_execution_bias": (rj.get("uncertainty_exit_execution_bias") if isinstance(rj, dict) else None),
+                "exit_execution_bias": (
+                    rj.get("uncertainty_exit_execution_bias")
+                    if isinstance(rj, dict)
+                    else None
+                ),
                 "model_ood_score_0_1": db_row.get("model_ood_score_0_1"),
                 "model_ood_alert": db_row.get("model_ood_alert"),
                 "uncertainty_execution_lane": db_row.get("uncertainty_execution_lane"),
@@ -378,7 +429,9 @@ def build_decision_control_flow(db_row: dict[str, Any]) -> dict[str, Any]:
     hybrid_trade = str(hd.get("trade_action") or "").strip().lower()
     if hybrid_trade not in ("allow_trade", "do_not_trade"):
         hybrid_trade = str(db_row.get("trade_action") or "").strip().lower()
-    hybrid_outcome = hybrid_trade if hybrid_trade in ("allow_trade", "do_not_trade") else "unknown"
+    hybrid_outcome = (
+        hybrid_trade if hybrid_trade in ("allow_trade", "do_not_trade") else "unknown"
+    )
     phases.append(
         {
             "id": "hybrid_risk_leverage_meta",
@@ -437,13 +490,19 @@ def build_decision_control_flow(db_row: dict[str, Any]) -> dict[str, Any]:
                 "leverage_before": sba.get("leverage_before"),
                 "leverage_after": sba.get("leverage_after"),
                 "mark_trigger_note": sba.get("mark_trigger_note"),
-                "liquidation_proximity_stress_0_1": sba.get("liquidation_proximity_stress_0_1"),
+                "liquidation_proximity_stress_0_1": sba.get(
+                    "liquidation_proximity_stress_0_1"
+                ),
                 "gate_reasons_json": (sba.get("gate_reasons_json") or [])[:12],
             },
         }
     )
 
-    adv = spec.get("adversary_check") if isinstance(spec.get("adversary_check"), dict) else {}
+    adv = (
+        spec.get("adversary_check")
+        if isinstance(spec.get("adversary_check"), dict)
+        else {}
+    )
     phases.append(
         {
             "id": "specialist_arbitration",
@@ -459,7 +518,9 @@ def build_decision_control_flow(db_row: dict[str, Any]) -> dict[str, Any]:
             "evidence": {
                 "ensemble_contract": spec.get("ensemble_contract"),
                 "router_arbitration": {
-                    "pre_adversary_trade_action": router_arb.get("pre_adversary_trade_action"),
+                    "pre_adversary_trade_action": router_arb.get(
+                        "pre_adversary_trade_action"
+                    ),
                     "selected_trade_action": router_arb.get("selected_trade_action"),
                     "ensemble_confidence_multiplier_0_1": router_arb.get(
                         "ensemble_confidence_multiplier_0_1"
@@ -469,21 +530,31 @@ def build_decision_control_flow(db_row: dict[str, Any]) -> dict[str, Any]:
                 "adversary_check": {
                     "dissent_score_0_1": adv.get("dissent_score_0_1"),
                     "hard_veto_recommended": adv.get("hard_veto_recommended"),
-                    "directional_veto_recommended": adv.get("directional_veto_recommended"),
+                    "directional_veto_recommended": adv.get(
+                        "directional_veto_recommended"
+                    ),
                     "tri_way_veto_recommended": adv.get("tri_way_veto_recommended"),
-                    "edge_dispersion_veto_recommended": adv.get("edge_dispersion_veto_recommended"),
-                    "regime_mismatch_veto_recommended": adv.get("regime_mismatch_veto_recommended"),
+                    "edge_dispersion_veto_recommended": adv.get(
+                        "edge_dispersion_veto_recommended"
+                    ),
+                    "regime_mismatch_veto_recommended": adv.get(
+                        "regime_mismatch_veto_recommended"
+                    ),
                     "regime_bias_conflict_veto_recommended": adv.get(
                         "regime_bias_conflict_veto_recommended"
                     ),
                     "reasons": (adv.get("reasons") or [])[:10],
                 },
-                "ensemble_hierarchy": (spec.get("ensemble_hierarchy") or [])[:10]
-                if isinstance(spec.get("ensemble_hierarchy"), list)
-                else [],
-                "playbook_specialist_id": (spec.get("playbook_specialist") or {}).get("specialist_id")
-                if isinstance(spec.get("playbook_specialist"), dict)
-                else None,
+                "ensemble_hierarchy": (
+                    (spec.get("ensemble_hierarchy") or [])[:10]
+                    if isinstance(spec.get("ensemble_hierarchy"), list)
+                    else []
+                ),
+                "playbook_specialist_id": (
+                    (spec.get("playbook_specialist") or {}).get("specialist_id")
+                    if isinstance(spec.get("playbook_specialist"), dict)
+                    else None
+                ),
             },
         }
     )
@@ -520,26 +591,36 @@ def build_decision_control_flow(db_row: dict[str, Any]) -> dict[str, Any]:
                 "Nutzen unter Risiko, nicht maximale Aktivitaet."
             ),
             "evidence": {
-                "meta_decision_kernel_version": db_row.get("meta_decision_kernel_version"),
+                "meta_decision_kernel_version": db_row.get(
+                    "meta_decision_kernel_version"
+                ),
                 "meta_decision_action": db_row.get("meta_decision_action"),
                 "kernel_forces_do_not_trade": mdk_rj.get("kernel_forces_do_not_trade"),
                 "abstention_codes": mdk_rj.get("abstention_codes"),
                 "expected_utility_proxy_0_1": mdb.get("expected_utility_proxy_0_1"),
                 "abstention_codes_evidence": mdb.get("abstention_codes_evidence"),
-                "operator_override_audit_json": db_row.get("operator_override_audit_json"),
+                "operator_override_audit_json": db_row.get(
+                    "operator_override_audit_json"
+                ),
             },
         }
     )
 
     end_binding = _end_decision_binding(db_row, spec)
-    exit_resolution = resolve_exit_family_resolution(db_row=db_row, end_decision_binding=end_binding)
+    exit_resolution = resolve_exit_family_resolution(
+        db_row=db_row, end_decision_binding=end_binding
+    )
     end_binding["exit_family_effective_primary"] = exit_resolution.get("primary")
-    end_binding["exit_families_effective_ranked"] = list(exit_resolution.get("ranked") or [])
+    end_binding["exit_families_effective_ranked"] = list(
+        exit_resolution.get("ranked") or []
+    )
     end_binding["exit_resolution_drivers"] = list(exit_resolution.get("drivers") or [])
     end_binding["exit_execution_hints"] = exit_resolution.get("execution_hints") or {}
     end_binding["exit_family_resolution_version"] = exit_resolution.get("version")
 
-    no_trade_analysis = _no_trade_path_analysis(phases=phases, trade_action=trade_action, db_row=db_row)
+    no_trade_analysis = _no_trade_path_analysis(
+        phases=phases, trade_action=trade_action, db_row=db_row
+    )
 
     return {
         "pipeline_version": DECISION_PIPELINE_VERSION,
@@ -558,7 +639,9 @@ def build_decision_control_flow(db_row: dict[str, Any]) -> dict[str, Any]:
             "end_decision_binding_ref": {
                 "playbook_id": end_binding.get("playbook_id"),
                 "exit_family_primary": end_binding.get("exit_family_primary"),
-                "exit_family_effective_primary": end_binding.get("exit_family_effective_primary"),
+                "exit_family_effective_primary": end_binding.get(
+                    "exit_family_effective_primary"
+                ),
                 "stop_budget_0_1": end_binding.get("stop_budget_0_1"),
             },
         },

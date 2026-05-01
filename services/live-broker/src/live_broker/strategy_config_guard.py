@@ -34,5 +34,7 @@ def verify_bound_strategy_version_or_raise(
 
 def should_verify(settings: Any) -> bool:
     p = (getattr(settings, "live_broker_strategy_version_id", "") or "").strip()
-    hx = (getattr(settings, "live_broker_strategy_config_expected_hash", "") or "").strip()
+    hx = (
+        getattr(settings, "live_broker_strategy_config_expected_hash", "") or ""
+    ).strip()
     return bool(p and hx)

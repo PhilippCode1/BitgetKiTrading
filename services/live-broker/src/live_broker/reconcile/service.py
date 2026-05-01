@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
@@ -75,17 +75,25 @@ class LiveReconcileService:
                 "market_snapshot": {},
             }
         )
-        upstream_ok = True if not exchange_state_expected else bool(probe.get("public_api_ok"))
+        upstream_ok = (
+            True if not exchange_state_expected else bool(probe.get("public_api_ok"))
+        )
         keys_ok = bool(probe.get("private_api_configured"))
         auth_ok = probe.get("private_auth_ok")
-        private_ok = True if not self._settings.live_order_submission_enabled else (
-            keys_ok and auth_ok is True
+        private_ok = (
+            True
+            if not self._settings.live_order_submission_enabled
+            else (keys_ok and auth_ok is True)
         )
 
         status = "ok"
         if not schema_ok:
             status = "fail"
-        elif exchange_state_expected and self._settings.live_require_exchange_health and not upstream_ok:
+        elif (
+            exchange_state_expected
+            and self._settings.live_require_exchange_health
+            and not upstream_ok
+        ):
             status = "fail" if self._settings.execution_mode == "live" else "degraded"
         elif (
             self._settings.execution_mode == "live"
@@ -102,7 +110,9 @@ class LiveReconcileService:
                 exchange_state_expected=exchange_state_expected,
             )
             if schema_ok and exchange_state_expected
-            else self._empty_drift_summary(exchange_state_expected=exchange_state_expected)
+            else self._empty_drift_summary(
+                exchange_state_expected=exchange_state_expected
+            )
         )
         pos_drift: dict[str, Any] = {}
         if (
@@ -113,11 +123,15 @@ class LiveReconcileService:
             and self._settings.private_exchange_access_enabled
         ):
             now_m = time.monotonic()
-            interval = max(1.0, float(self._settings.live_broker_position_drift_interval_sec))
+            interval = max(
+                1.0, float(self._settings.live_broker_position_drift_interval_sec)
+            )
             if now_m - self._last_position_drift_at >= interval:
                 self._last_position_drift_at = now_m
                 try:
-                    from live_broker.reconcile.position_drift import run_position_drift_once
+                    from live_broker.reconcile.position_drift import (
+                        run_position_drift_once,
+                    )
 
                     pos_drift = run_position_drift_once(
                         settings=self._settings,
@@ -133,18 +147,15 @@ class LiveReconcileService:
             extra = int(pos_drift.get("ghosts_repaired") or 0) + int(
                 pos_drift.get("notional_mismatch_triggers") or 0
             )
-            drift_summary["total_count"] = int(drift_summary.get("total_count") or 0) + extra
+            drift_summary["total_count"] = (
+                int(drift_summary.get("total_count") or 0) + extra
+            )
         if status == "ok" and int(drift_summary.get("total_count") or 0) > 0:
             status = "degraded"
         if status == "ok" and (pos_drift.get("ghosts_repaired") or 0) > 0:
             status = "degraded"
 
-        if (
-            exchange_state_expected
-            and keys_ok
-            and auth_ok is False
-            and status == "ok"
-        ):
+        if exchange_state_expected and keys_ok and auth_ok is False and status == "ok":
             status = "degraded"
 
         reconcile_run_id: str | None = None
@@ -157,8 +168,11 @@ class LiveReconcileService:
                 {
                     "status": status,
                     "runtime_mode": self._settings.execution_mode,
-                    "upstream_ok": upstream_ok and (
-                        True if not self._settings.live_order_submission_enabled else private_ok
+                    "upstream_ok": upstream_ok
+                    and (
+                        True
+                        if not self._settings.live_order_submission_enabled
+                        else private_ok
                     ),
                     "shadow_enabled": self._settings.shadow_path_active,
                     "live_submission_enabled": self._settings.live_order_submission_enabled,
@@ -335,13 +349,19 @@ class LiveReconcileService:
                 "stale_count": 0,
                 "missing_types": [],
                 "stale_types": [],
-                "stale_after_sec": max(45, self._settings.live_reconcile_interval_sec * 4),
+                "stale_after_sec": max(
+                    45, self._settings.live_reconcile_interval_sec * 4
+                ),
                 "exchange_state_expected": exchange_state_expected,
             },
-            "divergence": self._empty_divergence_block(exchange_state_expected=exchange_state_expected),
+            "divergence": self._empty_divergence_block(
+                exchange_state_expected=exchange_state_expected
+            ),
         }
 
-    def _empty_divergence_block(self, *, exchange_state_expected: bool) -> dict[str, Any]:
+    def _empty_divergence_block(
+        self, *, exchange_state_expected: bool
+    ) -> dict[str, Any]:
         return {
             "applicable": bool(exchange_state_expected),
             "missing_exchange_ack": {"count": 0, "orders": []},
@@ -372,15 +392,23 @@ class LiveReconcileService:
     ) -> dict[str, Any]:
         local_orders = recovery_state.get("open_orders") or []
         exchange_order_snapshots = recovery_state.get("exchange_order_snapshots") or []
-        exchange_position_snapshots = recovery_state.get("exchange_position_snapshots") or []
-        exchange_account_snapshots = recovery_state.get("exchange_account_snapshots") or []
+        exchange_position_snapshots = (
+            recovery_state.get("exchange_position_snapshots") or []
+        )
+        exchange_account_snapshots = (
+            recovery_state.get("exchange_account_snapshots") or []
+        )
         recent_fills = recovery_state.get("recent_fills") or []
 
         exchange_open_orders = self._flatten_exchange_orders(exchange_order_snapshots)
         order_drift = self._compute_order_drift(local_orders, exchange_open_orders)
         local_positions = self._aggregate_local_positions(recent_fills)
-        exchange_positions = self._aggregate_exchange_positions(exchange_position_snapshots)
-        position_drift = self._compute_position_drift(local_positions, exchange_positions)
+        exchange_positions = self._aggregate_exchange_positions(
+            exchange_position_snapshots
+        )
+        position_drift = self._compute_position_drift(
+            local_positions, exchange_positions
+        )
         snapshot_health = self._snapshot_health(
             exchange_order_snapshots,
             exchange_position_snapshots,
@@ -422,12 +450,18 @@ class LiveReconcileService:
         worker_telemetry: dict[str, Any] | None,
         exchange_state_expected: bool,
     ) -> dict[str, Any]:
-        base = self._empty_divergence_block(exchange_state_expected=exchange_state_expected)
+        base = self._empty_divergence_block(
+            exchange_state_expected=exchange_state_expected
+        )
         if not exchange_state_expected:
             return base
 
         journal_rows = list(recovery_state.get("execution_journal_recent") or [])
-        open_ids = {str(o.get("internal_order_id")) for o in local_orders if o.get("internal_order_id")}
+        open_ids = {
+            str(o.get("internal_order_id"))
+            for o in local_orders
+            if o.get("internal_order_id")
+        }
 
         missing_ack = self._orders_missing_exchange_ack(local_orders)
         base["missing_exchange_ack"] = {
@@ -438,9 +472,7 @@ class LiveReconcileService:
 
         latest_phase_by_order = self._latest_journal_phase_per_order(journal_rows)
         phase_submit_open = sorted(
-            oid
-            for oid in open_ids
-            if latest_phase_by_order.get(oid) == "order_submit"
+            oid for oid in open_ids if latest_phase_by_order.get(oid) == "order_submit"
         )
         base["journal_tail"] = {
             "recent_row_count": len(journal_rows),
@@ -474,7 +506,9 @@ class LiveReconcileService:
         if self._settings.live_reconcile_fill_drift_degrades:
             incr += len(fill_cases)
         if self._settings.live_reconcile_ws_stale_contributes_to_drift:
-            if ws_block.get("stale_while_connected") or ws_block.get("disconnected_while_required"):
+            if ws_block.get("stale_while_connected") or ws_block.get(
+                "disconnected_while_required"
+            ):
                 incr += 1
         base["degrade_increment_from_divergence"] = incr
         return base
@@ -499,7 +533,7 @@ class LiveReconcileService:
         self,
         local_orders: list[dict[str, Any]],
     ) -> list[dict[str, Any]]:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         stale_sec = self._settings.live_reconcile_order_ack_stale_sec
         out: list[dict[str, Any]] = []
         for order in local_orders:
@@ -544,7 +578,11 @@ class LiveReconcileService:
                 continue
             filled_by_order[key] = filled_by_order.get(key, Decimal("0")) + sz
 
-        open_by_id = {str(o["internal_order_id"]): o for o in local_orders if o.get("internal_order_id")}
+        open_by_id = {
+            str(o["internal_order_id"]): o
+            for o in local_orders
+            if o.get("internal_order_id")
+        }
         cases: list[dict[str, Any]] = []
         for oid, filled_sum in filled_by_order.items():
             order = open_by_id.get(oid)
@@ -570,7 +608,9 @@ class LiveReconcileService:
                 )
         return cases
 
-    def _private_ws_divergence(self, worker_telemetry: dict[str, Any] | None) -> dict[str, Any]:
+    def _private_ws_divergence(
+        self, worker_telemetry: dict[str, Any] | None
+    ) -> dict[str, Any]:
         ws = (worker_telemetry or {}).get("private_ws") if worker_telemetry else None
         if not isinstance(ws, dict):
             return {
@@ -592,9 +632,13 @@ class LiveReconcileService:
         conn = str(ws.get("connection_state") or "")
         stale_thr = float(self._settings.live_reconcile_private_ws_stale_sec)
         connected = conn == "connected"
-        stale_while_connected = bool(connected and age_sec is not None and age_sec > stale_thr)
+        stale_while_connected = bool(
+            connected and age_sec is not None and age_sec > stale_thr
+        )
         live_sub = self._settings.live_order_submission_enabled
-        disconnected_while_required = bool(live_sub and conn not in ("connected", "connecting"))
+        disconnected_while_required = bool(
+            live_sub and conn not in ("connected", "connecting")
+        )
         enqueue = bool(
             self._settings.live_reconcile_rest_catchup_on_ws_stale
             and (stale_while_connected or disconnected_while_required)
@@ -615,7 +659,7 @@ class LiveReconcileService:
         local_orders: list[dict[str, Any]],
         exchange_open_orders: list[dict[str, Any]],
     ) -> dict[str, Any]:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         local_index: dict[str, dict[str, Any]] = {}
         exchange_index: dict[str, dict[str, Any]] = {}
         for order in local_orders:
@@ -631,8 +675,13 @@ class LiveReconcileService:
         for key, order in local_index.items():
             if key in exchange_index:
                 continue
-            updated_at = self._parse_ts(order.get("updated_ts")) or self._parse_ts(order.get("created_ts"))
-            if updated_at is not None and (now - updated_at).total_seconds() < _ORDER_DRIFT_GRACE_SEC:
+            updated_at = self._parse_ts(order.get("updated_ts")) or self._parse_ts(
+                order.get("created_ts")
+            )
+            if (
+                updated_at is not None
+                and (now - updated_at).total_seconds() < _ORDER_DRIFT_GRACE_SEC
+            ):
                 continue
             local_only.append(
                 {
@@ -672,7 +721,10 @@ class LiveReconcileService:
         for symbol in symbols:
             local_value = local_positions.get(symbol, Decimal("0"))
             exchange_value = exchange_positions.get(symbol, Decimal("0"))
-            if symbol not in local_positions and exchange_value.copy_abs() > _POSITION_DRIFT_TOLERANCE:
+            if (
+                symbol not in local_positions
+                and exchange_value.copy_abs() > _POSITION_DRIFT_TOLERANCE
+            ):
                 exchange_only.append(
                     {
                         "symbol": symbol,
@@ -701,7 +753,7 @@ class LiveReconcileService:
         position_snapshots: list[dict[str, Any]],
         account_snapshots: list[dict[str, Any]],
     ) -> dict[str, Any]:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         stale_after_sec = max(45, self._settings.live_reconcile_interval_sec * 4)
         per_type = {
             "orders": order_snapshots,
@@ -806,10 +858,7 @@ class LiveReconcileService:
     ) -> Decimal:
         if not trade_side:
             return size if side == "buy" else -size
-        is_open = (
-            "open" in trade_side
-            or trade_side in {"buy_single", "sell_single"}
-        )
+        is_open = "open" in trade_side or trade_side in {"buy_single", "sell_single"}
         if is_open:
             return size if side == "buy" else -size
         return -size if side == "sell" else size
@@ -844,7 +893,7 @@ class LiveReconcileService:
         if value is None:
             return None
         if isinstance(value, datetime):
-            return value.astimezone(timezone.utc)
+            return value.astimezone(UTC)
         if isinstance(value, str):
             normalized = value.replace("Z", "+00:00")
             try:
@@ -852,8 +901,8 @@ class LiveReconcileService:
             except ValueError:
                 return None
             if parsed.tzinfo is None:
-                return parsed.replace(tzinfo=timezone.utc)
-            return parsed.astimezone(timezone.utc)
+                return parsed.replace(tzinfo=UTC)
+            return parsed.astimezone(UTC)
         return None
 
     def _publish_alert_if_needed(self, snapshot: dict[str, Any]) -> None:

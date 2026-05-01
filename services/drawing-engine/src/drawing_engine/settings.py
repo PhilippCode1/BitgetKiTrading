@@ -2,10 +2,9 @@ from __future__ import annotations
 
 from typing import ClassVar
 
+from config.settings import BaseServiceSettings
 from pydantic import Field, field_validator
 from pydantic_settings import SettingsConfigDict
-
-from config.settings import BaseServiceSettings
 from shared_py.eventbus import STREAM_STRUCTURE_UPDATED
 
 
@@ -25,7 +24,9 @@ class DrawingEngineSettings(BaseServiceSettings):
     database_url: str = Field(alias="DATABASE_URL")
     redis_url: str = Field(alias="REDIS_URL")
     drawing_engine_port: int = Field(default=8040, alias="DRAWING_ENGINE_PORT")
-    drawing_stream: str = Field(default=STREAM_STRUCTURE_UPDATED, alias="DRAWING_STREAM")
+    drawing_stream: str = Field(
+        default=STREAM_STRUCTURE_UPDATED, alias="DRAWING_STREAM"
+    )
     drawing_group: str = Field(default="drawing-engine", alias="DRAWING_GROUP")
     drawing_consumer: str = Field(default="de-1", alias="DRAWING_CONSUMER")
 
@@ -39,7 +40,9 @@ class DrawingEngineSettings(BaseServiceSettings):
         alias="DRAWING_MAX_ORDERBOOK_AGE_MS",
     )
 
-    eventbus_default_block_ms: int = Field(default=2000, alias="EVENTBUS_DEFAULT_BLOCK_MS")
+    eventbus_default_block_ms: int = Field(
+        default=2000, alias="EVENTBUS_DEFAULT_BLOCK_MS"
+    )
     eventbus_default_count: int = Field(default=50, alias="EVENTBUS_DEFAULT_COUNT")
     eventbus_dedupe_ttl_sec: int = Field(default=86400, alias="EVENTBUS_DEDUPE_TTL_SEC")
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")

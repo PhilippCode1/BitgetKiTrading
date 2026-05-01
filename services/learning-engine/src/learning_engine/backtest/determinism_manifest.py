@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from shared_py.model_contracts import FEATURE_SCHEMA_HASH, FEATURE_SCHEMA_VERSION, MODEL_CONTRACT_VERSION
+from shared_py.model_contracts import (
+    FEATURE_SCHEMA_HASH,
+    FEATURE_SCHEMA_VERSION,
+    MODEL_CONTRACT_VERSION,
+)
 from shared_py.replay_determinism import REPLAY_DETERMINISM_PROTOCOL_VERSION
 from shared_py.signal_contracts import SIGNAL_EVENT_SCHEMA_VERSION
 

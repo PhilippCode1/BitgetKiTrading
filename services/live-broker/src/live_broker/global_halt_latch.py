@@ -39,7 +39,9 @@ def _parse_halt_value(raw: str | None) -> bool:
         "stop",
         "global_halt",
         "emergency",
-    ) or s.startswith("halt")  # "halt:reason"
+    ) or s.startswith(
+        "halt"
+    )  # "halt:reason"
 
 
 class GlobalHaltLatch:
@@ -157,7 +159,9 @@ class GlobalHaltLatch:
                 "Global Halt (Redis) — Order-Mutationen bis Aufhebung gesperrt"
             )
 
-    def force_halt_in_process(self, *, reason: str = "infrastructure_redis_loss") -> None:
+    def force_halt_in_process(
+        self, *, reason: str = "infrastructure_redis_loss"
+    ) -> None:
         """
         Fail-Closed, wenn ``SET system:global_halt`` wegen ausgefallenem Redis nicht
         sofort spiegelbar ist (Prompt 72) — lokal keine Order-Mutationen mehr.

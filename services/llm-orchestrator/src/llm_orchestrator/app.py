@@ -6,15 +6,6 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
-from starlette.requests import Request
-
-from llm_orchestrator.agents.registry import AgentRegistry
-from llm_orchestrator.api.routes import build_router
-from llm_orchestrator.config import LLMOrchestratorSettings
-from llm_orchestrator.consensus.war_room import ConsensusOrchestrator
-from llm_orchestrator.constants import LLM_ORCHESTRATOR_API_CONTRACT_VERSION
-from llm_orchestrator.exceptions import GuardrailViolation
-from llm_orchestrator.service import LLMService
 from shared_py.observability import (
     check_redis_url,
     instrument_fastapi,
@@ -24,6 +15,15 @@ from shared_py.observability.request_context import (
     clear_request_context,
     set_request_context,
 )
+from starlette.requests import Request
+
+from llm_orchestrator.agents.registry import AgentRegistry
+from llm_orchestrator.api.routes import build_router
+from llm_orchestrator.config import LLMOrchestratorSettings
+from llm_orchestrator.consensus.war_room import ConsensusOrchestrator
+from llm_orchestrator.constants import LLM_ORCHESTRATOR_API_CONTRACT_VERSION
+from llm_orchestrator.exceptions import GuardrailViolation
+from llm_orchestrator.service import LLMService
 
 
 def _ensure_shared_py_path() -> None:

@@ -106,7 +106,11 @@ def summarize_closed_trades(
         "avg_loss_usdt": round(-sum_loss_abs / len(losses), 6) if losses else None,
         "profit_factor": round(profit_factor, 4) if profit_factor is not None else None,
         "fees_sum_usdt": round(
-            sum(_f(r.get("fees_total_usdt")) for r in rows if r.get("fees_total_usdt") is not None),
+            sum(
+                _f(r.get("fees_total_usdt"))
+                for r in rows
+                if r.get("fees_total_usdt") is not None
+            ),
             6,
         ),
     }
@@ -125,7 +129,9 @@ def build_demo_paper_performance(
     open_pos = fetch_paper_open_positions(conn, symbol=symbol)
     trades = fetch_paper_trades_recent(conn, symbol=symbol, limit=lim)
     metrics = fetch_paper_metrics_summary(conn)
-    eq_series_raw = fetch_equity_series(conn, max_points=max(10, min(2000, equity_max_points)))
+    eq_series_raw = fetch_equity_series(
+        conn, max_points=max(10, min(2000, equity_max_points))
+    )
     equities = [float(p["equity"]) for p in eq_series_raw]
     dd = compute_max_drawdown_pct(equities)
 

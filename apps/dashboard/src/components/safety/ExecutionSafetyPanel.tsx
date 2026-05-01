@@ -62,7 +62,8 @@ export function actionDisabledReason(params: {
   reconcileOk: boolean;
 }): string | null {
   const { action, killSwitchActive, safetyLatchActive, reconcileOk } = params;
-  if (!action.endpointAvailable) return "Endpoint fehlt, Aktion ist sicher deaktiviert.";
+  if (!action.endpointAvailable)
+    return "Endpoint fehlt, Aktion ist sicher deaktiviert.";
   if (!reconcileOk) return "Reconcile nicht ok, Aktion blockiert.";
   if (killSwitchActive && action.id !== "kill_switch_release") {
     return "Kill-Switch aktiv, normale Aktionen sind blockiert.";
@@ -101,7 +102,8 @@ export function ExecutionSafetyPanel({
     <div className="panel">
       <h2>Safety Panel</h2>
       <p className="muted small">
-        Gefaehrliche Aktionen brauchen immer Kontext, Bestaetigung und sicheren Endpoint.
+        Gefaehrliche Aktionen brauchen immer Kontext, Bestaetigung und sicheren
+        Endpoint.
       </p>
       <ul className="news-list">
         {ACTIONS.map((action) => {
@@ -116,7 +118,9 @@ export function ExecutionSafetyPanel({
             <li key={action.id}>
               <button
                 type="button"
-                className={action.dangerous ? "public-btn danger" : "public-btn ghost"}
+                className={
+                  action.dangerous ? "public-btn danger" : "public-btn ghost"
+                }
                 title="Bestaetigungsdialog oeffnen"
                 onClick={() => {
                   setSelected(action.id);
@@ -127,18 +131,26 @@ export function ExecutionSafetyPanel({
               </button>
               <span className="muted small">
                 {" "}
-                — {disabled ? reason : "Endpoint vorhanden, weiterhin nur mit Bestaetigung."}
+                —{" "}
+                {disabled
+                  ? reason
+                  : "Endpoint vorhanden, weiterhin nur mit Bestaetigung."}
               </span>
             </li>
           );
         })}
       </ul>
       {selectedAction ? (
-        <div className="panel" role="dialog" aria-label="Bestaetigung fuer Sicherheitsaktion">
+        <div
+          className="panel"
+          role="dialog"
+          aria-label="Bestaetigung fuer Sicherheitsaktion"
+        >
           <h3>Bestaetigung erforderlich</h3>
           <p>
-            Du willst <strong>{selectedAction.title}</strong> ausfuehren. Diese Aktion ist
-            potenziell gefaehrlich und darf niemals ohne klaren Sicherheitskontext laufen.
+            Du willst <strong>{selectedAction.title}</strong> ausfuehren. Diese
+            Aktion ist potenziell gefaehrlich und darf niemals ohne klaren
+            Sicherheitskontext laufen.
           </p>
           <label className="muted small">
             <input
@@ -154,12 +166,17 @@ export function ExecutionSafetyPanel({
               className="public-btn danger"
               disabled={!confirmed || Boolean(disabledReason)}
               aria-disabled={!confirmed || Boolean(disabledReason)}
-              title={disabledReason ?? "Nur freigeben, wenn Backend sicher verdrahtet ist"}
+              title={
+                disabledReason ??
+                "Nur freigeben, wenn Backend sicher verdrahtet ist"
+              }
             >
               Aktion ausfuehren (derzeit deaktiviert)
             </button>
           </div>
-          {disabledReason ? <p className="muted small">{disabledReason}</p> : null}
+          {disabledReason ? (
+            <p className="muted small">{disabledReason}</p>
+          ) : null}
         </div>
       ) : null}
     </div>

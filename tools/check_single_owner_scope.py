@@ -32,6 +32,7 @@ LEGACY_ALLOWED_PREFIXES = (
     "docs/archive/",
 )
 
+
 def _is_legacy_allowed(rel_path: str) -> bool:
     normalized = rel_path.replace("\\", "/")
     return any(normalized.startswith(prefix) for prefix in LEGACY_ALLOWED_PREFIXES)
@@ -49,12 +50,21 @@ def analyze(root: Path, *, strict: bool = False) -> dict[str, Any]:
     issues: list[dict[str, str]] = []
 
     scope_doc = root / "docs" / "production_10_10" / "single_owner_product_scope.md"
-    main_console_doc = root / "docs" / "production_10_10" / "main_console_product_direction.md"
+    main_console_doc = (
+        root / "docs" / "production_10_10" / "main_console_product_direction.md"
+    )
     middleware = root / "apps" / "dashboard" / "src" / "middleware.ts"
     nav = root / "apps" / "dashboard" / "src" / "lib" / "main-console" / "navigation.ts"
 
     if not scope_doc.is_file():
-        issues.append({"severity": "error", "code": "scope_doc_missing", "message": "single_owner_product_scope.md fehlt.", "path": str(scope_doc)})
+        issues.append(
+            {
+                "severity": "error",
+                "code": "scope_doc_missing",
+                "message": "single_owner_product_scope.md fehlt.",
+                "path": str(scope_doc),
+            }
+        )
     else:
         txt = scope_doc.read_text(encoding="utf-8").lower()
         if "philipp crljic" not in txt or "kein saas" not in txt:
@@ -68,7 +78,14 @@ def analyze(root: Path, *, strict: bool = False) -> dict[str, Any]:
             )
 
     if not main_console_doc.is_file():
-        issues.append({"severity": "error", "code": "main_console_doc_missing", "message": "Main-Console-Doku fehlt.", "path": str(main_console_doc)})
+        issues.append(
+            {
+                "severity": "error",
+                "code": "main_console_doc_missing",
+                "message": "Main-Console-Doku fehlt.",
+                "path": str(main_console_doc),
+            }
+        )
     else:
         txt = main_console_doc.read_text(encoding="utf-8").lower()
         if "private owner-nutzung" not in txt and "private" not in txt:
@@ -82,7 +99,14 @@ def analyze(root: Path, *, strict: bool = False) -> dict[str, Any]:
             )
 
     if not middleware.is_file():
-        issues.append({"severity": "error", "code": "middleware_missing", "message": "Dashboard-Middleware fehlt.", "path": str(middleware)})
+        issues.append(
+            {
+                "severity": "error",
+                "code": "middleware_missing",
+                "message": "Dashboard-Middleware fehlt.",
+                "path": str(middleware),
+            }
+        )
     else:
         txt = middleware.read_text(encoding="utf-8")
         for required in (
@@ -112,7 +136,18 @@ def analyze(root: Path, *, strict: bool = False) -> dict[str, Any]:
                 hrefs.append(href)
         for href in hrefs:
             h = href.lower()
-            if any(term in h for term in ("billing", "customer", "payment", "pricing", "subscription", "checkout", "saas")):
+            if any(
+                term in h
+                for term in (
+                    "billing",
+                    "customer",
+                    "payment",
+                    "pricing",
+                    "subscription",
+                    "checkout",
+                    "saas",
+                )
+            ):
                 issues.append(
                     {
                         "severity": "error",
@@ -132,7 +167,11 @@ def analyze(root: Path, *, strict: bool = False) -> dict[str, Any]:
             rel_lower = rel.lower()
             hit = None
             for term in BANNED_TERMS:
-                if f"/{term}" in rel_lower or f"-{term}" in rel_lower or f"_{term}" in rel_lower:
+                if (
+                    f"/{term}" in rel_lower
+                    or f"-{term}" in rel_lower
+                    or f"_{term}" in rel_lower
+                ):
                     hit = term
                     break
             if hit:
@@ -147,12 +186,20 @@ def analyze(root: Path, *, strict: bool = False) -> dict[str, Any]:
                 )
 
     # ENV-Beispiele: keine Payment-Pflicht fuer private Nutzung
-    for env_name in (".env.example", ".env.local.example", ".env.production.example", ".env.test.example", ".env.shadow.example"):
+    for env_name in (
+        ".env.example",
+        ".env.local.example",
+        ".env.production.example",
+        ".env.test.example",
+        ".env.shadow.example",
+    ):
         env_path = root / env_name
         if not env_path.is_file():
             continue
         txt = env_path.read_text(encoding="utf-8")
-        if re.search(r"(?mi)^PAYMENT_(?:STRIPE|CHECKOUT|WISE|PAYPAL).*ENABLED=true\s*$", txt):
+        if re.search(
+            r"(?mi)^PAYMENT_(?:STRIPE|CHECKOUT|WISE|PAYPAL).*ENABLED=true\s*$", txt
+        ):
             issues.append(
                 {
                     "severity": "error",
@@ -184,7 +231,9 @@ def analyze(root: Path, *, strict: bool = False) -> dict[str, Any]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Prüft Single-Owner-Produkt-Scope ohne aktive SaaS/Billing-Pfade.")
+    parser = argparse.ArgumentParser(
+        description="Prüft Single-Owner-Produkt-Scope ohne aktive SaaS/Billing-Pfade."
+    )
     parser.add_argument("--strict", action="store_true")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
@@ -198,7 +247,9 @@ def main() -> int:
             f"errors={payload['error_count']} warnings={payload['warning_count']} strict={str(args.strict).lower()}"
         )
         for issue in payload["issues"]:
-            print(f"{issue['severity'].upper()} {issue['code']}: {issue['message']} [{issue['path']}]")
+            print(
+                f"{issue['severity'].upper()} {issue['code']}: {issue['message']} [{issue['path']}]"
+            )
 
     if payload["error_count"] > 0:
         return 1

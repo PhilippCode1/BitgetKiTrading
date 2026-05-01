@@ -35,7 +35,9 @@ function technicalLine(reason: unknown): string {
 /**
  * Strukturierter API-/Gateway-Fehler mit `kind` für i18n (`ui.fetchError.*` / `productMessage.fetch.*`).
  */
-export function getGatewayFetchErrorInfo(reason: unknown): GatewayFetchErrorInfo {
+export function getGatewayFetchErrorInfo(
+  reason: unknown,
+): GatewayFetchErrorInfo {
   return {
     kind: classifyFetchError(reason),
     technical: technicalLine(reason).slice(0, 8_000),

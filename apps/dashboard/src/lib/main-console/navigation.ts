@@ -23,12 +23,18 @@ export const MAIN_CONSOLE_PRIMARY_SECTIONS: readonly MainConsoleNavSection[] = [
         href: `${CONSOLE_BASE}/market-universe`,
         messageKey: "console.nav.asset_universe",
       },
-      { href: `${CONSOLE_BASE}/terminal`, messageKey: "console.nav.charts_market" },
+      {
+        href: `${CONSOLE_BASE}/terminal`,
+        messageKey: "console.nav.charts_market",
+      },
       {
         href: `${CONSOLE_BASE}/signals`,
         messageKey: "console.nav.signals_ai",
       },
-      { href: `${CONSOLE_BASE}/risk`, messageKey: "console.nav.risk_portfolio" },
+      {
+        href: `${CONSOLE_BASE}/risk`,
+        messageKey: "console.nav.risk_portfolio",
+      },
       {
         href: `${CONSOLE_BASE}/shadow-live`,
         messageKey: "console.nav.readiness_modes",
@@ -41,7 +47,10 @@ export const MAIN_CONSOLE_PRIMARY_SECTIONS: readonly MainConsoleNavSection[] = [
         href: `${CONSOLE_BASE}/bitget-demo`,
         messageKey: "console.nav.bitget_demo",
       },
-      { href: `${CONSOLE_BASE}/safety-center`, messageKey: "console.nav.safety_center" },
+      {
+        href: `${CONSOLE_BASE}/safety-center`,
+        messageKey: "console.nav.safety_center",
+      },
       {
         href: `${CONSOLE_BASE}/incidents`,
         messageKey: "console.nav.incidents",
@@ -61,4 +70,3 @@ export const MAIN_CONSOLE_PRIMARY_SECTIONS: readonly MainConsoleNavSection[] = [
     ],
   },
 ];
-

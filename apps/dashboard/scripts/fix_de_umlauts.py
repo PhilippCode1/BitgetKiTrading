@@ -15,7 +15,10 @@ REPLACEMENTS: list[tuple[str, str]] = [
     ("Portal-Aktivitaet", "Portal-Aktivität"),
     ("Konto-Aktivitaet", "Konto-Aktivität"),
     ("Sandbox-Zahlung abschliessen", "Sandbox-Zahlung abschließen"),
-    ("Mock nur ueber den Test-Webhook-Flow abschliessbar", "Mock nur über den Test-Webhook-Flow abschließbar"),
+    (
+        "Mock nur ueber den Test-Webhook-Flow abschliessbar",
+        "Mock nur über den Test-Webhook-Flow abschließbar",
+    ),
     ("standardmaessig eingeklappt", "standardmäßig eingeklappt"),
     ("eingeschraenkt/nicht konfiguriert", "eingeschränkt/nicht konfiguriert"),
     ("eingeschraenkter Betrieb", "eingeschränkter Betrieb"),

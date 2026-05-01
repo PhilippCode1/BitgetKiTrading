@@ -44,10 +44,12 @@ class SentimentAggregator:
         panic_vecs: list[list[float]],
         euphoria_vecs: list[list[float]],
         roll_alpha: float,
-    ) -> "SentimentAggregator":
+    ) -> SentimentAggregator:
         pc = mean_vector([l2_normalize(v) for v in panic_vecs])
         ec = mean_vector([l2_normalize(v) for v in euphoria_vecs])
-        return SentimentAggregator(panic_centroid=pc, euphoria_centroid=ec, roll_alpha=roll_alpha)
+        return SentimentAggregator(
+            panic_centroid=pc, euphoria_centroid=ec, roll_alpha=roll_alpha
+        )
 
     def instantaneous_score(self, embedding: list[float]) -> tuple[float, float, float]:
         e = l2_normalize(embedding)

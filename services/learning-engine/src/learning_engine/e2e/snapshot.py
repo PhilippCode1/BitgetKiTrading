@@ -18,7 +18,7 @@ E2E_RECORD_SCHEMA_VERSION = "e2e-v1"
 def _parse_jsonb(val: Any) -> Any:
     if val is None:
         return None
-    if isinstance(val, (dict, list)):
+    if isinstance(val, dict | list):
         return val
     if isinstance(val, str):
         try:
@@ -45,14 +45,32 @@ def build_e2e_snapshot_from_signal_row(signal_row: dict[str, Any]) -> dict[str, 
 
     specialists = rj.get("specialists")
     if not isinstance(specialists, dict):
-        specialists = snap.get("specialists") if isinstance(snap.get("specialists"), dict) else {}
+        specialists = (
+            snap.get("specialists") if isinstance(snap.get("specialists"), dict) else {}
+        )
 
-    hybrid = snap.get("hybrid_decision") if isinstance(snap.get("hybrid_decision"), dict) else {}
-    rg = hybrid.get("risk_governor") if isinstance(hybrid.get("risk_governor"), dict) else {}
+    hybrid = (
+        snap.get("hybrid_decision")
+        if isinstance(snap.get("hybrid_decision"), dict)
+        else {}
+    )
+    rg = (
+        hybrid.get("risk_governor")
+        if isinstance(hybrid.get("risk_governor"), dict)
+        else {}
+    )
 
-    sba = snap.get("stop_budget_assessment") if isinstance(snap.get("stop_budget_assessment"), dict) else {}
+    sba = (
+        snap.get("stop_budget_assessment")
+        if isinstance(snap.get("stop_budget_assessment"), dict)
+        else {}
+    )
 
-    det = rj.get("deterministic_gates") if isinstance(rj.get("deterministic_gates"), dict) else {}
+    det = (
+        rj.get("deterministic_gates")
+        if isinstance(rj.get("deterministic_gates"), dict)
+        else {}
+    )
 
     smc_sum = (
         rj.get("structured_market_context_summary")
@@ -60,17 +78,31 @@ def build_e2e_snapshot_from_signal_row(signal_row: dict[str, Any]) -> dict[str, 
         else None
     )
     smc_full = (
-        snap.get("structured_market_context") if isinstance(snap.get("structured_market_context"), dict) else None
+        snap.get("structured_market_context")
+        if isinstance(snap.get("structured_market_context"), dict)
+        else None
     )
 
-    dcf = rj.get("decision_control_flow") if isinstance(rj.get("decision_control_flow"), dict) else None
+    dcf = (
+        rj.get("decision_control_flow")
+        if isinstance(rj.get("decision_control_flow"), dict)
+        else None
+    )
 
     inst = snap.get("instrument") if isinstance(snap.get("instrument"), dict) else {}
-    iexec = snap.get("instrument_execution") if isinstance(snap.get("instrument_execution"), dict) else {}
+    iexec = (
+        snap.get("instrument_execution")
+        if isinstance(snap.get("instrument_execution"), dict)
+        else {}
+    )
 
     router = _router_path(specialists)
     exit_hint: dict[str, Any] = {}
-    pb = specialists.get("playbook_specialist") if isinstance(specialists, dict) else None
+    pb = (
+        specialists.get("playbook_specialist")
+        if isinstance(specialists, dict)
+        else None
+    )
     if isinstance(pb, dict):
         prop = pb.get("proposal") if isinstance(pb.get("proposal"), dict) else {}
         exit_hint = {
@@ -80,7 +112,7 @@ def build_e2e_snapshot_from_signal_row(signal_row: dict[str, Any]) -> dict[str, 
         }
 
     shadow_div = None
-    if isinstance(signal_row.get("shadow_divergence_0_1"), (int, float)):
+    if isinstance(signal_row.get("shadow_divergence_0_1"), int | float):
         shadow_div = float(signal_row["shadow_divergence_0_1"])
 
     model_versions = {
@@ -90,7 +122,9 @@ def build_e2e_snapshot_from_signal_row(signal_row: dict[str, Any]) -> dict[str, 
         "decision_policy_version": signal_row.get("decision_policy_version"),
         "regime_policy_version": signal_row.get("regime_policy_version"),
         "leverage_policy_version": signal_row.get("leverage_policy_version"),
-        "unified_leverage_allocator_version": signal_row.get("unified_leverage_allocator_version"),
+        "unified_leverage_allocator_version": signal_row.get(
+            "unified_leverage_allocator_version"
+        ),
         "stop_budget_policy_version": sba.get("policy_version") if sba else None,
     }
 
@@ -122,15 +156,21 @@ def build_e2e_snapshot_from_signal_row(signal_row: dict[str, Any]) -> dict[str, 
             "deterministic_gates": det,
             "risk_governor": {
                 "hard_block_reasons_json": rg.get("hard_block_reasons_json"),
-                "universal_hard_block_reasons_json": rg.get("universal_hard_block_reasons_json"),
-                "live_execution_block_reasons_json": rg.get("live_execution_block_reasons_json"),
+                "universal_hard_block_reasons_json": rg.get(
+                    "universal_hard_block_reasons_json"
+                ),
+                "live_execution_block_reasons_json": rg.get(
+                    "live_execution_block_reasons_json"
+                ),
                 "max_exposure_fraction_0_1": rg.get("max_exposure_fraction_0_1"),
             },
         },
         "stop_and_execution_quality": {
             "stop_budget_assessment": sba,
             "stop_distance_pct": signal_row.get("stop_distance_pct"),
-            "stop_budget_max_pct_allowed": signal_row.get("stop_budget_max_pct_allowed"),
+            "stop_budget_max_pct_allowed": signal_row.get(
+                "stop_budget_max_pct_allowed"
+            ),
             "stop_min_executable_pct": signal_row.get("stop_min_executable_pct"),
             "stop_fragility_0_1": signal_row.get("stop_fragility_0_1"),
             "stop_executability_0_1": signal_row.get("stop_executability_0_1"),
@@ -138,7 +178,9 @@ def build_e2e_snapshot_from_signal_row(signal_row: dict[str, Any]) -> dict[str, 
             "stop_to_spread_ratio": signal_row.get("stop_to_spread_ratio"),
         },
         "exit_and_targets": {
-            "target_projection_models_json": signal_row.get("target_projection_models_json"),
+            "target_projection_models_json": signal_row.get(
+                "target_projection_models_json"
+            ),
             "expected_return_bps": signal_row.get("expected_return_bps"),
             "expected_mae_bps": signal_row.get("expected_mae_bps"),
             "expected_mfe_bps": signal_row.get("expected_mfe_bps"),

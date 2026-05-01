@@ -20,7 +20,9 @@ from live_broker.orders.service import client_oid_for_internal_order
 
 def test_client_oid_format_is_stable_for_fixed_uuid() -> None:
     uid = UUID("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
-    oid = client_oid_for_internal_order("bgai-test", action_tag="crt", internal_order_id=uid)
+    oid = client_oid_for_internal_order(
+        "bgai-test", action_tag="crt", internal_order_id=uid
+    )
     assert oid == "bgai-test-crt-aaaaaaaabbbbccccddddeeeeeeeeeeee"
     assert len(oid) <= 50
 

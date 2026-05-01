@@ -56,7 +56,15 @@ class AssetGovernanceRecord(BaseModel):
     strategy_evidence_ready: bool = False
     bitget_status_clear: bool = False
 
-    @field_validator("asset_id", "symbol", "market_family", "product_type", "risk_tier", "liquidity_tier", mode="before")
+    @field_validator(
+        "asset_id",
+        "symbol",
+        "market_family",
+        "product_type",
+        "risk_tier",
+        "liquidity_tier",
+        mode="before",
+    )
     @classmethod
     def _normalize_upper(cls, value: object) -> object:
         if value is None:
@@ -140,7 +148,10 @@ def can_transition(
             reasons.append("live_allowed_braucht_begruendung_de")
         if not evidence_refs:
             reasons.append("live_allowed_braucht_evidence_refs")
-    if to_state in {"shadow_allowed", "live_candidate", "live_allowed"} and not data_quality_ok:
+    if (
+        to_state in {"shadow_allowed", "live_candidate", "live_allowed"}
+        and not data_quality_ok
+    ):
         reasons.append("datenqualitaet_unzureichend")
     if to_state in {"live_candidate", "live_allowed"} and not liquidity_ok:
         reasons.append("liquiditaetspruefung_fehlt")
@@ -148,7 +159,9 @@ def can_transition(
         reasons.append("strategy_evidence_fehlt")
     if to_state in {"live_candidate", "live_allowed"} and not bitget_status_clear:
         reasons.append("bitget_status_unklar")
-    return TransitionDecision(allowed=len(reasons) == 0, reasons=list(dict.fromkeys(reasons)))
+    return TransitionDecision(
+        allowed=len(reasons) == 0, reasons=list(dict.fromkeys(reasons))
+    )
 
 
 def allows_real_orders(state: AssetState) -> bool:

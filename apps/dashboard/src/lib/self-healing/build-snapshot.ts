@@ -46,7 +46,9 @@ function serviceByName(
   return health.services.find((s) => s.name === name) ?? null;
 }
 
-function mapProbeServiceStatus(st: string | undefined): SelfHealingComponentStatus {
+function mapProbeServiceStatus(
+  st: string | undefined,
+): SelfHealingComponentStatus {
   const s = (st || "").toLowerCase();
   if (s === "ok") return "ok";
   if (s === "degraded") return "degraded";
@@ -102,8 +104,13 @@ export function buildSelfHealingSnapshot(
   input: SelfHealingRawInputs,
   t: SelfHealingTranslate,
 ): SelfHealingSnapshot {
-  const { collected_at_ms, support_reference, health, health_load_error, probe } =
-    input;
+  const {
+    collected_at_ms,
+    support_reference,
+    health,
+    health_load_error,
+    probe,
+  } = input;
   const blocks = probe.blocksV1Reads;
 
   const components: SelfHealingComponentRow[] = [];
@@ -267,7 +274,9 @@ export function buildSelfHealingSnapshot(
               : t("pages.selfHealing.causes.redisSkipped");
         } else {
           status = "degraded";
-          suspected = t("pages.selfHealing.causes.redisBad", { redis: r ?? "?" });
+          suspected = t("pages.selfHealing.causes.redisBad", {
+            redis: r ?? "?",
+          });
         }
         technical = {
           redis: r,
@@ -276,7 +285,8 @@ export function buildSelfHealingSnapshot(
         break;
       }
       case "migrations": {
-        const sch = health?.database_schema as DatabaseSchemaHealthDetail | null;
+        const sch =
+          health?.database_schema as DatabaseSchemaHealthDetail | null;
         if (!sch) {
           status = health ? "unknown" : "unknown";
           suspected = t("pages.selfHealing.causes.migrationUnknown");
@@ -369,7 +379,8 @@ export function buildSelfHealingSnapshot(
         break;
       }
       case "monitor_open_alerts": {
-        const n = health?.ops?.monitor?.open_alert_count ?? input.open_alerts.length;
+        const n =
+          health?.ops?.monitor?.open_alert_count ?? input.open_alerts.length;
         if (!health && input.open_alerts.length === 0) {
           status = "unknown";
           suspected = t("pages.selfHealing.causes.alertsUnknown");
@@ -478,7 +489,10 @@ export function buildSelfHealingSnapshot(
           });
         } else {
           configured = svc.configured !== false;
-          status = svc.configured === false ? "not_configured" : mapProbeServiceStatus(svc.status);
+          status =
+            svc.configured === false
+              ? "not_configured"
+              : mapProbeServiceStatus(svc.status);
           const bits = [
             svc.detail,
             svc.note,
@@ -488,7 +502,8 @@ export function buildSelfHealingSnapshot(
             .filter(Boolean)
             .join(" · ");
           suspected =
-            bits || t("pages.selfHealing.causes.probeStatus", { status: svc.status });
+            bits ||
+            t("pages.selfHealing.causes.probeStatus", { status: svc.status });
           technical = { ...svc };
           manual = svc.configured === false;
         }
@@ -504,18 +519,20 @@ export function buildSelfHealingSnapshot(
 
     const autoRemediations =
       status === "ok"
-        ? [t("pages.selfHealing.auto.poll"), t("pages.selfHealing.auto.degradeSafe")]
+        ? [
+            t("pages.selfHealing.auto.poll"),
+            t("pages.selfHealing.auto.degradeSafe"),
+          ]
         : [
             t("pages.selfHealing.auto.retryProbe"),
             t("pages.selfHealing.auto.partialData"),
           ];
 
-    const nextStep =
-      manual
-        ? t("pages.selfHealing.next.operator")
-        : status === "ok"
-          ? t("pages.selfHealing.next.none")
-          : t("pages.selfHealing.next.retry");
+    const nextStep = manual
+      ? t("pages.selfHealing.next.operator")
+      : status === "ok"
+        ? t("pages.selfHealing.next.none")
+        : t("pages.selfHealing.next.retry");
 
     let availableRepairs = repairsFor([
       "refetch_health",
@@ -527,10 +544,7 @@ export function buildSelfHealingSnapshot(
     if (def.id === "market_stream" || def.id === "live_broker") {
       availableRepairs = [
         ...availableRepairs,
-        ...repairsFor([
-          "open_live_terminal",
-          "client_stream_reconnect_hint",
-        ]),
+        ...repairsFor(["open_live_terminal", "client_stream_reconnect_hint"]),
       ];
     }
     if (def.id === "external_integrations" || def.id === "operator_jwt_auth") {
@@ -659,7 +673,7 @@ export function buildSelfHealingSnapshot(
   }
   deduped.sort((a, b) => {
     const rank = (s: SelfHealingSeverity) =>
-      ({ blocking: 5, critical: 4, warning: 3, hint: 2, info: 1 }[s] ?? 0);
+      ({ blocking: 5, critical: 4, warning: 3, hint: 2, info: 1 })[s] ?? 0;
     return rank(b.severity) - rank(a.severity);
   });
 
@@ -691,7 +705,9 @@ export function buildSelfHealingSnapshot(
   const not_auto_fixable = deduped.filter((i) => i.manualRemediationRequired);
 
   const healthyCount = components.filter((c) => c.status === "ok").length;
-  const degradedCount = components.filter((c) => c.status === "degraded").length;
+  const degradedCount = components.filter(
+    (c) => c.status === "degraded",
+  ).length;
   const downCount = components.filter((c) => c.status === "down").length;
   const notConfiguredCount = components.filter(
     (c) => c.status === "not_configured",

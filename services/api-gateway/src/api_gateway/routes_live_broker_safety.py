@@ -9,7 +9,10 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from api_gateway.auth import GatewayAuthContext
 from api_gateway.config import get_gateway_settings
-from api_gateway.live_broker_forward import LiveBrokerForwardHttpError, post_live_broker_json
+from api_gateway.live_broker_forward import (
+    LiveBrokerForwardHttpError,
+    post_live_broker_json,
+)
 from api_gateway.manual_action import (
     ROUTE_KEY_SAFETY_CANCEL_ALL,
     ROUTE_KEY_SAFETY_EMERGENCY_FLATTEN,
@@ -57,7 +60,9 @@ def _forward(subpath: str, body: dict[str, Any]) -> Any:
 
 @router.post("/kill-switch/arm")
 def safety_kill_switch_arm(
-    _ctx: Annotated[tuple[GatewayAuthContext, dict[str, Any]], Depends(_guard_kill_arm)],
+    _ctx: Annotated[
+        tuple[GatewayAuthContext, dict[str, Any]], Depends(_guard_kill_arm)
+    ],
 ) -> Any:
     _, body = _ctx
     return _forward("/live-broker/kill-switch/arm", body)
@@ -65,7 +70,9 @@ def safety_kill_switch_arm(
 
 @router.post("/kill-switch/release")
 def safety_kill_switch_release(
-    _ctx: Annotated[tuple[GatewayAuthContext, dict[str, Any]], Depends(_guard_kill_release)],
+    _ctx: Annotated[
+        tuple[GatewayAuthContext, dict[str, Any]], Depends(_guard_kill_release)
+    ],
 ) -> Any:
     _, body = _ctx
     return _forward("/live-broker/kill-switch/release", body)
@@ -73,7 +80,9 @@ def safety_kill_switch_release(
 
 @router.post("/orders/cancel-all")
 def safety_orders_cancel_all(
-    _ctx: Annotated[tuple[GatewayAuthContext, dict[str, Any]], Depends(_guard_cancel_all)],
+    _ctx: Annotated[
+        tuple[GatewayAuthContext, dict[str, Any]], Depends(_guard_cancel_all)
+    ],
 ) -> Any:
     _, body = _ctx
     return _forward("/live-broker/safety/orders/cancel-all", body)
@@ -81,7 +90,9 @@ def safety_orders_cancel_all(
 
 @router.post("/orders/emergency-flatten")
 def safety_emergency_flatten(
-    _ctx: Annotated[tuple[GatewayAuthContext, dict[str, Any]], Depends(_guard_emergency_flatten)],
+    _ctx: Annotated[
+        tuple[GatewayAuthContext, dict[str, Any]], Depends(_guard_emergency_flatten)
+    ],
 ) -> Any:
     _, body = _ctx
     return _forward("/live-broker/orders/emergency-flatten", body)

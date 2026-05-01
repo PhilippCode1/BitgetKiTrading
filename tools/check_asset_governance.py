@@ -11,9 +11,13 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 DOC_PATH = ROOT / "docs" / "production_10_10" / "asset_quarantine_and_live_allowlist.md"
-MODULE_PATH = ROOT / "shared" / "python" / "src" / "shared_py" / "bitget" / "asset_governance.py"
+MODULE_PATH = (
+    ROOT / "shared" / "python" / "src" / "shared_py" / "bitget" / "asset_governance.py"
+)
 SCRIPT_PATH = ROOT / "scripts" / "asset_governance_report.py"
-MAIN_CONSOLE_DOC_PATH = ROOT / "docs" / "production_10_10" / "main_console_product_direction.md"
+MAIN_CONSOLE_DOC_PATH = (
+    ROOT / "docs" / "production_10_10" / "main_console_product_direction.md"
+)
 NO_GO_DOC_PATH = ROOT / "docs" / "production_10_10" / "no_go_rules.md"
 TEST_PATHS = (
     ROOT / "tests" / "shared" / "test_asset_governance.py",
@@ -41,20 +45,51 @@ def _issue(
     message: str,
     path: Path | None = None,
 ) -> None:
-    issues.append(Issue(severity=severity, code=code, message=message, path=str(path) if path else None))
+    issues.append(
+        Issue(
+            severity=severity,
+            code=code,
+            message=message,
+            path=str(path) if path else None,
+        )
+    )
 
 
 def analyze() -> dict[str, Any]:
     issues: list[Issue] = []
     if not DOC_PATH.is_file():
-        _issue(issues, severity="error", code="doc_missing", message="Dokumentation fehlt.", path=DOC_PATH)
+        _issue(
+            issues,
+            severity="error",
+            code="doc_missing",
+            message="Dokumentation fehlt.",
+            path=DOC_PATH,
+        )
     if not MODULE_PATH.is_file():
-        _issue(issues, severity="error", code="module_missing", message="Governance-Modul fehlt.", path=MODULE_PATH)
+        _issue(
+            issues,
+            severity="error",
+            code="module_missing",
+            message="Governance-Modul fehlt.",
+            path=MODULE_PATH,
+        )
     if not SCRIPT_PATH.is_file():
-        _issue(issues, severity="error", code="script_missing", message="Report-Script fehlt.", path=SCRIPT_PATH)
+        _issue(
+            issues,
+            severity="error",
+            code="script_missing",
+            message="Report-Script fehlt.",
+            path=SCRIPT_PATH,
+        )
     for path in TEST_PATHS:
         if not path.is_file():
-            _issue(issues, severity="error", code="test_missing", message="Erforderlicher Test fehlt.", path=path)
+            _issue(
+                issues,
+                severity="error",
+                code="test_missing",
+                message="Erforderlicher Test fehlt.",
+                path=path,
+            )
     if MAIN_CONSOLE_DOC_PATH.is_file():
         text = MAIN_CONSOLE_DOC_PATH.read_text(encoding="utf-8").lower()
         if REQUIRED_MAIN_CONSOLE_TERM not in text:
@@ -66,7 +101,13 @@ def analyze() -> dict[str, Any]:
                 path=MAIN_CONSOLE_DOC_PATH,
             )
     else:
-        _issue(issues, severity="error", code="main_console_doc_missing", message="Main-Console-Doku fehlt.", path=MAIN_CONSOLE_DOC_PATH)
+        _issue(
+            issues,
+            severity="error",
+            code="main_console_doc_missing",
+            message="Main-Console-Doku fehlt.",
+            path=MAIN_CONSOLE_DOC_PATH,
+        )
     if NO_GO_DOC_PATH.is_file():
         text = NO_GO_DOC_PATH.read_text(encoding="utf-8").lower()
         has_primary = NO_GO_PRIMARY_TERM in text
@@ -80,7 +121,13 @@ def analyze() -> dict[str, Any]:
                 path=NO_GO_DOC_PATH,
             )
     else:
-        _issue(issues, severity="error", code="no_go_doc_missing", message="No-Go-Doku fehlt.", path=NO_GO_DOC_PATH)
+        _issue(
+            issues,
+            severity="error",
+            code="no_go_doc_missing",
+            message="No-Go-Doku fehlt.",
+            path=NO_GO_DOC_PATH,
+        )
 
     errors = [item for item in issues if item.severity == "error"]
     warnings = [item for item in issues if item.severity == "warning"]
@@ -102,7 +149,9 @@ def render(summary: dict[str, Any]) -> str:
     ]
     for issue in summary["issues"]:
         where = f" [{issue['path']}]" if issue.get("path") else ""
-        lines.append(f"{issue['severity'].upper()} {issue['code']}: {issue['message']}{where}")
+        lines.append(
+            f"{issue['severity'].upper()} {issue['code']}: {issue['message']}{where}"
+        )
     return "\n".join(lines)
 
 

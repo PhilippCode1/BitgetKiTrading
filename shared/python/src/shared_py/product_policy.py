@@ -9,10 +9,11 @@ liegt in den Services. Secrets und personenbezogene Daten gehoeren nicht in dies
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Literal, Mapping
+from typing import Any, Literal
 
 PRODUCT_BRIEF_DOCUMENT_ID = "PRODUCT_BRIEF_MODUL_MATE"
 PRODUCT_POLICY_MODULE_VERSION = "1.1.0"
@@ -55,10 +56,11 @@ class CustomerCommercialGates:
     - account_paused: weiche Pause (Zahlung, Nutzerwunsch).
     """
 
-    trial_active: bool
     contract_accepted: bool
     admin_live_trading_granted: bool
-    subscription_active: bool
+    # Legacy fields for compatibility during cleanup
+    trial_active: bool = False
+    subscription_active: bool = False
     account_suspended: bool = False
     account_paused: bool = False
 
@@ -94,17 +96,13 @@ def resolve_execution_mode(gates: CustomerCommercialGates) -> CommercialExecutio
     if gates.account_suspended or gates.account_paused:
         return CommercialExecutionMode.NONE
 
-    live_ok = gates.contract_accepted and gates.admin_live_trading_granted
-    if REQUIRE_ACTIVE_SUBSCRIPTION_FOR_LIVE_TRADING:
-        live_ok = live_ok and gates.subscription_active
+    if not gates.contract_accepted:
+        return CommercialExecutionMode.NONE
 
-    if live_ok:
+    if gates.admin_live_trading_granted:
         return CommercialExecutionMode.LIVE
 
-    if gates.trial_active or gates.contract_accepted:
-        return CommercialExecutionMode.DEMO
-
-    return CommercialExecutionMode.NONE
+    return CommercialExecutionMode.DEMO
 
 
 def live_trading_allowed(gates: CustomerCommercialGates) -> bool:
@@ -236,9 +234,19 @@ def plan_entitlement_key_enabled(
 
 
 def prepaid_balance_sufficient(
-    balance_list_usd: Decimal | str | float | int, *, min_list_usd: Decimal | str | float
+    balance_list_usd: Decimal | str | float | int,
+    *,
+    min_list_usd: Decimal | str | float,
 ) -> bool:
     """Kunden-Prepaid (List-USD) mindestens ``min_list_usd`` (kommerzielle Leistung)."""
-    b = balance_list_usd if isinstance(balance_list_usd, Decimal) else Decimal(str(balance_list_usd))
-    m = min_list_usd if isinstance(min_list_usd, Decimal) else Decimal(str(min_list_usd))
+    b = (
+        balance_list_usd
+        if isinstance(balance_list_usd, Decimal)
+        else Decimal(str(balance_list_usd))
+    )
+    m = (
+        min_list_usd
+        if isinstance(min_list_usd, Decimal)
+        else Decimal(str(min_list_usd))
+    )
     return b >= m

@@ -61,8 +61,8 @@ def analyze() -> dict[str, Any]:
         text = RETURN_TO_LIB.read_text(encoding="utf-8")
         required_snippets = (
             "https?:)?\\/\\/",
-            'return `${CONSOLE_BASE}/ops`',
-            "safePathname === \"/\"",
+            "return `${CONSOLE_BASE}/ops`",
+            'safePathname === "/"',
         )
         for snippet in required_snippets:
             if snippet not in text:
@@ -106,7 +106,9 @@ def analyze() -> dict[str, Any]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Check single-admin entry flow surface.")
+    parser = argparse.ArgumentParser(
+        description="Check single-admin entry flow surface."
+    )
     parser.add_argument("--strict", action="store_true")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)

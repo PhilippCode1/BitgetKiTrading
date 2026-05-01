@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import os
 
 import pytest
 
@@ -46,12 +45,18 @@ def test_hysteresis_safe_exit() -> None:
 
 
 def test_apply_survival_signal_overrides_1x() -> None:
-    sp = {"allowed_leverage": 25, "recommended_leverage": 20, "leverage_cap_reasons_json": ["x"]}
+    sp = {
+        "allowed_leverage": 25,
+        "recommended_leverage": 20,
+        "leverage_cap_reasons_json": ["x"],
+    }
     out = apply_survival_signal_overrides(sp)
     assert out["allowed_leverage"] == 1
     assert out["recommended_leverage"] == 1
     assert out["execution_leverage_cap"] == 1
-    assert "survival_mode_portfolio_governor_1x" in (out.get("leverage_cap_reasons_json") or [])
+    assert "survival_mode_portfolio_governor_1x" in (
+        out.get("leverage_cap_reasons_json") or []
+    )
 
 
 def test_merge_survival_truth_env_forced(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -62,7 +67,9 @@ def test_merge_survival_truth_env_forced(monkeypatch: pytest.MonkeyPatch) -> Non
     monkeypatch.delenv("BITGET_SURVIVAL_MODE", raising=False)
 
 
-def test_process_survival_metrics_with_fake_redis(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_process_survival_metrics_with_fake_redis(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     store: dict[str, str] = {}
 
     class _FakeRedis:
@@ -96,9 +103,15 @@ def test_adaptive_leverage_cap_atr_matrix_prompt_73() -> None:
     assert adaptive_leverage_cap_from_atr_percent(2.0, system_max_leverage=75) == 5
     assert adaptive_leverage_cap_from_atr_percent(5.0, system_max_leverage=75) == 2
     # Nach typischer 7x-Ramp: min(7, roh)
-    assert min(7, adaptive_leverage_cap_from_atr_percent(0.5, system_max_leverage=75)) == 7
-    assert min(7, adaptive_leverage_cap_from_atr_percent(2.0, system_max_leverage=75)) == 5
-    assert min(7, adaptive_leverage_cap_from_atr_percent(5.0, system_max_leverage=75)) == 2
+    assert (
+        min(7, adaptive_leverage_cap_from_atr_percent(0.5, system_max_leverage=75)) == 7
+    )
+    assert (
+        min(7, adaptive_leverage_cap_from_atr_percent(2.0, system_max_leverage=75)) == 5
+    )
+    assert (
+        min(7, adaptive_leverage_cap_from_atr_percent(5.0, system_max_leverage=75)) == 2
+    )
 
 
 def test_risk_volatility_clamp_bff_token() -> None:
@@ -107,8 +120,13 @@ def test_risk_volatility_clamp_bff_token() -> None:
 
 def test_effective_atr_stress_above_ema() -> None:
     # ATR 2 %, EMA 1 % -> Faktor 2, eff 4 %
-    e = effective_atr_percent_for_volatility_clamp(atr_percent=2.0, atr_ema_24h_percent=1.0)
+    e = effective_atr_percent_for_volatility_clamp(
+        atr_percent=2.0, atr_ema_24h_percent=1.0
+    )
     assert abs(e - 4.0) < 1e-9
     assert (
-        effective_atr_percent_for_volatility_clamp(atr_percent=1.0, atr_ema_24h_percent=2.0) == 1.0
+        effective_atr_percent_for_volatility_clamp(
+            atr_percent=1.0, atr_ema_24h_percent=2.0
+        )
+        == 1.0
     )

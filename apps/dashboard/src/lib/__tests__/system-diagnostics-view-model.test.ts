@@ -94,9 +94,15 @@ describe("system-diagnostics-view-model", () => {
       openAlerts: [],
       healthEndpointWired: true,
     });
-    expect(model.staleChecks.find((x) => x.key === "candles")?.stale).toBe(true);
-    expect(model.staleChecks.find((x) => x.key === "signals")?.stale).toBe(true);
-    expect(model.staleChecks.find((x) => x.key === "reconcile")?.stale).toBe(true);
+    expect(model.staleChecks.find((x) => x.key === "candles")?.stale).toBe(
+      true,
+    );
+    expect(model.staleChecks.find((x) => x.key === "signals")?.stale).toBe(
+      true,
+    );
+    expect(model.staleChecks.find((x) => x.key === "reconcile")?.stale).toBe(
+      true,
+    );
   });
 
   it("redacted sensitive error payload", () => {

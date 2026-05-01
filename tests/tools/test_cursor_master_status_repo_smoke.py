@@ -12,7 +12,11 @@ MASTER_STATUS = ROOT / "docs" / "production_10_10" / "CURSOR_MASTER_STATUS.md"
 
 def test_cursor_master_status_dry_run_exit_zero() -> None:
     r = subprocess.run(
-        [sys.executable, str(ROOT / "scripts" / "cursor_master_status.py"), "--dry-run"],
+        [
+            sys.executable,
+            str(ROOT / "scripts" / "cursor_master_status.py"),
+            "--dry-run",
+        ],
         cwd=ROOT,
         capture_output=True,
         text=True,
@@ -25,7 +29,11 @@ def test_cursor_master_status_dry_run_exit_zero() -> None:
 
 def test_update_cursor_master_status_alias_dry_run_exit_zero() -> None:
     r = subprocess.run(
-        [sys.executable, str(ROOT / "scripts" / "update_cursor_master_status.py"), "--dry-run"],
+        [
+            sys.executable,
+            str(ROOT / "scripts" / "update_cursor_master_status.py"),
+            "--dry-run",
+        ],
         cwd=ROOT,
         capture_output=True,
         text=True,

@@ -1,4 +1,3 @@
-from shared_py.observability.correlation import log_correlation_fields, new_trace_id
 from shared_py.observability.apex_trace import (
     finalize_apex_deltas,
     log_apex_chain_ms,
@@ -7,12 +6,7 @@ from shared_py.observability.apex_trace import (
     now_ns,
     set_hop,
 )
-from shared_py.observability.request_context import (
-    RequestContextLoggingFilter,
-    clear_request_context,
-    get_outbound_trace_headers,
-    set_request_context,
-)
+from shared_py.observability.correlation import log_correlation_fields, new_trace_id
 from shared_py.observability.datastore_wait import (
     wait_for_datastores,
     wait_for_postgres,
@@ -34,6 +28,12 @@ from shared_py.observability.metrics import (
     set_pipeline_backpressure_queue_size,
     start_thread_periodic_heartbeat,
     touch_worker_heartbeat,
+)
+from shared_py.observability.request_context import (
+    RequestContextLoggingFilter,
+    clear_request_context,
+    get_outbound_trace_headers,
+    set_request_context,
 )
 
 __all__ = [

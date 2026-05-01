@@ -177,7 +177,9 @@ class MonitorScheduler:
                 reconcile_details = lb.details
             if lb.check_type == "kill_switch" and isinstance(lb.details, dict):
                 kill_switch_details = lb.details
-            if lb.check_type == "shadow_live_divergence" and isinstance(lb.details, dict):
+            if lb.check_type == "shadow_live_divergence" and isinstance(
+                lb.details, dict
+            ):
                 SHADOW_LIVE_GATE_BLOCKS_24H.set(
                     float(lb.details.get("gate_blocks_24h") or 0)
                 )
@@ -203,7 +205,9 @@ class MonitorScheduler:
         except Exception as exc:
             logger.warning("refresh_trading_sql_metrics failed: %s", exc)
         try:
-            online_drift_checks = load_online_drift_service_check(self.settings.database_url)
+            online_drift_checks = load_online_drift_service_check(
+                self.settings.database_url
+            )
         except Exception as exc:
             logger.warning("online-drift check failed: %s", exc)
             online_drift_checks = [
@@ -217,14 +221,18 @@ class MonitorScheduler:
             ]
         svc_results.extend(online_drift_checks)
         for od in online_drift_checks:
-            if od.check_type == "learn_online_drift_state" and isinstance(od.details, dict):
+            if od.check_type == "learn_online_drift_state" and isinstance(
+                od.details, dict
+            ):
                 ONLINE_DRIFT_ACTION_RANK.set(
                     float(action_rank(str(od.details.get("effective_action") or "ok")))
                 )
 
         insert_service_checks(self.settings.database_url, svc_results)
         try:
-            from monitor_engine.self_healing.coordinator import run_self_healing_coordinator
+            from monitor_engine.self_healing.coordinator import (
+                run_self_healing_coordinator,
+            )
             from monitor_engine.self_healing.service_restarter import ServiceRestarter
 
             run_self_healing_coordinator(

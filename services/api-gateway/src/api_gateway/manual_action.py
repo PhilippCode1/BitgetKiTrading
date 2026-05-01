@@ -47,7 +47,9 @@ EMERGENCY_ROUTE_KEYS: frozenset[str] = frozenset(
 
 def canonical_payload_fingerprint(payload: dict[str, Any]) -> str:
     return hashlib.sha256(
-        json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str).encode("utf-8")
+        json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str).encode(
+            "utf-8"
+        )
     ).hexdigest()
 
 
@@ -125,7 +127,10 @@ def verify_manual_action_token(
     if str(data.get("rk")) != route_key:
         raise HTTPException(
             status_code=403,
-            detail={"code": "MANUAL_ACTION_ROUTE_MISMATCH", "message": "Token passt nicht zur Route."},
+            detail={
+                "code": "MANUAL_ACTION_ROUTE_MISMATCH",
+                "message": "Token passt nicht zur Route.",
+            },
         )
     if str(data.get("fp")) != canonical_payload_fingerprint(payload):
         raise HTTPException(
@@ -142,7 +147,10 @@ def verify_manual_action_token(
         if redis_client is None:
             raise HTTPException(
                 status_code=503,
-                detail={"code": "MANUAL_ACTION_REDIS_REQUIRED", "message": "Anti-Replay nicht verfuegbar."},
+                detail={
+                    "code": "MANUAL_ACTION_REDIS_REQUIRED",
+                    "message": "Anti-Replay nicht verfuegbar.",
+                },
             )
         exp_ts = int(data.get("exp") or 0)
         ttl = max(5, exp_ts - int(time.time()) + 10)
@@ -152,12 +160,18 @@ def verify_manual_action_token(
             logger.warning("manual action redis replay guard: %s", exc)
             raise HTTPException(
                 status_code=503,
-                detail={"code": "MANUAL_ACTION_REDIS_ERROR", "message": "Anti-Replay fehlgeschlagen."},
+                detail={
+                    "code": "MANUAL_ACTION_REDIS_ERROR",
+                    "message": "Anti-Replay fehlgeschlagen.",
+                },
             ) from exc
         if not ok:
             raise HTTPException(
                 status_code=409,
-                detail={"code": "MANUAL_ACTION_REPLAY", "message": "Token bereits verbraucht oder aktiv."},
+                detail={
+                    "code": "MANUAL_ACTION_REPLAY",
+                    "message": "Token bereits verbraucht oder aktiv.",
+                },
             )
     return data
 

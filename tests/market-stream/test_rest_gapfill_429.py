@@ -4,7 +4,6 @@ import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
-
 from market_stream.gapfill.rest_gapfill import BitgetRestGapFillWorker
 from market_stream.sinks.postgres_raw import PostgresRawSink
 from market_stream.sinks.redis_stream import RedisStreamSink
@@ -43,8 +42,13 @@ class RestGapfill429Tests(unittest.IsolatedAsyncioTestCase):
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
 
-        with patch("market_stream.gapfill.rest_gapfill.httpx.AsyncClient", return_value=mock_client):
-            payload = await worker._request_json(path="/api/v2/mix/market/candles", params={"symbol": "ETHUSDT"})
+        with patch(
+            "market_stream.gapfill.rest_gapfill.httpx.AsyncClient",
+            return_value=mock_client,
+        ):
+            payload = await worker._request_json(
+                path="/api/v2/mix/market/candles", params={"symbol": "ETHUSDT"}
+            )
 
         self.assertEqual(payload.get("code"), "00000")
         self.assertEqual(mock_client.get.await_count, 2)

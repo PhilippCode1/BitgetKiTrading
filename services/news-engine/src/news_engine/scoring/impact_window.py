@@ -44,7 +44,9 @@ def resolve_impact_window(
     regulation = has("fed", "etf", "sec", "regulation", "cpi", "inflation", "rates")
 
     if regulation and not macro_slow:
-        return "sofort" if has("breaking", "sec", "lawsuit", "ban", "hack") else "mittel"
+        return (
+            "sofort" if has("breaking", "sec", "lawsuit", "ban", "hack") else "mittel"
+        )
     if macro_slow:
         return "langsam" if not regulation else "mittel"
     return "mittel"

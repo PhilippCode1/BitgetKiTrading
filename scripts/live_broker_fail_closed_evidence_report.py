@@ -119,9 +119,15 @@ def render_md(payload: dict[str, Any]) -> str:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Live broker fail-closed evidence report")
-    parser.add_argument("--output-md", default="reports/live_broker_fail_closed_evidence.md")
-    parser.add_argument("--output-json", default="reports/live_broker_fail_closed_evidence.json")
+    parser = argparse.ArgumentParser(
+        description="Live broker fail-closed evidence report"
+    )
+    parser.add_argument(
+        "--output-md", default="reports/live_broker_fail_closed_evidence.md"
+    )
+    parser.add_argument(
+        "--output-json", default="reports/live_broker_fail_closed_evidence.json"
+    )
     args = parser.parse_args()
 
     payload = build_payload()
@@ -130,8 +136,12 @@ def main() -> int:
     output_md.parent.mkdir(parents=True, exist_ok=True)
     output_json.parent.mkdir(parents=True, exist_ok=True)
     output_md.write_text(render_md(payload), encoding="utf-8")
-    output_json.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
-    print(f"live_broker_fail_closed_evidence_report: scenarios={len(payload['scenarios'])} verified={payload['verified']}")
+    output_json.write_text(
+        json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+    print(
+        f"live_broker_fail_closed_evidence_report: scenarios={len(payload['scenarios'])} verified={payload['verified']}"
+    )
     return 0
 
 

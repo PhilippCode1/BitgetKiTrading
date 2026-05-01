@@ -2,10 +2,9 @@ from __future__ import annotations
 
 from typing import ClassVar
 
+from config.settings import BaseServiceSettings
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import SettingsConfigDict
-
-from config.settings import BaseServiceSettings
 from shared_py.eventbus import STREAM_CANDLE_CLOSE
 
 KNOWN_TIMEFRAMES = ("1m", "5m", "15m", "1H", "4H")
@@ -30,9 +29,15 @@ class StructureEngineSettings(BaseServiceSettings):
     structure_stream: str = Field(default=STREAM_CANDLE_CLOSE, alias="STRUCTURE_STREAM")
     structure_group: str = Field(default="structure-engine", alias="STRUCTURE_GROUP")
     structure_consumer: str = Field(default="st-1", alias="STRUCTURE_CONSUMER")
-    structure_lookback_candles: int = Field(default=400, alias="STRUCTURE_LOOKBACK_CANDLES")
-    structure_max_allowed_gap_bars: int = Field(default=3, alias="STRUCTURE_MAX_ALLOWED_GAP_BARS")
-    structure_bos_choch_max_gap_bars: int = Field(default=2, alias="STRUCTURE_BOS_CHOCH_MAX_GAP_BARS")
+    structure_lookback_candles: int = Field(
+        default=400, alias="STRUCTURE_LOOKBACK_CANDLES"
+    )
+    structure_max_allowed_gap_bars: int = Field(
+        default=3, alias="STRUCTURE_MAX_ALLOWED_GAP_BARS"
+    )
+    structure_bos_choch_max_gap_bars: int = Field(
+        default=2, alias="STRUCTURE_BOS_CHOCH_MAX_GAP_BARS"
+    )
 
     pivot_left_n_1m: int = Field(default=3, alias="PIVOT_LEFT_N_1M")
     pivot_right_n_1m: int = Field(default=3, alias="PIVOT_RIGHT_N_1M")
@@ -45,11 +50,15 @@ class StructureEngineSettings(BaseServiceSettings):
     pivot_left_n_4h: int = Field(default=1, alias="PIVOT_LEFT_N_4H")
     pivot_right_n_4h: int = Field(default=1, alias="PIVOT_RIGHT_N_4H")
 
-    compression_atrp_thresh: float = Field(default=0.0012, alias="COMPRESSION_ATRP_THRESH")
+    compression_atrp_thresh: float = Field(
+        default=0.0012, alias="COMPRESSION_ATRP_THRESH"
+    )
     compression_atrp_thresh_off: float = Field(
         default=0.0018, alias="COMPRESSION_ATRP_THRESH_OFF"
     )
-    compression_range_thresh: float = Field(default=0.0025, alias="COMPRESSION_RANGE_THRESH")
+    compression_range_thresh: float = Field(
+        default=0.0025, alias="COMPRESSION_RANGE_THRESH"
+    )
     compression_range_thresh_off: float = Field(
         default=0.0035, alias="COMPRESSION_RANGE_THRESH_OFF"
     )
@@ -62,9 +71,13 @@ class StructureEngineSettings(BaseServiceSettings):
 
     box_prebreak_dist_bps: float = Field(default=8.0, alias="BOX_PREBREAK_DIST_BPS")
     box_breakout_buffer_bps: float = Field(default=3.0, alias="BOX_BREAKOUT_BUFFER_BPS")
-    false_breakout_window_bars: int = Field(default=5, alias="FALSE_BREAKOUT_WINDOW_BARS")
+    false_breakout_window_bars: int = Field(
+        default=5, alias="FALSE_BREAKOUT_WINDOW_BARS"
+    )
 
-    eventbus_default_block_ms: int = Field(default=2000, alias="EVENTBUS_DEFAULT_BLOCK_MS")
+    eventbus_default_block_ms: int = Field(
+        default=2000, alias="EVENTBUS_DEFAULT_BLOCK_MS"
+    )
     eventbus_default_count: int = Field(default=50, alias="EVENTBUS_DEFAULT_COUNT")
     eventbus_dedupe_ttl_sec: int = Field(default=86400, alias="EVENTBUS_DEDUPE_TTL_SEC")
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
@@ -88,7 +101,9 @@ class StructureEngineSettings(BaseServiceSettings):
             raise ValueError("Struktur- und Eventbus-Werte muessen > 0 sein")
         return value
 
-    @field_validator("structure_max_allowed_gap_bars", "structure_bos_choch_max_gap_bars")
+    @field_validator(
+        "structure_max_allowed_gap_bars", "structure_bos_choch_max_gap_bars"
+    )
     @classmethod
     def _validate_gap_bars_non_negative(cls, value: int) -> int:
         if value < 0:
@@ -151,7 +166,7 @@ class StructureEngineSettings(BaseServiceSettings):
         return str(value).strip().upper() or "INFO"
 
     @model_validator(mode="after")
-    def _validate_lookback(self) -> "StructureEngineSettings":
+    def _validate_lookback(self) -> StructureEngineSettings:
         max_pivot = max(
             self.pivot_left_n_1m + self.pivot_right_n_1m,
             self.pivot_left_n_5m + self.pivot_right_n_5m,

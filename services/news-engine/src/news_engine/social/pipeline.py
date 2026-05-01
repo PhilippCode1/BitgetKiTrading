@@ -48,14 +48,20 @@ class SocialSentimentPipeline:
         )
         emb = vecs[0] if vecs else None
         if emb is None:
-            logger.warning("social embed fehlgeschlagen source=%s id=%s", msg.source, msg.external_id)
+            logger.warning(
+                "social embed fehlgeschlagen source=%s id=%s",
+                msg.source,
+                msg.external_id,
+            )
             return None
         inst, cp, ce = self._agg.instantaneous_score(emb)
         symbols = infer_symbols(msg.text)
         excerpt = (msg.text or "")[:500]
         for sym in symbols:
             roll = self._agg.update_rolling(self._redis, sym, inst)
-            dk = hashlib.sha256(f"{msg.source}:{msg.external_id}:{sym}".encode("utf-8")).hexdigest()
+            dk = hashlib.sha256(
+                f"{msg.source}:{msg.external_id}:{sym}".encode()
+            ).hexdigest()
             publish_social_sentiment_update(
                 self._bus,
                 symbol=sym,
@@ -70,5 +76,7 @@ class SocialSentimentPipeline:
                 dedupe_key=dk,
             )
         total_ms = (time.perf_counter() - t_wall0) * 1000.0
-        logger.debug("social handled src=%s sym=%s total_ms=%.1f", msg.source, symbols, total_ms)
+        logger.debug(
+            "social handled src=%s sym=%s total_ms=%.1f", msg.source, symbols, total_ms
+        )
         return total_ms

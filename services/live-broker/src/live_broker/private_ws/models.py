@@ -4,7 +4,6 @@ import time
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
-
 from shared_py.bitget.ws_canonical import BitgetWsCanonicalEvent
 
 EventType = Literal["order", "fill", "position", "account", "unknown"]
@@ -28,7 +27,7 @@ class NormalizedPrivateEvent(BaseModel):
         inst_id = arg.get("instId", arg.get("coin", "default"))
         action = str(message.get("action", "snapshot") or "snapshot")
         data = message.get("data", [])
-        
+
         # Bitget private WS liefert manchmal 'ts' als string, manchmal integer
         ts_val = message.get("ts", int(time.time() * 1000))
         try:

@@ -12,7 +12,6 @@ import argparse
 import json
 import re
 import subprocess
-import sys
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -53,18 +52,55 @@ TEXT_FILE_SUFFIXES = {
 }
 
 PATTERNS: tuple[tuple[str, re.Pattern[str], str], ...] = (
-    ("openai_key", re.compile(r"sk-(?:proj|live|test|ant|or-v1)-[A-Za-z0-9_\-]{16,}"), "critical"),
-    ("bearer_token", re.compile(r"Authorization\s*:\s*Bearer\s+[A-Za-z0-9._\-]{12,}", re.IGNORECASE), "high"),
-    ("private_key", re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"), "critical"),
+    (
+        "openai_key",
+        re.compile(r"sk-(?:proj|live|test|ant|or-v1)-[A-Za-z0-9_\-]{16,}"),
+        "critical",
+    ),
+    (
+        "bearer_token",
+        re.compile(r"Authorization\s*:\s*Bearer\s+[A-Za-z0-9._\-]{12,}", re.IGNORECASE),
+        "high",
+    ),
+    (
+        "private_key",
+        re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
+        "critical",
+    ),
     ("aws_access_key", re.compile(r"\bAKIA[0-9A-Z]{16}\b"), "critical"),
     ("jwt_secret_assignment", re.compile(r"\bJWT_SECRET\s*=\s*[^\s#]{8,}"), "high"),
-    ("internal_api_key_assignment", re.compile(r"\bINTERNAL_API_KEY\s*=\s*[^\s#]{8,}"), "high"),
+    (
+        "internal_api_key_assignment",
+        re.compile(r"\bINTERNAL_API_KEY\s*=\s*[^\s#]{8,}"),
+        "high",
+    ),
     ("secret_key_assignment", re.compile(r"\bSECRET_KEY\s*=\s*[^\s#]{8,}"), "high"),
-    ("passphrase_assignment", re.compile(r"\bPASSPHRASE\s*=\s*[^\s#]{8,}", re.IGNORECASE), "high"),
-    ("token_assignment", re.compile(r"\bTOKEN\s*=\s*[^\s#]{8,}", re.IGNORECASE), "medium"),
-    ("next_public_secret_name", re.compile(r"\bNEXT_PUBLIC_[A-Z0-9_]*(SECRET|TOKEN|API_KEY|JWT|PASSPHRASE)[A-Z0-9_]*\s*="), "critical"),
-    ("bitget_secret", re.compile(r"\bBITGET_(?:DEMO_)?API_(?:KEY|SECRET|PASSPHRASE)\s*=\s*[^\s#]{8,}"), "high"),
+    (
+        "passphrase_assignment",
+        re.compile(r"\bPASSPHRASE\s*=\s*[^\s#]{8,}", re.IGNORECASE),
+        "high",
+    ),
+    (
+        "token_assignment",
+        re.compile(r"\bTOKEN\s*=\s*[^\s#]{8,}", re.IGNORECASE),
+        "medium",
+    ),
+    (
+        "next_public_secret_name",
+        re.compile(
+            r"\bNEXT_PUBLIC_[A-Z0-9_]*(SECRET|TOKEN|API_KEY|JWT|PASSPHRASE)[A-Z0-9_]*\s*="
+        ),
+        "critical",
+    ),
+    (
+        "bitget_secret",
+        re.compile(
+            r"\bBITGET_(?:DEMO_)?API_(?:KEY|SECRET|PASSPHRASE)\s*=\s*[^\s#]{8,}"
+        ),
+        "high",
+    ),
 )
+
 
 @dataclass(frozen=True)
 class Finding:
@@ -80,7 +116,11 @@ def _load_matrix_env_names() -> set[str]:
         return set()
     data = json.loads(MATRIX.read_text(encoding="utf-8"))
     entries = list(data.get("entries") or [])
-    return {str(item.get("env", "")).strip() for item in entries if str(item.get("env", "")).strip()}
+    return {
+        str(item.get("env", "")).strip()
+        for item in entries
+        if str(item.get("env", "")).strip()
+    }
 
 
 def _is_text_file(path: Path) -> bool:
@@ -105,7 +145,9 @@ def _scan_file(path: Path) -> list[Finding]:
     rel = path.relative_to(ROOT).as_posix()
     for idx, line in enumerate(lines, start=1):
         for rule_name, pattern, severity in PATTERNS:
-            if rule_name == "next_public_secret_name" and not path.name.startswith(".env"):
+            if rule_name == "next_public_secret_name" and not path.name.startswith(
+                ".env"
+            ):
                 continue
             match = pattern.search(line)
             if not match:
@@ -169,7 +211,8 @@ def scan_repo() -> dict[str, Any]:
         "severity_counts": severity_counts,
         "findings": [asdict(f) for f in findings],
         "env_files_not_ignored": env_not_ignored,
-        "critical_found": severity_counts.get("critical", 0) > 0 or bool(env_not_ignored),
+        "critical_found": severity_counts.get("critical", 0) > 0
+        or bool(env_not_ignored),
     }
 
 
@@ -233,7 +276,9 @@ def main() -> int:
         output_md.write_text(_to_md(payload), encoding="utf-8")
     if args.output_json:
         args.output_json.parent.mkdir(parents=True, exist_ok=True)
-        args.output_json.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+        args.output_json.write_text(
+            json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
     if args.json:
         print(json.dumps(payload, indent=2, ensure_ascii=False))
     print(

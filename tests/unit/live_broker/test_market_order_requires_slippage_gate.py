@@ -3,7 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
-SERVICE = ROOT / "services" / "live-broker" / "src" / "live_broker" / "orders" / "service.py"
+SERVICE = (
+    ROOT / "services" / "live-broker" / "src" / "live_broker" / "orders" / "service.py"
+)
 
 
 def test_market_order_requires_slippage_gate_contract() -> None:

@@ -39,7 +39,9 @@ def test_numeric_hotpath_matches_python_reference_small() -> None:
 def test_rsi_parity_monotone_series() -> None:
     closes = [100.0 + 0.1 * i for i in range(40)]
     w = 14
-    assert isclose(nh.rsi_sma(closes, w), py_rsi_sma(closes, w), rel_tol=0.0, abs_tol=1e-9)
+    assert isclose(
+        nh.rsi_sma(closes, w), py_rsi_sma(closes, w), rel_tol=0.0, abs_tol=1e-9
+    )
 
 
 def test_trend_snapshot_parity_random_walk() -> None:
@@ -49,7 +51,9 @@ def test_trend_snapshot_parity_random_walk() -> None:
     py_snap = py_trend_snapshot(closes)
     assert isclose(rust_snap.ema_fast, py_snap.ema_fast, rel_tol=0.0, abs_tol=1e-9)
     assert isclose(rust_snap.ema_slow, py_snap.ema_slow, rel_tol=0.0, abs_tol=1e-9)
-    assert isclose(rust_snap.slope_proxy, py_snap.slope_proxy, rel_tol=0.0, abs_tol=1e-9)
+    assert isclose(
+        rust_snap.slope_proxy, py_snap.slope_proxy, rel_tol=0.0, abs_tol=1e-9
+    )
     assert rust_snap.trend_dir == py_snap.trend_dir
 
 

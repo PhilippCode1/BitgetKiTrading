@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import time
 from typing import Any
+
 import pytest
 
 from news_engine.config import NewsEngineSettings
@@ -22,12 +23,16 @@ def _uv1024(a: float, b: float) -> list[float]:
     return v
 
 
-def test_social_pipeline_etf_positive_and_fast(monkeypatch: pytest.MonkeyPatch, news_settings: Any) -> None:
+def test_social_pipeline_etf_positive_and_fast(
+    monkeypatch: pytest.MonkeyPatch, news_settings: Any
+) -> None:
     monkeypatch.setenv("SOCIAL_SPAM_MIN_FOLLOWERS", "0")
     settings = NewsEngineSettings()
     panic = _uv1024(1.0, 0.0)
     euph = _uv1024(0.0, 1.0)
-    agg = SentimentAggregator(panic_centroid=panic, euphoria_centroid=euph, roll_alpha=0.4)
+    agg = SentimentAggregator(
+        panic_centroid=panic, euphoria_centroid=euph, roll_alpha=0.4
+    )
 
     published: list[tuple[str, Any]] = []
 
@@ -64,7 +69,9 @@ def test_social_pipeline_etf_positive_and_fast(monkeypatch: pytest.MonkeyPatch, 
     assert float(pl.get("sentiment_score") or 0.0) > 0.2
 
 
-def test_social_worker_bootstrap_embed_order(monkeypatch: pytest.MonkeyPatch, news_settings: Any) -> None:
+def test_social_worker_bootstrap_embed_order(
+    monkeypatch: pytest.MonkeyPatch, news_settings: Any
+) -> None:
     """Referenz-Batch: panic- und Euphorie-Vektoren werden getrennt ausgewertet."""
     from news_engine.social.worker import SocialStreamWorker
 
@@ -74,7 +81,9 @@ def test_social_worker_bootstrap_embed_order(monkeypatch: pytest.MonkeyPatch, ne
 
     calls: list[int] = []
 
-    async def _fake_embed(*, texts: list[str], **kwargs: Any) -> tuple[list[list[float] | None], str, float]:
+    async def _fake_embed(
+        *, texts: list[str], **kwargs: Any
+    ) -> tuple[list[list[float] | None], str, float]:
         calls.append(len(texts))
         out: list[list[float]] = []
         for _t in texts:

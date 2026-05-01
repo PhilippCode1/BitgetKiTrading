@@ -12,22 +12,67 @@ ROOT = Path(__file__).resolve().parents[1]
 def analyze() -> dict[str, Any]:
     issues: list[dict[str, str]] = []
     required = (
-        (ROOT / "docs" / "production_10_10" / "multi_asset_strategy_performance_evidence.md", "doc_missing", "Multi-Asset-Evidence-Doku fehlt."),
-        (ROOT / "shared" / "python" / "src" / "shared_py" / "multi_asset_strategy_evidence.py", "module_missing", "multi_asset_strategy_evidence.py fehlt."),
-        (ROOT / "scripts" / "verify_multi_asset_strategy_evidence.py", "script_missing", "verify_multi_asset_strategy_evidence.py fehlt."),
-        (ROOT / "tests" / "scripts" / "test_verify_multi_asset_strategy_evidence.py", "script_test_missing", "Script-Test fehlt."),
-        (ROOT / "tests" / "quant" / "test_multi_asset_strategy_evidence.py", "quant_test_missing", "Quant-Test fehlt."),
-        (ROOT / "tests" / "tools" / "test_check_multi_asset_strategy_evidence.py", "tool_test_missing", "Tool-Test fehlt."),
-        (ROOT / "tests" / "fixtures" / "multi_asset_strategy_evidence_sample.json", "fixture_missing", "Fixture fehlt."),
+        (
+            ROOT
+            / "docs"
+            / "production_10_10"
+            / "multi_asset_strategy_performance_evidence.md",
+            "doc_missing",
+            "Multi-Asset-Evidence-Doku fehlt.",
+        ),
+        (
+            ROOT
+            / "shared"
+            / "python"
+            / "src"
+            / "shared_py"
+            / "multi_asset_strategy_evidence.py",
+            "module_missing",
+            "multi_asset_strategy_evidence.py fehlt.",
+        ),
+        (
+            ROOT / "scripts" / "verify_multi_asset_strategy_evidence.py",
+            "script_missing",
+            "verify_multi_asset_strategy_evidence.py fehlt.",
+        ),
+        (
+            ROOT / "tests" / "scripts" / "test_verify_multi_asset_strategy_evidence.py",
+            "script_test_missing",
+            "Script-Test fehlt.",
+        ),
+        (
+            ROOT / "tests" / "quant" / "test_multi_asset_strategy_evidence.py",
+            "quant_test_missing",
+            "Quant-Test fehlt.",
+        ),
+        (
+            ROOT / "tests" / "tools" / "test_check_multi_asset_strategy_evidence.py",
+            "tool_test_missing",
+            "Tool-Test fehlt.",
+        ),
+        (
+            ROOT / "tests" / "fixtures" / "multi_asset_strategy_evidence_sample.json",
+            "fixture_missing",
+            "Fixture fehlt.",
+        ),
     )
     for path, code, msg in required:
         if not path.is_file():
-            issues.append({"severity": "error", "code": code, "message": msg, "path": str(path)})
+            issues.append(
+                {"severity": "error", "code": code, "message": msg, "path": str(path)}
+            )
 
     script = ROOT / "scripts" / "verify_multi_asset_strategy_evidence.py"
     if script.is_file():
         text = script.read_text(encoding="utf-8")
-        for fragment in ("--dry-run", "--input-json", "--output-md", "--output-json", "PASS_WITH_WARNINGS", "FAIL"):
+        for fragment in (
+            "--dry-run",
+            "--input-json",
+            "--output-md",
+            "--output-json",
+            "PASS_WITH_WARNINGS",
+            "FAIL",
+        ):
             if fragment not in text:
                 issues.append(
                     {
@@ -38,7 +83,12 @@ def analyze() -> dict[str, Any]:
                     }
                 )
 
-    doc = ROOT / "docs" / "production_10_10" / "multi_asset_strategy_performance_evidence.md"
+    doc = (
+        ROOT
+        / "docs"
+        / "production_10_10"
+        / "multi_asset_strategy_performance_evidence.md"
+    )
     if doc.is_file():
         d = doc.read_text(encoding="utf-8").lower()
         for klass in (
@@ -63,11 +113,18 @@ def analyze() -> dict[str, Any]:
 
     errors = [i for i in issues if i["severity"] == "error"]
     warnings = [i for i in issues if i["severity"] == "warning"]
-    return {"ok": len(errors) == 0, "error_count": len(errors), "warning_count": len(warnings), "issues": issues}
+    return {
+        "ok": len(errors) == 0,
+        "error_count": len(errors),
+        "warning_count": len(warnings),
+        "issues": issues,
+    }
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Prueft Multi-Asset Strategy-Evidence-Artefakte.")
+    parser = argparse.ArgumentParser(
+        description="Prueft Multi-Asset Strategy-Evidence-Artefakte."
+    )
     parser.add_argument("--strict", action="store_true")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
@@ -81,7 +138,9 @@ def main() -> int:
             f"errors={payload['error_count']} warnings={payload['warning_count']}"
         )
         for issue in payload["issues"]:
-            print(f"{issue['severity'].upper()} {issue['code']}: {issue['message']} [{issue['path']}]")
+            print(
+                f"{issue['severity'].upper()} {issue['code']}: {issue['message']} [{issue['path']}]"
+            )
     if payload["error_count"] > 0:
         return 1
     if args.strict and payload["warning_count"] > 0:

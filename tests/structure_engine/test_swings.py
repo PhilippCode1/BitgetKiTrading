@@ -50,4 +50,7 @@ def test_structure_event_bos_up_only_on_edge() -> None:
 
 
 def test_structure_event_choch_down_on_edge() -> None:
-    assert structure_event_on_bar_edge("UP", 97.0, 99.0, 102.0, 98.0) == ("CHOCH", "DOWN")
+    assert structure_event_on_bar_edge("UP", 97.0, 99.0, 102.0, 98.0) == (
+        "CHOCH",
+        "DOWN",
+    )

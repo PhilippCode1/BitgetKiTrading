@@ -57,7 +57,9 @@ def mask_secret_hint(value: str | None) -> str:
 
 
 def redact_sensitive_text(text: str) -> str:
-    out = re.sub(r"(?i)authorization\s*[:=]\s*bearer\s+\S+", "Authorization=***REDACTED***", text)
+    out = re.sub(
+        r"(?i)authorization\s*[:=]\s*bearer\s+\S+", "Authorization=***REDACTED***", text
+    )
     out = re.sub(
         r"(?i)(api[_-]?key|secret|passphrase|password|token|authorization)\s*[:=]\s*\S+",
         r"\1=***REDACTED***",
@@ -105,8 +107,16 @@ def evaluate_private_credentials(
     secret_hint = mask_secret_hint(bitget_api_secret)
     passphrase_hint = mask_secret_hint(bitget_api_passphrase)
 
-    missing = key_hint == "missing" or secret_hint == "missing" or passphrase_hint == "missing"
-    placeholder = key_hint == "placeholder" or secret_hint == "placeholder" or passphrase_hint == "placeholder"
+    missing = (
+        key_hint == "missing"
+        or secret_hint == "missing"
+        or passphrase_hint == "missing"
+    )
+    placeholder = (
+        key_hint == "placeholder"
+        or secret_hint == "placeholder"
+        or passphrase_hint == "placeholder"
+    )
 
     block: list[str] = []
     if missing:
@@ -150,7 +160,14 @@ def evaluate_private_credentials(
         status = "live_write_eligible_after_all_gates"
         live_write_blocked = False
     else:
-        if status not in {"missing", "placeholder", "invalid", "expired_or_revoked", "withdrawal_permission_detected", "rotation_required"}:
+        if status not in {
+            "missing",
+            "placeholder",
+            "invalid",
+            "expired_or_revoked",
+            "withdrawal_permission_detected",
+            "rotation_required",
+        }:
             status = "live_write_blocked"
         if permission_trading is not True:
             block.append("Trading-Permission nicht bestätigt.")

@@ -68,7 +68,9 @@ def build_run_manifest(
     root = Path(__file__).resolve().parents[5]
     try:
         artifact_dir_resolved = artifact_dir.resolve()
-        artifacts_relative = str(artifact_dir_resolved.relative_to(root)).replace("\\", "/")
+        artifacts_relative = str(artifact_dir_resolved.relative_to(root)).replace(
+            "\\", "/"
+        )
     except ValueError:
         artifact_dir_resolved = artifact_dir.resolve()
         artifacts_relative = str(artifact_dir_resolved).replace("\\", "/")

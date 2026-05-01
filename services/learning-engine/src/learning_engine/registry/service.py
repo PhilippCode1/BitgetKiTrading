@@ -68,7 +68,9 @@ def create_strategy(
             initial_status=init_st,
         )
     except psycopg.errors.UniqueViolation as exc:
-        raise HTTPException(status_code=409, detail="strategy name bereits vergeben") from exc
+        raise HTTPException(
+            status_code=409, detail="strategy name bereits vergeben"
+        ) from exc
     return row
 
 
@@ -90,7 +92,9 @@ def add_version(
             risk_profile_json=body.risk_profile,
         )
     except psycopg.errors.UniqueViolation as exc:
-        raise HTTPException(status_code=409, detail="version existiert bereits") from exc
+        raise HTTPException(
+            status_code=409, detail="version existiert bereits"
+        ) from exc
     return vrow
 
 
@@ -161,7 +165,9 @@ def set_status(
     return {"status": "ok", "current_status": new, "warnings": warnings}
 
 
-def get_strategy_detail(conn: psycopg.Connection[Any], strategy_id: UUID) -> dict[str, Any]:
+def get_strategy_detail(
+    conn: psycopg.Connection[Any], strategy_id: UUID
+) -> dict[str, Any]:
     row = storage.fetch_strategy_by_id(conn, strategy_id)
     if row is None:
         raise HTTPException(status_code=404, detail="strategy nicht gefunden")
@@ -169,7 +175,9 @@ def get_strategy_detail(conn: psycopg.Connection[Any], strategy_id: UUID) -> dic
     return {"strategy": dict(row), "versions": versions}
 
 
-def list_strategies(conn: psycopg.Connection[Any], status: str | None) -> list[dict[str, Any]]:
+def list_strategies(
+    conn: psycopg.Connection[Any], status: str | None
+) -> list[dict[str, Any]]:
     if status and status not in (
         "promoted",
         "live_champion",

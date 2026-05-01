@@ -11,14 +11,15 @@ import hashlib
 import json
 import logging
 import time
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Any, Callable, Mapping
+from typing import Any
 
-import psycopg
 from psycopg import errors as pg_errors
 from redis import Redis
 from redis.exceptions import RedisError
+
 
 def _d_decimal(value: Any) -> Decimal | None:
     if value in (None, ""):
@@ -27,6 +28,7 @@ def _d_decimal(value: Any) -> Decimal | None:
         return Decimal(str(value))
     except Exception:
         return None
+
 
 logger = logging.getLogger("shared_py.runtime_safety_oracle")
 
@@ -152,7 +154,9 @@ def check_axiom_nonpositive_balance_proxy(
     return None
 
 
-def check_axiom_negative_position_numerics(rows: list[Mapping[str, Any]]) -> SafetyAxiom | None:
+def check_axiom_negative_position_numerics(
+    rows: list[Mapping[str, Any]],
+) -> SafetyAxiom | None:
     for r in rows:
         row = dict(r) if not isinstance(r, dict) else r
         sz = _dec(row.get("size_base"))
@@ -162,7 +166,13 @@ def check_axiom_negative_position_numerics(rows: list[Mapping[str, Any]]) -> Saf
                 return SafetyAxiom(
                     id="AXIOM_NEGATIVE_POSITION_NUMERIC",
                     message=f"Negativer {label} in live.positions (inkonsistenter Zustand).",
-                    details={"row": {k: str(v) for k, v in row.items() if k in ("inst_id", "hold_side", label)}},
+                    details={
+                        "row": {
+                            k: str(v)
+                            for k, v in row.items()
+                            if k in ("inst_id", "hold_side", label)
+                        }
+                    },
                 )
     return None
 
@@ -179,12 +189,18 @@ def check_axiom_excess_margin_leverage(
             return SafetyAxiom(
                 id="AXIOM_EXCESS_LEVERAGE",
                 message="|Notional|/Margin > erlaubtes Max-Hebel (Axiom).",
-                details={"inst_id": r.get("inst_id"), "ratio": str(abs(n) / m), "max": str(max_lev)},
+                details={
+                    "inst_id": r.get("inst_id"),
+                    "ratio": str(abs(n) / m),
+                    "max": str(max_lev),
+                },
             )
     return None
 
 
-def check_axiom_ghost_futures_order(rows: list[Mapping[str, Any]]) -> SafetyAxiom | None:
+def check_axiom_ghost_futures_order(
+    rows: list[Mapping[str, Any]],
+) -> SafetyAxiom | None:
     """
     Live-Order in Arbeit ohne Execution-Bindung: futures mit exchange_order_id aber
     source_execution_decision_id IS NULL.
@@ -227,7 +243,11 @@ def check_axiom_absurd_notional(
             return SafetyAxiom(
                 id="AXIOM_ABSOLUTE_NOTIONAL_CAP",
                 message="Einzel-Position Notional > absolutes Sicherheits-Limit (Manipulation/Drift).",
-                details={"inst_id": r.get("inst_id"), "notional_value": str(n), "cap": str(cap)},
+                details={
+                    "inst_id": r.get("inst_id"),
+                    "notional_value": str(n),
+                    "cap": str(cap),
+                },
             )
     return None
 
@@ -278,11 +298,13 @@ class RuntimeSafetyOracle:
     Unabhaengige Axiom-Pruefung. ``run`` erwartet eine offene :class:`psycopg.Connection`.
     """
 
-    def __init__(self, *, config: RuntimeSafetyConfig = RuntimeSafetyConfig()) -> None:
-        self._cfg = config
+    def __init__(self, *, config: RuntimeSafetyConfig | None = None) -> None:
+        self._cfg = config if config is not None else RuntimeSafetyConfig()
         self._last_tg_at: float = 0.0
         self._halted_fp: set[str] = set()
-        self._max_abs_notional: Decimal = Decimal("100_000_000")  # 100M USDT — Doomsday-Cap
+        self._max_abs_notional: Decimal = Decimal(
+            "100_000_000"
+        )  # 100M USDT — Doomsday-Cap
 
     def evaluate_invariants(
         self,
@@ -298,22 +320,22 @@ class RuntimeSafetyOracle:
             ar = _latest_account_raw(conn)
             if ar is not None:
                 eq = _parse_account_equity_usd(ar)
-        nneg = check_axiom_negative_position_numerics(positions)
+        nneg = check_axiom_negative_position_numerics(positions)  # type: ignore
         if nneg:
             out.append(nneg)
-        gho = check_axiom_ghost_futures_order(orders)
+        gho = check_axiom_ghost_futures_order(orders)  # type: ignore
         if gho:
             out.append(gho)
         exl = check_axiom_excess_margin_leverage(
-            positions, max_lev=self._cfg.max_position_leverage
+            positions, max_lev=self._cfg.max_position_leverage  # type: ignore
         )
         if exl:
             out.append(exl)
-        absv = check_axiom_absurd_notional(positions, cap=self._max_abs_notional)
+        absv = check_axiom_absurd_notional(positions, cap=self._max_abs_notional)  # type: ignore
         if absv:
             out.append(absv)
         nxb = check_axiom_notional_equity_breach(
-            positions, equity=eq, max_mult=self._cfg.notional_to_equity_max
+            positions, equity=eq, max_mult=self._cfg.notional_to_equity_max  # type: ignore
         )
         if nxb:
             out.append(nxb)
@@ -359,7 +381,9 @@ class RuntimeSafetyOracle:
         u = (redis_url or "").strip()
         if is_new_halt and u and publish_halt is None:
             try:
-                r = Redis.from_url(u, socket_connect_timeout=1, socket_timeout=2, decode_responses=True)
+                r = Redis.from_url(
+                    u, socket_connect_timeout=1, socket_timeout=2, decode_responses=True
+                )
                 r.set("system:global_halt", "1")
                 r.publish("system:global_halt:pub", "1")
             except (RedisError, OSError) as exc:
@@ -379,13 +403,19 @@ class RuntimeSafetyOracle:
                     severity="critical",
                     title="CRITICAL_SAFETY_VIOLATION",
                     message=v0.message,
-                    details={**v0.details, "axiom_id": v0.id, "all": [x.id for x in violations[:8]]},
+                    details={
+                        **v0.details,
+                        "axiom_id": v0.id,
+                        "all": [x.id for x in violations[:8]],
+                    },
                 )
             except Exception as exc:
                 logger.warning("safety-oracle: system_alert: %s", exc)
         if publish_operator_intel and bus is not None:
             try:
-                from shared_py.operator_intel import build_operator_intel_envelope_payload
+                from shared_py.operator_intel import (
+                    build_operator_intel_envelope_payload,
+                )
 
                 pl = build_operator_intel_envelope_payload(
                     intel_kind="CRITICAL_SAFETY_VIOLATION",

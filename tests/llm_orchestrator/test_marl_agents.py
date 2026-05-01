@@ -16,7 +16,9 @@ from llm_orchestrator.agents import (
 from llm_orchestrator.config import LLMOrchestratorSettings
 
 
-def test_three_agents_instantiate_independently(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_three_agents_instantiate_independently(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setenv("LLM_USE_FAKE_PROVIDER", "true")
     settings = LLMOrchestratorSettings()
     macro = MacroAnalystAgent(settings=settings)

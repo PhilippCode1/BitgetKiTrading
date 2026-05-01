@@ -7,14 +7,13 @@ import time
 from typing import Any
 
 from redis.exceptions import RedisError
-from shared_py.observability.metrics import inc_pipeline_event_drop
-
 from shared_py.eventbus import (
     EventEnvelope,
     RedisStreamBus,
     SharedMemoryBus,
     make_stream_bus_from_url,
 )
+from shared_py.observability.metrics import inc_pipeline_event_drop
 
 
 class AsyncRedisEventBus:
@@ -79,7 +78,9 @@ class AsyncRedisEventBus:
                     component="market_stream_eventbus",
                     reason="eventbus_publish_failed",
                 )
-            self._logger.warning("EventBus publish failed stream=%s error=%s", stream, exc)
+            self._logger.warning(
+                "EventBus publish failed stream=%s error=%s", stream, exc
+            )
             await self.close()
             return None
 

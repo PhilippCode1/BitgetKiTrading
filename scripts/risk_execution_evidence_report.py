@@ -7,7 +7,6 @@ import argparse
 import json
 import subprocess
 import sys
-from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -18,8 +17,14 @@ for import_path in (ROOT, SHARED_SRC):
     if str(import_path) not in sys.path:
         sys.path.insert(0, str(import_path))
 
-from shared_py.live_preflight import LivePreflightContext, evaluate_live_preflight  # noqa: E402
-from shared_py.order_lifecycle import OrderSubmitContext, evaluate_submit_safety  # noqa: E402
+from shared_py.live_preflight import (  # noqa: E402
+    LivePreflightContext,
+    evaluate_live_preflight,
+)
+from shared_py.order_lifecycle import (  # noqa: E402
+    OrderSubmitContext,
+    evaluate_submit_safety,
+)
 from shared_py.portfolio_risk_controls import (  # noqa: E402
     ExposureItem,
     PortfolioRiskLimits,
@@ -27,7 +32,10 @@ from shared_py.portfolio_risk_controls import (  # noqa: E402
     build_portfolio_risk_summary_de,
     evaluate_portfolio_risk,
 )
-from shared_py.reconcile_truth import ReconcileTruthContext, evaluate_reconcile_truth  # noqa: E402
+from shared_py.reconcile_truth import (  # noqa: E402
+    ReconcileTruthContext,
+    evaluate_reconcile_truth,
+)
 
 REQUIRED_LIVE_PREFLIGHT_REASONS = (
     "portfolio_risk_not_safe",
@@ -67,7 +75,9 @@ def _limits() -> PortfolioRiskLimits:
     )
 
 
-def _base_item(symbol: str = "BTCUSDT", notional: float = 10_000.0, side: str = "long") -> ExposureItem:
+def _base_item(
+    symbol: str = "BTCUSDT", notional: float = 10_000.0, side: str = "long"
+) -> ExposureItem:
     return ExposureItem(
         symbol=symbol,
         market_family="futures",
@@ -96,7 +106,10 @@ def _portfolio_scenarios() -> dict[str, PortfolioSnapshot | None]:
         "limit_breach": PortfolioSnapshot(
             open_positions=overloaded,
             pending_orders=[_base_item("ETHUSDT", 30_000.0)],
-            pending_live_candidates=[_base_item("SOLUSDT", 12_000.0), _base_item("XRPUSDT", 12_000.0)],
+            pending_live_candidates=[
+                _base_item("SOLUSDT", 12_000.0),
+                _base_item("XRPUSDT", 12_000.0),
+            ],
             account_equity=100_000.0,
             used_margin=65_000.0,
             snapshot_fresh=True,
@@ -174,15 +187,53 @@ def _reconcile_scenarios() -> dict[str, ReconcileTruthContext]:
         safety_latch_active=False,
     )
     return {
-        "stale": ReconcileTruthContext(**{**base, "global_status": "stale", "reconcile_fresh": False}),
-        "exchange_unreachable": ReconcileTruthContext(**{**base, "global_status": "exchange_unreachable", "exchange_reachable": False}),
-        "auth_failed": ReconcileTruthContext(**{**base, "global_status": "auth_failed", "auth_ok": False}),
-        "unknown_order_state": ReconcileTruthContext(**{**base, "global_status": "unknown_order_state", "unknown_order_state": True}),
-        "position_mismatch": ReconcileTruthContext(**{**base, "global_status": "position_mismatch", "position_mismatch": True}),
-        "fill_mismatch": ReconcileTruthContext(**{**base, "global_status": "fill_mismatch", "fill_mismatch": True}),
-        "exchange_order_missing": ReconcileTruthContext(**{**base, "global_status": "exchange_order_missing", "exchange_order_missing": True}),
-        "local_order_missing": ReconcileTruthContext(**{**base, "global_status": "local_order_missing", "local_order_missing": True}),
-        "safety_latch_active": ReconcileTruthContext(**{**base, "global_status": "safety_latch_required", "safety_latch_active": True}),
+        "stale": ReconcileTruthContext(
+            **{**base, "global_status": "stale", "reconcile_fresh": False}
+        ),
+        "exchange_unreachable": ReconcileTruthContext(
+            **{
+                **base,
+                "global_status": "exchange_unreachable",
+                "exchange_reachable": False,
+            }
+        ),
+        "auth_failed": ReconcileTruthContext(
+            **{**base, "global_status": "auth_failed", "auth_ok": False}
+        ),
+        "unknown_order_state": ReconcileTruthContext(
+            **{
+                **base,
+                "global_status": "unknown_order_state",
+                "unknown_order_state": True,
+            }
+        ),
+        "position_mismatch": ReconcileTruthContext(
+            **{**base, "global_status": "position_mismatch", "position_mismatch": True}
+        ),
+        "fill_mismatch": ReconcileTruthContext(
+            **{**base, "global_status": "fill_mismatch", "fill_mismatch": True}
+        ),
+        "exchange_order_missing": ReconcileTruthContext(
+            **{
+                **base,
+                "global_status": "exchange_order_missing",
+                "exchange_order_missing": True,
+            }
+        ),
+        "local_order_missing": ReconcileTruthContext(
+            **{
+                **base,
+                "global_status": "local_order_missing",
+                "local_order_missing": True,
+            }
+        ),
+        "safety_latch_active": ReconcileTruthContext(
+            **{
+                **base,
+                "global_status": "safety_latch_required",
+                "safety_latch_active": True,
+            }
+        ),
     }
 
 
@@ -256,14 +307,22 @@ def build_report_payload() -> dict[str, Any]:
     for name, ctx in _order_scenarios().items():
         new_state, reasons = evaluate_submit_safety(ctx)
         idempotency_missing = "idempotency_fehlt" in reasons
-        unknown_state = new_state == "unknown_submit_state" or "unknown_submit_state_blockiert_neue_openings" in reasons
-        reconcile_not_ok = new_state == "reconcile_required" or "retry_ohne_reconcile_verboten" in reasons
+        unknown_state = (
+            new_state == "unknown_submit_state"
+            or "unknown_submit_state_blockiert_neue_openings" in reasons
+        )
+        reconcile_not_ok = (
+            new_state == "reconcile_required"
+            or "retry_ohne_reconcile_verboten" in reasons
+        )
         order_rows.append(
             {
                 "id": name,
                 "new_state": new_state,
                 "block_reasons": reasons,
-                "blocks_live": bool(reasons) or new_state in {"unknown_submit_state", "reconcile_required", "blocked"},
+                "blocks_live": bool(reasons)
+                or new_state
+                in {"unknown_submit_state", "reconcile_required", "blocked"},
                 "preflight": _preflight_decision(
                     portfolio_ok=True,
                     reconcile_ok=not reconcile_not_ok,
@@ -284,13 +343,16 @@ def build_report_payload() -> dict[str, Any]:
                 "warning_reasons": decision.warning_reasons,
                 "reconcile_required": decision.reconcile_required,
                 "safety_latch_required": decision.safety_latch_required,
-                "blocks_live": bool(decision.blocking_reasons) or decision.reconcile_required,
+                "blocks_live": bool(decision.blocking_reasons)
+                or decision.reconcile_required,
                 "preflight": _preflight_decision(
                     portfolio_ok=True,
                     reconcile_ok=decision.status == "ok",
                     idempotency_key="idem-ok",
-                    unknown_order_state="unknown_order_state" in decision.blocking_reasons,
-                    safety_latch_active=decision.safety_latch_required or "safety_latch_active" in decision.blocking_reasons,
+                    unknown_order_state="unknown_order_state"
+                    in decision.blocking_reasons,
+                    safety_latch_active=decision.safety_latch_required
+                    or "safety_latch_active" in decision.blocking_reasons,
                 ),
             }
         )
@@ -303,7 +365,9 @@ def build_report_payload() -> dict[str, Any]:
         }
     )
     missing_required = [
-        reason for reason in REQUIRED_LIVE_PREFLIGHT_REASONS if reason not in covered_live_preflight_reasons
+        reason
+        for reason in REQUIRED_LIVE_PREFLIGHT_REASONS
+        if reason not in covered_live_preflight_reasons
     ]
     return {
         "generated_at": datetime.now(tz=UTC).isoformat(),
@@ -351,21 +415,38 @@ def render_markdown(payload: dict[str, Any]) -> str:
         "",
         "## Live-Broker-Preflight-Coverage",
         "",
-        "- Abgedeckt: " + (", ".join(f"`{item}`" for item in payload["covered_live_preflight_reasons"]) or "-"),
-        "- Fehlend: " + (", ".join(f"`{item}`" for item in payload["missing_required_live_preflight_reasons"]) or "-"),
+        "- Abgedeckt: "
+        + (
+            ", ".join(f"`{item}`" for item in payload["covered_live_preflight_reasons"])
+            or "-"
+        ),
+        "- Fehlend: "
+        + (
+            ", ".join(
+                f"`{item}`"
+                for item in payload["missing_required_live_preflight_reasons"]
+            )
+            or "-"
+        ),
         "",
         "## Portfolio-Risk",
         "",
     ]
     for row in payload["portfolio_scenarios"]:
-        lines.append(f"- `{row['id']}`: blockiert=`{row['blocks_live']}`, Gruende={', '.join(row['block_reasons']) or '-'}")
+        lines.append(
+            f"- `{row['id']}`: blockiert=`{row['blocks_live']}`, Gruende={', '.join(row['block_reasons']) or '-'}"
+        )
     lines.extend(["", "## Order-Idempotency", ""])
     for row in payload["order_idempotency_scenarios"]:
-        lines.append(f"- `{row['id']}`: state=`{row['new_state']}`, Gruende={', '.join(row['block_reasons']) or '-'}")
+        lines.append(
+            f"- `{row['id']}`: state=`{row['new_state']}`, Gruende={', '.join(row['block_reasons']) or '-'}"
+        )
     lines.extend(["", "## Reconcile-Safety", ""])
     for row in payload["reconcile_scenarios"]:
         reasons = row["block_reasons"] or row["warning_reasons"]
-        lines.append(f"- `{row['id']}`: status=`{row['status']}`, Gruende={', '.join(reasons) or '-'}")
+        lines.append(
+            f"- `{row['id']}`: status=`{row['status']}`, Gruende={', '.join(reasons) or '-'}"
+        )
     lines.extend(["", "## Einordnung", ""])
     lines.extend(f"- {item}" for item in payload["notes"])
     lines.append("")
@@ -382,7 +463,9 @@ def main(argv: list[str] | None = None) -> int:
     payload = build_report_payload()
     if args.output_json:
         args.output_json.parent.mkdir(parents=True, exist_ok=True)
-        args.output_json.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+        args.output_json.write_text(
+            json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
     if args.output_md:
         args.output_md.parent.mkdir(parents=True, exist_ok=True)
         args.output_md.write_text(render_markdown(payload), encoding="utf-8")

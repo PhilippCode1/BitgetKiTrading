@@ -54,7 +54,10 @@ export default async function TerminalPage({
     universeSymbols = [];
   }
   const mergedSymbolOptions = Array.from(
-    new Set([...symbolOptions, ...universeSymbols.map((s) => s.trim()).filter(Boolean)]),
+    new Set([
+      ...symbolOptions,
+      ...universeSymbols.map((s) => s.trim()).filter(Boolean),
+    ]),
   );
   let initialLoadError: string | null = null;
   let initial: LiveStateResponse;

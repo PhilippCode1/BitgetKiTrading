@@ -3,7 +3,11 @@ from __future__ import annotations
 import pytest
 
 from market_stream.orderbook.book import LocalOrderBook, OrderBookSequenceError
-from market_stream.orderbook.checksum import _crc32_signed, build_checksum_string, verify_checksum
+from market_stream.orderbook.checksum import (
+    _crc32_signed,
+    build_checksum_string,
+    verify_checksum,
+)
 
 
 def test_build_checksum_string_preserves_original_formatting() -> None:

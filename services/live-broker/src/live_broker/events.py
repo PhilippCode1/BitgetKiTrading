@@ -5,7 +5,11 @@ import time
 from typing import Any
 
 from shared_py.eventbus import RedisStreamBus
-from shared_py.eventbus.envelope import STREAM_OPERATOR_INTEL, STREAM_SYSTEM_ALERT, EventEnvelope
+from shared_py.eventbus.envelope import (
+    STREAM_OPERATOR_INTEL,
+    STREAM_SYSTEM_ALERT,
+    EventEnvelope,
+)
 
 logger = logging.getLogger("live_broker.events")
 

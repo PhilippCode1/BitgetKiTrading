@@ -5,13 +5,13 @@ from typing import Any
 from uuid import UUID
 
 import psycopg
-
-from paper_broker.storage import repo_position_events, repo_positions
 from shared_py.risk_engine import (
     compute_drawdown_from_points,
     compute_margin_usage_pct,
     compute_total_equity,
 )
+
+from paper_broker.storage import repo_position_events, repo_positions
 
 _DAY_MS = 86_400_000
 _WEEK_MS = 7 * _DAY_MS
@@ -79,7 +79,11 @@ def build_paper_account_risk_metrics(
     )
     all_drawdown = compute_drawdown_from_points(
         current_equity=equity_for_limits,
-        equity_points=[format(initial_equity, "f")] + all_points if initial_equity > 0 else all_points,
+        equity_points=(
+            [format(initial_equity, "f")] + all_points
+            if initial_equity > 0
+            else all_points
+        ),
     )
     daily_drawdown = compute_drawdown_from_points(
         current_equity=equity_for_limits,

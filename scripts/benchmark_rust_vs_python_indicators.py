@@ -30,7 +30,8 @@ try:
 except ImportError:
     apex_core = None  # type: ignore[assignment]
 
-from feature_engine.features.atr import OHLC, atr_sma as py_atr_sma
+from feature_engine.features.atr import OHLC
+from feature_engine.features.atr import atr_sma as py_atr_sma
 from feature_engine.features.momentum import trend_snapshot as py_trend_snapshot
 from feature_engine.features.rsi import rsi_sma as py_rsi_sma
 
@@ -61,7 +62,10 @@ def main() -> int:
     opens = np.roll(closes, 1)
     opens[0] = closes[0]
 
-    ohlc = [OHLC(o=float(o), h=float(h), l=float(l), c=float(c)) for o, h, l, c in zip(opens, highs, lows, closes, strict=False)]
+    ohlc = [
+        OHLC(o=float(o), h=float(h), l=float(l), c=float(c))
+        for o, h, l, c in zip(opens, highs, lows, closes, strict=False)
+    ]
     o64 = np.asarray(opens, dtype=np.float64, order="C")
     h64 = np.asarray(highs, dtype=np.float64, order="C")
     l64 = np.asarray(lows, dtype=np.float64, order="C")
@@ -71,13 +75,17 @@ def main() -> int:
     # Korrektheit (grobe Übereinstimmung; deterministische Seeds sollten 1e-9 liefern)
     atr_py = py_atr_sma(ohlc, window)
     atr_rs = float(apex_core.compute_atr_sma(o64, h64, l64, c64, window))
-    if not (math.isnan(atr_py) and math.isnan(atr_rs)) and not isclose(atr_py, atr_rs, rel_tol=0.0, abs_tol=1e-9):
+    if not (math.isnan(atr_py) and math.isnan(atr_rs)) and not isclose(
+        atr_py, atr_rs, rel_tol=0.0, abs_tol=1e-9
+    ):
         print("ATR mismatch", atr_py, atr_rs, file=sys.stderr)
         return 2
 
     rsi_py = py_rsi_sma(closes_list, window)
     rsi_rs = float(apex_core.compute_rsi_sma(c64, window))
-    if not (math.isnan(rsi_py) and math.isnan(rsi_rs)) and not isclose(rsi_py, rsi_rs, rel_tol=0.0, abs_tol=1e-9):
+    if not (math.isnan(rsi_py) and math.isnan(rsi_rs)) and not isclose(
+        rsi_py, rsi_rs, rel_tol=0.0, abs_tol=1e-9
+    ):
         print("RSI mismatch", rsi_py, rsi_rs, file=sys.stderr)
         return 2
 
@@ -90,14 +98,30 @@ def main() -> int:
     repeats = 11
     warmup = 2
 
-    t_py_atr = _median_time(lambda: py_atr_sma(ohlc, window), repeats=repeats, warmup=warmup)
-    t_rs_atr = _median_time(lambda: apex_core.compute_atr_sma(o64, h64, l64, c64, window), repeats=repeats, warmup=warmup)
+    t_py_atr = _median_time(
+        lambda: py_atr_sma(ohlc, window), repeats=repeats, warmup=warmup
+    )
+    t_rs_atr = _median_time(
+        lambda: apex_core.compute_atr_sma(o64, h64, l64, c64, window),
+        repeats=repeats,
+        warmup=warmup,
+    )
 
-    t_py_rsi = _median_time(lambda: py_rsi_sma(closes_list, window), repeats=repeats, warmup=warmup)
-    t_rs_rsi = _median_time(lambda: apex_core.compute_rsi_sma(c64, window), repeats=repeats, warmup=warmup)
+    t_py_rsi = _median_time(
+        lambda: py_rsi_sma(closes_list, window), repeats=repeats, warmup=warmup
+    )
+    t_rs_rsi = _median_time(
+        lambda: apex_core.compute_rsi_sma(c64, window), repeats=repeats, warmup=warmup
+    )
 
-    t_py_tr = _median_time(lambda: py_trend_snapshot(closes_list), repeats=repeats, warmup=warmup)
-    t_rs_tr = _median_time(lambda: apex_core.compute_trend_snapshot(c64, 12, 26, 3), repeats=repeats, warmup=warmup)
+    t_py_tr = _median_time(
+        lambda: py_trend_snapshot(closes_list), repeats=repeats, warmup=warmup
+    )
+    t_rs_tr = _median_time(
+        lambda: apex_core.compute_trend_snapshot(c64, 12, 26, 3),
+        repeats=repeats,
+        warmup=warmup,
+    )
 
     def ratio(py_t: float, rs_t: float) -> float:
         return py_t / rs_t if rs_t > 0 else float("inf")

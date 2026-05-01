@@ -8,7 +8,9 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
-NAV_PATH = ROOT / "apps" / "dashboard" / "src" / "lib" / "main-console" / "navigation.ts"
+NAV_PATH = (
+    ROOT / "apps" / "dashboard" / "src" / "lib" / "main-console" / "navigation.ts"
+)
 DE_MESSAGES_PATH = ROOT / "apps" / "dashboard" / "src" / "messages" / "de.json"
 FORBIDDEN_NAV_TERMS = ("billing", "customer", "pricing", "contract", "saas", "tenant")
 REQUIRED_NAV_KEYS = (
@@ -28,17 +30,53 @@ REQUIRED_NAV_KEYS = (
 def analyze() -> dict[str, Any]:
     issues: list[dict[str, str]] = []
     required = (
-        (ROOT / "docs" / "production_10_10" / "main_console_architecture.md", "architecture_doc_missing", "Main-Console-Architektur fehlt."),
-        (ROOT / "docs" / "production_10_10" / "main_console_ux_finalization.md", "doc_missing", "UX-Finalisierungsdoku fehlt."),
-        (ROOT / "scripts" / "main_console_ux_audit.py", "audit_script_missing", "UX-Audit-Script fehlt."),
-        (ROOT / "tests" / "scripts" / "test_main_console_ux_audit.py", "audit_script_test_missing", "UX-Audit-Script-Test fehlt."),
-        (ROOT / "tools" / "check_main_console_ux.py", "checker_missing", "UX-Checker fehlt."),
-        (ROOT / "tests" / "tools" / "test_check_main_console_ux.py", "checker_test_missing", "UX-Checker-Test fehlt."),
-        (ROOT / "apps" / "dashboard" / "src" / "lib" / "main-console" / "navigation.ts", "navigation_missing", "Zentrale Main-Console-Navigation fehlt."),
+        (
+            ROOT / "docs" / "production_10_10" / "main_console_architecture.md",
+            "architecture_doc_missing",
+            "Main-Console-Architektur fehlt.",
+        ),
+        (
+            ROOT / "docs" / "production_10_10" / "main_console_ux_finalization.md",
+            "doc_missing",
+            "UX-Finalisierungsdoku fehlt.",
+        ),
+        (
+            ROOT / "scripts" / "main_console_ux_audit.py",
+            "audit_script_missing",
+            "UX-Audit-Script fehlt.",
+        ),
+        (
+            ROOT / "tests" / "scripts" / "test_main_console_ux_audit.py",
+            "audit_script_test_missing",
+            "UX-Audit-Script-Test fehlt.",
+        ),
+        (
+            ROOT / "tools" / "check_main_console_ux.py",
+            "checker_missing",
+            "UX-Checker fehlt.",
+        ),
+        (
+            ROOT / "tests" / "tools" / "test_check_main_console_ux.py",
+            "checker_test_missing",
+            "UX-Checker-Test fehlt.",
+        ),
+        (
+            ROOT
+            / "apps"
+            / "dashboard"
+            / "src"
+            / "lib"
+            / "main-console"
+            / "navigation.ts",
+            "navigation_missing",
+            "Zentrale Main-Console-Navigation fehlt.",
+        ),
     )
     for p, code, msg in required:
         if not p.is_file():
-            issues.append({"severity": "error", "code": code, "message": msg, "path": str(p)})
+            issues.append(
+                {"severity": "error", "code": code, "message": msg, "path": str(p)}
+            )
 
     doc = ROOT / "docs" / "production_10_10" / "main_console_ux_finalization.md"
     if doc.is_file():
@@ -59,7 +97,12 @@ def analyze() -> dict[str, Any]:
                         "path": str(doc),
                     }
                 )
-        for must in ("sicherheitszentrale", "asset-universum", "error-state", "empty-state"):
+        for must in (
+            "sicherheitszentrale",
+            "asset-universum",
+            "error-state",
+            "empty-state",
+        ):
             if must not in text:
                 issues.append(
                     {
@@ -98,7 +141,7 @@ def analyze() -> dict[str, Any]:
     if DE_MESSAGES_PATH.is_file():
         try:
             payload = json.loads(DE_MESSAGES_PATH.read_text(encoding="utf-8"))
-            nav_obj = (((payload.get("console") or {}).get("nav")) or {})
+            nav_obj = ((payload.get("console") or {}).get("nav")) or {}
             required_de_labels = (
                 "Asset-Universum",
                 "Charts & Markt",
@@ -133,11 +176,18 @@ def analyze() -> dict[str, Any]:
 
     errors = [i for i in issues if i["severity"] == "error"]
     warnings = [i for i in issues if i["severity"] == "warning"]
-    return {"ok": len(errors) == 0, "error_count": len(errors), "warning_count": len(warnings), "issues": issues}
+    return {
+        "ok": len(errors) == 0,
+        "error_count": len(errors),
+        "warning_count": len(warnings),
+        "issues": issues,
+    }
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Prueft Main Console UX-Finalisierungsartefakte.")
+    parser = argparse.ArgumentParser(
+        description="Prueft Main Console UX-Finalisierungsartefakte."
+    )
     parser.add_argument("--strict", action="store_true")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()

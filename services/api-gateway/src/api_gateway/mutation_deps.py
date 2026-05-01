@@ -9,15 +9,15 @@ from uuid import UUID
 from fastapi import Body, Header, HTTPException, Request
 
 from api_gateway.audit import record_gateway_audit_line, record_gateway_auth_failure
-from api_gateway.deps import verify_live_trading_capability
 from api_gateway.auth import (
-    GatewayAuthContext,
     _HEADER_INTERNAL,
     _HEADER_LEGACY_ADMIN,
+    GatewayAuthContext,
     _internal_key_default_roles,
     resolve_gateway_auth,
 )
 from api_gateway.config import get_gateway_settings
+from api_gateway.deps import verify_live_trading_capability
 from api_gateway.manual_action import (
     fingerprint_payload_for_operator_release,
     verify_manual_action_token,
@@ -194,5 +194,8 @@ def _resolve_live_broker_mutation_context_impl(
     )
     raise HTTPException(
         status_code=401,
-        detail={"code": "AUTHENTICATION_REQUIRED", "message": "Authentifizierung fuer Mutation erforderlich."},
+        detail={
+            "code": "AUTHENTICATION_REQUIRED",
+            "message": "Authentifizierung fuer Mutation erforderlich.",
+        },
     )

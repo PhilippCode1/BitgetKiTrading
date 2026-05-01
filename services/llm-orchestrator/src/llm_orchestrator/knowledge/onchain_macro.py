@@ -36,9 +36,7 @@ def _format_whale_line_de(payload: dict[str, Any]) -> str:
         vol = f"~{m_usd:.2f}M USD-Äquivalent"
     else:
         vol = f"~{usd:,.0f} USD-Äquivalent"
-    return (
-        f"On-Chain / Whale: {flow}, Paar {pair} auf {dex} ({chain}), {vol}."
-    )
+    return f"On-Chain / Whale: {flow}, Paar {pair} auf {dex} ({chain}), {vol}."
 
 
 def _format_whale_line_en(payload: dict[str, Any]) -> str:
@@ -54,7 +52,11 @@ def _format_whale_line_en(payload: dict[str, Any]) -> str:
     m_usd = usd / 1_000_000.0
     vol = f"{m_usd:.2f}M USD" if m_usd >= 0.1 else f"{usd:,.0f} USD"
     inflow = direction in ("sell", "short")  # in DEX-Frame: eingebrachte Verkaufsseite
-    act = "Whale inflow / heavy sell-side activity" if inflow else "Whale activity / large DEX notional"
+    act = (
+        "Whale inflow / heavy sell-side activity"
+        if inflow
+        else "Whale activity / large DEX notional"
+    )
     cex = dex.lower()
     venue = dex
     if "binance" in cex:
@@ -118,13 +120,13 @@ def merge_fetched_onchain_into_context(
     fetched: dict[str, Any] | None,
 ) -> dict[str, Any]:
     """Ergänzt / überschreibt onchain_context + onchain_macro, Druck = max(alt, neu)."""
-    out: dict[str, Any] = (
-        {**target} if isinstance(target, dict) else {}
-    )
+    out: dict[str, Any] = {**target} if isinstance(target, dict) else {}
     if not isinstance(fetched, dict):
         return out
     octx_f = fetched.get("onchain_context") or {}
-    if not isinstance(octx_f, dict) or not octx_f.get("recent_onchain_whale_events_json"):
+    if not isinstance(octx_f, dict) or not octx_f.get(
+        "recent_onchain_whale_events_json"
+    ):
         return out
     prev = out.get("onchain_context")
     if not isinstance(prev, dict):
@@ -217,7 +219,10 @@ def fetch_onchain_macro_context(
     except Exception as exc:
         logger.warning("onchain_macro: redis: %s", exc)
         out = dict(empty)
-        out["onchain_context"] = {**out["onchain_context"], "onchain_fetch_source": "error"}
+        out["onchain_context"] = {
+            **out["onchain_context"],
+            "onchain_fetch_source": "error",
+        }
         return out
     finally:
         if r is not None:

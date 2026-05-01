@@ -11,12 +11,15 @@ import json
 from typing import Any
 
 import psycopg
+from shared_py.training_dataset_builder import (
+    TakeTradeDatasetBuildConfig,
+    build_take_trade_training_dataset,
+)
 
 from learning_engine.config import LearningEngineSettings
 from learning_engine.curriculum.expert_curriculum import cluster_expert_key
 from learning_engine.storage import repo_model_runs
 from learning_engine.training.constants import TRAINING_PIPELINE_VERSION
-from shared_py.training_dataset_builder import TakeTradeDatasetBuildConfig, build_take_trade_training_dataset
 
 
 def _playbook_id_from_row(row: dict[str, Any]) -> str | None:
@@ -104,7 +107,9 @@ def audit_specialist_training_readiness(
     symbol: str | None = None,
 ) -> dict[str, Any]:
     rows = repo_model_runs.fetch_take_trade_training_rows(conn, symbol=symbol)
-    cfg = TakeTradeDatasetBuildConfig(max_feature_age_ms=settings.learn_max_feature_age_ms)
+    cfg = TakeTradeDatasetBuildConfig(
+        max_feature_age_ms=settings.learn_max_feature_age_ms
+    )
     examples, report = build_take_trade_training_dataset(rows, cfg)
     by_family: dict[str, int] = {}
     by_regime: dict[str, int] = {}
@@ -141,7 +146,11 @@ def audit_specialist_training_readiness(
         }
         for fam, n in sorted(by_family.items(), key=lambda x: (-x[1], x[0]))
     ]
-    thin = [x for x in family_audit if x["degrade_to_pooled_model"] and x["market_family"] != "unknown"]
+    thin = [
+        x
+        for x in family_audit
+        if x["degrade_to_pooled_model"] and x["market_family"] != "unknown"
+    ]
 
     regime_audit = [
         {
@@ -151,7 +160,11 @@ def audit_specialist_training_readiness(
         }
         for rg, n in sorted(by_regime.items(), key=lambda x: (-x[1], x[0]))
     ]
-    regimes_thin = [x for x in regime_audit if not x["regime_expert_viable"] and x["market_regime"] != "unknown"]
+    regimes_thin = [
+        x
+        for x in regime_audit
+        if not x["regime_expert_viable"] and x["market_regime"] != "unknown"
+    ]
 
     cluster_audit = [
         {
@@ -183,7 +196,11 @@ def audit_specialist_training_readiness(
         }
         for sy, n in sorted(by_symbol.items(), key=lambda x: (-x[1], x[0]))
     ]
-    symbols_thin = [x for x in symbol_audit if x["degrade_to_cluster_expert"] and x["symbol"] != "UNKNOWN"]
+    symbols_thin = [
+        x
+        for x in symbol_audit
+        if x["degrade_to_cluster_expert"] and x["symbol"] != "UNKNOWN"
+    ]
 
     return {
         "schema_version": "specialist-readiness-v2",

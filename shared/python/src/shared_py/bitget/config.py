@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from typing import ClassVar, Literal
 
+from config.settings import BaseServiceSettings
 from pydantic import Field, HttpUrl, field_validator, model_validator
 from pydantic_settings import SettingsConfigDict
 
-from config.settings import BaseServiceSettings
 from shared_py.bitget.instruments import (
     BitgetInstrumentIdentity,
     MarginAccountMode,
@@ -33,7 +33,7 @@ class BitgetSettings(BaseServiceSettings):
     production_required_fields: ClassVar[tuple[str, ...]] = ()
     production_required_non_local_fields: ClassVar[tuple[str, ...]] = ()
 
-    bitget_api_base_url: HttpUrl = Field(
+    bitget_api_base_url: HttpUrl = Field(  # type: ignore
         default="https://api.bitget.com",
         alias="BITGET_API_BASE_URL",
     )
@@ -47,7 +47,7 @@ class BitgetSettings(BaseServiceSettings):
     )
 
     bitget_demo_enabled: bool = Field(default=False, alias="BITGET_DEMO_ENABLED")
-    bitget_demo_rest_base_url: HttpUrl = Field(
+    bitget_demo_rest_base_url: HttpUrl = Field(  # type: ignore
         default="https://api.bitget.com",
         alias="BITGET_DEMO_REST_BASE_URL",
     )
@@ -243,13 +243,11 @@ class BitgetSettings(BaseServiceSettings):
             return value
         if "_" in value:
             raise ValueError(
-                "BITGET_SYMBOL darf in v2 kein '_' enthalten "
-                "(Bitget-v2 Spot-/Mix-Symbol, nicht Legacy-Suffix-Form)"
+                "BITGET_SYMBOL darf in v2 kein '_' enthalten (Bitget-v2 Spot-/Mix-Symbol, nicht Legacy-Suffix-Form)"
             )
         if not value.isalnum() or not value.isupper():
             raise ValueError(
-                "BITGET_SYMBOL muss alphanumerisch und uppercase sein "
-                "(Bitget-v2 Symbolformat)"
+                "BITGET_SYMBOL muss alphanumerisch und uppercase sein (Bitget-v2 Symbolformat)"
             )
         return value
 
@@ -265,13 +263,11 @@ class BitgetSettings(BaseServiceSettings):
         if self.bitget_demo_enabled:
             if "wspap.bitget.com" not in self.bitget_demo_ws_public_url:
                 raise ValueError(
-                    "Bei BITGET_DEMO_ENABLED=true muss "
-                    "BITGET_DEMO_WS_PUBLIC_URL auf die wspap-Domain zeigen"
+                    "Bei BITGET_DEMO_ENABLED=true muss BITGET_DEMO_WS_PUBLIC_URL auf die wspap-Domain zeigen"
                 )
             if "wspap.bitget.com" not in self.bitget_demo_ws_private_url:
                 raise ValueError(
-                    "Bei BITGET_DEMO_ENABLED=true muss "
-                    "BITGET_DEMO_WS_PRIVATE_URL auf die wspap-Domain zeigen"
+                    "Bei BITGET_DEMO_ENABLED=true muss BITGET_DEMO_WS_PRIVATE_URL auf die wspap-Domain zeigen"
                 )
             for label, val in (
                 ("BITGET_DEMO_API_KEY", self.demo_api_key),
@@ -285,7 +281,9 @@ class BitgetSettings(BaseServiceSettings):
                     )
         if self.market_family is None:
             families = self.bitget_universe_market_families_list()
-            object.__setattr__(self, "market_family", families[0] if families else "spot")
+            object.__setattr__(
+                self, "market_family", families[0] if families else "spot"
+            )
         if self.market_family == "futures" and self.product_type is None:
             default_product = self.default_futures_product_type()
             if not default_product:
@@ -299,7 +297,10 @@ class BitgetSettings(BaseServiceSettings):
             default_margin_mode = self.bitget_margin_default_account_mode or "isolated"
             if self.margin_account_mode in (None, "cash"):
                 object.__setattr__(self, "margin_account_mode", default_margin_mode)
-        if self.market_family == "futures" and self.margin_account_mode in (None, "cash"):
+        if self.market_family == "futures" and self.margin_account_mode in (
+            None,
+            "cash",
+        ):
             object.__setattr__(self, "margin_account_mode", "isolated")
         if not self.symbol:
             derived_symbol = self.default_operational_symbol()
@@ -345,7 +346,11 @@ class BitgetSettings(BaseServiceSettings):
 
     @property
     def effective_api_passphrase(self) -> str | None:
-        return self.demo_api_passphrase if self.bitget_demo_enabled else self.api_passphrase
+        return (
+            self.demo_api_passphrase
+            if self.bitget_demo_enabled
+            else self.api_passphrase
+        )
 
     @property
     def effective_margin_coin(self) -> str:
@@ -368,25 +373,25 @@ class BitgetSettings(BaseServiceSettings):
     def rest_product_type_param(self) -> str | None:
         if self.market_family != "futures":
             return None
-        return self.product_type.lower()
+        return self.product_type.lower()  # type: ignore
 
     @property
-    def endpoint_profile(self):
+    def endpoint_profile(self):  # type: ignore
         return endpoint_profile_for(
-            self.market_family,
-            margin_account_mode=self.margin_account_mode,
+            self.market_family,  # type: ignore
+            margin_account_mode=self.margin_account_mode,  # type: ignore
         )
 
     @property
     def public_ws_inst_type(self) -> str:
         if self.market_family == "futures":
-            return self.product_type
-        return self.endpoint_profile.public_ws_inst_type
+            return self.product_type  # type: ignore
+        return self.endpoint_profile.public_ws_inst_type  # type: ignore
 
     @property
     def private_ws_inst_type(self) -> str:
         if self.market_family == "futures":
-            return self.product_type
+            return self.product_type  # type: ignore
         return self.endpoint_profile.private_ws_inst_type or self.public_ws_inst_type
 
     @property
@@ -404,7 +409,7 @@ class BitgetSettings(BaseServiceSettings):
         return deduped
 
     def candle_granularity(self, timeframe: str) -> str:
-        return self.endpoint_profile.rest_candle_granularity(timeframe)
+        return self.endpoint_profile.rest_candle_granularity(timeframe)  # type: ignore
 
     def instrument_identity(
         self,
@@ -417,11 +422,11 @@ class BitgetSettings(BaseServiceSettings):
         settle_coin: str | None = None,
     ) -> BitgetInstrumentIdentity:
         return BitgetInstrumentIdentity(
-            market_family=self.market_family,
+            market_family=self.market_family,  # type: ignore
             symbol=self.symbol,
             product_type=self.product_type if self.market_family == "futures" else None,
             margin_coin=self.bitget_margin_coin,
-            margin_account_mode=self.margin_account_mode,
+            margin_account_mode=self.margin_account_mode,  # type: ignore
             base_coin=base_coin,
             quote_coin=quote_coin,
             settle_coin=settle_coin,

@@ -59,7 +59,9 @@ def sender_loop(
                 reply_to = pl.get("reply_to_telegram_message_id")
                 reply_id = int(reply_to) if reply_to is not None else None
                 if not chat_lim.acquire(chat_id):
-                    logger.warning("per-chat rate limit chat=%s requeue", safe_chat_ref(chat_id))
+                    logger.warning(
+                        "per-chat rate limit chat=%s requeue", safe_chat_ref(chat_id)
+                    )
                     outbox.requeue_sending_to_pending(aid)
                     continue
                 global_lim.acquire()
@@ -69,12 +71,16 @@ def sender_loop(
                     if ok:
                         mid = None
                         result = res.get("result")
-                        if isinstance(result, dict) and result.get("message_id") is not None:
+                        if (
+                            isinstance(result, dict)
+                            and result.get("message_id") is not None
+                        ):
                             mid = int(result["message_id"])
                         outbox.mark_sent(
                             aid,
                             telegram_message_id=mid,
-                            simulated=settings.telegram_dry_run or bool(res.get("dry_run")),
+                            simulated=settings.telegram_dry_run
+                            or bool(res.get("dry_run")),
                         )
                         cid = pl.get("correlation_id")
                         if (
@@ -91,7 +97,9 @@ def sender_loop(
                                     str(mid),
                                 )
                             except Exception as exc:
-                                logger.warning("thread anchor redis set failed: %s", exc)
+                                logger.warning(
+                                    "thread anchor redis set failed: %s", exc
+                                )
                         logger.info(
                             "send done alert_id=%s simulated=%s",
                             aid,

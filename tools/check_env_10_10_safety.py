@@ -161,7 +161,11 @@ def required_keys_for_profile(profile: str) -> set[str]:
 
 
 def _is_prod_like(env: dict[str, str], profile: str) -> bool:
-    return profile == "production" or truthy(env, "PRODUCTION") or env.get("APP_ENV") == "production"
+    return (
+        profile == "production"
+        or truthy(env, "PRODUCTION")
+        or env.get("APP_ENV") == "production"
+    )
 
 
 def _is_shadow_like(env: dict[str, str], profile: str) -> bool:
@@ -212,10 +216,16 @@ def validate_env(
     prod_like = _is_prod_like(env, profile)
     shadow_like = _is_shadow_like(env, profile)
 
-    expected_app_env = {"production": "production", "shadow": "shadow", "local": "local"}.get(
-        profile
-    )
-    if expected_app_env and env.get("APP_ENV") and env.get("APP_ENV") != expected_app_env:
+    expected_app_env = {
+        "production": "production",
+        "shadow": "shadow",
+        "local": "local",
+    }.get(profile)
+    if (
+        expected_app_env
+        and env.get("APP_ENV")
+        and env.get("APP_ENV") != expected_app_env
+    ):
         _issue(
             issues,
             "profile_app_env_mismatch",
@@ -227,7 +237,12 @@ def validate_env(
         if key not in env:
             _issue(issues, "missing_required_key", "required key is absent.", key)
         elif strict_runtime and is_placeholder(env.get(key, "")):
-            _issue(issues, "placeholder_required_secret", "required runtime value is blank or placeholder.", key)
+            _issue(
+                issues,
+                "placeholder_required_secret",
+                "required runtime value is blank or placeholder.",
+                key,
+            )
 
     for key, value in sorted(env.items()):
         key_u = key.upper()
@@ -247,7 +262,12 @@ def validate_env(
                     key,
                 )
         if strict_runtime and is_secretish_key(key) and is_placeholder(value):
-            _issue(issues, "placeholder_runtime_secret", "runtime secret is blank or placeholder.", key)
+            _issue(
+                issues,
+                "placeholder_runtime_secret",
+                "runtime secret is blank or placeholder.",
+                key,
+            )
 
     if prod_like:
         forbidden_true = (
@@ -259,7 +279,12 @@ def validate_env(
         )
         for key in forbidden_true:
             if truthy(env, key):
-                _issue(issues, "production_forbidden_true", "value must not be true in production.", key)
+                _issue(
+                    issues,
+                    "production_forbidden_true",
+                    "value must not be true in production.",
+                    key,
+                )
 
         for key, value in env.items():
             if key.endswith("_URL") or key in {
@@ -275,10 +300,20 @@ def validate_env(
                 "FRONTEND_URL",
             }:
                 if _has_loopback(value):
-                    _issue(issues, "production_loopback_url", "loopback URL is forbidden in production runtime.", key)
+                    _issue(
+                        issues,
+                        "production_loopback_url",
+                        "loopback URL is forbidden in production runtime.",
+                        key,
+                    )
 
     if shadow_like and truthy(env, "LIVE_TRADE_ENABLE"):
-        _issue(issues, "shadow_live_trade_enabled", "shadow mode must not enable live order submission.", "LIVE_TRADE_ENABLE")
+        _issue(
+            issues,
+            "shadow_live_trade_enabled",
+            "shadow mode must not enable live order submission.",
+            "LIVE_TRADE_ENABLE",
+        )
 
     if profile == "local":
         if truthy(env, "LLM_USE_FAKE_PROVIDER") or truthy(env, "BITGET_DEMO_ENABLED"):
@@ -316,7 +351,12 @@ def validate_env(
             actual = env.get(key, "")
             ok = actual == expected if key == "EXECUTION_MODE" else truthy(env, key)
             if not ok:
-                _issue(issues, code, f"LIVE_TRADE_ENABLE=true requires {key}={expected}.", key)
+                _issue(
+                    issues,
+                    code,
+                    f"LIVE_TRADE_ENABLE=true requires {key}={expected}.",
+                    key,
+                )
 
         if not (
             truthy(env, "COMMERCIAL_ENABLED")
@@ -372,7 +412,11 @@ def validate_env(
         )
 
     if strict_runtime and template:
-        _issue(issues, "mode_conflict", "--template and --strict-runtime are mutually exclusive.")
+        _issue(
+            issues,
+            "mode_conflict",
+            "--template and --strict-runtime are mutually exclusive.",
+        )
 
     if template:
         # Template placeholders are allowed for server-side secrets, but missing
@@ -420,7 +464,9 @@ def build_summary(
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--env-file", type=Path, required=True)
-    parser.add_argument("--profile", choices=("local", "shadow", "production"), required=True)
+    parser.add_argument(
+        "--profile", choices=("local", "shadow", "production"), required=True
+    )
     parser.add_argument("--template", action="store_true")
     parser.add_argument("--strict-runtime", action="store_true")
     parser.add_argument("--json", action="store_true")
@@ -448,7 +494,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.json:
         print(json.dumps(summary, indent=2, sort_keys=True))
     else:
-        mode = "template" if args.template else "strict-runtime" if args.strict_runtime else "static"
+        mode = (
+            "template"
+            if args.template
+            else "strict-runtime" if args.strict_runtime else "static"
+        )
         print(f"env_10_10_safety: profile={args.profile} mode={mode}")
         print(
             f"ok={str(summary['ok']).lower()} "

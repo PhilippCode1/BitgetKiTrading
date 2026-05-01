@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
-import json
 from pathlib import Path
 
 from scripts.dr_postgres_restore_test import (
@@ -14,10 +14,11 @@ from scripts.dr_postgres_restore_test import (
     secret_surface_issues,
 )
 
-
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts" / "dr_postgres_restore_test.py"
-TEMPLATE = ROOT / "docs" / "production_10_10" / "postgres_restore_evidence.template.json"
+TEMPLATE = (
+    ROOT / "docs" / "production_10_10" / "postgres_restore_evidence.template.json"
+)
 
 
 def test_dry_run_works() -> None:
@@ -112,12 +113,24 @@ def test_external_restore_secret_surface_blocks_unredacted_values() -> None:
     assert secret_surface_issues({"database_url": "postgresql://u:secret@host/db"}) == [
         "secret_like_field_not_redacted:database_url"
     ]
-    assert secret_surface_issues({"database_url": "[REDACTED]", "dsn": "not_stored_in_repo"}) == []
+    assert (
+        secret_surface_issues(
+            {"database_url": "[REDACTED]", "dsn": "not_stored_in_repo"}
+        )
+        == []
+    )
 
 
 def test_cli_template_strict_fails_and_outputs_json() -> None:
     completed = subprocess.run(
-        [sys.executable, str(SCRIPT), "--evidence-json", str(TEMPLATE), "--strict", "--json"],
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--evidence-json",
+            str(TEMPLATE),
+            "--strict",
+            "--json",
+        ],
         cwd=ROOT,
         capture_output=True,
         text=True,

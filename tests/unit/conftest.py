@@ -7,4 +7,3 @@ from __future__ import annotations
 import os
 
 os.environ.setdefault("REDIS_INIT_RECONNECT_FAST", "1")
-

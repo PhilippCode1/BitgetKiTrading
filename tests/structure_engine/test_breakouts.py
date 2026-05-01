@@ -56,7 +56,5 @@ def test_false_breakout_up_within_window() -> None:
         current_ts_ms=11,
         pending=pending,
     )
-    assert any(
-        t == "FALSE_BREAKOUT" and d.get("side") == "UP" for t, d in ev2
-    )
+    assert any(t == "FALSE_BREAKOUT" and d.get("side") == "UP" for t, d in ev2)
     assert pending2 is None

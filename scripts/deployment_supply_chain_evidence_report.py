@@ -12,8 +12,18 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_DEPLOY_EVIDENCE = ROOT / "docs" / "production_10_10" / "deployment_staging_parity_evidence.template.json"
-DEFAULT_SUPPLY_EVIDENCE = ROOT / "docs" / "production_10_10" / "supply_chain_release_audit_evidence.template.json"
+DEFAULT_DEPLOY_EVIDENCE = (
+    ROOT
+    / "docs"
+    / "production_10_10"
+    / "deployment_staging_parity_evidence.template.json"
+)
+DEFAULT_SUPPLY_EVIDENCE = (
+    ROOT
+    / "docs"
+    / "production_10_10"
+    / "supply_chain_release_audit_evidence.template.json"
+)
 SCHEMA_V = 1
 
 REQUIRED_DOCS: tuple[Path, ...] = (
@@ -26,7 +36,9 @@ REQUIRED_DOCS: tuple[Path, ...] = (
 
 
 def _now() -> str:
-    return datetime.now(tz=UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return (
+        datetime.now(tz=UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    )
 
 
 def _git_sha() -> str:
@@ -108,7 +120,9 @@ def run_validate_env_examples() -> dict[str, Any]:
         code, _tail = _run(cmd, timeout=90)
         ok = code == 0
         all_ok = all_ok and ok
-        runs.append({"env_file": env_file, "profile": profile, "ok": ok, "exit_code": code})
+        runs.append(
+            {"env_file": env_file, "profile": profile, "ok": ok, "exit_code": code}
+        )
     return {"ok": all_ok, "runs": runs}
 
 
@@ -128,13 +142,22 @@ def run_docker_compose_config() -> dict[str, Any]:
 
 
 def run_release_sanity() -> dict[str, Any]:
-    code, _ = _run([sys.executable, str(ROOT / "tools" / "release_sanity_checks.py")], timeout=120)
+    code, _ = _run(
+        [sys.executable, str(ROOT / "tools" / "release_sanity_checks.py")], timeout=120
+    )
     return {"ok": code == 0, "exit_code": code}
 
 
 def run_pip_audit_gate() -> dict[str, Any]:
-    code, tail = _run([sys.executable, str(ROOT / "tools" / "pip_audit_supply_chain_gate.py")], timeout=180)
-    return {"ok": code == 0, "exit_code": code, "tail": tail[-800:] if code != 0 else ""}
+    code, tail = _run(
+        [sys.executable, str(ROOT / "tools" / "pip_audit_supply_chain_gate.py")],
+        timeout=180,
+    )
+    return {
+        "ok": code == 0,
+        "exit_code": code,
+        "tail": tail[-800:] if code != 0 else "",
+    }
 
 
 def assess_deployment_evidence(payload: dict[str, Any]) -> dict[str, Any]:
@@ -220,7 +243,9 @@ def build_report_payload(
     if run_pip_audit:
         pip_result = run_pip_audit_gate()
 
-    dep_a = assess_deployment_evidence(json.loads(deployment_json.read_text(encoding="utf-8")))
+    dep_a = assess_deployment_evidence(
+        json.loads(deployment_json.read_text(encoding="utf-8"))
+    )
     sup_a = assess_supply_evidence(json.loads(supply_json.read_text(encoding="utf-8")))
 
     internal: list[str] = []
@@ -278,7 +303,9 @@ def render_markdown(p: dict[str, Any]) -> str:
     ]
     if p.get("pip_audit_supply_chain"):
         pa = p["pip_audit_supply_chain"]
-        lines.append(f"- pip_audit_gate (optional): ok=`{pa.get('ok')}` code=`{pa.get('exit_code')}`")
+        lines.append(
+            f"- pip_audit_gate (optional): ok=`{pa.get('ok')}` code=`{pa.get('exit_code')}`"
+        )
     lines.extend(
         [
             f"- extern Deployment-Template: `{p['deployment_evidence_assessment']['status']}`",
@@ -320,7 +347,9 @@ def main(argv: list[str] | None = None) -> int:
     )
     if args.output_json:
         args.output_json.parent.mkdir(parents=True, exist_ok=True)
-        args.output_json.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+        args.output_json.write_text(
+            json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
     if args.output_md:
         args.output_md.parent.mkdir(parents=True, exist_ok=True)
         args.output_md.write_text(render_markdown(payload), encoding="utf-8")

@@ -6,7 +6,9 @@ from typing import Any, Literal
 
 OWNER_PRIVATE_LIVE_RELEASE_FILENAME = "owner_private_live_release.json"
 
-Decision = Literal["GO", "GO_WITH_WARNINGS", "NO_GO", "NOT_ENOUGH_EVIDENCE", "EXTERNAL_REQUIRED"]
+Decision = Literal[
+    "GO", "GO_WITH_WARNINGS", "NO_GO", "NOT_ENOUGH_EVIDENCE", "EXTERNAL_REQUIRED"
+]
 Mode = Literal[
     "local_dev",
     "paper",
@@ -49,6 +51,7 @@ REQUIRED_CATEGORIES: tuple[tuple[str, str], ...] = (
     ("kill_switch_safety_latch", "Kill-Switch/Safety-Latch"),
     ("emergency_flatten", "Safety Drill"),
     ("bitget_exchange_readiness", "Bitget Readiness"),
+    ("demo_trading_lifecycle", "Demo Trading Lifecycle"),
     ("env_secrets_profiles", "Env/Secrets"),
     ("observability_slos", "Observability/Alerts"),
     ("alert_routing", "Alert Routing"),
@@ -92,11 +95,18 @@ PRIVATE_LIVE_REQUIRED_VERIFIED = frozenset(
 
 REPORT_HINTS = {
     "bitget_exchange_readiness": ("bitget_readiness.md",),
+    "demo_trading_lifecycle": ("demo_lifecycle_evidence",),
     "backup_restore": ("dr_restore_test.md", "dr_staging", "restore"),
     "shadow_burn_in": ("shadow_burn_in", "sbi"),
     "emergency_flatten": ("live_safety_drill", "emergency"),
-    "market_data_quality_per_asset": ("asset_preflight_evidence", "market_data_quality"),
-    "liquidity_spread_slippage_per_asset": ("asset_preflight_evidence", "liquidity_quality"),
+    "market_data_quality_per_asset": (
+        "asset_preflight_evidence",
+        "market_data_quality",
+    ),
+    "liquidity_spread_slippage_per_asset": (
+        "asset_preflight_evidence",
+        "liquidity_quality",
+    ),
     "asset_risk_tiers": ("asset_preflight_evidence", "asset_risk"),
     "multi_asset_order_sizing": ("asset_preflight_evidence",),
     "final_go_no_go_scorecard": ("production_readiness_scorecard",),
@@ -154,9 +164,15 @@ def _decision_for_category(status: str, *, blocks_live: bool) -> Decision:
     return "NO_GO"
 
 
-def categories_from_matrix(matrix: dict[str, Any], report_names: list[str] | None = None) -> list[CategoryScore]:
+def categories_from_matrix(
+    matrix: dict[str, Any], report_names: list[str] | None = None
+) -> list[CategoryScore]:
     report_names = report_names or []
-    by_id = {str(item.get("id")): item for item in matrix.get("categories", []) if isinstance(item, dict)}
+    by_id = {
+        str(item.get("id")): item
+        for item in matrix.get("categories", [])
+        if isinstance(item, dict)
+    }
     categories: list[CategoryScore] = []
     for category_id, fallback_title in REQUIRED_CATEGORIES:
         raw = by_id.get(category_id, {})
@@ -166,7 +182,9 @@ def categories_from_matrix(matrix: dict[str, Any], report_names: list[str] | Non
         if status != "verified":
             missing.append(f"{category_id}: status={status}")
         hints = REPORT_HINTS.get(category_id, ())
-        if hints and not any(any(hint in report for hint in hints) for report in report_names):
+        if hints and not any(
+            any(hint in report for hint in hints) for report in report_names
+        ):
             missing.append(f"{category_id}: runtime report missing")
         categories.append(
             CategoryScore(
@@ -191,7 +209,9 @@ def summarize_live_blockers(categories: list[CategoryScore]) -> list[str]:
     return blockers
 
 
-def summarize_asset_blockers(categories: list[CategoryScore], *, asset_data_quality_verified: bool = False) -> list[str]:
+def summarize_asset_blockers(
+    categories: list[CategoryScore], *, asset_data_quality_verified: bool = False
+) -> list[str]:
     blockers: list[str] = []
     for category_id in (
         "bitget_asset_universe",
@@ -226,7 +246,9 @@ def owner_private_live_release_payload_ok(payload: Any) -> bool:
     return True
 
 
-def asset_preflight_fixture_evidence_ok(report_payloads: dict[str, Any] | None = None) -> bool:
+def asset_preflight_fixture_evidence_ok(
+    report_payloads: dict[str, Any] | None = None,
+) -> bool:
     report_payloads = report_payloads or {}
     payload = report_payloads.get("asset_preflight_evidence")
     if not isinstance(payload, dict):
@@ -250,11 +272,15 @@ def asset_preflight_fixture_evidence_ok(report_payloads: dict[str, Any] | None =
 
 
 def readiness_allows_mode(scorecard: ReadinessScorecard, mode: Mode) -> bool:
-    decision = next((item for item in scorecard.mode_decisions if item.mode == mode), None)
+    decision = next(
+        (item for item in scorecard.mode_decisions if item.mode == mode), None
+    )
     return bool(decision and decision.decision in {"GO", "GO_WITH_WARNINGS"})
 
 
-def _required_private_live_blockers(categories: list[CategoryScore], report_names: list[str]) -> list[str]:
+def _required_private_live_blockers(
+    categories: list[CategoryScore], report_names: list[str]
+) -> list[str]:
     by_id = {item.id: item for item in categories}
     blockers: list[str] = []
     for category_id in sorted(PRIVATE_LIVE_REQUIRED_VERIFIED):
@@ -264,7 +290,9 @@ def _required_private_live_blockers(categories: list[CategoryScore], report_name
             blockers.append(f"{category_id}_not_verified:{status}")
     for category_id, hints in REPORT_HINTS.items():
         if category_id in PRIVATE_LIVE_REQUIRED_VERIFIED:
-            if not any(any(hint in report for hint in hints) for report in report_names):
+            if not any(
+                any(hint in report for hint in hints) for report in report_names
+            ):
                 blockers.append(f"{category_id}_runtime_report_missing")
     return blockers
 
@@ -290,7 +318,11 @@ def _mode_decisions(
         for item in categories
     )
     decisions: list[ModeDecision] = [
-        ModeDecision("local_dev", "GO_WITH_WARNINGS", "Local ist erlaubt, aber nicht production-ready."),
+        ModeDecision(
+            "local_dev",
+            "GO_WITH_WARNINGS",
+            "Local ist erlaubt, aber nicht production-ready.",
+        ),
         ModeDecision(
             "paper",
             "NO_GO" if paper_risky else "GO",
@@ -313,21 +345,25 @@ def _mode_decisions(
         ),
         ModeDecision(
             "private_live_allowed",
-            "GO"
-            if (
-                not private_live_blockers
-                and not live_blockers
-                and not asset_blockers
-                and owner_private_live_release_confirmed
-            )
-            else "NO_GO",
-            "Private Live braucht verifizierte Bitget-, Restore-, Burn-in-, Safety-, Asset-, Broker-, Reconcile- und Owner-Evidence "
-            "sowie die maschinelle Datei reports/owner_private_live_release.json (gitignored) mit gueltiger Struktur.",
+            (
+                "GO"
+                if (
+                    not private_live_blockers
+                    and not live_blockers
+                    and not asset_blockers
+                    and owner_private_live_release_confirmed
+                )
+                else "NO_GO"
+            ),
+            "Private Live braucht verifizierte Bitget-, Restore-, Burn-in-, Safety-, "
+            "Asset-, Broker-, Reconcile- und Owner-Evidence sowie die maschinelle Datei "
+            "reports/owner_private_live_release.json (gitignored) mit gueltiger Struktur.",
         ),
         ModeDecision(
             "full_autonomous_live",
             "NO_GO",
-            "Full Autonomous Live bleibt standardmaessig NO_GO ohne vollstaendig verified Matrix und lange echte Live-Historie.",
+            "Full Autonomous Live bleibt standardmaessig NO_GO ohne vollstaendig "
+            "verified Matrix und lange echte Live-Historie.",
         ),
     ]
     return decisions
@@ -348,12 +384,11 @@ def build_readiness_scorecard(
     live_blockers = summarize_live_blockers(categories)
     asset_blockers = summarize_asset_blockers(
         categories,
-        asset_data_quality_verified=asset_data_quality_verified or asset_fixture_evidence,
+        asset_data_quality_verified=asset_data_quality_verified
+        or asset_fixture_evidence,
     )
     missing_evidence = [
-        evidence
-        for category in categories
-        for evidence in category.missing_evidence
+        evidence for category in categories for evidence in category.missing_evidence
     ]
     next_steps = [
         category.next_action
@@ -373,7 +408,9 @@ def build_readiness_scorecard(
         report_names,
         owner_private_live_release_confirmed=owner_private_live_release_confirmed,
     )
-    private_live = next(item for item in mode_decisions if item.mode == "private_live_allowed")
+    private_live = next(
+        item for item in mode_decisions if item.mode == "private_live_allowed"
+    )
     overall: Decision = "GO" if private_live.decision == "GO" else "NO_GO"
     return ReadinessScorecard(
         version=SCORECARD_VERSION,
@@ -395,9 +432,7 @@ def build_readiness_scorecard(
 def scorecard_to_console_payload(scorecard: ReadinessScorecard) -> dict[str, Any]:
     return {
         **asdict(scorecard),
-        "allows": {
-            mode: readiness_allows_mode(scorecard, mode) for mode in MODES
-        },
+        "allows": {mode: readiness_allows_mode(scorecard, mode) for mode in MODES},
         "live_blocker_count": len(scorecard.live_blockers),
         "asset_blocker_count": len(scorecard.asset_blockers),
     }

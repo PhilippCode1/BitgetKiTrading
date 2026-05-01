@@ -8,9 +8,7 @@ _FAKE_OPERATOR_EXPLAIN_DE = (
     "Diese Antwort erfüllt das Operator-Explain-JSON-Schema zur End-to-End-Verifikation."
 )
 
-_FAKE_OPERATOR_NOTE_DE = (
-    "Nur technischer Testmodus; keine operative Handlungsempfehlung und keine Markteinschätzung."
-)
+_FAKE_OPERATOR_NOTE_DE = "Nur technischer Testmodus; keine operative Handlungsempfehlung und keine Markteinschätzung."
 
 _FAKE_STRATEGY_SIGNAL_EXPLAIN_DE = (
     "[TEST-PROVIDER — kein OpenAI-Aufruf] Deterministische Strategie-Signal-Erklaerung fuer E2E. "

@@ -5,7 +5,9 @@ from typing import Any
 from learning_engine.config import LearningEngineSettings
 
 
-def should_suggest_retire(metrics: dict[str, Any], settings: LearningEngineSettings) -> bool:
+def should_suggest_retire(
+    metrics: dict[str, Any], settings: LearningEngineSettings
+) -> bool:
     pf = metrics.get("profit_factor")
     if pf is None:
         return False
@@ -16,7 +18,9 @@ def should_suggest_retire(metrics: dict[str, Any], settings: LearningEngineSetti
     return pfv < settings.learning_retire_pf and metrics.get("trades", 0) >= 5
 
 
-def should_suggest_promote(metrics: dict[str, Any], settings: LearningEngineSettings) -> bool:
+def should_suggest_promote(
+    metrics: dict[str, Any], settings: LearningEngineSettings
+) -> bool:
     pf = metrics.get("profit_factor")
     if pf is None or pf == float("inf"):
         return False
@@ -33,7 +37,9 @@ def should_suggest_promote(metrics: dict[str, Any], settings: LearningEngineSett
     )
 
 
-def retire_payload(strategy_id: str, strategy_name: str, metrics: dict[str, Any]) -> dict[str, Any]:
+def retire_payload(
+    strategy_id: str, strategy_name: str, metrics: dict[str, Any]
+) -> dict[str, Any]:
     return {
         "action": "suggest_retire",
         "strategy_id": strategy_id,
@@ -47,7 +53,9 @@ def retire_payload(strategy_id: str, strategy_name: str, metrics: dict[str, Any]
     }
 
 
-def promote_payload(strategy_id: str, strategy_name: str, metrics: dict[str, Any]) -> dict[str, Any]:
+def promote_payload(
+    strategy_id: str, strategy_name: str, metrics: dict[str, Any]
+) -> dict[str, Any]:
     return {
         "action": "suggest_promotion",
         "strategy_id": strategy_id,

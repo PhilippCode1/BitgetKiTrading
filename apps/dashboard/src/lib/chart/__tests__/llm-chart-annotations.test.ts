@@ -138,7 +138,8 @@ describe("sanitizeLlmChartAnnotations", () => {
       },
       stats,
       {
-        rationaleHint: "Short-Signal: Widerstand bei 190-195, Verkauf nahe oben.",
+        rationaleHint:
+          "Short-Signal: Widerstand bei 190-195, Verkauf nahe oben.",
       },
     );
     expect(r.filledZones).toHaveLength(1);

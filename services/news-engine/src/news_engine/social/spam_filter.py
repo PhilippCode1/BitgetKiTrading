@@ -20,7 +20,12 @@ def allow_social_message(
         logger.debug("spam_filter: missing followers author=%s", author_id)
         return False
     if min_followers > 0 and followers is not None and followers < min_followers:
-        logger.debug("spam_filter: followers %s < %s author=%s", followers, min_followers, author_id)
+        logger.debug(
+            "spam_filter: followers %s < %s author=%s",
+            followers,
+            min_followers,
+            author_id,
+        )
         return False
     if redis is None or not author_id:
         return True

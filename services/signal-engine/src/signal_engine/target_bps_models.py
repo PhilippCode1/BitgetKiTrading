@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Any
 
 from joblib import load
-
 from shared_py.model_contracts import extract_primary_feature_snapshot
 from shared_py.projection_adjustment import apply_projection_cost_adjustment
 from shared_py.take_trade_model import (
@@ -19,6 +18,7 @@ from shared_py.take_trade_model import (
     build_signal_model_feature_vector,
     evaluate_signal_model_ood,
 )
+
 from signal_engine.storage.repo import SignalRepository
 
 
@@ -98,16 +98,22 @@ class TargetBpsModelScorer:
         model_rows: list[dict[str, Any]] = []
         diagnostics_rows: list[dict[str, Any]] = []
         for spec in _BPS_PROJECTION_SPECS:
-            value, summary, diagnostics = self._scorers[spec.output_field].predict(matrix, features)
+            value, summary, diagnostics = self._scorers[spec.output_field].predict(
+                matrix, features
+            )
             outputs[spec.output_field] = value
             if summary is not None:
                 model_rows.append(summary)
             if diagnostics is not None:
                 diagnostics_rows.append(diagnostics)
         outputs["target_projection_models_json"] = model_rows
-        _apply_cost_adjustment_to_outputs(outputs, signal_row=signal_row, feature_snapshot=feature_snapshot)
+        _apply_cost_adjustment_to_outputs(
+            outputs, signal_row=signal_row, feature_snapshot=feature_snapshot
+        )
         outputs["target_projection_summary"] = _projection_summary(outputs)
-        outputs["target_projection_diagnostics"] = _aggregate_diagnostics(diagnostics_rows)
+        outputs["target_projection_diagnostics"] = _aggregate_diagnostics(
+            diagnostics_rows
+        )
         return outputs
 
 
@@ -140,13 +146,17 @@ class _ScalarRegressionModelScorer:
     ) -> tuple[float | None, dict[str, Any] | None, dict[str, Any] | None]:
         self._maybe_refresh()
         if self._loaded_model is None or self._loaded_row is None:
-            return None, None, {
-                "model_name": self._spec.model_name,
-                "ood_score_0_1": 1.0,
-                "ood_alert": True,
-                "ood_reasons_json": [f"missing_{self._spec.model_name}_model"],
-                "bound_proximity_0_1": None,
-            }
+            return (
+                None,
+                None,
+                {
+                    "model_name": self._spec.model_name,
+                    "ood_score_0_1": 1.0,
+                    "ood_alert": True,
+                    "ood_reasons_json": [f"missing_{self._spec.model_name}_model"],
+                    "bound_proximity_0_1": None,
+                },
+            )
         value = float(self._loaded_model.predict(matrix)[0])
         diagnostics = _inference_diagnostics(
             spec=self._spec,
@@ -156,7 +166,11 @@ class _ScalarRegressionModelScorer:
             robust_z_threshold=self._ood_robust_z_threshold,
             max_flagged_features=self._ood_max_flagged_features,
         )
-        return value, _metadata_summary(self._spec, self._loaded_row, diagnostics), diagnostics
+        return (
+            value,
+            _metadata_summary(self._spec, self._loaded_row, diagnostics),
+            diagnostics,
+        )
 
     def _maybe_refresh(self) -> None:
         now_ms = int(time.time() * 1000)
@@ -188,7 +202,9 @@ class _ScalarRegressionModelScorer:
             self._loaded_row = row
             self._loaded_run_id = run_id
         except Exception as exc:
-            self._logger.warning("target_bps_model load failed model=%s: %s", self._spec.model_name, exc)
+            self._logger.warning(
+                "target_bps_model load failed model=%s: %s", self._spec.model_name, exc
+            )
             self._loaded_run_id = None
             self._loaded_model = None
             self._loaded_row = None

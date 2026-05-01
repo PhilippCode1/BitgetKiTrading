@@ -2,13 +2,15 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
+from learning_engine.config import LearningEngineSettings
+from learning_engine.registry_v2.champion_promotion_gates import (
+    evaluate_champion_promotion_gates,
+)
 from learning_engine.rl_env.trading_environment import (
     RewardWeights,
     compute_ams_governor_reward,
     compute_step_reward,
 )
-from learning_engine.registry_v2.champion_promotion_gates import evaluate_champion_promotion_gates
-from learning_engine.config import LearningEngineSettings
 from learning_engine.stress_test.schemas import AdversarialStressRunResultV1
 from shared_py.take_trade_model import TAKE_TRADE_MODEL_NAME
 
@@ -21,7 +23,12 @@ def test_compute_ams_governor_reward_signs() -> None:
     assert compute_ams_governor_reward(
         ams_trap_active=True, governor_blocked_trade=False, weights=w
     ) == -float(w.ams_false_negative_penalty)
-    assert compute_ams_governor_reward(ams_trap_active=False, governor_blocked_trade=True, weights=w) == 0.0
+    assert (
+        compute_ams_governor_reward(
+            ams_trap_active=False, governor_blocked_trade=True, weights=w
+        )
+        == 0.0
+    )
 
 
 def test_compute_step_reward_includes_ams() -> None:

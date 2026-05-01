@@ -6,7 +6,6 @@ from __future__ import annotations
 import argparse
 import json
 import re
-import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -109,7 +108,11 @@ def _looks_like_intl_message_key(token: str) -> bool:
     if "." not in token or " " in token:
         return False
     parts = token.split(".")
-    return len(parts) >= 2 and parts[0].isalpha() and all(p.replace("_", "").isalnum() for p in parts)
+    return (
+        len(parts) >= 2
+        and parts[0].isalpha()
+        and all(p.replace("_", "").isalnum() for p in parts)
+    )
 
 
 def _skip_out_of_scope_scan(file_path: Path) -> bool:
@@ -156,7 +159,15 @@ def _extract_candidate_strings(file_path: Path, raw_line: str) -> list[str]:
 
 def _collect_files(base: Path) -> list[Path]:
     files: list[Path] = []
-    for pattern in ("app/**/*.ts", "app/**/*.tsx", "components/**/*.ts", "components/**/*.tsx", "lib/**/*.ts", "lib/**/*.tsx", "messages/*.json"):
+    for pattern in (
+        "app/**/*.ts",
+        "app/**/*.tsx",
+        "components/**/*.ts",
+        "components/**/*.tsx",
+        "lib/**/*.ts",
+        "lib/**/*.tsx",
+        "messages/*.json",
+    ):
         files.extend(base.glob(pattern))
     return sorted(
         {
@@ -200,15 +211,20 @@ def analyze_german_ui(
             message="Glossary missing and not embedded in policy.",
         )
 
-    glossary_text = glossary_doc.read_text(encoding="utf-8") if glossary_doc.is_file() else ""
+    glossary_text = (
+        glossary_doc.read_text(encoding="utf-8") if glossary_doc.is_file() else ""
+    )
     combined_docs = f"{policy_text}\n{glossary_text}"
-    missing_terms = [term for term in GERMAN_MAIN_CONSOLE_TERMS if term not in combined_docs]
+    missing_terms = [
+        term for term in GERMAN_MAIN_CONSOLE_TERMS if term not in combined_docs
+    ]
     if missing_terms:
         _issue(
             issues,
             severity="error",
             code="missing_german_core_terms",
-            message="Missing required German main-console terms: " + ", ".join(missing_terms),
+            message="Missing required German main-console terms: "
+            + ", ".join(missing_terms),
         )
 
     if not dashboard_src.is_dir():
@@ -253,11 +269,18 @@ def analyze_german_ui(
             # target surface for Philipp.
             continue
         files_scanned += 1
-        for idx, raw_line in enumerate(file_path.read_text(encoding="utf-8").splitlines(), start=1):
+        for idx, raw_line in enumerate(
+            file_path.read_text(encoding="utf-8").splitlines(), start=1
+        ):
             line = raw_line.strip()
             if not line:
                 continue
-            if line.startswith("//") or line.startswith("/*") or line.startswith("*") or line.startswith("*/"):
+            if (
+                line.startswith("//")
+                or line.startswith("/*")
+                or line.startswith("*")
+                or line.startswith("*/")
+            ):
                 continue
             candidates = _extract_candidate_strings(file_path, raw_line)
             for token in candidates:
@@ -309,7 +332,11 @@ def render_text(summary: dict[str, Any]) -> str:
         "check_german_only_ui: dashboard surface",
         f"ok={str(summary['ok']).lower()} files_scanned={summary['files_scanned']}",
         f"critical_hits={summary['critical_hits']} out_of_scope_hits={summary['out_of_scope_hits']}",
-        "message_files=" + ", ".join(summary["message_files"]) if summary["message_files"] else "message_files=none",
+        (
+            "message_files=" + ", ".join(summary["message_files"])
+            if summary["message_files"]
+            else "message_files=none"
+        ),
     ]
     for issue in summary["issues"]:
         where = ""
@@ -318,7 +345,9 @@ def render_text(summary: dict[str, Any]) -> str:
             if issue.get("line"):
                 where += f":{issue['line']}"
             where += "]"
-        lines.append(f"{issue['severity'].upper()} {issue['code']}: {issue['message']}{where}")
+        lines.append(
+            f"{issue['severity'].upper()} {issue['code']}: {issue['message']}{where}"
+        )
     return "\n".join(lines)
 
 

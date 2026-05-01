@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pytest
+
 from learning_engine.config import LearningEngineSettings
 from learning_engine.labeling.rules_v1 import apply_error_labels
 

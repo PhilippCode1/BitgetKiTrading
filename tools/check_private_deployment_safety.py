@@ -12,15 +12,40 @@ ROOT = Path(__file__).resolve().parents[1]
 def analyze() -> dict[str, Any]:
     issues: list[dict[str, str]] = []
     required = (
-        (ROOT / "docs" / "production_10_10" / "private_deployment_ngrok_staging_safety.md", "doc_missing", "Deployment/ngrok/staging Sicherheitsdoku fehlt."),
-        (ROOT / "tools" / "check_private_deployment_safety.py", "tool_missing", "Checker fehlt."),
-        (ROOT / "scripts" / "private_deployment_preflight.py", "script_missing", "Preflight-Skript fehlt."),
-        (ROOT / "tests" / "tools" / "test_check_private_deployment_safety.py", "tool_test_missing", "Tool-Test fehlt."),
-        (ROOT / "tests" / "scripts" / "test_private_deployment_preflight.py", "script_test_missing", "Script-Test fehlt."),
+        (
+            ROOT
+            / "docs"
+            / "production_10_10"
+            / "private_deployment_ngrok_staging_safety.md",
+            "doc_missing",
+            "Deployment/ngrok/staging Sicherheitsdoku fehlt.",
+        ),
+        (
+            ROOT / "tools" / "check_private_deployment_safety.py",
+            "tool_missing",
+            "Checker fehlt.",
+        ),
+        (
+            ROOT / "scripts" / "private_deployment_preflight.py",
+            "script_missing",
+            "Preflight-Skript fehlt.",
+        ),
+        (
+            ROOT / "tests" / "tools" / "test_check_private_deployment_safety.py",
+            "tool_test_missing",
+            "Tool-Test fehlt.",
+        ),
+        (
+            ROOT / "tests" / "scripts" / "test_private_deployment_preflight.py",
+            "script_test_missing",
+            "Script-Test fehlt.",
+        ),
     )
     for p, code, message in required:
         if not p.is_file():
-            issues.append({"severity": "error", "code": code, "message": message, "path": str(p)})
+            issues.append(
+                {"severity": "error", "code": code, "message": message, "path": str(p)}
+            )
 
     script = ROOT / "scripts" / "private_deployment_preflight.py"
     if script.is_file():
@@ -46,7 +71,12 @@ def analyze() -> dict[str, Any]:
                     }
                 )
 
-    docs = ROOT / "docs" / "production_10_10" / "private_deployment_ngrok_staging_safety.md"
+    docs = (
+        ROOT
+        / "docs"
+        / "production_10_10"
+        / "private_deployment_ngrok_staging_safety.md"
+    )
     if docs.is_file():
         d = docs.read_text(encoding="utf-8").lower()
         for must in (
@@ -82,7 +112,9 @@ def analyze() -> dict[str, Any]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Prueft private Deployment/ngrok/staging Safety-Artefakte.")
+    parser = argparse.ArgumentParser(
+        description="Prueft private Deployment/ngrok/staging Safety-Artefakte."
+    )
     parser.add_argument("--strict", action="store_true")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
@@ -95,7 +127,9 @@ def main() -> int:
             f"errors={payload['error_count']} warnings={payload['warning_count']}"
         )
         for issue in payload["issues"]:
-            print(f"{issue['severity'].upper()} {issue['code']}: {issue['message']} [{issue['path']}]")
+            print(
+                f"{issue['severity'].upper()} {issue['code']}: {issue['message']} [{issue['path']}]"
+            )
     if payload["error_count"] > 0:
         return 1
     if args.strict and payload["warning_count"] > 0:

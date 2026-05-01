@@ -42,7 +42,9 @@ def _row_from_db(r: dict[str, Any]) -> SelfHealingStateRow:
     )
 
 
-def prune_restart_events(events: list[float], now: float, *, window_sec: float) -> list[float]:
+def prune_restart_events(
+    events: list[float], now: float, *, window_sec: float
+) -> list[float]:
     w = max(1.0, float(window_sec))
     return [t for t in events if now - t < w + 0.5]
 
@@ -50,7 +52,9 @@ def prune_restart_events(events: list[float], now: float, *, window_sec: float) 
 def count_allowed_restarts_in_window(
     events: list[float], now: float, *, window_sec: float, max_n: int
 ) -> tuple[bool, list[float]]:
-    pruned = sorted(prune_restart_events(events, now, window_sec=window_sec))[-(max_n + 8) :]
+    pruned = sorted(prune_restart_events(events, now, window_sec=window_sec))[
+        -(max_n + 8) :
+    ]
     if len(pruned) >= int(max(1, max_n)):
         return False, pruned
     return True, pruned
@@ -151,7 +155,11 @@ def set_phase(
                 raw_tl = row[0] if row else []
                 if isinstance(raw_tl, str):
                     raw_tl = json.loads(raw_tl)
-                tl0 = [t for t in raw_tl if isinstance(t, dict)] if isinstance(raw_tl, list) else []
+                tl0 = (
+                    [t for t in raw_tl if isinstance(t, dict)]
+                    if isinstance(raw_tl, list)
+                    else []
+                )
                 new_tl = _append_timeline_entry(
                     tl0, event=event, message=message, details=details
                 )
@@ -165,7 +173,12 @@ def set_phase(
                       updated_ts = now()
                     WHERE service_name = %s
                     """,
-                    (new_phase, json.dumps(new_tl), json.dumps({"event": event}), service_name),
+                    (
+                        new_phase,
+                        json.dumps(new_tl),
+                        json.dumps({"event": event}),
+                        service_name,
+                    ),
                 )
         return get_state(dsn, service_name)
     except Exception as exc:

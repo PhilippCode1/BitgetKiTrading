@@ -46,7 +46,7 @@ def sample_event_streams_union_recent(
             )
         except Exception:  # noqa: BLE001
             continue
-        for eid, fields in batch or ():
+        for eid, fields in batch or ():  # type: ignore
             merged.append((sn, str(eid), dict(fields)))
     merged.sort(key=lambda t: t[1], reverse=True)
     out: list[dict[str, Any]] = []

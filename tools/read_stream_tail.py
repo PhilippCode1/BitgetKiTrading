@@ -45,7 +45,9 @@ def main() -> int:
 
     from shared_py.eventbus import EVENT_STREAMS, RedisStreamBus
 
-    parser = argparse.ArgumentParser(description="Lese die letzten Redis Stream Events.")
+    parser = argparse.ArgumentParser(
+        description="Lese die letzten Redis Stream Events."
+    )
     parser.add_argument("stream", choices=EVENT_STREAMS)
     parser.add_argument(
         "--count",
@@ -63,7 +65,11 @@ def main() -> int:
         }
         for message_id, fields in items
     ]
-    print(json.dumps({"stream": args.stream, "count": len(output), "items": output}, indent=2))
+    print(
+        json.dumps(
+            {"stream": args.stream, "count": len(output), "items": output}, indent=2
+        )
+    )
     return 0
 
 

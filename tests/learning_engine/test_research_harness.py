@@ -26,7 +26,8 @@ def _eval_row(
         "decision_ts_ms": decision_ts_ms,
         "closed_ts_ms": decision_ts_ms + 60_000,
         "take_trade_label": take_trade_label,
-        "feature_snapshot_json": feature_snapshot or {
+        "feature_snapshot_json": feature_snapshot
+        or {
             "primary": {
                 "ret_5": 0.001,
                 "momentum_score": 50.0,
@@ -69,7 +70,12 @@ def test_build_benchmark_evidence_report_sorts_and_shape() -> None:
 
 
 def test_model_contract_slices_min_rows() -> None:
-    rows = [_eval_row(decision_ts_ms=1000 + i, take_trade_label=i % 2 == 0, contract_version="vx") for i in range(25)]
+    rows = [
+        _eval_row(
+            decision_ts_ms=1000 + i, take_trade_label=i % 2 == 0, contract_version="vx"
+        )
+        for i in range(25)
+    ]
     report = build_benchmark_evidence_report(
         evaluation_rows=rows,
         e2e_rows=None,

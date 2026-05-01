@@ -51,11 +51,17 @@ def run(dashboard_url: str, base_url: str) -> HealthReport:
             blockers.append("api_gateway_unreachable")
         if ready_http == -1 or ready_http >= 400:
             blockers.append("ready_failed")
-        if (health_http >= 400 and health_http != -1) or (ready_http >= 400 and ready_http != -1):
+        if (health_http >= 400 and health_http != -1) or (
+            ready_http >= 400 and ready_http != -1
+        ):
             blockers.append("API-Gateway Health/Ready nicht erreichbar.")
 
-        demo_status_http, demo_status = _get(client, f"{base_url.rstrip('/')}/api/demo/status")
-        demo_readiness_http, demo_readiness = _get(client, f"{base_url.rstrip('/')}/api/demo/readiness")
+        demo_status_http, demo_status = _get(
+            client, f"{base_url.rstrip('/')}/api/demo/status"
+        )
+        demo_readiness_http, demo_readiness = _get(
+            client, f"{base_url.rstrip('/')}/api/demo/readiness"
+        )
         checks["demo_status"] = str(demo_status_http)
         checks["demo_readiness"] = str(demo_readiness_http)
         if (
@@ -70,11 +76,11 @@ def run(dashboard_url: str, base_url: str) -> HealthReport:
         if demo_readiness_http >= 400 and demo_readiness_http != -1:
             blockers.append("Demo-Readiness nicht erreichbar.")
 
-        if bool(((demo_status.get("demo_mode") or {}).get("live_trade_enable"))):
+        if bool((demo_status.get("demo_mode") or {}).get("live_trade_enable")):
             blockers.append("Live-Trading ist aktiv, muss AUS bleiben.")
-        if not bool(((demo_status.get("demo_mode") or {}).get("bitget_demo_enabled"))):
+        if not bool((demo_status.get("demo_mode") or {}).get("bitget_demo_enabled")):
             warnings.append("BITGET_DEMO_ENABLED ist nicht als true sichtbar.")
-        if str((demo_readiness.get("result") or "")).upper() == "FAIL":
+        if str(demo_readiness.get("result") or "").upper() == "FAIL":
             blockers.append("Demo-Readiness meldet FAIL.")
 
         raw = json.dumps(
@@ -92,7 +98,9 @@ def run(dashboard_url: str, base_url: str) -> HealthReport:
         result = "PASS_WITH_WARNINGS"
     else:
         result = "PASS"
-    return HealthReport(result=result, checks=checks, warnings=warnings, blockers=blockers)
+    return HealthReport(
+        result=result, checks=checks, warnings=warnings, blockers=blockers
+    )
 
 
 def to_md(rep: HealthReport) -> str:
@@ -130,7 +138,9 @@ def main(argv: list[str] | None = None) -> int:
         args.output_md.write_text(to_md(report), encoding="utf-8")
     if args.output_json:
         args.output_json.parent.mkdir(parents=True, exist_ok=True)
-        args.output_json.write_text(json.dumps(asdict(report), ensure_ascii=False, indent=2), encoding="utf-8")
+        args.output_json.write_text(
+            json.dumps(asdict(report), ensure_ascii=False, indent=2), encoding="utf-8"
+        )
     if args.json:
         print(json.dumps(asdict(report), ensure_ascii=False, indent=2))
     else:

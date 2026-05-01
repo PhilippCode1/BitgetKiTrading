@@ -4,8 +4,8 @@ import logging
 import time
 from typing import TYPE_CHECKING, Any
 
-from shared_py.eventbus import STREAM_MARKET_FEED_HEALTH, EventEnvelope
 from shared_py.bitget.instruments import BitgetInstrumentIdentity
+from shared_py.eventbus import STREAM_MARKET_FEED_HEALTH, EventEnvelope
 
 if TYPE_CHECKING:
     from market_stream.sinks.eventbus import AsyncRedisEventBus
@@ -13,9 +13,7 @@ if TYPE_CHECKING:
 
 def gapfill_triggers_orderbook_resync(reason: str) -> bool:
     return (
-        reason == "stale-data"
-        or reason == "reconnect"
-        or reason.startswith("seq-gap")
+        reason == "stale-data" or reason == "reconnect" or reason.startswith("seq-gap")
     )
 
 

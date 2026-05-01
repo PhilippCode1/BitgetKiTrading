@@ -35,6 +35,6 @@ def test_matrix_top_level_and_entries() -> None:
         assert services == "*" or isinstance(services, list), f"entry[{i}].services"
         for ph in _PHASES:
             v = row.get(ph)
-            assert v in _ALLOWED_LEVEL, (
-                f"entry[{i}] {ph}={v!r} nicht in {sorted(_ALLOWED_LEVEL)}"
-            )
+            assert (
+                v in _ALLOWED_LEVEL
+            ), f"entry[{i}] {ph}={v!r} nicht in {sorted(_ALLOWED_LEVEL)}"

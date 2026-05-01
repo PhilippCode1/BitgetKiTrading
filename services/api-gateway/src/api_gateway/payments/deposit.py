@@ -3,14 +3,17 @@
 from __future__ import annotations
 
 import secrets
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
 import psycopg
 import psycopg.errors
+from config.gateway_settings import GatewaySettings
 from fastapi import HTTPException
+from shared_py.billing_wallet import payment_deposit_wallet_idempotency_key
+from shared_py.customer_telegram_notify import enqueue_customer_notify
 
 from api_gateway.db_customer_portal import (
     adjust_wallet_balance,
@@ -28,10 +31,6 @@ from api_gateway.db_payment_intents import (
     update_intent_status,
     upsert_intent_for_checkout,
 )
-from config.gateway_settings import GatewaySettings
-from shared_py.billing_wallet import payment_deposit_wallet_idempotency_key
-from shared_py.customer_telegram_notify import enqueue_customer_notify
-
 from api_gateway.payments.billing_sync import sync_wallet_deposit_to_billing_ledger
 from api_gateway.payments.stripe_checkout import (
     retrieve_checkout_session_for_reconciliation,
@@ -76,7 +75,9 @@ def start_deposit_checkout(
         currency=currency.upper()[:8],
     )
     if intent["provider"] != prov:
-        raise HTTPException(status_code=409, detail="idempotency key used for different provider")
+        raise HTTPException(
+            status_code=409, detail="idempotency key used for different provider"
+        )
     if intent["status"] == "succeeded":
         return {
             "intent_id": intent["intent_id"],
@@ -89,9 +90,13 @@ def start_deposit_checkout(
         if not settings.payment_mock_enabled:
             raise HTTPException(status_code=400, detail="mock provider disabled")
         if env == "live":
-            raise HTTPException(status_code=400, detail="mock not available in live mode")
+            raise HTTPException(
+                status_code=400, detail="mock not available in live mode"
+            )
         if not settings.payment_mock_webhook_secret.strip():
-            raise HTTPException(status_code=503, detail="mock webhook secret not configured")
+            raise HTTPException(
+                status_code=503, detail="mock webhook secret not configured"
+            )
         update_intent_status(
             conn,
             intent_id=UUID(intent["intent_id"]),
@@ -161,7 +166,9 @@ def resume_stripe_checkout(
     if row is None:
         return None
     d = dict(row)
-    if d.get("status") != "awaiting_payment" or not d.get("provider_checkout_session_id"):
+    if d.get("status") != "awaiting_payment" or not d.get(
+        "provider_checkout_session_id"
+    ):
         return None
     url = stripe_session_retrieve_url(settings, str(d["provider_checkout_session_id"]))
     if not url:
@@ -232,7 +239,7 @@ def apply_successful_deposit(
         "amount_list_usd": str(amount),
         "currency": currency,
         "provider": prov,
-        "paid_at": datetime.now(timezone.utc).isoformat(),
+        "paid_at": datetime.now(UTC).isoformat(),
         **receipt_extra,
     }
     try:
@@ -260,7 +267,9 @@ def apply_successful_deposit(
             delta_list_usd=amount,
             actor=f"webhook:{webhook_provider}",
             reason_code="payment_deposit",
-            idempotency_key=payment_deposit_wallet_idempotency_key(intent_id=intent_uuid),
+            idempotency_key=payment_deposit_wallet_idempotency_key(
+                intent_id=intent_uuid
+            ),
         )
         sync_wallet_deposit_to_billing_ledger(
             conn,
@@ -387,10 +396,15 @@ def reconcile_stripe_deposits_for_tenant(
     """
     if not settings.commercial_enabled or not settings.payment_checkout_enabled:
         return 0
-    if not settings.payment_stripe_enabled or not settings.payment_stripe_secret_key.strip():
+    if (
+        not settings.payment_stripe_enabled
+        or not settings.payment_stripe_secret_key.strip()
+    ):
         return 0
     n_applied = 0
-    for intent in list_stripe_intents_awaiting_reconciliation(conn, tenant_id=tenant_id):
+    for intent in list_stripe_intents_awaiting_reconciliation(
+        conn, tenant_id=tenant_id
+    ):
         sid = str(intent.get("provider_checkout_session_id") or "").strip()
         if not sid:
             continue

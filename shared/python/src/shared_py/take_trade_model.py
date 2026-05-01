@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import math
-from typing import Any, Mapping, Sequence
+from collections.abc import Mapping, Sequence
+from typing import Any
 
 import numpy as np
 
@@ -80,7 +81,11 @@ _NUMERIC_FIELDS = (
     "high_tf_alignment_ratio",
 )
 _TIMEFRAME_ONE_HOT_FIELDS = tuple(f"timeframe_is_{tf}" for tf in MODEL_TIMEFRAMES)
-_DIRECTION_ONE_HOT_FIELDS = ("direction_is_long", "direction_is_short", "direction_is_neutral")
+_DIRECTION_ONE_HOT_FIELDS = (
+    "direction_is_long",
+    "direction_is_short",
+    "direction_is_neutral",
+)
 _SIGNAL_CLASS_ONE_HOT_FIELDS = (
     "signal_class_is_mikro",
     "signal_class_is_kern",
@@ -95,7 +100,9 @@ _DECISION_STATE_ONE_HOT_FIELDS = (
 _MARKET_REGIME_ONE_HOT_FIELDS = tuple(
     f"market_regime_is_{regime}" for regime in MARKET_REGIME_VALUES
 )
-_REGIME_BIAS_ONE_HOT_FIELDS = tuple(f"regime_bias_is_{bias}" for bias in REGIME_BIAS_VALUES)
+_REGIME_BIAS_ONE_HOT_FIELDS = tuple(
+    f"regime_bias_is_{bias}" for bias in REGIME_BIAS_VALUES
+)
 _BINARY_FLAG_FIELDS = (
     "liquidity_source_orderbook_levels",
     "liquidity_source_fallback",
@@ -150,19 +157,21 @@ class CalibratedTakeTradeProbModel:
         self.calibration_method = calibration_method
         self.calibrator = calibrator
 
-    def predict_proba(self, X: Any) -> np.ndarray:
+    def predict_proba(self, X: Any) -> np.ndarray:  # type: ignore
         raw = self.base_model.predict_proba(X)
         base_probs = np.asarray(raw, dtype=float)[:, 1]
         calibrated = self._calibrate(base_probs)
         return np.column_stack((1.0 - calibrated, calibrated))
 
-    def _calibrate(self, base_probs: np.ndarray) -> np.ndarray:
+    def _calibrate(self, base_probs: np.ndarray) -> np.ndarray:  # type: ignore
         if self.calibration_method == "sigmoid":
             calibrated = self.calibrator.predict_proba(base_probs.reshape(-1, 1))[:, 1]
         elif self.calibration_method == "isotonic":
             calibrated = self.calibrator.predict(base_probs)
         else:
-            raise ValueError(f"unsupported calibration_method: {self.calibration_method!r}")
+            raise ValueError(
+                f"unsupported calibration_method: {self.calibration_method!r}"
+            )
         return np.clip(np.asarray(calibrated, dtype=float), 0.0, 1.0)
 
 
@@ -178,7 +187,7 @@ class BoundedRegressionModel:
         self.lower_bound = lower_bound
         self.upper_bound = upper_bound
 
-    def predict(self, X: Any) -> np.ndarray:
+    def predict(self, X: Any) -> np.ndarray:  # type: ignore
         raw = np.asarray(self.base_model.predict(X), dtype=float)
         lower = self.lower_bound if self.lower_bound is not None else -np.inf
         upper = self.upper_bound if self.upper_bound is not None else np.inf
@@ -262,19 +271,28 @@ def build_signal_model_feature_vector(
     signal_class = str(sig.get("signal_class") or "").strip().lower()
     decision_state = str(sig.get("decision_state") or "").strip().lower()
     market_regime = normalize_market_regime(sig.get("market_regime")) or "chop"
-    regime_bias = normalize_regime_bias(sig.get("regime_bias"), fallback=sig.get("direction")) or "neutral"
+    regime_bias = (
+        normalize_regime_bias(sig.get("regime_bias"), fallback=sig.get("direction"))
+        or "neutral"
+    )
 
     _assign_numeric(out, "signal_strength_0_100", sig.get("signal_strength_0_100"))
     _assign_numeric(out, "heuristic_probability_0_1", sig.get("probability_0_1"))
     _assign_numeric(out, "structure_score_0_100", sig.get("structure_score_0_100"))
     _assign_numeric(out, "momentum_score_layer_0_100", sig.get("momentum_score_0_100"))
-    _assign_numeric(out, "multi_timeframe_score_0_100", sig.get("multi_timeframe_score_0_100"))
+    _assign_numeric(
+        out, "multi_timeframe_score_0_100", sig.get("multi_timeframe_score_0_100")
+    )
     _assign_numeric(out, "news_score_0_100", sig.get("news_score_0_100"))
     _assign_numeric(out, "risk_score_0_100", sig.get("risk_score_0_100"))
     _assign_numeric(out, "history_score_0_100", sig.get("history_score_0_100"))
-    _assign_numeric(out, "weighted_composite_score_0_100", sig.get("weighted_composite_score_0_100"))
+    _assign_numeric(
+        out, "weighted_composite_score_0_100", sig.get("weighted_composite_score_0_100")
+    )
     _assign_numeric(out, "reward_risk_ratio", sig.get("reward_risk_ratio"))
-    _assign_numeric(out, "expected_volatility_band", sig.get("expected_volatility_band"))
+    _assign_numeric(
+        out, "expected_volatility_band", sig.get("expected_volatility_band")
+    )
     _assign_numeric(out, "regime_confidence_0_1", sig.get("regime_confidence_0_1"))
 
     _assign_numeric(out, "atr_14", primary.get("atr_14"))
@@ -284,22 +302,34 @@ def build_signal_model_feature_vector(
     _assign_numeric(out, "ret_5", primary.get("ret_5"))
     _assign_numeric(out, "momentum_score_feature", primary.get("momentum_score"))
     _assign_numeric(out, "impulse_body_ratio", primary.get("impulse_body_ratio"))
-    _assign_numeric(out, "impulse_upper_wick_ratio", primary.get("impulse_upper_wick_ratio"))
-    _assign_numeric(out, "impulse_lower_wick_ratio", primary.get("impulse_lower_wick_ratio"))
+    _assign_numeric(
+        out, "impulse_upper_wick_ratio", primary.get("impulse_upper_wick_ratio")
+    )
+    _assign_numeric(
+        out, "impulse_lower_wick_ratio", primary.get("impulse_lower_wick_ratio")
+    )
     _assign_numeric(out, "range_score", primary.get("range_score"))
     _assign_numeric(out, "trend_slope_proxy", primary.get("trend_slope_proxy"))
-    _assign_numeric(out, "confluence_score_0_100", primary.get("confluence_score_0_100"))
+    _assign_numeric(
+        out, "confluence_score_0_100", primary.get("confluence_score_0_100")
+    )
     _assign_numeric(out, "vol_z_50", primary.get("vol_z_50"))
     _assign_numeric(out, "spread_bps", primary.get("spread_bps"))
     _assign_numeric(out, "depth_balance_ratio", primary.get("depth_balance_ratio"))
-    _assign_numeric(out, "depth_to_bar_volume_ratio", primary.get("depth_to_bar_volume_ratio"))
+    _assign_numeric(
+        out, "depth_to_bar_volume_ratio", primary.get("depth_to_bar_volume_ratio")
+    )
     _assign_numeric(out, "impact_buy_bps_5000", primary.get("impact_buy_bps_5000"))
     _assign_numeric(out, "impact_sell_bps_5000", primary.get("impact_sell_bps_5000"))
     _assign_numeric(out, "execution_cost_bps", primary.get("execution_cost_bps"))
     _assign_numeric(out, "volatility_cost_bps", primary.get("volatility_cost_bps"))
     _assign_numeric(out, "funding_rate_bps", primary.get("funding_rate_bps"))
-    _assign_numeric(out, "funding_cost_bps_window", primary.get("funding_cost_bps_window"))
-    _assign_numeric(out, "open_interest_change_pct", primary.get("open_interest_change_pct"))
+    _assign_numeric(
+        out, "funding_cost_bps_window", primary.get("funding_cost_bps_window")
+    )
+    _assign_numeric(
+        out, "open_interest_change_pct", primary.get("open_interest_change_pct")
+    )
     _assign_numeric(out, "trend_dir_primary", primary.get("trend_dir"))
 
     for tf in MODEL_TIMEFRAMES:
@@ -319,11 +349,15 @@ def build_signal_model_feature_vector(
     out[f"regime_bias_is_{regime_bias}"] = 1.0
 
     liquidity_source = str(primary.get("liquidity_source") or "").strip()
-    out["liquidity_source_orderbook_levels"] = 1.0 if liquidity_source == "orderbook_levels" else 0.0
+    out["liquidity_source_orderbook_levels"] = (
+        1.0 if liquidity_source == "orderbook_levels" else 0.0
+    )
     out["liquidity_source_fallback"] = (
         1.0 if liquidity_source not in ("", "orderbook_levels", "missing") else 0.0
     )
-    out["funding_source_present"] = 1.0 if str(primary.get("funding_source") or "").strip() else 0.0
+    out["funding_source_present"] = (
+        1.0 if str(primary.get("funding_source") or "").strip() else 0.0
+    )
     out["open_interest_source_present"] = (
         1.0 if str(primary.get("open_interest_source") or "").strip() else 0.0
     )
@@ -341,7 +375,9 @@ def build_take_trade_feature_vector(
     )
 
 
-def build_signal_model_feature_vector_from_evaluation(row: Mapping[str, Any]) -> dict[str, float]:
+def build_signal_model_feature_vector_from_evaluation(
+    row: Mapping[str, Any],
+) -> dict[str, float]:
     return build_signal_model_feature_vector(
         signal_row=_as_dict(row.get("signal_snapshot_json")),
         feature_snapshot=_as_dict(row.get("feature_snapshot_json")),
@@ -462,13 +498,19 @@ def evaluate_signal_model_ood(
     }
 
 
-def build_take_trade_feature_vector_from_evaluation(row: Mapping[str, Any]) -> dict[str, float]:
+def build_take_trade_feature_vector_from_evaluation(
+    row: Mapping[str, Any],
+) -> dict[str, float]:
     return build_signal_model_feature_vector_from_evaluation(row)
 
 
-def build_regime_model_feature_vector_from_evaluation(row: Mapping[str, Any]) -> dict[str, float]:
+def build_regime_model_feature_vector_from_evaluation(
+    row: Mapping[str, Any],
+) -> dict[str, float]:
     full = build_signal_model_feature_vector_from_evaluation(row)
-    return {field: float(full.get(field, math.nan)) for field in REGIME_MODEL_FEATURE_FIELDS}
+    return {
+        field: float(full.get(field, math.nan)) for field in REGIME_MODEL_FEATURE_FIELDS
+    }
 
 
 def build_regime_model_feature_reference(

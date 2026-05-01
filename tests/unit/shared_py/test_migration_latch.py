@@ -42,7 +42,9 @@ def test_assert_sync_fails_on_pending(
                 "shared_py.migration_latch._pending_against_db",
                 return_value=["900_pending.sql"],
             ):
-                with mock.patch("shared_py.migration_latch.psycopg.connect", _fake_connect):
+                with mock.patch(
+                    "shared_py.migration_latch.psycopg.connect", _fake_connect
+                ):
                     with pytest.raises(
                         MigrationMismatchError,
                         match="Migration Mismatch",

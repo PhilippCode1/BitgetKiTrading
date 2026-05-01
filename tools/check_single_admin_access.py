@@ -20,8 +20,17 @@ SENSITIVE_ROUTE_HINTS = (
 )
 
 
-def _issue(issues: list[dict[str, str]], *, severity: str, code: str, message: str, path: Path | str) -> None:
-    issues.append({"severity": severity, "code": code, "message": message, "path": str(path)})
+def _issue(
+    issues: list[dict[str, str]],
+    *,
+    severity: str,
+    code: str,
+    message: str,
+    path: Path | str,
+) -> None:
+    issues.append(
+        {"severity": severity, "code": code, "message": message, "path": str(path)}
+    )
 
 
 def analyze(root: Path, *, strict: bool = False) -> dict[str, Any]:
@@ -34,7 +43,9 @@ def analyze(root: Path, *, strict: bool = False) -> dict[str, Any]:
     bff_auth = root / "apps" / "dashboard" / "src" / "lib" / "gateway-bff.ts"
     env_prod = root / ".env.production.example"
     env_local = root / ".env.local.example"
-    helper_py = root / "shared" / "python" / "src" / "shared_py" / "single_admin_access.py"
+    helper_py = (
+        root / "shared" / "python" / "src" / "shared_py" / "single_admin_access.py"
+    )
     gw_settings = root / "config" / "gateway_settings.py"
     server_env = root / "apps" / "dashboard" / "src" / "lib" / "server-env.ts"
 
@@ -58,23 +69,59 @@ def analyze(root: Path, *, strict: bool = False) -> dict[str, Any]:
                 path=bff_auth,
             )
     else:
-        _issue(issues, severity="error", code="bff_auth_helper_missing", message="gateway-bff.ts fehlt.", path=bff_auth)
+        _issue(
+            issues,
+            severity="error",
+            code="bff_auth_helper_missing",
+            message="gateway-bff.ts fehlt.",
+            path=bff_auth,
+        )
 
     if gw_settings.is_file():
         gw = gw_settings.read_text(encoding="utf-8")
         if "GATEWAY_ALLOW_LEGACY_ADMIN_TOKEN" not in gw:
-            _issue(issues, severity="error", code="legacy_admin_flag_missing", message="Legacy-Admin-Flag fehlt im Gateway-Settings-Modell.", path=gw_settings)
+            _issue(
+                issues,
+                severity="error",
+                code="legacy_admin_flag_missing",
+                message="Legacy-Admin-Flag fehlt im Gateway-Settings-Modell.",
+                path=gw_settings,
+            )
         if "gateway_super_admin_subject" not in gw:
-            _issue(issues, severity="error", code="single_admin_subject_missing", message="Single-Admin-Subject fehlt in Gateway-Settings.", path=gw_settings)
+            _issue(
+                issues,
+                severity="error",
+                code="single_admin_subject_missing",
+                message="Single-Admin-Subject fehlt in Gateway-Settings.",
+                path=gw_settings,
+            )
     else:
-        _issue(issues, severity="error", code="gateway_settings_missing", message="config/gateway_settings.py fehlt.", path=gw_settings)
+        _issue(
+            issues,
+            severity="error",
+            code="gateway_settings_missing",
+            message="config/gateway_settings.py fehlt.",
+            path=gw_settings,
+        )
 
     if server_env.is_file():
         se = server_env.read_text(encoding="utf-8")
         if "gatewayAuthorizationHeader" not in se:
-            _issue(issues, severity="error", code="server_gateway_auth_missing", message="serverEnv exportiert keine serverseitige Gateway-Auth.", path=server_env)
+            _issue(
+                issues,
+                severity="error",
+                code="server_gateway_auth_missing",
+                message="serverEnv exportiert keine serverseitige Gateway-Auth.",
+                path=server_env,
+            )
     else:
-        _issue(issues, severity="error", code="server_env_missing", message="server-env.ts fehlt.", path=server_env)
+        _issue(
+            issues,
+            severity="error",
+            code="server_env_missing",
+            message="server-env.ts fehlt.",
+            path=server_env,
+        )
 
     # Sensitive dashboard BFF routes need requireOperatorGatewayAuth
     route_root = root / "apps" / "dashboard" / "src" / "app" / "api" / "dashboard"
@@ -94,14 +141,32 @@ def analyze(root: Path, *, strict: bool = False) -> dict[str, Any]:
                     path=route,
                 )
     else:
-        _issue(issues, severity="error", code="dashboard_api_missing", message="apps/dashboard/src/app/api/dashboard fehlt.", path=route_root)
+        _issue(
+            issues,
+            severity="error",
+            code="dashboard_api_missing",
+            message="apps/dashboard/src/app/api/dashboard fehlt.",
+            path=route_root,
+        )
 
-    for env_path, label in ((env_prod, ".env.production.example"), (env_local, ".env.local.example")):
+    for env_path, label in (
+        (env_prod, ".env.production.example"),
+        (env_local, ".env.local.example"),
+    ):
         if not env_path.is_file():
-            _issue(issues, severity="error", code="env_missing", message=f"{label} fehlt.", path=env_path)
+            _issue(
+                issues,
+                severity="error",
+                code="env_missing",
+                message=f"{label} fehlt.",
+                path=env_path,
+            )
             continue
         txt = env_path.read_text(encoding="utf-8")
-        for m in re.finditer(r"(?mi)^\s*(NEXT_PUBLIC_[A-Z0-9_]*(TOKEN|SECRET|KEY|JWT|AUTHORIZATION)[A-Z0-9_]*)\s*=", txt):
+        for m in re.finditer(
+            r"(?mi)^\s*(NEXT_PUBLIC_[A-Z0-9_]*(TOKEN|SECRET|KEY|JWT|AUTHORIZATION)[A-Z0-9_]*)\s*=",
+            txt,
+        ):
             _issue(
                 issues,
                 severity="error",
@@ -110,7 +175,9 @@ def analyze(root: Path, *, strict: bool = False) -> dict[str, Any]:
                 path=env_path,
             )
         if label == ".env.production.example":
-            if re.search(r"(?mi)^\s*GATEWAY_ALLOW_LEGACY_ADMIN_TOKEN\s*=\s*true\s*$", txt):
+            if re.search(
+                r"(?mi)^\s*GATEWAY_ALLOW_LEGACY_ADMIN_TOKEN\s*=\s*true\s*$", txt
+            ):
                 _issue(
                     issues,
                     severity="error",
@@ -138,7 +205,13 @@ def analyze(root: Path, *, strict: bool = False) -> dict[str, Any]:
                 path=api_sec_doc,
             )
     else:
-        _issue(issues, severity="error", code="api_gateway_doc_missing", message="docs/api_gateway_security.md fehlt.", path=api_sec_doc)
+        _issue(
+            issues,
+            severity="error",
+            code="api_gateway_doc_missing",
+            message="docs/api_gateway_security.md fehlt.",
+            path=api_sec_doc,
+        )
 
     errors = [i for i in issues if i["severity"] == "error"]
     warnings = [i for i in issues if i["severity"] == "warning"]
@@ -152,7 +225,9 @@ def analyze(root: Path, *, strict: bool = False) -> dict[str, Any]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Prüft Single-Admin Auth/Access-Control für die private Main Console.")
+    parser = argparse.ArgumentParser(
+        description="Prüft Single-Admin Auth/Access-Control für die private Main Console."
+    )
     parser.add_argument("--strict", action="store_true")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
@@ -165,7 +240,9 @@ def main() -> int:
             f"errors={payload['error_count']} warnings={payload['warning_count']} strict={str(args.strict).lower()}"
         )
         for it in payload["issues"]:
-            print(f"{it['severity'].upper()} {it['code']}: {it['message']} [{it['path']}]")
+            print(
+                f"{it['severity'].upper()} {it['code']}: {it['message']} [{it['path']}]"
+            )
     if payload["error_count"] > 0:
         return 1
     if args.strict and payload["warning_count"] > 0:

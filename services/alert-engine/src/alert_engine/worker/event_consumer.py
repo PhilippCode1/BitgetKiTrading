@@ -79,7 +79,11 @@ def _process_envelope(
                 chat_id=cid,
                 payload=pl,
             )
-            logger.info("outbox inserted for chat=%s type=%s", safe_chat_ref(cid), intent.alert_type)
+            logger.info(
+                "outbox inserted for chat=%s type=%s",
+                safe_chat_ref(cid),
+                intent.alert_type,
+            )
 
 
 def apply_envelope_admin(env: EventEnvelope, settings: Settings) -> None:
@@ -120,7 +124,11 @@ def consumer_loop(
     consumer = settings.consumer_name
     _ensure_groups(r, group)
     streams = {s: ">" for s in CONSUMER_STREAMS}
-    logger.info("alert-engine consumer started group=%s streams=%s", group, len(CONSUMER_STREAMS))
+    logger.info(
+        "alert-engine consumer started group=%s streams=%s",
+        group,
+        len(CONSUMER_STREAMS),
+    )
     while not stop.is_set():
         try:
             db_ok = True

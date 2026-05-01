@@ -23,7 +23,15 @@ MODES: tuple[Mode, ...] = (
     "production_private",
 )
 
-SENSITIVE_KEYS = ("secret", "token", "password", "authorization", "api_key", "passphrase", "jwt")
+SENSITIVE_KEYS = (
+    "secret",
+    "token",
+    "password",
+    "authorization",
+    "api_key",
+    "passphrase",
+    "jwt",
+)
 
 
 def parse_env_file(path: Path) -> dict[str, str]:
@@ -79,7 +87,9 @@ def evaluate_mode(env: dict[str, str], mode: Mode) -> dict[str, Any]:
 
     ngrok_detected = _is_ngrok_url(frontend_url) or _is_ngrok_url(app_base_url)
     auth_ok = bool(dashboard_auth) or api_auth_mode in {"api_key", "jwt", "bearer"}
-    cors_wildcard = cors == "*" or "*" in [x.strip() for x in cors.split(",") if x.strip()]
+    cors_wildcard = cors == "*" or "*" in [
+        x.strip() for x in cors.split(",") if x.strip()
+    ]
 
     if mode == "local_ngrok_preview":
         if not ngrok_detected:
@@ -90,7 +100,12 @@ def evaluate_mode(env: dict[str, str], mode: Mode) -> dict[str, Any]:
                 }
             )
         if not auth_ok:
-            issues.append({"code": "ngrok_auth_missing", "message": "ngrok-preview ohne Auth ist verboten."})
+            issues.append(
+                {
+                    "code": "ngrok_auth_missing",
+                    "message": "ngrok-preview ohne Auth ist verboten.",
+                }
+            )
         if live:
             issues.append(
                 {
@@ -107,12 +122,30 @@ def evaluate_mode(env: dict[str, str], mode: Mode) -> dict[str, Any]:
             )
     if mode in {"staging_private", "production_private"}:
         if debug:
-            issues.append({"code": "debug_enabled_in_sensitive_mode", "message": f"DEBUG=true ist in {mode} verboten."})
+            issues.append(
+                {
+                    "code": "debug_enabled_in_sensitive_mode",
+                    "message": f"DEBUG=true ist in {mode} verboten.",
+                }
+            )
         if _is_localhost_url(frontend_url) or _is_localhost_url(app_base_url):
-            issues.append({"code": "localhost_public_url_blocker", "message": "localhost/127.0.0.1 in sensitivem Profil ist Blocker."})
+            issues.append(
+                {
+                    "code": "localhost_public_url_blocker",
+                    "message": "localhost/127.0.0.1 in sensitivem Profil ist Blocker.",
+                }
+            )
         if cors_wildcard:
-            issues.append({"code": "cors_wildcard_sensitive_profile", "message": "CORS wildcard ist fuer sensitive Profile verboten."})
-        if mode == "production_private" and (not frontend_url.startswith("https://") or not app_base_url.startswith("https://")):
+            issues.append(
+                {
+                    "code": "cors_wildcard_sensitive_profile",
+                    "message": "CORS wildcard ist fuer sensitive Profile verboten.",
+                }
+            )
+        if mode == "production_private" and (
+            not frontend_url.startswith("https://")
+            or not app_base_url.startswith("https://")
+        ):
             issues.append(
                 {
                     "code": "production_https_required",
@@ -127,16 +160,22 @@ def evaluate_mode(env: dict[str, str], mode: Mode) -> dict[str, Any]:
             }
         )
     if not auth_ok:
-        warnings.append("Auth wirkt unvollstaendig; Main Console muss sensitive Bereiche blockieren.")
+        warnings.append(
+            "Auth wirkt unvollstaendig; Main Console muss sensitive Bereiche blockieren."
+        )
 
     if mode == "local_ngrok_preview":
         security_mode_de = "ngrok-preview mit harter Auth und blockiertem Live-Write."
     elif mode == "production_private":
-        security_mode_de = "production_private mit HTTPS, server-only Auth und fail-closed Live-Gates."
+        security_mode_de = (
+            "production_private mit HTTPS, server-only Auth und fail-closed Live-Gates."
+        )
     elif mode == "staging_private":
         security_mode_de = "staging_private mit produktionsnahen Sicherheitsregeln, Live standardmaessig blockiert."
     elif mode == "shadow_private":
-        security_mode_de = "shadow_private: Shadow aktiv, echte Live-Orders bleiben blockiert."
+        security_mode_de = (
+            "shadow_private: Shadow aktiv, echte Live-Orders bleiben blockiert."
+        )
     else:
         security_mode_de = "local_private: lokale Entwicklung, kein oeffentlicher Zugriff, Live blockiert."
 
@@ -197,7 +236,9 @@ def to_markdown(payload: dict[str, Any]) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Deployment/ngrok/staging Preflight fuer private Runtime-Profile.")
+    parser = argparse.ArgumentParser(
+        description="Deployment/ngrok/staging Preflight fuer private Runtime-Profile."
+    )
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--env-file", default=".env.local")
     parser.add_argument("--mode", choices=list(MODES), default="local_private")

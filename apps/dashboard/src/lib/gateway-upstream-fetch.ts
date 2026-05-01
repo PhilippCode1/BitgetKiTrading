@@ -41,7 +41,9 @@ function mergeWithClientAbort(
 ): AbortSignal {
   if (client == null) return base;
   const any = (
-    AbortSignal as unknown as { any?: (signals: readonly AbortSignal[]) => AbortSignal }
+    AbortSignal as unknown as {
+      any?: (signals: readonly AbortSignal[]) => AbortSignal;
+    }
   ).any;
   if (typeof any === "function") {
     return any([base, client]);

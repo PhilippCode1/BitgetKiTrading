@@ -5,13 +5,19 @@ import json
 import logging
 import time
 from collections import deque
-from typing import Annotated, Any, AsyncIterator
+from collections.abc import AsyncIterator
+from typing import Annotated, Any
 
 import psycopg
 from fastapi import APIRouter, Depends, HTTPException, Query
 from psycopg.rows import dict_row
+from shared_py.eventbus import LIVE_SSE_STREAMS
 
-from api_gateway.auth import GatewayAuthContext, require_live_stream_access, require_sensitive_auth
+from api_gateway.auth import (
+    GatewayAuthContext,
+    require_live_stream_access,
+    require_sensitive_auth,
+)
 from api_gateway.config import get_gateway_settings
 from api_gateway.db import DatabaseHealthError, get_database_url
 from api_gateway.db_live_queries import (
@@ -21,7 +27,6 @@ from api_gateway.db_live_queries import (
     validate_live_symbol,
 )
 from api_gateway.gateway_read_envelope import NEXT_STEP_DB, merge_read_envelope
-from shared_py.eventbus import LIVE_SSE_STREAMS
 
 logger = logging.getLogger("api_gateway.live")
 
@@ -95,7 +100,9 @@ def _map_envelope_to_sse(
             "expected_mae_bps": pl.get("expected_mae_bps"),
             "expected_mfe_bps": pl.get("expected_mfe_bps"),
             "model_uncertainty_0_1": pl.get("model_uncertainty_0_1"),
-            "uncertainty_effective_for_leverage_0_1": pl.get("uncertainty_effective_for_leverage_0_1"),
+            "uncertainty_effective_for_leverage_0_1": pl.get(
+                "uncertainty_effective_for_leverage_0_1"
+            ),
             "shadow_divergence_0_1": pl.get("shadow_divergence_0_1"),
             "model_ood_score_0_1": pl.get("model_ood_score_0_1"),
             "model_ood_alert": pl.get("model_ood_alert"),
@@ -183,23 +190,39 @@ def live_state(
         raise HTTPException(status_code=400, detail=f"limit max {max_c}")
     watchlist = g.dashboard_watchlist_symbols_list()
     resolved_symbol = (
-        str(symbol or g.dashboard_default_symbol or g.next_public_default_symbol or (watchlist[0] if watchlist else "")).strip().upper()
+        str(
+            symbol
+            or g.dashboard_default_symbol
+            or g.next_public_default_symbol
+            or (watchlist[0] if watchlist else "")
+        )
+        .strip()
+        .upper()
     )
     if not resolved_symbol:
-        raise HTTPException(status_code=400, detail="symbol erforderlich oder ueber Watchlist/Default konfigurieren")
+        raise HTTPException(
+            status_code=400,
+            detail="symbol erforderlich oder ueber Watchlist/Default konfigurieren",
+        )
     try:
         resolved_symbol = validate_live_symbol(resolved_symbol)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    res_mf = str(
-        market_family
-        or g.dashboard_default_market_family
-        or g.next_public_default_market_family
-        or "futures"
-    ).strip().lower()
+    res_mf = (
+        str(
+            market_family
+            or g.dashboard_default_market_family
+            or g.next_public_default_market_family
+            or "futures"
+        )
+        .strip()
+        .lower()
+    )
     res_pt: str | None = None
     if res_mf == "futures":
-        res_pt = (product_type or g.default_futures_product_type() or "").strip().upper() or None
+        res_pt = (
+            product_type or g.default_futures_product_type() or ""
+        ).strip().upper() or None
     res_margin_mode: str | None = None
     if res_mf == "margin":
         res_margin_mode = (margin_account_mode or "isolated").strip().lower()
@@ -281,9 +304,17 @@ def live_state(
     return merge_read_envelope(
         payload,
         status=st,
-        message="Keine Kerzen und kein letztes Signal fuer dieses Symbol/Timeframe." if empty else None,
+        message=(
+            "Keine Kerzen und kein letztes Signal fuer dieses Symbol/Timeframe."
+            if empty
+            else None
+        ),
         empty_state=empty,
-        degradation_reason="no_candles_and_signal" if empty else ("database_unhealthy" if degraded_db else None),
+        degradation_reason=(
+            "no_candles_and_signal"
+            if empty
+            else ("database_unhealthy" if degraded_db else None)
+        ),
         next_step=(
             "Market-Stream und Signal-Pipeline pruefen; Feld `data_lineage` nennt je Teilstrecke Ursache und naechsten Schritt."
             if empty or degraded_db
@@ -300,7 +331,9 @@ async def live_stream(
 ) -> Any:
     g = get_gateway_settings()
     if not g.live_sse_enabled:
-        raise HTTPException(status_code=503, detail="SSE disabled (LIVE_SSE_ENABLED=false)")
+        raise HTTPException(
+            status_code=503, detail="SSE disabled (LIVE_SSE_ENABLED=false)"
+        )
 
     try:
         from sse_starlette.sse import EventSourceResponse
@@ -312,11 +345,21 @@ async def live_stream(
         raise HTTPException(status_code=503, detail="REDIS_URL fehlt")
 
     watchlist = g.dashboard_watchlist_symbols_list()
-    sym = str(
-        symbol or g.dashboard_default_symbol or g.next_public_default_symbol or (watchlist[0] if watchlist else "")
-    ).strip().upper()
+    sym = (
+        str(
+            symbol
+            or g.dashboard_default_symbol
+            or g.next_public_default_symbol
+            or (watchlist[0] if watchlist else "")
+        )
+        .strip()
+        .upper()
+    )
     if not sym:
-        raise HTTPException(status_code=400, detail="symbol erforderlich oder ueber Watchlist/Default konfigurieren")
+        raise HTTPException(
+            status_code=400,
+            detail="symbol erforderlich oder ueber Watchlist/Default konfigurieren",
+        )
     nft = normalize_tf_for_db(timeframe)
     ping_sec = g.live_sse_ping_sec
     max_eps = 10
@@ -359,9 +402,7 @@ async def live_stream(
                         env = json.loads(raw)
                     except json.JSONDecodeError:
                         continue
-                    mapped = _map_envelope_to_sse(
-                        env, symbol=sym, timeframe=nft
-                    )
+                    mapped = _map_envelope_to_sse(env, symbol=sym, timeframe=nft)
                     if mapped is None:
                         continue
                     ev_name, data = mapped

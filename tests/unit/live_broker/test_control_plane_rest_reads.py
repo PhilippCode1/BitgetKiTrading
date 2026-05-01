@@ -85,7 +85,9 @@ def test_list_orders_history_hits_mix_path(monkeypatch: pytest.MonkeyPatch) -> N
     assert "/api/v2/mix/order/orders-history" in seen
 
 
-def test_control_plane_read_orders_history_audits(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_control_plane_read_orders_history_audits(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     settings = _settings(monkeypatch)
     audits: list[dict] = []
 
@@ -120,6 +122,8 @@ def test_control_plane_read_orders_history_audits(monkeypatch: pytest.MonkeyPatc
     priv = BitgetPrivateRestClient(settings, transport=httpx.MockTransport(handler))
     svc = BitgetControlPlaneService(settings, priv, Repo())  # type: ignore[arg-type]
     svc.read_orders_history(
-        ControlPlaneReadHistoryRequest(limit=10, operator_jti="jti-test", audit_note="unit")
+        ControlPlaneReadHistoryRequest(
+            limit=10, operator_jti="jti-test", audit_note="unit"
+        )
     )
     assert any(a.get("action") == "orders_history_ok" for a in audits)

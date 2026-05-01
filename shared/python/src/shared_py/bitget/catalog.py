@@ -90,7 +90,9 @@ class BitgetInstrumentCatalog:
         refresh_if_missing: bool = False,
         refresh_reason: str = "lookup",
     ) -> BitgetInstrumentCatalogSnapshot | None:
-        if self._memory_snapshot is not None and not self._is_snapshot_stale(self._memory_snapshot):
+        if self._memory_snapshot is not None and not self._is_snapshot_stale(
+            self._memory_snapshot
+        ):
             return self._memory_snapshot
         # Postgres is source of truth: prefer DB over Redis so admin deletes and re-ingest
         # (e.g. market-stream startup refresh) are not hidden by a stale full snapshot in cache.
@@ -107,7 +109,9 @@ class BitgetInstrumentCatalog:
             return self.refresh_catalog(refresh_reason=refresh_reason)
         return db_snapshot or cached or self._memory_snapshot
 
-    def require_catalog(self, *, refresh_if_missing: bool = False) -> BitgetInstrumentCatalogSnapshot:
+    def require_catalog(
+        self, *, refresh_if_missing: bool = False
+    ) -> BitgetInstrumentCatalogSnapshot:
         snapshot = self.get_snapshot(
             refresh_if_missing=refresh_if_missing,
             refresh_reason="require_catalog",
@@ -127,15 +131,24 @@ class BitgetInstrumentCatalog:
     ) -> BitgetInstrumentCatalogEntry:
         snapshot = self.require_catalog(refresh_if_missing=refresh_if_missing)
         normalized_symbol = str(symbol).strip().upper()
-        family = str(market_family or self._bitget_settings.market_family).strip().lower()
-        product = str(product_type or self._bitget_settings.product_type).strip().upper() or None
-        margin_mode = str(
-            margin_account_mode or self._bitget_settings.margin_account_mode
-        ).strip().lower() or None
+        family = (
+            str(market_family or self._bitget_settings.market_family).strip().lower()
+        )
+        product = (
+            str(product_type or self._bitget_settings.product_type).strip().upper()
+            or None
+        )
+        margin_mode = (
+            str(margin_account_mode or self._bitget_settings.margin_account_mode)
+            .strip()
+            .lower()
+            or None
+        )
         candidates = [
             entry
             for entry in snapshot.entries
-            if normalized_symbol in entry.symbol_aliases and entry.market_family == family
+            if normalized_symbol in entry.symbol_aliases
+            and entry.market_family == family
         ]
         if product is not None:
             narrowed = [entry for entry in candidates if entry.product_type == product]
@@ -143,7 +156,9 @@ class BitgetInstrumentCatalog:
                 candidates = narrowed
         if margin_mode is not None:
             narrowed = [
-                entry for entry in candidates if entry.margin_account_mode == margin_mode
+                entry
+                for entry in candidates
+                if entry.margin_account_mode == margin_mode
             ]
             if narrowed:
                 candidates = narrowed
@@ -154,7 +169,9 @@ class BitgetInstrumentCatalog:
             if len(exact) == 1:
                 return exact[0]
         raise UnknownInstrumentError(
-            f"instrument_not_found symbol={normalized_symbol} family={family} product={product} margin_mode={margin_mode}"
+            "instrument_not_found "
+            f"symbol={normalized_symbol} family={family} "
+            f"product={product} margin_mode={margin_mode}"
         )
 
     def resolve_for_trading(
@@ -197,7 +214,9 @@ class BitgetInstrumentCatalog:
         )
         if not entry.subscribe_enabled:
             raise UnknownInstrumentError(
-                f"instrument_not_subscribable canonical_id={entry.canonical_instrument_id} status={entry.trading_status}"
+                "instrument_not_subscribable "
+                f"canonical_id={entry.canonical_instrument_id} "
+                f"status={entry.trading_status}"
             )
         return entry
 
@@ -236,7 +255,9 @@ class BitgetInstrumentCatalog:
         refresh_if_missing: bool = False,
         require_subscription: bool = False,
     ) -> BitgetInstrumentCatalogEntry:
-        resolver = self.resolve_for_subscription if require_subscription else self.resolve
+        resolver = (
+            self.resolve_for_subscription if require_subscription else self.resolve
+        )
         return resolver(
             symbol=self._bitget_settings.symbol,
             market_family=self._bitget_settings.market_family,
@@ -294,7 +315,10 @@ class BitgetInstrumentCatalog:
                         "refreshed_families_json": Json(snapshot.refreshed_families),
                         "counts_json": Json(snapshot.counts_by_family),
                         "capability_matrix_json": Json(
-                            [row.model_dump(mode="json") for row in snapshot.capability_matrix]
+                            [
+                                row.model_dump(mode="json")
+                                for row in snapshot.capability_matrix
+                            ]
                         ),
                         "warnings_json": Json(snapshot.warnings),
                         "errors_json": Json(snapshot.errors),
@@ -462,13 +486,19 @@ class BitgetInstrumentCatalog:
                             **entry.model_dump(mode="json"),
                             "snapshot_id": snapshot.snapshot_id,
                             "symbol_aliases_json": Json(entry.symbol_aliases),
-                            "supported_margin_coins_json": Json(entry.supported_margin_coins),
-                            "session_metadata_json": Json(_json_safe(entry.session_metadata)),
+                            "supported_margin_coins_json": Json(
+                                entry.supported_margin_coins
+                            ),
+                            "session_metadata_json": Json(
+                                _json_safe(entry.session_metadata)
+                            ),
                             "raw_metadata_json": Json(_json_safe(entry.raw_metadata)),
                         },
                     )
                 if snapshot.refreshed_families:
-                    refreshed_ids = [entry.canonical_instrument_id for entry in snapshot.entries]
+                    refreshed_ids = [
+                        entry.canonical_instrument_id for entry in snapshot.entries
+                    ]
                     conn.execute(
                         """
                         UPDATE app.instrument_catalog_entries
@@ -502,7 +532,7 @@ class BitgetInstrumentCatalog:
         if not raw:
             return None
         try:
-            return BitgetInstrumentCatalogSnapshot.model_validate_json(raw)
+            return BitgetInstrumentCatalogSnapshot.model_validate_json(raw)  # type: ignore
         except Exception:
             return None
 
@@ -540,7 +570,9 @@ class BitgetInstrumentCatalog:
                 {
                     **dict(row),
                     "symbol_aliases": list(row["symbol_aliases_json"] or []),
-                    "supported_margin_coins": list(row.get("supported_margin_coins_json") or []),
+                    "supported_margin_coins": list(
+                        row.get("supported_margin_coins_json") or []
+                    ),
                     "session_metadata": dict(row["session_metadata_json"] or {}),
                     "raw_metadata": dict(row["raw_metadata_json"] or {}),
                 }
@@ -552,11 +584,13 @@ class BitgetInstrumentCatalog:
             snapshot_id=str(meta_dict["snapshot_id"]),
             source_service=str(meta_dict["source_service"]),
             refresh_reason=str(meta_dict["refresh_reason"]),
-            status=str(meta_dict["status"]),
+            status=str(meta_dict["status"]),  # type: ignore
             fetch_started_ts_ms=int(meta_dict["fetch_started_ts_ms"]),
-            fetch_completed_ts_ms=int(meta_dict["fetch_completed_ts_ms"])
-            if meta_dict.get("fetch_completed_ts_ms") is not None
-            else None,
+            fetch_completed_ts_ms=(
+                int(meta_dict["fetch_completed_ts_ms"])
+                if meta_dict.get("fetch_completed_ts_ms") is not None
+                else None
+            ),
             refreshed_families=list(meta_dict.get("refreshed_families_json") or []),
             counts_by_family=dict(meta_dict.get("counts_json") or {}),
             capability_matrix=[
@@ -574,7 +608,9 @@ class BitgetInstrumentCatalog:
         return (time.time() * 1000 - completed) > self._max_stale_sec * 1000
 
     def _connect(self) -> psycopg.Connection[Any]:
-        return psycopg.connect(self._database_url, row_factory=dict_row, connect_timeout=5)
+        return psycopg.connect(
+            self._database_url, row_factory=dict_row, connect_timeout=5
+        )
 
     def _redis(self) -> Redis:
         return Redis.from_url(

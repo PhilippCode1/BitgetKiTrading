@@ -65,8 +65,14 @@ def test_live_broker_health_route_exposes_runtime_contract(client: TestClient) -
     assert payload["strategy_execution_mode"] == "manual"
     assert "interfaces" in payload
     assert payload["interfaces"]["signal_engine_stream"] == "events:signal_created"
-    assert "/live-broker/orders/create" in payload["interfaces"]["live_broker_order_routes"]
-    assert "/live-broker/kill-switch/arm" in payload["interfaces"]["live_broker_order_routes"]
+    assert (
+        "/live-broker/orders/create"
+        in payload["interfaces"]["live_broker_order_routes"]
+    )
+    assert (
+        "/live-broker/kill-switch/arm"
+        in payload["interfaces"]["live_broker_order_routes"]
+    )
 
 
 def test_live_broker_ready_route_reports_core_checks(client: TestClient) -> None:

@@ -13,8 +13,12 @@ from scripts.observability_alert_evidence_report import (
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts" / "observability_alert_evidence_report.py"
-ALERT_TEMPLATE = ROOT / "docs" / "production_10_10" / "alert_routing_evidence.template.json"
-OBS_TEMPLATE = ROOT / "docs" / "production_10_10" / "observability_slos_evidence.template.json"
+ALERT_TEMPLATE = (
+    ROOT / "docs" / "production_10_10" / "alert_routing_evidence.template.json"
+)
+OBS_TEMPLATE = (
+    ROOT / "docs" / "production_10_10" / "observability_slos_evidence.template.json"
+)
 
 
 def _verified_alert_evidence() -> dict:

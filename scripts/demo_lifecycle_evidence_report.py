@@ -42,32 +42,69 @@ def _pick(*names: str) -> dict[str, Any] | None:
 
 
 def build_lifecycle_evidence() -> DemoLifecycleEvidence:
-    trading = _pick("demo_trading_evidence_DEMO_VERIFIED.json", "demo_trading_evidence.json")
-    close_rep = _pick("demo_reconcile_evidence_CLOSE_VERIFIED.json", "demo_reconcile_evidence.json")
-    clean_rep = _pick("demo_reconcile_evidence_CLEAN.json", "demo_reconcile_evidence.json")
+    trading = _pick(
+        "demo_trading_evidence_DEMO_VERIFIED.json", "demo_trading_evidence.json"
+    )
+    close_rep = _pick(
+        "demo_reconcile_evidence_CLOSE_VERIFIED.json", "demo_reconcile_evidence.json"
+    )
+    clean_rep = _pick(
+        "demo_reconcile_evidence_CLEAN.json", "demo_reconcile_evidence.json"
+    )
     blockers: list[str] = []
     checks: dict[str, Any] = {}
 
-    demo_trading_archive_missing = _load_json(REPORTS / "demo_trading_evidence_DEMO_VERIFIED.json") is None
-    demo_readiness_ok = bool(trading and str(trading.get("checks", {}).get("private_readonly_result") or "") != "not_run")
-    demo_order_verified = bool(trading and str(trading.get("result") or "") == "DEMO_VERIFIED")
-    demo_position_detected = bool(
-        close_rep and str(close_rep.get("checks", {}).get("detected_position_side") or "") in ("long", "short")
+    demo_trading_archive_missing = (
+        _load_json(REPORTS / "demo_trading_evidence_DEMO_VERIFIED.json") is None
     )
-    demo_close_verified = bool(close_rep and str(close_rep.get("reconcile_status") or "") == "CLOSE_VERIFIED")
-    final_reconcile_clean = bool(clean_rep and str(clean_rep.get("reconcile_status") or "") == "CLEAN")
-    clean_positions_zero = str(clean_rep.get("checks", {}).get("positions_count") or "") == "0" if clean_rep else False
-    clean_open_orders_zero = str(clean_rep.get("checks", {}).get("open_orders_count") or "") == "0" if clean_rep else False
+    demo_readiness_ok = bool(
+        trading
+        and str(trading.get("checks", {}).get("private_readonly_result") or "")
+        != "not_run"
+    )
+    demo_order_verified = bool(
+        trading and str(trading.get("result") or "") == "DEMO_VERIFIED"
+    )
+    demo_position_detected = bool(
+        close_rep
+        and str(close_rep.get("checks", {}).get("detected_position_side") or "")
+        in ("long", "short")
+    )
+    demo_close_verified = bool(
+        close_rep and str(close_rep.get("reconcile_status") or "") == "CLOSE_VERIFIED"
+    )
+    final_reconcile_clean = bool(
+        clean_rep and str(clean_rep.get("reconcile_status") or "") == "CLEAN"
+    )
+    clean_positions_zero = (
+        str(clean_rep.get("checks", {}).get("positions_count") or "") == "0"
+        if clean_rep
+        else False
+    )
+    clean_open_orders_zero = (
+        str(clean_rep.get("checks", {}).get("open_orders_count") or "") == "0"
+        if clean_rep
+        else False
+    )
     clean_history_ge_2 = False
     if clean_rep:
         try:
-            clean_history_ge_2 = int(str(clean_rep.get("checks", {}).get("order_history_count") or "0")) >= 2
+            clean_history_ge_2 = (
+                int(str(clean_rep.get("checks", {}).get("order_history_count") or "0"))
+                >= 2
+            )
         except Exception:
             clean_history_ge_2 = False
     clean_live_blocked = bool(
         clean_rep
-        and str(clean_rep.get("checks", {}).get("live_trading_allowed") or "false").lower() == "false"
-        and str(clean_rep.get("checks", {}).get("private_live_allowed") or "false").lower() == "false"
+        and str(
+            clean_rep.get("checks", {}).get("live_trading_allowed") or "false"
+        ).lower()
+        == "false"
+        and str(
+            clean_rep.get("checks", {}).get("private_live_allowed") or "false"
+        ).lower()
+        == "false"
     )
     demo_order_inferred = bool(
         demo_trading_archive_missing
@@ -88,7 +125,9 @@ def build_lifecycle_evidence() -> DemoLifecycleEvidence:
     checks["final_reconcile_clean"] = str(final_reconcile_clean).lower()
     checks["demo_trading_archive_missing"] = str(demo_trading_archive_missing).lower()
     checks["demo_order_verified_source"] = (
-        "inferred_from_close_verified_and_clean_history" if demo_order_inferred else "trading_report"
+        "inferred_from_close_verified_and_clean_history"
+        if demo_order_inferred
+        else "trading_report"
     )
     checks["live_trading_allowed"] = "false"
     checks["private_live_allowed"] = "false"
@@ -98,7 +137,12 @@ def build_lifecycle_evidence() -> DemoLifecycleEvidence:
     if not trading and not close_rep and not clean_rep:
         lifecycle_status = "NOT_ENOUGH_EVIDENCE"
         blockers.append("Demo-Lifecycle-Reports fehlen.")
-    elif demo_order_verified and demo_position_detected and demo_close_verified and final_reconcile_clean:
+    elif (
+        demo_order_verified
+        and demo_position_detected
+        and demo_close_verified
+        and final_reconcile_clean
+    ):
         lifecycle_status = "DEMO_LIFECYCLE_VERIFIED"
     elif trading and (close_rep or clean_rep):
         lifecycle_status = "DEMO_PARTIAL"
@@ -163,8 +207,12 @@ def to_markdown(rep: DemoLifecycleEvidence) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser()
-    p.add_argument("--output-md", type=Path, default=Path("reports/demo_lifecycle_evidence.md"))
-    p.add_argument("--output-json", type=Path, default=Path("reports/demo_lifecycle_evidence.json"))
+    p.add_argument(
+        "--output-md", type=Path, default=Path("reports/demo_lifecycle_evidence.md")
+    )
+    p.add_argument(
+        "--output-json", type=Path, default=Path("reports/demo_lifecycle_evidence.json")
+    )
     p.add_argument("--json", action="store_true")
     args = p.parse_args(argv)
 
@@ -172,11 +220,16 @@ def main(argv: list[str] | None = None) -> int:
     args.output_md.parent.mkdir(parents=True, exist_ok=True)
     args.output_json.parent.mkdir(parents=True, exist_ok=True)
     args.output_md.write_text(to_markdown(rep), encoding="utf-8")
-    args.output_json.write_text(json.dumps(asdict(rep), ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
+    args.output_json.write_text(
+        json.dumps(asdict(rep), ensure_ascii=False, indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
     if args.json:
         print(json.dumps(asdict(rep), ensure_ascii=False, indent=2, sort_keys=True))
     else:
-        print(f"demo_lifecycle_evidence: lifecycle_status={rep.lifecycle_status} stage={rep.demo_evidence_stage}")
+        print(
+            f"demo_lifecycle_evidence: lifecycle_status={rep.lifecycle_status} stage={rep.demo_evidence_stage}"
+        )
     return 1 if rep.lifecycle_status in ("FAILED", "NOT_ENOUGH_EVIDENCE") else 0
 
 

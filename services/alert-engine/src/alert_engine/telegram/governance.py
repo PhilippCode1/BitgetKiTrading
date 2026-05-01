@@ -6,7 +6,9 @@ import hashlib
 import secrets
 
 
-def operator_user_allowed(*, user_id: int | None, allowed_ids: set[int]) -> tuple[bool, str]:
+def operator_user_allowed(
+    *, user_id: int | None, allowed_ids: set[int]
+) -> tuple[bool, str]:
     if not allowed_ids:
         return True, "rbac_disabled_allow_all"
     if user_id is None:

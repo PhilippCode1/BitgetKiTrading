@@ -212,7 +212,10 @@ def live_preflight_blocks_submit(decision: LivePreflightDecision) -> bool:
 def build_live_preflight_reasons_de(decision: LivePreflightDecision) -> list[str]:
     if not decision.blocking_reasons:
         return ["Preflight erfolgreich: alle Pflicht-Gates sind gruen."]
-    return [_DE_REASON.get(code, f"Unbekannter Blockgrund: {code}") for code in decision.blocking_reasons]
+    return [
+        _DE_REASON.get(code, f"Unbekannter Blockgrund: {code}")
+        for code in decision.blocking_reasons
+    ]
 
 
 def build_live_preflight_audit_payload(

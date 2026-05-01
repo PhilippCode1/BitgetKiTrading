@@ -56,7 +56,7 @@ def _parse_levels(
             return []
         out: list[tuple[Decimal, Decimal]] = []
         for item in data[:_TOPN_USE]:
-            if not isinstance(item, (list, tuple)) or len(item) < 2:
+            if not isinstance(item, list | tuple) or len(item) < 2:
                 continue
             p, s = _dec(item[0]), _dec(item[1])
             if p > 0 and s > 0:
@@ -69,13 +69,17 @@ def _parse_levels(
     return _one_side(raw_bids, reverse=True), _one_side(raw_asks, reverse=False)
 
 
-def _mid_price(bids: list[tuple[Decimal, Decimal]], asks: list[tuple[Decimal, Decimal]]) -> Decimal:
+def _mid_price(
+    bids: list[tuple[Decimal, Decimal]], asks: list[tuple[Decimal, Decimal]]
+) -> Decimal:
     if not bids or not asks:
         return Decimal("0")
     return (bids[0][0] + asks[0][0]) / Decimal("2")
 
 
-def _vwap_buy(asks: list[tuple[Decimal, Decimal]], size: Decimal) -> tuple[Decimal | None, str | None]:
+def _vwap_buy(
+    asks: list[tuple[Decimal, Decimal]], size: Decimal
+) -> tuple[Decimal | None, str | None]:
     rem = size
     cost = Decimal("0")
     for p, s in asks:
@@ -196,7 +200,11 @@ def verify_execution_liquidity(
         msg = f"{_BLOCKED_LOG}: kein orderbook top5 in Redis (symbol={symbol!s})"
         raise InsufficientLiquidityError(
             msg,
-            detail={"symbol": symbol, "side": side, "reason": "orderbook_cache_missing"},
+            detail={
+                "symbol": symbol,
+                "side": side,
+                "reason": "orderbook_cache_missing",
+            },
         )
     raw_b = snap.get("bids")
     raw_a = snap.get("asks")
@@ -205,7 +213,11 @@ def verify_execution_liquidity(
         if now_ts_ms is None or snap_ts <= 0:
             raise InsufficientLiquidityError(
                 f"{_BLOCKED_LOG}: orderbook timestamp fehlt (symbol={symbol!s})",
-                detail={"symbol": symbol, "side": side, "reason": "orderbook_timestamp_missing"},
+                detail={
+                    "symbol": symbol,
+                    "side": side,
+                    "reason": "orderbook_timestamp_missing",
+                },
             )
         age_ms = int(now_ts_ms - int(snap_ts))
         if age_ms > int(max_orderbook_age_ms):

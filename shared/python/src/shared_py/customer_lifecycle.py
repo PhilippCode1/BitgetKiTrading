@@ -95,18 +95,64 @@ class CustomerLifecycleSnapshot:
 
 
 # (from_phase, to_phase, erlaubte Akteure)
-ALLOWED_LIFECYCLE_TRANSITIONS: tuple[tuple[LifecyclePhase, LifecyclePhase, frozenset[TransitionActor]], ...] = (
-    (LifecyclePhase.REGISTERED, LifecyclePhase.EMAIL_VERIFIED, frozenset({TransitionActor.SYSTEM})),
-    (LifecyclePhase.EMAIL_VERIFIED, LifecyclePhase.TRIAL_ACTIVE, frozenset({TransitionActor.USER})),
-    (LifecyclePhase.TRIAL_ACTIVE, LifecyclePhase.TRIAL_ENDED, frozenset({TransitionActor.SYSTEM})),
-    (LifecyclePhase.TRIAL_ACTIVE, LifecyclePhase.CONTRACT_PENDING, frozenset({TransitionActor.USER})),
-    (LifecyclePhase.TRIAL_ENDED, LifecyclePhase.CONTRACT_PENDING, frozenset({TransitionActor.SYSTEM, TransitionActor.USER})),
-    (LifecyclePhase.CONTRACT_PENDING, LifecyclePhase.CONTRACT_ACTIVE, frozenset({TransitionActor.USER})),
-    (LifecyclePhase.CONTRACT_ACTIVE, LifecyclePhase.PAYMENT_PENDING, frozenset({TransitionActor.SYSTEM})),
-    (LifecyclePhase.PAYMENT_PENDING, LifecyclePhase.PAYMENT_ACTIVE, frozenset({TransitionActor.SYSTEM})),
-    (LifecyclePhase.PAYMENT_ACTIVE, LifecyclePhase.LIVE_PREPARED, frozenset({TransitionActor.SYSTEM, TransitionActor.USER})),
-    (LifecyclePhase.LIVE_PREPARED, LifecyclePhase.LIVE_RELEASED, frozenset({TransitionActor.ADMIN})),
-    (LifecyclePhase.LIVE_RELEASED, LifecyclePhase.LIVE_PREPARED, frozenset({TransitionActor.ADMIN})),
+ALLOWED_LIFECYCLE_TRANSITIONS: tuple[
+    tuple[LifecyclePhase, LifecyclePhase, frozenset[TransitionActor]], ...
+] = (
+    (
+        LifecyclePhase.REGISTERED,
+        LifecyclePhase.EMAIL_VERIFIED,
+        frozenset({TransitionActor.SYSTEM}),
+    ),
+    (
+        LifecyclePhase.EMAIL_VERIFIED,
+        LifecyclePhase.TRIAL_ACTIVE,
+        frozenset({TransitionActor.USER}),
+    ),
+    (
+        LifecyclePhase.TRIAL_ACTIVE,
+        LifecyclePhase.TRIAL_ENDED,
+        frozenset({TransitionActor.SYSTEM}),
+    ),
+    (
+        LifecyclePhase.TRIAL_ACTIVE,
+        LifecyclePhase.CONTRACT_PENDING,
+        frozenset({TransitionActor.USER}),
+    ),
+    (
+        LifecyclePhase.TRIAL_ENDED,
+        LifecyclePhase.CONTRACT_PENDING,
+        frozenset({TransitionActor.SYSTEM, TransitionActor.USER}),
+    ),
+    (
+        LifecyclePhase.CONTRACT_PENDING,
+        LifecyclePhase.CONTRACT_ACTIVE,
+        frozenset({TransitionActor.USER}),
+    ),
+    (
+        LifecyclePhase.CONTRACT_ACTIVE,
+        LifecyclePhase.PAYMENT_PENDING,
+        frozenset({TransitionActor.SYSTEM}),
+    ),
+    (
+        LifecyclePhase.PAYMENT_PENDING,
+        LifecyclePhase.PAYMENT_ACTIVE,
+        frozenset({TransitionActor.SYSTEM}),
+    ),
+    (
+        LifecyclePhase.PAYMENT_ACTIVE,
+        LifecyclePhase.LIVE_PREPARED,
+        frozenset({TransitionActor.SYSTEM, TransitionActor.USER}),
+    ),
+    (
+        LifecyclePhase.LIVE_PREPARED,
+        LifecyclePhase.LIVE_RELEASED,
+        frozenset({TransitionActor.ADMIN}),
+    ),
+    (
+        LifecyclePhase.LIVE_RELEASED,
+        LifecyclePhase.LIVE_PREPARED,
+        frozenset({TransitionActor.ADMIN}),
+    ),
 )
 
 
@@ -136,7 +182,9 @@ def allowed_lifecycle_targets(
     return frozenset(out)
 
 
-def commercial_gates_from_lifecycle(snapshot: CustomerLifecycleSnapshot) -> CustomerCommercialGates:
+def commercial_gates_from_lifecycle(
+    snapshot: CustomerLifecycleSnapshot,
+) -> CustomerCommercialGates:
     """
     Mappt den Lebenszyklus auf die booleschen Gates aus product_policy.
 
@@ -205,7 +253,9 @@ class CustomerCapabilities:
     access_support_area: bool
 
 
-def derive_customer_capabilities(snapshot: CustomerLifecycleSnapshot) -> CustomerCapabilities:
+def derive_customer_capabilities(
+    snapshot: CustomerLifecycleSnapshot,
+) -> CustomerCapabilities:
     """
     Faehigkeiten aus Phase + Overlay.
 
@@ -238,16 +288,12 @@ def derive_customer_capabilities(snapshot: CustomerLifecycleSnapshot) -> Custome
     live_ok = not blocked and live_trading_allowed(gates)
     health_ok, _ = exchange_api_connection_allowed(gates, purpose="read_only_health")
 
-    store_creds = (
-        not blocked
-        and p
-        in (
-            LifecyclePhase.CONTRACT_ACTIVE,
-            LifecyclePhase.PAYMENT_PENDING,
-            LifecyclePhase.PAYMENT_ACTIVE,
-            LifecyclePhase.LIVE_PREPARED,
-            LifecyclePhase.LIVE_RELEASED,
-        )
+    store_creds = not blocked and p in (
+        LifecyclePhase.CONTRACT_ACTIVE,
+        LifecyclePhase.PAYMENT_PENDING,
+        LifecyclePhase.PAYMENT_ACTIVE,
+        LifecyclePhase.LIVE_PREPARED,
+        LifecyclePhase.LIVE_RELEASED,
     )
 
     return CustomerCapabilities(
@@ -275,7 +321,8 @@ def derive_customer_capabilities(snapshot: CustomerLifecycleSnapshot) -> Custome
         connect_exchange_for_health_check=not snapshot.is_suspended and health_ok,
         store_live_exchange_credentials=store_creds,
         execute_live_orders=live_ok,
-        telegram_info_messages=p != LifecyclePhase.PROSPECT and not snapshot.is_suspended,
+        telegram_info_messages=p != LifecyclePhase.PROSPECT
+        and not snapshot.is_suspended,
         telegram_live_actions=live_ok,
         access_support_area=p != LifecyclePhase.PROSPECT,
     )
@@ -316,13 +363,34 @@ def customer_lifecycle_descriptor() -> dict[str, str | int]:
 # --- Prompt 11: kanonische Statusmaschine + Modul-Mate-Gates ---
 
 _PROMPT11_TRANSITIONS: tuple[
-    tuple[CustomerLifecycleStatus, CustomerLifecycleStatus, frozenset[TransitionActor]], ...
+    tuple[CustomerLifecycleStatus, CustomerLifecycleStatus, frozenset[TransitionActor]],
+    ...,
 ] = (
-    (CustomerLifecycleStatus.INVITED, CustomerLifecycleStatus.REGISTERED, frozenset({TransitionActor.USER, TransitionActor.SYSTEM})),
-    (CustomerLifecycleStatus.REGISTERED, CustomerLifecycleStatus.TRIAL_ACTIVE, frozenset({TransitionActor.USER})),
-    (CustomerLifecycleStatus.TRIAL_ACTIVE, CustomerLifecycleStatus.TRIAL_EXPIRED, frozenset({TransitionActor.SYSTEM})),
-    (CustomerLifecycleStatus.TRIAL_ACTIVE, CustomerLifecycleStatus.CONTRACT_PENDING, frozenset({TransitionActor.USER})),
-    (CustomerLifecycleStatus.TRIAL_EXPIRED, CustomerLifecycleStatus.CONTRACT_PENDING, frozenset({TransitionActor.USER, TransitionActor.SYSTEM})),
+    (
+        CustomerLifecycleStatus.INVITED,
+        CustomerLifecycleStatus.REGISTERED,
+        frozenset({TransitionActor.USER, TransitionActor.SYSTEM}),
+    ),
+    (
+        CustomerLifecycleStatus.REGISTERED,
+        CustomerLifecycleStatus.TRIAL_ACTIVE,
+        frozenset({TransitionActor.USER}),
+    ),
+    (
+        CustomerLifecycleStatus.TRIAL_ACTIVE,
+        CustomerLifecycleStatus.TRIAL_EXPIRED,
+        frozenset({TransitionActor.SYSTEM}),
+    ),
+    (
+        CustomerLifecycleStatus.TRIAL_ACTIVE,
+        CustomerLifecycleStatus.CONTRACT_PENDING,
+        frozenset({TransitionActor.USER}),
+    ),
+    (
+        CustomerLifecycleStatus.TRIAL_EXPIRED,
+        CustomerLifecycleStatus.CONTRACT_PENDING,
+        frozenset({TransitionActor.USER, TransitionActor.SYSTEM}),
+    ),
     (
         CustomerLifecycleStatus.CONTRACT_PENDING,
         CustomerLifecycleStatus.CONTRACT_SIGNED_WAITING_ADMIN,
@@ -338,17 +406,41 @@ _PROMPT11_TRANSITIONS: tuple[
         CustomerLifecycleStatus.CONTRACT_SIGNED_WAITING_ADMIN,
         frozenset({TransitionActor.ADMIN}),
     ),
-    (CustomerLifecycleStatus.INVITED, CustomerLifecycleStatus.CANCELLED, frozenset({TransitionActor.USER, TransitionActor.ADMIN})),
-    (CustomerLifecycleStatus.REGISTERED, CustomerLifecycleStatus.CANCELLED, frozenset({TransitionActor.USER, TransitionActor.ADMIN})),
-    (CustomerLifecycleStatus.TRIAL_ACTIVE, CustomerLifecycleStatus.CANCELLED, frozenset({TransitionActor.USER, TransitionActor.ADMIN})),
-    (CustomerLifecycleStatus.TRIAL_EXPIRED, CustomerLifecycleStatus.CANCELLED, frozenset({TransitionActor.USER, TransitionActor.ADMIN})),
-    (CustomerLifecycleStatus.CONTRACT_PENDING, CustomerLifecycleStatus.CANCELLED, frozenset({TransitionActor.USER, TransitionActor.ADMIN})),
+    (
+        CustomerLifecycleStatus.INVITED,
+        CustomerLifecycleStatus.CANCELLED,
+        frozenset({TransitionActor.USER, TransitionActor.ADMIN}),
+    ),
+    (
+        CustomerLifecycleStatus.REGISTERED,
+        CustomerLifecycleStatus.CANCELLED,
+        frozenset({TransitionActor.USER, TransitionActor.ADMIN}),
+    ),
+    (
+        CustomerLifecycleStatus.TRIAL_ACTIVE,
+        CustomerLifecycleStatus.CANCELLED,
+        frozenset({TransitionActor.USER, TransitionActor.ADMIN}),
+    ),
+    (
+        CustomerLifecycleStatus.TRIAL_EXPIRED,
+        CustomerLifecycleStatus.CANCELLED,
+        frozenset({TransitionActor.USER, TransitionActor.ADMIN}),
+    ),
+    (
+        CustomerLifecycleStatus.CONTRACT_PENDING,
+        CustomerLifecycleStatus.CANCELLED,
+        frozenset({TransitionActor.USER, TransitionActor.ADMIN}),
+    ),
     (
         CustomerLifecycleStatus.CONTRACT_SIGNED_WAITING_ADMIN,
         CustomerLifecycleStatus.CANCELLED,
         frozenset({TransitionActor.USER, TransitionActor.ADMIN}),
     ),
-    (CustomerLifecycleStatus.LIVE_APPROVED, CustomerLifecycleStatus.CANCELLED, frozenset({TransitionActor.ADMIN})),
+    (
+        CustomerLifecycleStatus.LIVE_APPROVED,
+        CustomerLifecycleStatus.CANCELLED,
+        frozenset({TransitionActor.ADMIN}),
+    ),
 )
 
 _PROMPT11_TO_SUSPENDED: frozenset[CustomerLifecycleStatus] = frozenset(
@@ -395,7 +487,10 @@ def allowed_prompt11_targets(
     suspended_previous: CustomerLifecycleStatus | None = None,
 ) -> frozenset[CustomerLifecycleStatus]:
     out: set[CustomerLifecycleStatus] = {from_status}
-    if from_status == CustomerLifecycleStatus.SUSPENDED and suspended_previous is not None:
+    if (
+        from_status == CustomerLifecycleStatus.SUSPENDED
+        and suspended_previous is not None
+    ):
         if is_prompt11_transition_allowed(
             from_status,
             suspended_previous,
@@ -423,13 +518,21 @@ def internal_snapshot_from_prompt11(
     CONTRACT_SIGNED_WAITING_ADMIN entspricht LIVE_PREPARED (Zahlung/Abo i. d. R. ok, Admin-Freigabe offen).
     """
     if status == CustomerLifecycleStatus.CANCELLED:
-        return CustomerLifecycleSnapshot(phase=LifecyclePhase.PROSPECT, is_cancelled=True)
+        return CustomerLifecycleSnapshot(
+            phase=LifecyclePhase.PROSPECT, is_cancelled=True
+        )
     if status == CustomerLifecycleStatus.SUSPENDED:
-        return CustomerLifecycleSnapshot(phase=LifecyclePhase.LIVE_PREPARED, is_suspended=True)
+        return CustomerLifecycleSnapshot(
+            phase=LifecyclePhase.LIVE_PREPARED, is_suspended=True
+        )
     if status == CustomerLifecycleStatus.INVITED:
         return CustomerLifecycleSnapshot(phase=LifecyclePhase.PROSPECT)
     if status == CustomerLifecycleStatus.REGISTERED:
-        ph = LifecyclePhase.EMAIL_VERIFIED if email_verified else LifecyclePhase.REGISTERED
+        ph = (
+            LifecyclePhase.EMAIL_VERIFIED
+            if email_verified
+            else LifecyclePhase.REGISTERED
+        )
         return CustomerLifecycleSnapshot(phase=ph)
     if status == CustomerLifecycleStatus.TRIAL_ACTIVE:
         return CustomerLifecycleSnapshot(phase=LifecyclePhase.TRIAL_ACTIVE)

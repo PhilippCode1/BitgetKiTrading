@@ -16,7 +16,8 @@ Semantik:
 from __future__ import annotations
 
 import math
-from typing import Any, Mapping
+from collections.abc import Mapping
+from typing import Any
 
 UNIFIED_LEVERAGE_ALLOCATOR_VERSION = "unified-lev-v2"
 
@@ -39,7 +40,9 @@ def _i(x: Any) -> int | None:
         return None
 
 
-def _prior_signals_count(signal_row: Mapping[str, Any], source_snapshot: Mapping[str, Any]) -> int | None:
+def _prior_signals_count(
+    signal_row: Mapping[str, Any], source_snapshot: Mapping[str, Any]
+) -> int | None:
     ev = source_snapshot.get("instrument_evidence_json")
     if isinstance(ev, dict):
         v = _i(ev.get("prior_signal_count"))
@@ -127,7 +130,9 @@ def recompute_unified_leverage_allocation(
     snap = signal_row.get("source_snapshot_json")
     snap_d = snap if isinstance(snap, dict) else {}
     prior_n = _prior_signals_count(signal_row, snap_d)
-    cold_threshold = int(getattr(settings, "leverage_cold_start_prior_signals_threshold", 20))
+    cold_threshold = int(
+        getattr(settings, "leverage_cold_start_prior_signals_threshold", 20)
+    )
     cold_cap = int(getattr(settings, "leverage_cold_start_max_cap", 12))
     cold_active = prior_n is None or prior_n < cold_threshold
     cold_effective_cap = cold_cap if cold_active else risk_max
@@ -142,7 +147,9 @@ def recompute_unified_leverage_allocation(
     )
 
     div = _f(signal_row.get("shadow_divergence_0_1"))
-    div_thr = float(getattr(settings, "leverage_shadow_divergence_soft_cap_threshold_0_1", 0.38))
+    div_thr = float(
+        getattr(settings, "leverage_shadow_divergence_soft_cap_threshold_0_1", 0.38)
+    )
     div_cap = int(getattr(settings, "leverage_shadow_divergence_soft_max_leverage", 14))
     shadow_cap = risk_max
     if div is not None and div >= div_thr:
@@ -158,8 +165,12 @@ def recompute_unified_leverage_allocation(
     )
 
     mu = _f(risk_account_snapshot.get("margin_utilization_0_1"))
-    heat_thr = float(getattr(settings, "leverage_account_heat_margin_soft_threshold_0_1", 0.50))
-    heat_shrink = float(getattr(settings, "leverage_account_heat_execution_shrink_0_1", 0.75))
+    heat_thr = float(
+        getattr(settings, "leverage_account_heat_margin_soft_threshold_0_1", 0.50)
+    )
+    heat_shrink = float(
+        getattr(settings, "leverage_account_heat_execution_shrink_0_1", 0.75)
+    )
     heat_active = mu is not None and mu >= heat_thr
     if heat_active:
         drivers.append("account_margin_heat_execution_shrink")
@@ -173,15 +184,21 @@ def recompute_unified_leverage_allocation(
     )
 
     base_exposure = float(governor.get("max_exposure_fraction_0_1") or 1.0)
-    tight_thr = float(getattr(settings, "leverage_tight_stop_exposure_threshold_pct", 0.004))
-    tight_fac = float(getattr(settings, "leverage_tight_stop_exposure_shrink_factor_0_1", 0.60))
+    tight_thr = float(
+        getattr(settings, "leverage_tight_stop_exposure_threshold_pct", 0.004)
+    )
+    tight_fac = float(
+        getattr(settings, "leverage_tight_stop_exposure_shrink_factor_0_1", 0.60)
+    )
     notional_frac = min(1.0, max(0.0, base_exposure))
     if stop_pct is not None and stop_pct > 0 and stop_pct < tight_thr:
         notional_frac = min(1.0, max(0.0, notional_frac * tight_fac))
         drivers.append("tight_stop_notional_shrink")
 
     lane = str(meta_trade_lane or "").strip().lower()
-    auto_frac = float(getattr(settings, "leverage_auto_execution_fraction_of_recommended_0_1", 0.88))
+    auto_frac = float(
+        getattr(settings, "leverage_auto_execution_fraction_of_recommended_0_1", 0.88)
+    )
     auto_sub = int(getattr(settings, "leverage_auto_execution_subtract_steps", 0))
 
     binding_caps: dict[str, int] = {}
@@ -200,7 +217,11 @@ def recompute_unified_leverage_allocation(
         fc = min(allowed, family_cap)
         binding_caps["exchange_family_cap"] = fc
         evidence_cap_breakdown.append(
-            {"name": "exchange_family_cap", "value": int(family_cap), "binding_value": fc}
+            {
+                "name": "exchange_family_cap",
+                "value": int(family_cap),
+                "binding_value": fc,
+            }
         )
     if stop_lev_cap is not None:
         sc = min(allowed, stop_lev_cap)
@@ -216,8 +237,12 @@ def recompute_unified_leverage_allocation(
 
     ddd = _f(risk_account_snapshot.get("daily_drawdown_0_1"))
     ddw = _f(risk_account_snapshot.get("weekly_drawdown_0_1"))
-    dd_thr_d = float(getattr(settings, "risk_leverage_cap_daily_drawdown_threshold_0_1", 0.025))
-    dd_thr_w = float(getattr(settings, "risk_leverage_cap_weekly_drawdown_threshold_0_1", 0.06))
+    dd_thr_d = float(
+        getattr(settings, "risk_leverage_cap_daily_drawdown_threshold_0_1", 0.025)
+    )
+    dd_thr_w = float(
+        getattr(settings, "risk_leverage_cap_weekly_drawdown_threshold_0_1", 0.06)
+    )
     dd_max_lev = int(getattr(settings, "risk_leverage_max_under_drawdown", 10))
     drawdown_cap_active = False
     if ddd is not None and ddd >= dd_thr_d:
@@ -237,10 +262,22 @@ def recompute_unified_leverage_allocation(
             }
         )
 
-    hd_snap = snap_d.get("hybrid_decision") if isinstance(snap_d.get("hybrid_decision"), dict) else {}
-    la_snap = hd_snap.get("leverage_allocator") if isinstance(hd_snap.get("leverage_allocator"), dict) else {}
-    mi_liq = la_snap.get("market_inputs") if isinstance(la_snap.get("market_inputs"), dict) else {}
-    liq_stress = _f(mi_liq.get("liquidation_proximity_stress_0_1"))
+    hd_snap = (
+        snap_d.get("hybrid_decision")
+        if isinstance(snap_d.get("hybrid_decision"), dict)
+        else {}
+    )
+    la_snap = (
+        hd_snap.get("leverage_allocator")  # type: ignore
+        if isinstance(hd_snap.get("leverage_allocator"), dict)  # type: ignore
+        else {}
+    )
+    mi_liq = (
+        la_snap.get("market_inputs")  # type: ignore
+        if isinstance(la_snap.get("market_inputs"), dict)  # type: ignore
+        else {}
+    )
+    liq_stress = _f(mi_liq.get("liquidation_proximity_stress_0_1"))  # type: ignore
     if liq_stress is not None and liq_stress >= 0.55:
         liq_cap = max(min_lev, min(allowed, 12))
         binding_caps["liquidation_buffer_soft_cap"] = liq_cap
@@ -263,7 +300,14 @@ def recompute_unified_leverage_allocation(
         mirror_lev = rec
         from_fraction = int(math.floor(rec * auto_frac))
         from_sub = rec - auto_sub
-        raw_exec = min(from_fraction, from_sub, rec, synthetic_allowed, cold_effective_cap, shadow_cap)
+        raw_exec = min(
+            from_fraction,
+            from_sub,
+            rec,
+            synthetic_allowed,
+            cold_effective_cap,
+            shadow_cap,
+        )
         if family_cap is not None:
             raw_exec = min(raw_exec, family_cap)
         if stop_lev_cap is not None:
@@ -367,7 +411,9 @@ def refresh_unified_leverage_allocation_in_snapshot(
     return unified
 
 
-def extract_unified_leverage_allocation_from_signal_row(row: Mapping[str, Any]) -> dict[str, Any] | None:
+def extract_unified_leverage_allocation_from_signal_row(
+    row: Mapping[str, Any],
+) -> dict[str, Any] | None:
     snap = row.get("source_snapshot_json")
     if not isinstance(snap, dict):
         return None
@@ -381,7 +427,9 @@ def extract_unified_leverage_allocation_from_signal_row(row: Mapping[str, Any]) 
     return u if isinstance(u, dict) else None
 
 
-def extract_execution_leverage_cap_from_signal_row(row: Mapping[str, Any]) -> int | None:
+def extract_execution_leverage_cap_from_signal_row(
+    row: Mapping[str, Any],
+) -> int | None:
     u = extract_unified_leverage_allocation_from_signal_row(row)
     if not u:
         return None

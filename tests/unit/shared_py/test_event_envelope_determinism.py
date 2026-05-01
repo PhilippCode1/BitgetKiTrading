@@ -54,9 +54,9 @@ def test_payload_key_order_invariant_semantic_hash() -> None:
     shuffled = {k: payload[k] for k in keys}
     data2 = {**data, "payload": shuffled}
     env2 = EventEnvelope.model_validate(data2)
-    assert envelope_fingerprint_sha256(env, mode="semantic") == envelope_fingerprint_sha256(
-        env2, mode="semantic"
-    )
+    assert envelope_fingerprint_sha256(
+        env, mode="semantic"
+    ) == envelope_fingerprint_sha256(env2, mode="semantic")
 
 
 def test_roundtrip_json_stable_preimage() -> None:
@@ -148,12 +148,16 @@ def test_envelope_top_level_field_order_invariant_hash() -> None:
     d = base.model_dump(mode="json", exclude_none=False)
     order = sorted(d.keys(), reverse=True)
     reordered = {k: d[k] for k in order}
-    assert envelope_fingerprint_sha256(base, mode="wire") == envelope_fingerprint_sha256(
+    assert envelope_fingerprint_sha256(
+        base, mode="wire"
+    ) == envelope_fingerprint_sha256(
         EventEnvelope.model_validate(reordered), mode="wire"
     )
 
 
-def _ensure_payload_schema_minima(event_type: str, payload: dict, rng: random.Random) -> None:
+def _ensure_payload_schema_minima(
+    event_type: str, payload: dict, rng: random.Random
+) -> None:
     """Pflichtfelder fuer jsonschema-Validierung (EventEnvelope fail-fast)."""
     if event_type == "candle_close":
         ts = int(payload.get("start_ts_ms") or rng.randrange(0, 1_800_000_000_000))
@@ -216,11 +220,13 @@ def _random_envelope(seed: int) -> EventEnvelope:
 )
 def test_ts_contract_versions_match_catalog(path: Path) -> None:
     catalog = json.loads(
-        (REPO_ROOT / "shared" / "contracts" / "catalog" / "event_streams.json").read_text(
-            encoding="utf-8"
-        )
+        (
+            REPO_ROOT / "shared" / "contracts" / "catalog" / "event_streams.json"
+        ).read_text(encoding="utf-8")
     )
     text = path.read_text(encoding="utf-8")
     assert catalog["envelope_default_schema_version"] in text
     assert str(catalog["envelope_fingerprint_canon_version"]) in text
-    assert ENVELOPE_FINGERPRINT_CANON_VERSION == str(catalog["envelope_fingerprint_canon_version"])
+    assert ENVELOPE_FINGERPRINT_CANON_VERSION == str(
+        catalog["envelope_fingerprint_canon_version"]
+    )

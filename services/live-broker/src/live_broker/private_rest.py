@@ -7,13 +7,11 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 import httpx
-
 from shared_py.bitget import (
     build_private_rest_headers,
     build_query_string,
     canonical_json_body,
 )
-from live_broker.bitget_exchange_handling import ExchangeHandling, exchange_handling_for_classification
 from shared_py.bitget.errors import (
     BitgetErrorClassification,
     classify_bitget_private_rest_failure,
@@ -23,12 +21,25 @@ from shared_py.resilience import (
     compute_backoff_delay,
 )
 
+from live_broker.bitget_exchange_handling import (
+    ExchangeHandling,
+    exchange_handling_for_classification,
+)
+
 if TYPE_CHECKING:
     from live_broker.config import LiveBrokerSettings
 
 logger = logging.getLogger("live_broker.private_rest")
 
-_SECRET_KEY_SUBSTR = ("secret", "passphrase", "password", "apikey", "api_key", "sign", "token")
+_SECRET_KEY_SUBSTR = (
+    "secret",
+    "passphrase",
+    "password",
+    "apikey",
+    "api_key",
+    "sign",
+    "token",
+)
 
 
 def _scrub_secrets_from_mapping(obj: Any, depth: int = 0) -> Any:
@@ -86,7 +97,11 @@ class BitgetRestError(RuntimeError):
 
 def _probe_bitget_error_de(exc: BitgetRestError, *, demo: bool) -> str:
     """Kurztext fuer Operator/Console — keine Secrets, keine rohen Signaturen."""
-    mode = "Demo (BITGET_DEMO_* + BITGET_DEMO_REST_BASE_URL)" if demo else "Live (BITGET_API_* + BITGET_API_BASE_URL)"
+    mode = (
+        "Demo (BITGET_DEMO_* + BITGET_DEMO_REST_BASE_URL)"
+        if demo
+        else "Live (BITGET_API_* + BITGET_API_BASE_URL)"
+    )
     code = (exc.exchange_code or "").strip()
     msg = (exc.exchange_msg or str(exc) or "").strip()
     if exc.classification in ("auth", "permission"):
@@ -101,7 +116,11 @@ def _probe_bitget_error_de(exc: BitgetRestError, *, demo: bool) -> str:
             f"(code={code or '—'})."
         )
     if exc.classification == "clock_skew":
-        return msg[:220] if msg else "Zeitabweichnung zur Boerse zu gross — NTP/Sync pruefen."
+        return (
+            msg[:220]
+            if msg
+            else "Zeitabweichnung zur Boerse zu gross — NTP/Sync pruefen."
+        )
     if exc.classification == "rate_limit":
         return "Bitget Rate-Limit — kurz warten und erneut versuchen."
     if exc.classification == "transport":
@@ -111,7 +130,9 @@ def _probe_bitget_error_de(exc: BitgetRestError, *, demo: bool) -> str:
     return f"Bitget private ({mode}): {msg[:220] if msg else exc.classification}"
 
 
-def _should_retry_private_http(exc: BitgetRestError, *, attempt: int, max_retries: int) -> bool:
+def _should_retry_private_http(
+    exc: BitgetRestError, *, attempt: int, max_retries: int
+) -> bool:
     """Kein Retry-Spam: nur wo retryable und keine Security/Config-Hardstops."""
     if attempt >= max_retries:
         return False
@@ -147,7 +168,7 @@ class BitgetRestResponse:
 class BitgetPrivateRestClient:
     def __init__(
         self,
-        settings: "LiveBrokerSettings",
+        settings: LiveBrokerSettings,
         *,
         transport: httpx.BaseTransport | None = None,
         sleep_fn=time.sleep,
@@ -277,7 +298,8 @@ class BitgetPrivateRestClient:
                 "private_auth_detail_de": msg,
             }
         path = str(
-            getattr(self._settings.endpoint_profile, "private_account_assets_path", "") or ""
+            getattr(self._settings.endpoint_profile, "private_account_assets_path", "")
+            or ""
         ).strip()
         if not path:
             return {
@@ -625,7 +647,9 @@ class BitgetPrivateRestClient:
         )
 
     def _require_endpoint_path(self, attr_name: str, operation: str) -> str:
-        value = str(getattr(self._settings.endpoint_profile, attr_name, "") or "").strip()
+        value = str(
+            getattr(self._settings.endpoint_profile, attr_name, "") or ""
+        ).strip()
         if value:
             return value
         raise BitgetRestError(
@@ -709,7 +733,10 @@ class BitgetPrivateRestClient:
                     )
                 payload = self._decode_json(response)
                 self._refresh_offset_from_payload(payload)
-                if response.status_code >= 400 or str(payload.get("code") or "") != "00000":
+                if (
+                    response.status_code >= 400
+                    or str(payload.get("code") or "") != "00000"
+                ):
                     raise self._map_error(
                         http_status=response.status_code,
                         payload=payload,
@@ -742,7 +769,9 @@ class BitgetPrivateRestClient:
                 )
                 if should_trip:
                     self._circuit.record_failure("bitget-private-rest")
-                if _should_retry_private_http(exc, attempt=attempt, max_retries=max_retries):
+                if _should_retry_private_http(
+                    exc, attempt=attempt, max_retries=max_retries
+                ):
                     delay = compute_backoff_delay(
                         attempt,
                         base_sec=self._settings.live_broker_http_retry_base_sec,
@@ -766,7 +795,9 @@ class BitgetPrivateRestClient:
                     retryable=True,
                 )
                 self._circuit.record_failure("bitget-private-rest")
-                if _should_retry_private_http(last_error, attempt=attempt, max_retries=max_retries):
+                if _should_retry_private_http(
+                    last_error, attempt=attempt, max_retries=max_retries
+                ):
                     delay = compute_backoff_delay(
                         attempt,
                         base_sec=self._settings.live_broker_http_retry_base_sec,

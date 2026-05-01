@@ -69,12 +69,20 @@ def normalize_market_eligibility_flags(
     execution_disabled: bool,
 ) -> tuple[bool, bool, bool, bool, bool]:
     inventory = bool(
-        inventory_visible or analytics_eligible or paper_shadow_eligible or live_execution_enabled
+        inventory_visible
+        or analytics_eligible
+        or paper_shadow_eligible
+        or live_execution_enabled
     )
-    analytics = bool(analytics_eligible or paper_shadow_eligible or live_execution_enabled) and inventory
+    analytics = (
+        bool(analytics_eligible or paper_shadow_eligible or live_execution_enabled)
+        and inventory
+    )
     paper_shadow = bool(paper_shadow_eligible or live_execution_enabled) and analytics
     live_enabled = bool(live_execution_enabled) and paper_shadow
-    execution_off = bool(execution_disabled) or (inventory and analytics and not live_enabled)
+    execution_off = bool(execution_disabled) or (
+        inventory and analytics and not live_enabled
+    )
     return inventory, analytics, paper_shadow, live_enabled, execution_off
 
 
@@ -141,7 +149,7 @@ class BitgetEndpointProfile(BaseModel):
         return normalized or None
 
     @model_validator(mode="after")
-    def _normalize_capabilities(self) -> "BitgetEndpointProfile":
+    def _normalize_capabilities(self) -> BitgetEndpointProfile:
         supports_shorting, supports_long_short = _normalize_capability_pair(
             supports_shorting=self.supports_shorting,
             supports_long_short=self.supports_long_short,
@@ -193,7 +201,7 @@ class BitgetMarketCapabilityMatrixRow(BaseModel):
         mode="before",
     )
     @classmethod
-    def _normalize_text(cls, value: object, info) -> object:
+    def _normalize_text(cls, value: object, info) -> object:  # type: ignore
         if value is None:
             return None
         normalized = str(value).strip()
@@ -234,7 +242,7 @@ class BitgetMarketCapabilityMatrixRow(BaseModel):
         return out
 
     @model_validator(mode="after")
-    def _finalize_category_row(self) -> "BitgetMarketCapabilityMatrixRow":
+    def _finalize_category_row(self) -> BitgetMarketCapabilityMatrixRow:
         if self.market_family == "futures" and not self.product_type:
             raise ValueError("Futures-Kategorien brauchen product_type")
         if self.market_family == "spot":
@@ -323,7 +331,7 @@ class BitgetInstrumentIdentity(BaseModel):
         mode="before",
     )
     @classmethod
-    def _normalize_text(cls, value: object, info) -> object:
+    def _normalize_text(cls, value: object, info) -> object:  # type: ignore
         if value is None:
             return None
         normalized = str(value).strip()
@@ -345,9 +353,11 @@ class BitgetInstrumentIdentity(BaseModel):
         return normalized
 
     @model_validator(mode="after")
-    def _validate_identity(self) -> "BitgetInstrumentIdentity":
+    def _validate_identity(self) -> BitgetInstrumentIdentity:
         if "_" in self.symbol:
-            raise ValueError("Bitget-Instrumente muessen v2-Symbole ohne Suffix verwenden")
+            raise ValueError(
+                "Bitget-Instrumente muessen v2-Symbole ohne Suffix verwenden"
+            )
         if self.market_family == "futures":
             if not self.product_type:
                 raise ValueError("Futures-Instrumente brauchen product_type")
@@ -497,7 +507,7 @@ class BitgetInstrumentCatalogEntry(BitgetInstrumentIdentity):
         return normalized or "unknown"
 
     @model_validator(mode="after")
-    def _finalize_catalog_entry(self) -> "BitgetInstrumentCatalogEntry":
+    def _finalize_catalog_entry(self) -> BitgetInstrumentCatalogEntry:
         aliases = list(self.symbol_aliases)
         if self.symbol not in aliases:
             aliases.insert(0, self.symbol)
@@ -550,18 +560,22 @@ class BitgetInstrumentCatalogSnapshot(BaseModel):
     counts_by_family: dict[str, int] = Field(default_factory=dict)
     warnings: list[str] = Field(default_factory=list)
     errors: list[str] = Field(default_factory=list)
-    capability_matrix: list[BitgetMarketCapabilityMatrixRow] = Field(default_factory=list)
+    capability_matrix: list[BitgetMarketCapabilityMatrixRow] = Field(
+        default_factory=list
+    )
     entries: list[BitgetInstrumentCatalogEntry] = Field(default_factory=list)
 
     @model_validator(mode="after")
-    def _finalize_snapshot(self) -> "BitgetInstrumentCatalogSnapshot":
+    def _finalize_snapshot(self) -> BitgetInstrumentCatalogSnapshot:
         if not self.counts_by_family:
             counts: dict[str, int] = {}
             for entry in self.entries:
                 counts[entry.market_family] = counts.get(entry.market_family, 0) + 1
             object.__setattr__(self, "counts_by_family", counts)
         if not self.capability_matrix:
-            object.__setattr__(self, "capability_matrix", build_capability_matrix(self.entries))
+            object.__setattr__(
+                self, "capability_matrix", build_capability_matrix(self.entries)
+            )
         return self
 
 
@@ -611,14 +625,24 @@ def build_capability_matrix(
             row.metadata_verified = row.metadata_verified or entry.metadata_verified
             row.inventory_visible = row.inventory_visible or entry.inventory_visible
             row.analytics_eligible = row.analytics_eligible or entry.analytics_eligible
-            row.paper_shadow_eligible = row.paper_shadow_eligible or entry.paper_shadow_eligible
-            row.live_execution_enabled = row.live_execution_enabled or entry.live_execution_enabled
+            row.paper_shadow_eligible = (
+                row.paper_shadow_eligible or entry.paper_shadow_eligible
+            )
+            row.live_execution_enabled = (
+                row.live_execution_enabled or entry.live_execution_enabled
+            )
             row.execution_disabled = row.execution_disabled or entry.execution_disabled
             row.supports_funding = row.supports_funding or entry.supports_funding
-            row.supports_open_interest = row.supports_open_interest or entry.supports_open_interest
-            row.supports_long_short = row.supports_long_short or entry.supports_long_short
+            row.supports_open_interest = (
+                row.supports_open_interest or entry.supports_open_interest
+            )
+            row.supports_long_short = (
+                row.supports_long_short or entry.supports_long_short
+            )
             row.supports_shorting = row.supports_shorting or entry.supports_shorting
-            row.supports_reduce_only = row.supports_reduce_only or entry.supports_reduce_only
+            row.supports_reduce_only = (
+                row.supports_reduce_only or entry.supports_reduce_only
+            )
             row.supports_leverage = row.supports_leverage or entry.supports_leverage
             row.uses_spot_public_market_data = (
                 row.uses_spot_public_market_data or entry.uses_spot_public_market_data
@@ -831,7 +855,9 @@ def _catalog_eligibility_flags(
     analytics_eligible = bool(subscribe_enabled)
     paper_shadow_eligible = bool(trading_enabled and execution_adapter_available)
     live_execution_enabled = bool(trading_enabled and execution_adapter_available)
-    execution_disabled = inventory_visible and analytics_eligible and not live_execution_enabled
+    execution_disabled = (
+        inventory_visible and analytics_eligible and not live_execution_enabled
+    )
     return {
         "inventory_visible": inventory_visible,
         "analytics_eligible": analytics_eligible,
@@ -895,7 +921,9 @@ class MarketInstrument(BaseModel):
         return str(v or "").strip().upper()
 
     @classmethod
-    def from_catalog_entry(cls, entry: BitgetInstrumentCatalogEntry) -> "MarketInstrument":
+    def from_catalog_entry(
+        cls, entry: BitgetInstrumentCatalogEntry
+    ) -> MarketInstrument:
         return cls(
             venue=entry.venue,
             product_family=entry.market_family,
@@ -935,7 +963,9 @@ class MarketInstrumentFactory:
         if not sym:
             return None
         profile = endpoint_profile_for("spot")
-        trading_status = str(row.get("status") or "unknown").strip().lower() or "unknown"
+        trading_status = (
+            str(row.get("status") or "unknown").strip().lower() or "unknown"
+        )
         eflags = _catalog_eligibility_flags(
             trading_enabled=trading_status_allows_trading(trading_status),
             subscribe_enabled=trading_status_allows_subscription(trading_status),
@@ -972,7 +1002,9 @@ class MarketInstrumentFactory:
             quantity_max=str(row.get("maxTradeAmount") or "") or None,
             min_notional_quote=str(row.get("minTradeUSDT") or "") or None,
             price_precision=_bitget_metadata_optional_int(row.get("pricePrecision")),
-            quantity_precision=_bitget_metadata_optional_int(row.get("quantityPrecision")),
+            quantity_precision=_bitget_metadata_optional_int(
+                row.get("quantityPrecision")
+            ),
             quote_precision=_bitget_metadata_optional_int(row.get("quotePrecision")),
             symbol_type="spot",
             session_metadata={"schedule": "24x7", "timezone": "UTC"},
@@ -992,7 +1024,9 @@ class MarketInstrumentFactory:
             return None
         profile = endpoint_profile_for("futures")
         trading_status = (
-            str(row.get("symbolStatus") or row.get("status") or "unknown").strip().lower()
+            str(row.get("symbolStatus") or row.get("status") or "unknown")
+            .strip()
+            .lower()
             or "unknown"
         )
         eflags = _catalog_eligibility_flags(
@@ -1000,9 +1034,9 @@ class MarketInstrumentFactory:
             subscribe_enabled=trading_status_allows_subscription(trading_status),
             execution_adapter_available=profile.private_place_order_path is not None,
         )
-        margin_coin = _first_margin_coin_list_value(row.get("supportMarginCoins")) or str(
-            row.get("marginCoin") or ""
-        )
+        margin_coin = _first_margin_coin_list_value(
+            row.get("supportMarginCoins")
+        ) or str(row.get("marginCoin") or "")
         session_metadata = {
             "schedule": "24x7",
             "timezone": "UTC",
@@ -1010,7 +1044,9 @@ class MarketInstrumentFactory:
             "off_time": _bitget_metadata_optional_int(row.get("offTime")),
             "limit_open_time": _bitget_metadata_optional_int(row.get("limitOpenTime")),
             "delivery_time": _bitget_metadata_optional_int(row.get("deliveryTime")),
-            "delivery_start_time": _bitget_metadata_optional_int(row.get("deliveryStartTime")),
+            "delivery_start_time": _bitget_metadata_optional_int(
+                row.get("deliveryStartTime")
+            ),
             "launch_time": _bitget_metadata_optional_int(row.get("launchTime")),
             "maintain_time": _bitget_metadata_optional_int(row.get("maintainTime")),
         }
@@ -1054,11 +1090,15 @@ class MarketInstrumentFactory:
             quantity_precision=_bitget_metadata_optional_int(row.get("volumePlace")),
             leverage_min=_bitget_metadata_optional_int(row.get("minLever")),
             leverage_max=_bitget_metadata_optional_int(row.get("maxLever")),
-            funding_interval_hours=_bitget_metadata_optional_int(row.get("fundInterval")),
+            funding_interval_hours=_bitget_metadata_optional_int(
+                row.get("fundInterval")
+            ),
             symbol_type=str(row.get("symbolType") or "") or None,
             supported_margin_coins=list(row.get("supportMarginCoins") or []),
             maintenance_margin_rate_0_1=_bitget_metadata_optional_mmr_0_1(row),
-            session_metadata={k: v for k, v in session_metadata.items() if v is not None},
+            session_metadata={
+                k: v for k, v in session_metadata.items() if v is not None
+            },
             refresh_ts_ms=rts,
             raw_metadata=row,
         )
@@ -1074,8 +1114,12 @@ class MarketInstrumentFactory:
         sym = str(symbol).strip().upper()
         if not sym or not spot_row:
             return None
-        profile = endpoint_profile_for("margin", margin_account_mode=margin_account_mode)
-        spot_status = str(spot_row.get("status") or "unknown").strip().lower() or "unknown"
+        profile = endpoint_profile_for(
+            "margin", margin_account_mode=margin_account_mode
+        )
+        spot_status = (
+            str(spot_row.get("status") or "unknown").strip().lower() or "unknown"
+        )
         trading_status = f"{spot_status}_account_visible"
         eflags = _catalog_eligibility_flags(
             trading_enabled=trading_status_allows_trading(spot_status),
@@ -1114,9 +1158,15 @@ class MarketInstrumentFactory:
             quantity_min=str(spot_row.get("minTradeAmount") or "") or None,
             quantity_max=str(spot_row.get("maxTradeAmount") or "") or None,
             min_notional_quote=str(spot_row.get("minTradeUSDT") or "") or None,
-            price_precision=_bitget_metadata_optional_int(spot_row.get("pricePrecision")),
-            quantity_precision=_bitget_metadata_optional_int(spot_row.get("quantityPrecision")),
-            quote_precision=_bitget_metadata_optional_int(spot_row.get("quotePrecision")),
+            price_precision=_bitget_metadata_optional_int(
+                spot_row.get("pricePrecision")
+            ),
+            quantity_precision=_bitget_metadata_optional_int(
+                spot_row.get("quantityPrecision")
+            ),
+            quote_precision=_bitget_metadata_optional_int(
+                spot_row.get("quotePrecision")
+            ),
             symbol_type="margin",
             maintenance_margin_rate_0_1=_bitget_metadata_optional_mmr_0_1(spot_row),
             session_metadata={"schedule": "24x7", "timezone": "UTC"},
@@ -1180,13 +1230,19 @@ class BitgetAssetUniverseInstrument(BaseModel):
         mode="before",
     )
     @classmethod
-    def _normalize_governance_text(cls, value: object, info) -> object:
+    def _normalize_governance_text(cls, value: object, info) -> object:  # type: ignore
         if value is None:
             return None
         normalized = str(value).strip()
         if not normalized:
             return None if info.field_name != "source" else "runtime_catalog"
-        if info.field_name in {"symbol", "base_coin", "quote_coin", "product_type", "margin_coin"}:
+        if info.field_name in {
+            "symbol",
+            "base_coin",
+            "quote_coin",
+            "product_type",
+            "margin_coin",
+        }:
             return normalized.upper()
         return normalized
 
@@ -1231,7 +1287,7 @@ class BitgetAssetUniverseInstrument(BaseModel):
         risk_tier_assigned: bool = False,
         strategy_evidence_ready: bool = False,
         owner_approved: bool = False,
-    ) -> "BitgetAssetUniverseInstrument":
+    ) -> BitgetAssetUniverseInstrument:
         refresh_ts = entry.refresh_ts_ms
         return cls(
             symbol=entry.symbol,

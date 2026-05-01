@@ -10,9 +10,7 @@ from shared_py.post_trade_review import (
 
 
 def test_lucky_wrong_classify() -> None:
-    l, a = classify_reasoning_quality(
-        pnl_net=Decimal("10"), thesis_holds=False
-    )
+    l, a = classify_reasoning_quality(pnl_net=Decimal("10"), thesis_holds=False)
     assert l == "lucky_wrong_reasoning"
     assert a < 0.5
 

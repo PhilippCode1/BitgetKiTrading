@@ -10,7 +10,9 @@ from pydantic import ValidationError
 from llm_orchestrator.exceptions import LLMPromptTooLargeError, RetryableLLMError
 
 
-def test_settings_reject_fake_in_shadow(mock_redis_bus, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_settings_reject_fake_in_shadow(
+    mock_redis_bus, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setenv("REDIS_URL", "redis://127.0.0.1:6379/0")
     monkeypatch.setenv("APP_ENV", "shadow")
     monkeypatch.setenv("LLM_USE_FAKE_PROVIDER", "true")
@@ -108,7 +110,9 @@ def test_schema_validation_failure_then_success(
     assert calls["n"] == 2
 
 
-def test_prompt_too_large_service(mock_redis_bus, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_prompt_too_large_service(
+    mock_redis_bus, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setenv("REDIS_URL", "redis://127.0.0.1:6379/0")
     monkeypatch.setenv("LLM_USE_FAKE_PROVIDER", "true")
     monkeypatch.setenv("LLM_MAX_PROMPT_CHARS", "300")
@@ -116,7 +120,11 @@ def test_prompt_too_large_service(mock_redis_bus, monkeypatch: pytest.MonkeyPatc
     from llm_orchestrator.service import LLMService
 
     svc = LLMService(LLMOrchestratorSettings())
-    schema = {"type": "object", "properties": {"a": {"type": "string"}}, "required": ["a"]}
+    schema = {
+        "type": "object",
+        "properties": {"a": {"type": "string"}},
+        "required": ["a"],
+    }
     with pytest.raises(LLMPromptTooLargeError):
         svc.run_structured(
             schema_json=schema,
@@ -125,7 +133,9 @@ def test_prompt_too_large_service(mock_redis_bus, monkeypatch: pytest.MonkeyPatc
         )
 
 
-def test_prompt_too_large_http_413(mock_redis_bus, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_prompt_too_large_http_413(
+    mock_redis_bus, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setenv("REDIS_URL", "redis://127.0.0.1:6379/0")
     monkeypatch.setenv("LLM_USE_FAKE_PROVIDER", "true")
     monkeypatch.setenv("LLM_MAX_PROMPT_CHARS", "300")
@@ -188,7 +198,9 @@ def test_llm_exhausted_graceful_200_degraded(
     assert body.get("ok") is True
 
 
-def test_llm_timeout_ms_validation_bounds(mock_redis_bus, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_llm_timeout_ms_validation_bounds(
+    mock_redis_bus, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setenv("REDIS_URL", "redis://127.0.0.1:6379/0")
     monkeypatch.setenv("LLM_USE_FAKE_PROVIDER", "true")
     monkeypatch.setenv("LLM_TIMEOUT_MS", "500")
@@ -226,7 +238,9 @@ def test_json_self_repair_triggers_and_returns_valid_json(
     def first_bad_then_repaired(s: dict, pr: str, **kw: object) -> dict:
         prompts.append(str(pr))
         if len(prompts) == 1:
-            return {"a": "truncated-sim"}  # fehlt b — wie abgeschnittener/kaputter Output
+            return {
+                "a": "truncated-sim"
+            }  # fehlt b — wie abgeschnittener/kaputter Output
         return {"a": "repaired", "b": 0}
 
     svc._fake.generate_structured = first_bad_then_repaired  # type: ignore[method-assign]

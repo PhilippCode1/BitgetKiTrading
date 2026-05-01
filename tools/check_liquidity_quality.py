@@ -14,7 +14,9 @@ DOC_PATH = ROOT / "docs" / "production_10_10" / "liquidity_spread_slippage_per_a
 MODULE_PATH = ROOT / "shared" / "python" / "src" / "shared_py" / "liquidity_scoring.py"
 SCRIPT_PATH = ROOT / "scripts" / "liquidity_quality_report.py"
 FIXTURE_PATH = ROOT / "tests" / "fixtures" / "liquidity_quality_sample.json"
-MAIN_CONSOLE_DOC_PATH = ROOT / "docs" / "production_10_10" / "main_console_product_direction.md"
+MAIN_CONSOLE_DOC_PATH = (
+    ROOT / "docs" / "production_10_10" / "main_console_product_direction.md"
+)
 NO_GO_DOC_PATH = ROOT / "docs" / "production_10_10" / "no_go_rules.md"
 TEST_PATHS = (
     ROOT / "tests" / "risk" / "test_liquidity_scoring.py",
@@ -40,7 +42,14 @@ def _issue(
     message: str,
     path: Path | None = None,
 ) -> None:
-    issues.append(Issue(severity=severity, code=code, message=message, path=str(path) if path else None))
+    issues.append(
+        Issue(
+            severity=severity,
+            code=code,
+            message=message,
+            path=str(path) if path else None,
+        )
+    )
 
 
 def analyze() -> dict[str, Any]:
@@ -55,7 +64,13 @@ def analyze() -> dict[str, Any]:
             _issue(issues, severity="error", code=code, message=message, path=path)
     for path in TEST_PATHS:
         if not path.is_file():
-            _issue(issues, severity="error", code="test_missing", message="Erforderlicher Test fehlt.", path=path)
+            _issue(
+                issues,
+                severity="error",
+                code="test_missing",
+                message="Erforderlicher Test fehlt.",
+                path=path,
+            )
 
     if MAIN_CONSOLE_DOC_PATH.is_file():
         text = MAIN_CONSOLE_DOC_PATH.read_text(encoding="utf-8").lower()
@@ -69,7 +84,13 @@ def analyze() -> dict[str, Any]:
                 path=MAIN_CONSOLE_DOC_PATH,
             )
     else:
-        _issue(issues, severity="error", code="main_console_doc_missing", message="Main-Console-Doku fehlt.", path=MAIN_CONSOLE_DOC_PATH)
+        _issue(
+            issues,
+            severity="error",
+            code="main_console_doc_missing",
+            message="Main-Console-Doku fehlt.",
+            path=MAIN_CONSOLE_DOC_PATH,
+        )
 
     if NO_GO_DOC_PATH.is_file():
         text = NO_GO_DOC_PATH.read_text(encoding="utf-8").lower()
@@ -82,7 +103,13 @@ def analyze() -> dict[str, Any]:
                 path=NO_GO_DOC_PATH,
             )
     else:
-        _issue(issues, severity="error", code="no_go_doc_missing", message="No-Go-Doku fehlt.", path=NO_GO_DOC_PATH)
+        _issue(
+            issues,
+            severity="error",
+            code="no_go_doc_missing",
+            message="No-Go-Doku fehlt.",
+            path=NO_GO_DOC_PATH,
+        )
 
     errors = [item for item in issues if item.severity == "error"]
     warnings = [item for item in issues if item.severity == "warning"]
@@ -109,7 +136,9 @@ def main(argv: list[str] | None = None) -> int:
         )
         for issue in summary["issues"]:
             where = f" [{issue['path']}]" if issue.get("path") else ""
-            print(f"{issue['severity'].upper()} {issue['code']}: {issue['message']}{where}")
+            print(
+                f"{issue['severity'].upper()} {issue['code']}: {issue['message']}{where}"
+            )
 
     if summary["error_count"] > 0:
         return 1

@@ -13,11 +13,7 @@ type Props = Readonly<{
 /**
  * Gateway-Lesenvelope mit produktreifem Meldungsschema (keine generischen Einzeiler).
  */
-export function GatewayReadNotice({
-  payload,
-  t,
-  diagnostic = false,
-}: Props) {
+export function GatewayReadNotice({ payload, t, diagnostic = false }: Props) {
   const message = buildProductMessageFromGatewayEnvelope(payload, t);
   if (!message) return null;
   return (

@@ -4,7 +4,6 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 import httpx
-
 from shared_py.bitget import build_rest_headers
 from shared_py.bitget.instruments import MarginAccountMode, endpoint_profile_for
 
@@ -30,7 +29,7 @@ _PRIVATE_DETAIL_DE: dict[str, str] = {
 
 
 class BitgetExchangeClient:
-    def __init__(self, settings: "LiveBrokerSettings") -> None:
+    def __init__(self, settings: LiveBrokerSettings) -> None:
         self._settings = settings
 
     def describe(self) -> dict[str, Any]:
@@ -49,13 +48,18 @@ class BitgetExchangeClient:
         }
 
     def private_api_configured(self) -> tuple[bool, str]:
-        if not self._settings.effective_api_key or not self._settings.effective_api_secret:
+        if (
+            not self._settings.effective_api_key
+            or not self._settings.effective_api_secret
+        ):
             return False, "missing_api_key_or_secret"
         if not self._settings.effective_api_passphrase:
             return False, "missing_api_passphrase"
         return True, "ok"
 
-    def probe_exchange(self, private_rest: "BitgetPrivateRestClient | None" = None) -> dict[str, Any]:
+    def probe_exchange(
+        self, private_rest: BitgetPrivateRestClient | None = None
+    ) -> dict[str, Any]:
         public_api_ok = False
         public_detail = "not_checked"
         try:
@@ -84,7 +88,9 @@ class BitgetExchangeClient:
             "market_snapshot": market_snapshot,
         }
         if private_rest is not None:
-            out["credential_profile"] = "demo" if self._settings.bitget_demo_enabled else "live"
+            out["credential_profile"] = (
+                "demo" if self._settings.bitget_demo_enabled else "live"
+            )
             out["credential_isolation_relaxed"] = bool(
                 getattr(self._settings, "bitget_relax_credential_isolation", False)
             )
@@ -133,9 +139,9 @@ class BitgetExchangeClient:
             "index_price": item.get("indexPrice"),
             "bid_price": item.get("bidPr"),
             "ask_price": item.get("askPr"),
-            "request_time": payload.get("requestTime")
-            if isinstance(payload, dict)
-            else None,
+            "request_time": (
+                payload.get("requestTime") if isinstance(payload, dict) else None
+            ),
         }
 
     def get_market_snapshot_for_family(
@@ -190,12 +196,12 @@ class BitgetExchangeClient:
             "index_price": item.get("indexPrice"),
             "bid_price": item.get("bidPr"),
             "ask_price": item.get("askPr"),
-            "request_time": payload.get("requestTime")
-            if isinstance(payload, dict)
-            else None,
+            "request_time": (
+                payload.get("requestTime") if isinstance(payload, dict) else None
+            ),
         }
 
-    def build_order_preview(self, intent: "ExecutionIntentRequest") -> dict[str, Any]:
+    def build_order_preview(self, intent: ExecutionIntentRequest) -> dict[str, Any]:
         side = "buy" if intent.direction == "long" else "sell"
         return {
             "rest_base_url": self._settings.effective_rest_base_url,

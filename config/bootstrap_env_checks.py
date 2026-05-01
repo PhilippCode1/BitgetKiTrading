@@ -123,7 +123,11 @@ def bootstrap_env_consistency_issues(
                 f"({_truth(ds_key)})"
             )
 
-    for name in ("API_GATEWAY_URL", "NEXT_PUBLIC_API_BASE_URL", "NEXT_PUBLIC_WS_BASE_URL"):
+    for name in (
+        "API_GATEWAY_URL",
+        "NEXT_PUBLIC_API_BASE_URL",
+        "NEXT_PUBLIC_WS_BASE_URL",
+    ):
         raw = (env.get(name) or "").strip()
         if not raw:
             continue
@@ -132,7 +136,11 @@ def bootstrap_env_consistency_issues(
             # Container-Deploy: api-gateway/… ist richtig; 127.0.0.1 dagegen wird oben abgelehnt.
             continue
         if url_host_is_docker_compose_service(probe):
-            hint_port = "ws://127.0.0.1:8000" if name == "NEXT_PUBLIC_WS_BASE_URL" else "http://127.0.0.1:8000"
+            hint_port = (
+                "ws://127.0.0.1:8000"
+                if name == "NEXT_PUBLIC_WS_BASE_URL"
+                else "http://127.0.0.1:8000"
+            )
             issues.append(
                 f"  {name}: Docker-Dienstname ({_parse_host(probe)!r}) im Host-/Browser-Kontext — nicht aufloesbar. "
                 f"Vom Host erreichbare URL setzen (lokal typisch {hint_port}). "

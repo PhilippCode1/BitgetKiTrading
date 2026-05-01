@@ -79,7 +79,9 @@ def test_auth_exchange_error_not_retried(monkeypatch: pytest.MonkeyPatch) -> Non
     def dispatch(request: httpx.Request) -> httpx.Response:
         calls.append(str(request.url))
         if "/api/v2/public/time" in str(request.url):
-            return httpx.Response(200, json={"code": "00000", "data": {"serverTime": 1_700_000_000_000}})
+            return httpx.Response(
+                200, json={"code": "00000", "data": {"serverTime": 1_700_000_000_000}}
+            )
         return httpx.Response(200, json={"code": "40003", "msg": "invalid sign"})
 
     transport = httpx.MockTransport(dispatch)

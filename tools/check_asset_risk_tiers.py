@@ -14,14 +14,24 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 DOC_PATH = ROOT / "docs" / "production_10_10" / "asset_risk_tiers_and_order_sizing.md"
-RISK_TIER_LOGIC_PATH = ROOT / "shared" / "python" / "src" / "shared_py" / "asset_risk_tiers.py"
-LEVERAGE_ALLOCATOR_PATH = ROOT / "shared" / "python" / "src" / "shared_py" / "leverage_allocator.py"
+RISK_TIER_LOGIC_PATH = (
+    ROOT / "shared" / "python" / "src" / "shared_py" / "asset_risk_tiers.py"
+)
+LEVERAGE_ALLOCATOR_PATH = (
+    ROOT / "shared" / "python" / "src" / "shared_py" / "leverage_allocator.py"
+)
 RISK_ENGINE_PATH = ROOT / "shared" / "python" / "src" / "shared_py" / "risk_engine.py"
 RISK_REPORT_PATH = ROOT / "reports" / "risk_execution_evidence.json"
-RISK_GOVERNOR_PATH = ROOT / "services" / "signal-engine" / "src" / "signal_engine" / "risk_governor.py"
+RISK_GOVERNOR_PATH = (
+    ROOT / "services" / "signal-engine" / "src" / "signal_engine" / "risk_governor.py"
+)
 MATRIX_PATH = ROOT / "docs" / "production_10_10" / "evidence_matrix.yaml"
-ASSET_GOV_DOC_PATH = ROOT / "docs" / "production_10_10" / "asset_quarantine_and_live_allowlist.md"
-MAIN_CONSOLE_DOC_PATH = ROOT / "docs" / "production_10_10" / "main_console_product_direction.md"
+ASSET_GOV_DOC_PATH = (
+    ROOT / "docs" / "production_10_10" / "asset_quarantine_and_live_allowlist.md"
+)
+MAIN_CONSOLE_DOC_PATH = (
+    ROOT / "docs" / "production_10_10" / "main_console_product_direction.md"
+)
 NO_GO_DOC_PATH = ROOT / "docs" / "production_10_10" / "no_go_rules.md"
 TEST_PATHS = (
     ROOT / "tests" / "tools" / "test_check_asset_risk_tiers.py",
@@ -70,7 +80,9 @@ def _load_yaml(path: Path) -> dict[str, Any]:
 
 def analyze_asset_risk_tiers() -> dict[str, Any]:
     issues: list[CheckerIssue] = []
-    doc_text = DOC_PATH.read_text(encoding="utf-8").lower() if DOC_PATH.is_file() else ""
+    doc_text = (
+        DOC_PATH.read_text(encoding="utf-8").lower() if DOC_PATH.is_file() else ""
+    )
 
     if not DOC_PATH.is_file():
         _issue(
@@ -150,7 +162,10 @@ def analyze_asset_risk_tiers() -> dict[str, Any]:
         )
     if MAIN_CONSOLE_DOC_PATH.is_file():
         main_console_text = MAIN_CONSOLE_DOC_PATH.read_text(encoding="utf-8").lower()
-        if "asset-risk" not in main_console_text and "risk-tier" not in main_console_text:
+        if (
+            "asset-risk" not in main_console_text
+            and "risk-tier" not in main_console_text
+        ):
             _issue(
                 issues,
                 severity="error",
@@ -195,7 +210,9 @@ def analyze_asset_risk_tiers() -> dict[str, Any]:
 
     for phrase in UNSAFE_LIVE_PHRASES:
         if phrase in doc_text:
-            negated = re.search(rf"(nicht|kein)\s+[^.\n]{{0,24}}{re.escape(phrase)}", doc_text)
+            negated = re.search(
+                rf"(nicht|kein)\s+[^.\n]{{0,24}}{re.escape(phrase)}", doc_text
+            )
             if negated:
                 continue
             _issue(
@@ -231,11 +248,14 @@ def render_text(summary: dict[str, Any]) -> str:
             f"risk_tier_logic_exists={summary['risk_tier_logic_exists']} "
             f"risk_governor_exists={summary['risk_governor_exists']}"
         ),
-        "matrix_has_asset_risk_tiers=" + str(summary["matrix_has_asset_risk_tiers"]).lower(),
+        "matrix_has_asset_risk_tiers="
+        + str(summary["matrix_has_asset_risk_tiers"]).lower(),
     ]
     for issue in summary["issues"]:
         where = f" [{issue['path']}]" if issue.get("path") else ""
-        lines.append(f"{issue['severity'].upper()} {issue['code']}: {issue['message']}{where}")
+        lines.append(
+            f"{issue['severity'].upper()} {issue['code']}: {issue['message']}{where}"
+        )
     return "\n".join(lines)
 
 

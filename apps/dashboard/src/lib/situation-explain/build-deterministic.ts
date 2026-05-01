@@ -1,7 +1,5 @@
 import { sortComponentsByBusinessPriority } from "@/lib/diagnostics/diagnostics-view-model";
-import type {
-  SelfHealingSnapshot,
-} from "@/lib/self-healing/schema";
+import type { SelfHealingSnapshot } from "@/lib/self-healing/schema";
 import type { SelfHealingSeverity } from "@/lib/self-healing/schema";
 import type { SelfHealingIncident } from "@/lib/self-healing/schema";
 import type { SelfHealingComponentRow } from "@/lib/self-healing/schema";
@@ -43,7 +41,8 @@ function sortIncidents(
   list: readonly SelfHealingIncident[],
 ): SelfHealingIncident[] {
   return [...list].sort(
-    (a, b) => incidentSeverityRank(b.severity) - incidentSeverityRank(a.severity),
+    (a, b) =>
+      incidentSeverityRank(b.severity) - incidentSeverityRank(a.severity),
   );
 }
 
@@ -131,7 +130,9 @@ export function buildDeterministicSituationExplainFromSnapshot(
   }
   for (const c of comps.slice(0, 4)) {
     if (c.technicalDetail.trim()) {
-      techParts.push(`${t(c.labelKey)}: ${clip(c.technicalDetail.trim(), 160)}`);
+      techParts.push(
+        `${t(c.labelKey)}: ${clip(c.technicalDetail.trim(), 160)}`,
+      );
     } else if (c.suspectedCause.trim()) {
       techParts.push(`${t(c.labelKey)}: ${clip(c.suspectedCause.trim(), 160)}`);
     }
@@ -146,8 +147,7 @@ export function buildDeterministicSituationExplainFromSnapshot(
     ...comps.slice(0, 4).map((c) => c.impact.trim()),
   ].filter(Boolean);
   const why =
-    joinUnique(impactParts, 6) ||
-    t("situationAiExplain.why.fallbackDegraded");
+    joinUnique(impactParts, 6) || t("situationAiExplain.why.fallbackDegraded");
 
   const areas = joinUnique(
     [
@@ -215,8 +215,7 @@ export function buildDeterministicSituationExplainFromProductMessage(
     : t("situationAiExplain.technical.openTechnicalFold");
 
   const userAct = message.userAction.trim();
-  const nextRec =
-    userAct || t("situationAiExplain.next.reloadOrHealth");
+  const nextRec = userAct || t("situationAiExplain.next.reloadOrHealth");
 
   let selfHealVsManual: string;
   if (/retry|erneut|automat/i.test(message.appDoing)) {
@@ -232,9 +231,11 @@ export function buildDeterministicSituationExplainFromProductMessage(
   return {
     problemPlain: `${message.headline}\n${message.summary}`.trim(),
     technicalCause,
-    whyItMatters: message.impact.trim() || t("situationAiExplain.why.dataOrView"),
+    whyItMatters:
+      message.impact.trim() || t("situationAiExplain.why.dataOrView"),
     affectedAreas: message.areaLabel.trim(),
-    appAlreadyTried: message.appDoing.trim() || t("situationAiExplain.appTried.noneStated"),
+    appAlreadyTried:
+      message.appDoing.trim() || t("situationAiExplain.appTried.noneStated"),
     nextRecommended: nextRec,
     selfHealVsManual,
     hasUncertainty: !tech,

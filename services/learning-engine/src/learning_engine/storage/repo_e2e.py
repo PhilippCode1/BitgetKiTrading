@@ -18,7 +18,9 @@ def _j(d: Any) -> str:
     return json.dumps(d, separators=(",", ":"), ensure_ascii=False, default=str)
 
 
-def upsert_decision_record_from_signal(conn: psycopg.Connection[Any], signal_row: dict[str, Any]) -> UUID:
+def upsert_decision_record_from_signal(
+    conn: psycopg.Connection[Any], signal_row: dict[str, Any]
+) -> UUID:
     sid = UUID(str(signal_row["signal_id"]))
     snap = build_e2e_snapshot_from_signal_row(signal_row)
     outcomes = initial_outcomes_json(signal_row)
@@ -199,7 +201,9 @@ def fetch_e2e_records_benchmark_sample(
     return [dict(r) for r in rows]
 
 
-def list_recent_e2e(conn: psycopg.Connection[Any], *, limit: int) -> list[dict[str, Any]]:
+def list_recent_e2e(
+    conn: psycopg.Connection[Any], *, limit: int
+) -> list[dict[str, Any]]:
     rows = conn.execute(
         """
         SELECT record_id, signal_id, schema_version, decision_ts_ms,

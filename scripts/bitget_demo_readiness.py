@@ -33,7 +33,13 @@ SECRET_KEYS = (
     "BITGET_DEMO_API_PASSPHRASE",
 )
 
-SAFE_DEMO_MODES = {"dry-run", "readonly", "private-readonly", "demo-order-dry-run", "demo-order-smoke"}
+SAFE_DEMO_MODES = {
+    "dry-run",
+    "readonly",
+    "private-readonly",
+    "demo-order-dry-run",
+    "demo-order-smoke",
+}
 
 
 def _truthy(value: str | None) -> bool:
@@ -62,13 +68,28 @@ def _safe_float(value: str | None, default: float) -> float:
         return default
 
 
-def _demo_headers(env: dict[str, str], *, method: str, path: str, query: dict[str, str] | None = None, body: dict[str, Any] | None = None) -> dict[str, str]:
+def _demo_headers(
+    env: dict[str, str],
+    *,
+    method: str,
+    path: str,
+    query: dict[str, str] | None = None,
+    body: dict[str, Any] | None = None,
+) -> dict[str, str]:
     query_string = f"?{urlencode(query)}" if query else ""
-    body_text = json.dumps(body or {}, separators=(",", ":"), ensure_ascii=False) if body else ""
+    body_text = (
+        json.dumps(body or {}, separators=(",", ":"), ensure_ascii=False)
+        if body
+        else ""
+    )
     timestamp = str(int(time.time() * 1000))
     prehash = f"{timestamp}{method.upper()}{path}{query_string}{body_text}"
     secret = str(env.get("BITGET_DEMO_API_SECRET") or "")
-    sign = base64.b64encode(hmac.new(secret.encode("utf-8"), prehash.encode("utf-8"), hashlib.sha256).digest()).decode("ascii")
+    sign = base64.b64encode(
+        hmac.new(
+            secret.encode("utf-8"), prehash.encode("utf-8"), hashlib.sha256
+        ).digest()
+    ).decode("ascii")
     return {
         "ACCESS-KEY": str(env.get("BITGET_DEMO_API_KEY") or ""),
         "ACCESS-SIGN": sign,
@@ -80,7 +101,9 @@ def _demo_headers(env: dict[str, str], *, method: str, path: str, query: dict[st
     }
 
 
-def _private_get(client: httpx.Client, env: dict[str, str], path: str, query: dict[str, str]) -> tuple[int, dict[str, Any]]:
+def _private_get(
+    client: httpx.Client, env: dict[str, str], path: str, query: dict[str, str]
+) -> tuple[int, dict[str, Any]]:
     base = str(env.get("BITGET_DEMO_REST_BASE_URL") or "").rstrip("/")
     headers = _demo_headers(env, method="GET", path=path, query=query)
     r = client.get(f"{base}{path}", params=query, headers=headers)
@@ -91,10 +114,16 @@ def _private_get(client: httpx.Client, env: dict[str, str], path: str, query: di
     return r.status_code, data if isinstance(data, dict) else {}
 
 
-def _private_post(client: httpx.Client, env: dict[str, str], path: str, body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
+def _private_post(
+    client: httpx.Client, env: dict[str, str], path: str, body: dict[str, Any]
+) -> tuple[int, dict[str, Any]]:
     base = str(env.get("BITGET_DEMO_REST_BASE_URL") or "").rstrip("/")
     headers = _demo_headers(env, method="POST", path=path, body=body)
-    r = client.post(f"{base}{path}", content=json.dumps(body, separators=(",", ":"), ensure_ascii=False), headers=headers)
+    r = client.post(
+        f"{base}{path}",
+        content=json.dumps(body, separators=(",", ":"), ensure_ascii=False),
+        headers=headers,
+    )
     try:
         data = r.json() if r.content else {}
     except Exception:
@@ -182,9 +211,16 @@ def build_report(
     paptrading = str(env.get("BITGET_DEMO_PAPTRADING_HEADER") or "").strip()
     demo_key_ok = all(
         _present(env.get(k))
-        for k in ("BITGET_DEMO_API_KEY", "BITGET_DEMO_API_SECRET", "BITGET_DEMO_API_PASSPHRASE")
+        for k in (
+            "BITGET_DEMO_API_KEY",
+            "BITGET_DEMO_API_SECRET",
+            "BITGET_DEMO_API_PASSPHRASE",
+        )
     )
-    live_keys_present = any(_present(env.get(k)) for k in ("BITGET_API_KEY", "BITGET_API_SECRET", "BITGET_API_PASSPHRASE"))
+    live_keys_present = any(
+        _present(env.get(k))
+        for k in ("BITGET_API_KEY", "BITGET_API_SECRET", "BITGET_API_PASSPHRASE")
+    )
     demo_base = str(env.get("BITGET_DEMO_REST_BASE_URL") or "").strip().lower()
     live_base = str(env.get("BITGET_API_BASE_URL") or "").strip().lower()
 
@@ -195,7 +231,9 @@ def build_report(
     checks["demo_keys"] = "ok" if demo_key_ok else "missing"
     checks["live_keys_present"] = str(live_keys_present).lower()
     checks["paptrading_header"] = paptrading or "missing"
-    checks["demo_endpoint"] = "ok" if demo_base.startswith("https://") else "missing_or_invalid"
+    checks["demo_endpoint"] = (
+        "ok" if demo_base.startswith("https://") else "missing_or_invalid"
+    )
 
     if exec_mode != "bitget_demo":
         blockers.append("EXECUTION_MODE muss bitget_demo sein.")
@@ -208,15 +246,23 @@ def build_report(
     if not demo_key_ok:
         blockers.append("Demo-Credentials fehlen (BITGET_DEMO_*).")
     if live_keys_present and not _truthy(env.get("BITGET_RELAX_CREDENTIAL_ISOLATION")):
-        blockers.append("Live-Credentials muessen im Demo-Profil leer bleiben oder explizit isoliert sein.")
+        blockers.append(
+            "Live-Credentials muessen im Demo-Profil leer bleiben oder explizit isoliert sein."
+        )
     if not demo_base.startswith("https://"):
         blockers.append("BITGET_DEMO_REST_BASE_URL ist unklar.")
     if live_base and demo_base and live_base == demo_base:
-        warnings.append("Demo- und Live-REST-Basis sind identisch; paptrading Header strikt pruefen.")
+        warnings.append(
+            "Demo- und Live-REST-Basis sind identisch; paptrading Header strikt pruefen."
+        )
 
     base_blockers = list(blockers)
 
-    if mode in ("readonly", "private-readonly", "demo-order-dry-run", "demo-order-smoke") and not base_blockers:
+    if (
+        mode
+        in ("readonly", "private-readonly", "demo-order-dry-run", "demo-order-smoke")
+        and not base_blockers
+    ):
         try:
             with httpx.Client(timeout=10.0) as client:
                 r = client.get(f"{demo_base.rstrip('/')}/api/v2/public/time")
@@ -225,12 +271,22 @@ def build_report(
                     blockers.append("Demo/Public-Serverzeit nicht erreichbar.")
         except Exception as exc:
             checks["server_time_http"] = "error"
-            blockers.append(f"Demo/Public-Serverzeit nicht erreichbar: {type(exc).__name__}")
+            blockers.append(
+                f"Demo/Public-Serverzeit nicht erreichbar: {type(exc).__name__}"
+            )
     else:
         checks["server_time_http"] = "skipped"
 
-    product_type = str(env.get("DEMO_DEFAULT_PRODUCT_TYPE") or env.get("BITGET_PRODUCT_TYPE") or "USDT-FUTURES").strip()
-    margin_coin = str(env.get("DEMO_DEFAULT_MARGIN_COIN") or env.get("BITGET_FUTURES_DEFAULT_MARGIN_COIN") or "USDT").strip()
+    product_type = str(
+        env.get("DEMO_DEFAULT_PRODUCT_TYPE")
+        or env.get("BITGET_PRODUCT_TYPE")
+        or "USDT-FUTURES"
+    ).strip()
+    margin_coin = str(
+        env.get("DEMO_DEFAULT_MARGIN_COIN")
+        or env.get("BITGET_FUTURES_DEFAULT_MARGIN_COIN")
+        or "USDT"
+    ).strip()
     symbol = str(env.get("BITGET_SYMBOL") or "BTCUSDT").strip().upper()
 
     if mode == "private-readonly" and not blockers:
@@ -263,10 +319,18 @@ def build_report(
 
     if mode == "demo-order-smoke":
         if not allow_demo_money:
-            blockers.append("Demo-Order-Smoke braucht Flag --i-understand-this-uses-demo-money.")
+            blockers.append(
+                "Demo-Order-Smoke braucht Flag --i-understand-this-uses-demo-money."
+            )
         if not demo_submit_enable:
-            blockers.append("DEMO_ORDER_SUBMIT_ENABLE muss true sein fuer echte Demo-Order.")
-        allowed_symbols = [s.strip().upper() for s in str(env.get("DEMO_ALLOWED_SYMBOLS") or "").split(",") if s.strip()]
+            blockers.append(
+                "DEMO_ORDER_SUBMIT_ENABLE muss true sein fuer echte Demo-Order."
+            )
+        allowed_symbols = [
+            s.strip().upper()
+            for s in str(env.get("DEMO_ALLOWED_SYMBOLS") or "").split(",")
+            if s.strip()
+        ]
         if symbol not in allowed_symbols:
             blockers.append("BITGET_SYMBOL ist nicht in DEMO_ALLOWED_SYMBOLS.")
         position_mode = str(env.get("DEMO_POSITION_MODE") or "one_way").strip().lower()
@@ -279,7 +343,9 @@ def build_report(
         checks["demo_order_executed"] = "false"
         if not blockers:
             with httpx.Client(timeout=10.0) as client:
-                status, payload = _private_post(client, env, "/api/v2/mix/order/place-order", body)
+                status, payload = _private_post(
+                    client, env, "/api/v2/mix/order/place-order", body
+                )
             checks["demo_order_http"] = str(status)
             order_code = str(payload.get("code") or "missing")
             order_msg = str(payload.get("msg") or "")
@@ -288,7 +354,9 @@ def build_report(
             checks["demo_order_msg"] = order_msg
             checks["demo_order_hint"] = order_hint
             if status >= 400 or order_code not in ("00000", "0"):
-                blockers.append(order_hint or "Echte Demo-Order wurde nicht erfolgreich angenommen.")
+                blockers.append(
+                    order_hint or "Echte Demo-Order wurde nicht erfolgreich angenommen."
+                )
             else:
                 checks["demo_order_executed"] = "true"
 
@@ -311,14 +379,19 @@ def build_report(
                 "BITGET_DEMO_ENABLED": env.get("BITGET_DEMO_ENABLED", ""),
                 "BITGET_API_BASE_URL": env.get("BITGET_API_BASE_URL", ""),
                 "BITGET_DEMO_REST_BASE_URL": env.get("BITGET_DEMO_REST_BASE_URL", ""),
-                "BITGET_DEMO_PAPTRADING_HEADER": env.get("BITGET_DEMO_PAPTRADING_HEADER", ""),
+                "BITGET_DEMO_PAPTRADING_HEADER": env.get(
+                    "BITGET_DEMO_PAPTRADING_HEADER", ""
+                ),
                 **{k: env.get(k, "") for k in SECRET_KEYS},
             }
         ),
     )
     if output_json_path:
         output_json_path.parent.mkdir(parents=True, exist_ok=True)
-        output_json_path.write_text(json.dumps(asdict(report), ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
+        output_json_path.write_text(
+            json.dumps(asdict(report), ensure_ascii=False, indent=2, sort_keys=True),
+            encoding="utf-8",
+        )
     return report
 
 
@@ -353,7 +426,16 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--env-file", type=Path, required=True)
     p.add_argument("--dry-run", action="store_true")
-    p.add_argument("--mode", choices=("readonly", "private-readonly", "demo-order-dry-run", "demo-order-smoke"), default="readonly")
+    p.add_argument(
+        "--mode",
+        choices=(
+            "readonly",
+            "private-readonly",
+            "demo-order-dry-run",
+            "demo-order-smoke",
+        ),
+        default="readonly",
+    )
     p.add_argument("--i-understand-this-uses-demo-money", action="store_true")
     p.add_argument("--output-md", type=Path)
     p.add_argument("--output-json", type=Path)

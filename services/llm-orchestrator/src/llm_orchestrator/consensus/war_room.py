@@ -16,14 +16,6 @@ from llm_orchestrator.agents.base import BaseTradingAgent
 from llm_orchestrator.agents.contract import validate_agent_message
 from llm_orchestrator.agents.registry import AgentRegistry
 from llm_orchestrator.config import LLMOrchestratorSettings
-from llm_orchestrator.paths import load_json_schema
-from llm_orchestrator.validation.schema_validate import validate_against_schema
-from llm_orchestrator.consensus.tsfm_learning_feedback import post_tsfm_war_room_audit
-from llm_orchestrator.knowledge.onchain_macro import (
-    build_readonly_onchain_text,
-    fetch_onchain_macro_context,
-    merge_fetched_onchain_into_context,
-)
 from llm_orchestrator.consensus.specialist_precision import (
     apply_precision_to_weights,
     extract_market_regime,
@@ -32,6 +24,14 @@ from llm_orchestrator.consensus.specialist_precision import (
     precision_0_1_by_agent,
     precision_stake_multiplier,
 )
+from llm_orchestrator.consensus.tsfm_learning_feedback import post_tsfm_war_room_audit
+from llm_orchestrator.knowledge.onchain_macro import (
+    build_readonly_onchain_text,
+    fetch_onchain_macro_context,
+    merge_fetched_onchain_into_context,
+)
+from llm_orchestrator.paths import load_json_schema
+from llm_orchestrator.validation.schema_validate import validate_against_schema
 
 logger = logging.getLogger("llm_orchestrator.consensus.war_room")
 
@@ -226,8 +226,10 @@ class ConsensusOrchestrator:
             raw = await asyncio.wait_for(agent.analyze(context), timeout=timeout_sec)
             validate_agent_message(raw)
             return raw
-        except asyncio.TimeoutError:
-            logger.warning("War-Room: Timeout agent_id=%s after %ss", agent.agent_id, timeout_sec)
+        except TimeoutError:
+            logger.warning(
+                "War-Room: Timeout agent_id=%s after %ss", agent.agent_id, timeout_sec
+            )
             msg = _synthetic_timeout_message(agent.agent_id, "Timeout")
             validate_agent_message(msg)
             return msg
@@ -247,9 +249,9 @@ class ConsensusOrchestrator:
         Führt Macro, Quant, Risk parallel aus; Risk-Veto stoppt Freigabe;
         Divergenz Makro/Quant -> high_uncertainty.
         """
-        me: dict[str, Any] = copy.deepcopy(market_event) if isinstance(
-            market_event, dict
-        ) else {}
+        me: dict[str, Any] = (
+            copy.deepcopy(market_event) if isinstance(market_event, dict) else {}
+        )
         if isinstance(market_event, dict):
             try:
                 fetched = await asyncio.to_thread(
@@ -297,7 +299,9 @@ class ConsensusOrchestrator:
             precision_0_1=prec_by_agent,
             adjusted_weights_unnormalized=w_adj,
         )
-        weights_eff, quant_w_base, quant_w_eff = _consensus_weight_vector(w_adj, quant_m)
+        weights_eff, quant_w_base, quant_w_eff = _consensus_weight_vector(
+            w_adj, quant_m
+        )
         news_shock = _macro_news_shock(macro_m, me)
         tsfm_long = _tsfm_long_exposure(quant_m)
         shock_penalty = bool(news_shock and tsfm_long)
@@ -342,7 +346,11 @@ class ConsensusOrchestrator:
         soc = me.get("social_context") or {}
         if isinstance(soc, dict) and soc:
             try:
-                s_roll = float(soc.get("rolling_sentiment_score") or soc.get("sentiment_score") or 0.0)
+                s_roll = float(
+                    soc.get("rolling_sentiment_score")
+                    or soc.get("sentiment_score")
+                    or 0.0
+                )
                 s_inst = float(soc.get("sentiment_score") or 0.0)
                 p_cos = float(soc.get("panic_cosine") or 0.0)
                 e_cos = float(soc.get("euphoria_cosine") or 0.0)
@@ -354,9 +362,11 @@ class ConsensusOrchestrator:
                 f"(Einbettung vs. Referenz-Zentroiden; kein Order-Signal)."
             )
         otxt = build_readonly_onchain_text(me)
-        octxm = (me.get("onchain_context") or {}) if isinstance(
-            me.get("onchain_context"), dict
-        ) else {}
+        octxm = (
+            (me.get("onchain_context") or {})
+            if isinstance(me.get("onchain_context"), dict)
+            else {}
+        )
         o_press = float(octxm.get("onchain_whale_pressure_0_1") or 0.0)
         if otxt.strip():
             foundation_lines.append(
@@ -373,7 +383,9 @@ class ConsensusOrchestrator:
         for aid, msg in ((MACRO_ID, macro_m), (QUANT_ID, quant_for_score)):
             w = float(weights_eff.get(aid, 0.0))
             c = float(msg.get("confidence_0_1") or 0.0)
-            u = _action_direction_unit(str((msg.get("signal_proposal") or {}).get("action") or ""))
+            u = _action_direction_unit(
+                str((msg.get("signal_proposal") or {}).get("action") or "")
+            )
             weighted += w * c * u
             w_sum += w * max(c, 1e-6)
 
@@ -424,8 +436,14 @@ class ConsensusOrchestrator:
 
         wall_ms = (time.perf_counter() - wall0) * 1000.0
         tsfm_pl = _quant_tsfm_payload(quant_m)
-        synth = tsfm_pl.get("tsfm_semantic_synthesis") if isinstance(tsfm_pl, dict) else None
-        fcand = tsfm_pl.get("tsfm_signal_candidate") if isinstance(tsfm_pl, dict) else None
+        synth = (
+            tsfm_pl.get("tsfm_semantic_synthesis")
+            if isinstance(tsfm_pl, dict)
+            else None
+        )
+        fcand = (
+            tsfm_pl.get("tsfm_signal_candidate") if isinstance(tsfm_pl, dict) else None
+        )
         fsha = None
         if isinstance(fcand, dict):
             fsha = fcand.get("forecast_sha256")
@@ -450,15 +468,19 @@ class ConsensusOrchestrator:
         foundation_model_audit: dict[str, Any] = {
             "market_regime_for_precision": regime_label,
             "specialist_ai_precision_0_1": {
-                a: float(prec_by_agent.get(a) or 0.0) for a in (MACRO_ID, QUANT_ID, RISK_ID)
+                a: float(prec_by_agent.get(a) or 0.0)
+                for a in (MACRO_ID, QUANT_ID, RISK_ID)
             },
             "specialist_stake_multipliers": {
                 a: float(precision_stake_multiplier(float(prec_by_agent.get(a) or 0.0)))
                 for a in (MACRO_ID, QUANT_ID, RISK_ID)
             },
-            "specialist_precision_status": str(precision_block.get("status"))
-            if isinstance(precision_block, dict) and precision_block.get("status") is not None
-            else None,
+            "specialist_precision_status": (
+                str(precision_block.get("status"))
+                if isinstance(precision_block, dict)
+                and precision_block.get("status") is not None
+                else None
+            ),
             "tsfm_primary": bool(tsfm_pl.get("tsfm_primary_source")),
             "tsfm_model_confidence_0_1": tsfm_pl.get("tsfm_model_confidence_0_1"),
             "tsfm_directional_bias": tsfm_pl.get("tsfm_directional_bias"),
@@ -469,17 +491,24 @@ class ConsensusOrchestrator:
             "macro_news_shock": news_shock,
             "social_rolling_sentiment_neg1_1": social_roll,
             "onchain_whale_pressure_0_1": float(
-                (me.get("onchain_context") or {}).get("onchain_whale_pressure_0_1") or 0.0
+                (me.get("onchain_context") or {}).get("onchain_whale_pressure_0_1")
+                or 0.0
             ),
             "shock_penalty_applied": shock_penalty,
-            "quant_confidence_original_0_1": float(quant_m.get("confidence_0_1") or 0.0),
-            "quant_confidence_for_consensus_0_1": float(quant_for_score.get("confidence_0_1") or 0.0),
+            "quant_confidence_original_0_1": float(
+                quant_m.get("confidence_0_1") or 0.0
+            ),
+            "quant_confidence_for_consensus_0_1": float(
+                quant_for_score.get("confidence_0_1") or 0.0
+            ),
             "quant_foundation_path_ms": tsfm_pl.get("quant_foundation_path_ms"),
             "war_room_eval_wall_ms": round(wall_ms, 3),
             "semantic_synthesis": synth if isinstance(synth, dict) else None,
         }
 
-        if self._settings.tsfm_learning_feedback_enabled and bool(tsfm_pl.get("tsfm_primary_source")):
+        if self._settings.tsfm_learning_feedback_enabled and bool(
+            tsfm_pl.get("tsfm_primary_source")
+        ):
             rec_ms = int(time.time() * 1000)
             tsfm_c = tsfm_pl.get("tsfm_model_confidence_0_1")
             horizon = None
@@ -490,18 +519,27 @@ class ConsensusOrchestrator:
                     horizon = None
             audit_body = {
                 "recorded_ts_ms": rec_ms,
-                "symbol": str((quant_m.get("signal_proposal") or {}).get("symbol") or "BTCUSDT"),
+                "symbol": str(
+                    (quant_m.get("signal_proposal") or {}).get("symbol") or "BTCUSDT"
+                ),
                 "forecast_sha256": str(fsha) if fsha else None,
                 "tsfm_direction": str(tsfm_pl.get("tsfm_directional_bias") or ""),
                 "tsfm_confidence_0_1": float(tsfm_c) if tsfm_c is not None else None,
                 "tsfm_horizon_ticks": horizon,
-                "quant_action": str((quant_m.get("signal_proposal") or {}).get("action") or ""),
+                "quant_action": str(
+                    (quant_m.get("signal_proposal") or {}).get("action") or ""
+                ),
                 "quant_confidence_0_1": float(quant_m.get("confidence_0_1") or 0.0),
-                "quant_confidence_effective_0_1": float(quant_for_score.get("confidence_0_1") or 0.0),
-                "macro_action": str((macro_m.get("signal_proposal") or {}).get("action") or ""),
+                "quant_confidence_effective_0_1": float(
+                    quant_for_score.get("confidence_0_1") or 0.0
+                ),
+                "macro_action": str(
+                    (macro_m.get("signal_proposal") or {}).get("action") or ""
+                ),
                 "macro_news_shock": news_shock,
                 "onchain_whale_pressure_0_1": float(
-                    (me.get("onchain_context") or {}).get("onchain_whale_pressure_0_1") or 0.0
+                    (me.get("onchain_context") or {}).get("onchain_whale_pressure_0_1")
+                    or 0.0
                 ),
                 "consensus_action": final_action,
                 "consensus_status": consensus_status,
@@ -509,13 +547,17 @@ class ConsensusOrchestrator:
                 "quant_weight_effective": quant_w_eff,
                 "shock_penalty_applied": shock_penalty,
                 "anchor_price": anchor_f,
-                "quant_foundation_path_ms": float(tsfm_pl["quant_foundation_path_ms"])
-                if tsfm_pl.get("quant_foundation_path_ms") is not None
-                else None,
+                "quant_foundation_path_ms": (
+                    float(tsfm_pl["quant_foundation_path_ms"])
+                    if tsfm_pl.get("quant_foundation_path_ms") is not None
+                    else None
+                ),
                 "war_room_eval_wall_ms": round(wall_ms, 3),
                 "payload": {
                     "foundation_model_audit": foundation_model_audit,
-                    "operator_explain_excerpt_de": (operator_explain.get("explanation_de") or "")[:4000],
+                    "operator_explain_excerpt_de": (
+                        operator_explain.get("explanation_de") or ""
+                    )[:4000],
                 },
             }
             asyncio.create_task(post_tsfm_war_room_audit(self._settings, audit_body))

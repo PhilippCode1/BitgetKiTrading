@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Any
 
 
 @dataclass(frozen=True)
@@ -29,7 +28,10 @@ def assert_single_admin_context(ctx: SingleAdminContext) -> None:
 def is_server_only_secret_name(env_name: str) -> bool:
     n = env_name.strip().upper()
     return bool(
-        re.search(r"(TOKEN|SECRET|PASS|PASSWORD|API_KEY|JWT|AUTHORIZATION|INTERNAL_API_KEY)", n)
+        re.search(
+            r"(TOKEN|SECRET|PASS|PASSWORD|API_KEY|JWT|AUTHORIZATION|INTERNAL_API_KEY)",
+            n,
+        )
         and not n.startswith("NEXT_PUBLIC_")
     )
 
@@ -45,7 +47,9 @@ def redact_auth_error(raw: str) -> str:
     return text[:240]
 
 
-def private_console_access_blocks_sensitive_action(*, has_auth: bool, is_single_admin_ok: bool) -> bool:
+def private_console_access_blocks_sensitive_action(
+    *, has_auth: bool, is_single_admin_ok: bool
+) -> bool:
     """Fail-closed: ohne Auth oder ohne validen Single-Admin-Kontext blockieren."""
     if not has_auth:
         return True
@@ -56,12 +60,14 @@ def private_console_access_blocks_sensitive_action(*, has_auth: bool, is_single_
 
 def contains_forbidden_public_secret_env(env_text: str) -> bool:
     for line in env_text.splitlines():
-        l = line.strip()
-        if not l or l.startswith("#") or "=" not in l:
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or "=" not in stripped:
             continue
-        k, _ = l.split("=", 1)
+        k, _ = stripped.split("=", 1)
         ku = k.strip().upper()
-        if ku.startswith("NEXT_PUBLIC_") and re.search(r"(TOKEN|SECRET|PASS|API_KEY|JWT|AUTHORIZATION)", ku):
+        if ku.startswith("NEXT_PUBLIC_") and re.search(
+            r"(TOKEN|SECRET|PASS|API_KEY|JWT|AUTHORIZATION)", ku
+        ):
             return True
     return False
 

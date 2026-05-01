@@ -17,7 +17,9 @@ def settings(monkeypatch: pytest.MonkeyPatch) -> LearningEngineSettings:
     return LearningEngineSettings()
 
 
-def test_build_replay_manifest_has_contract_and_policy_caps(settings: LearningEngineSettings) -> None:
+def test_build_replay_manifest_has_contract_and_policy_caps(
+    settings: LearningEngineSettings,
+) -> None:
     s = settings
     m = build_replay_manifest(s)
     assert m["determinism_protocol_version"]
@@ -32,7 +34,9 @@ def test_build_replay_manifest_has_contract_and_policy_caps(settings: LearningEn
     assert "risk_require_7x_approval" in caps
 
 
-def test_policy_caps_snapshot_matches_settings_fields(settings: LearningEngineSettings) -> None:
+def test_policy_caps_snapshot_matches_settings_fields(
+    settings: LearningEngineSettings,
+) -> None:
     s = settings
     caps = policy_caps_snapshot(s)
     assert caps["risk_allowed_leverage_min"] == s.risk_allowed_leverage_min
@@ -48,4 +52,7 @@ def test_offline_manifest_extends_replay(settings: LearningEngineSettings) -> No
     assert o["k_folds"] == 3
     assert o["embargo_pct"] == 0.1
     assert o["python_random_seed_applied"] == s.train_random_state
-    assert o["model_contract_version"] == build_replay_manifest(s)["model_contract_version"]
+    assert (
+        o["model_contract_version"]
+        == build_replay_manifest(s)["model_contract_version"]
+    )

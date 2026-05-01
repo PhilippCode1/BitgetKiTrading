@@ -2,9 +2,7 @@ import type { ReactNode } from "react";
 
 import { HelpHint } from "@/components/help/HelpHint";
 import { CustomerGatewayIncidentBanner } from "@/components/layout/CustomerGatewayIncidentBanner";
-import {
-  CustomerPortalProvider,
-} from "@/components/layout/CustomerPortalContext";
+import { CustomerPortalProvider } from "@/components/layout/CustomerPortalContext";
 import { CustomerSidebarNav } from "@/components/layout/CustomerSidebarNav";
 import { LocaleSwitcher } from "@/components/i18n/LocaleSwitcher";
 import type { DashboardPersona } from "@/lib/operator-jwt";

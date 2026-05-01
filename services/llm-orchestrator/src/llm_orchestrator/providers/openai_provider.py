@@ -46,14 +46,8 @@ def _usage_from_responses_api(resp: Any) -> tuple[int, int]:
     u = getattr(resp, "usage", None)
     if u is None:
         return 0, 0
-    pin = (
-        getattr(u, "input_tokens", None)
-        or getattr(u, "prompt_tokens", None)
-    )
-    cout = (
-        getattr(u, "output_tokens", None)
-        or getattr(u, "completion_tokens", None)
-    )
+    pin = getattr(u, "input_tokens", None) or getattr(u, "prompt_tokens", None)
+    cout = getattr(u, "output_tokens", None) or getattr(u, "completion_tokens", None)
     return int(pin or 0), int(cout or 0)
 
 
@@ -65,9 +59,7 @@ def _record_openai_call_metrics(
     comp: Any = None,
     resp: Any = None,
 ) -> None:
-    observe_request_duration(
-        duration_sec, "openai", transport, task_type=task_type
-    )
+    observe_request_duration(duration_sec, "openai", transport, task_type=task_type)
     p, t = 0, 0
     if comp is not None:
         p, t = _usage_from_chat_completion(comp)

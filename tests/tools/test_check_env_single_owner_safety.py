@@ -11,7 +11,6 @@ from tools.check_env_single_owner_safety import (
     validate_env,
 )
 
-
 ROOT = Path(__file__).resolve().parents[2]
 TOOL = ROOT / "tools" / "check_env_single_owner_safety.py"
 
@@ -82,7 +81,10 @@ def test_local_fake_provider_allowed() -> None:
     env = load_dotenv(ROOT / ".env.local.example")
     issues = validate_env(env, profile="local", template=True)
     assert not [issue for issue in issues if issue.severity == STATUS_ERROR]
-    assert any(issue.code == "local_not_production_ready" and issue.severity == STATUS_WARNING for issue in issues)
+    assert any(
+        issue.code == "local_not_production_ready" and issue.severity == STATUS_WARNING
+        for issue in issues
+    )
 
 
 def test_payment_billing_not_required_for_private_scope() -> None:

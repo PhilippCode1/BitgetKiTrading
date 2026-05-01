@@ -54,7 +54,9 @@ def test_staging_parity_referenced_repo_files_exist() -> None:
             continue
         seen.add(rel)
         path = ROOT / rel
-        assert path.is_file(), f"Staging-Paritaets-Doku verweist auf fehlende Datei: {rel}"
+        assert (
+            path.is_file()
+        ), f"Staging-Paritaets-Doku verweist auf fehlende Datei: {rel}"
 
 
 def test_bootstrap_env_consistency_issues_callable() -> None:

@@ -15,7 +15,9 @@ from live_broker.orders.passive_order_manager import (
 
 
 def test_passive_maker_trace_enabled_dict_explicit() -> None:
-    assert passive_maker_trace_enabled(settings_default=False, trace={"predatory_passive_maker": {"enabled": True}})
+    assert passive_maker_trace_enabled(
+        settings_default=False, trace={"predatory_passive_maker": {"enabled": True}}
+    )
     assert not passive_maker_trace_enabled(
         settings_default=True, trace={"predatory_passive_maker": {"enabled": False}}
     )
@@ -65,4 +67,7 @@ def test_chase_slippage_budget() -> None:
     ],
 )
 def test_orderflow_wall(side: str, imb: float, thr: float, expect_wall: bool) -> None:
-    assert orderflow_wall_against_side(side=side, orderflow_imbalance=imb, threshold=thr) == expect_wall
+    assert (
+        orderflow_wall_against_side(side=side, orderflow_imbalance=imb, threshold=thr)
+        == expect_wall
+    )

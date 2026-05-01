@@ -18,5 +18,7 @@ export function ProductMessageSituationExplainSlot({
 }: Props) {
   if (!enabled) return null;
   if (severityRank(message.severity) < severityRank("hint")) return null;
-  return <SituationAiExplainPanel variant="product_message" message={message} />;
+  return (
+    <SituationAiExplainPanel variant="product_message" message={message} />
+  );
 }

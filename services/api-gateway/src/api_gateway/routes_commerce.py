@@ -8,11 +8,15 @@ from typing import Annotated, Any
 
 import psycopg
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
-from pydantic import BaseModel, Field
 from psycopg.rows import dict_row
+from pydantic import BaseModel, Field
 
 from api_gateway.audit import record_gateway_audit_line
-from api_gateway.auth import GatewayAuthContext, require_billing_read, require_sensitive_auth
+from api_gateway.auth import (
+    GatewayAuthContext,
+    require_billing_read,
+    require_sensitive_auth,
+)
 from api_gateway.billing.daily_run import run_daily_billing, run_daily_billing_cycle
 from api_gateway.commerce.pricing import llm_tokens_line_total_usd
 from api_gateway.config import get_gateway_settings
@@ -74,7 +78,10 @@ def list_plans(
     with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
         items = fetch_plan_definitions(conn)
     record_gateway_audit_line(request, auth, "commerce_plans_list", extra={})
-    return {"items": items, "transparency_note_de": "Preise = List-Referenz; keine Laufzeit-Multiplikatoren."}
+    return {
+        "items": items,
+        "transparency_note_de": "Preise = List-Referenz; keine Laufzeit-Multiplikatoren.",
+    }
 
 
 @router.get("/usage/summary")
@@ -171,7 +178,9 @@ def invoice_preview(
 def internal_record_usage(
     request: Request,
     body: InternalUsageBody,
-    x_commercial_meter_secret: Annotated[str | None, Header(alias=_HEADER_METER)] = None,
+    x_commercial_meter_secret: Annotated[
+        str | None, Header(alias=_HEADER_METER)
+    ] = None,
 ) -> dict[str, Any]:
     settings = get_gateway_settings()
     if not settings.commercial_enabled:
@@ -195,7 +204,9 @@ def internal_record_usage(
         if body.event_type == "llm_tokens":
             raw_p = plan.get("llm_per_1k_tokens_list_usd")
             if raw_p is None:
-                raise HTTPException(status_code=400, detail="plan ohne Token-Listenpreis")
+                raise HTTPException(
+                    status_code=400, detail="plan ohne Token-Listenpreis"
+                )
             unit_price = Decimal(str(raw_p))
             line_total = llm_tokens_line_total_usd(
                 token_count=body.quantity, usd_per_1k_tokens=unit_price
@@ -258,7 +269,9 @@ def internal_record_usage(
 def internal_billing_run_daily(
     request: Request,
     body: InternalBillingRunBody,
-    x_commercial_meter_secret: Annotated[str | None, Header(alias=_HEADER_METER)] = None,
+    x_commercial_meter_secret: Annotated[
+        str | None, Header(alias=_HEADER_METER)
+    ] = None,
 ) -> dict[str, Any]:
     settings = get_gateway_settings()
     if not settings.commercial_enabled:
@@ -309,7 +322,9 @@ def internal_billing_run_daily(
 def internal_billing_run_daily_subscription(
     request: Request,
     body: InternalBillingRunBody,
-    x_commercial_meter_secret: Annotated[str | None, Header(alias=_HEADER_METER)] = None,
+    x_commercial_meter_secret: Annotated[
+        str | None, Header(alias=_HEADER_METER)
+    ] = None,
 ) -> dict[str, Any]:
     settings = get_gateway_settings()
     if not settings.commercial_enabled:

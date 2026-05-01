@@ -36,7 +36,9 @@ class _FakeRepo:
     def get_exit_plan_by_root_order(self, root_internal_order_id: str) -> dict | None:
         return self.exit_plans.get(str(root_internal_order_id))
 
-    def list_active_exit_plans(self, *, limit: int = 200, symbol: str | None = None) -> list[dict]:
+    def list_active_exit_plans(
+        self, *, limit: int = 200, symbol: str | None = None
+    ) -> list[dict]:
         items = [
             value
             for value in self.exit_plans.values()
@@ -58,7 +60,11 @@ class _FakeRepo:
         symbol: str | None = None,
         limit: int = 20,
     ) -> list[dict]:
-        items = [item for item in self.exchange_snapshots if item.get("snapshot_type") == snapshot_type]
+        items = [
+            item
+            for item in self.exchange_snapshots
+            if item.get("snapshot_type") == snapshot_type
+        ]
         if symbol is not None:
             items = [item for item in items if item.get("symbol") == symbol]
         return items[:limit]
@@ -71,7 +77,9 @@ class _FakeOrderService:
     def trade_root_internal_order_id(self, internal_order_id: str) -> str:
         return str(internal_order_id)
 
-    def create_reduce_only_order(self, request, *, priority: bool, allow_safety_bypass: bool) -> dict:
+    def create_reduce_only_order(
+        self, request, *, priority: bool, allow_safety_bypass: bool
+    ) -> dict:
         self.submitted.append(
             {
                 **request.model_dump(),
@@ -139,7 +147,7 @@ def test_preview_order_exit_plan_blocks_leverage_conflict(
             internal_order_id=str(uuid4()),
             request=OrderCreateRequest(
                 source_service="manual",
-                    symbol="BTCUSDT",
+                symbol="BTCUSDT",
                 side="buy",
                 trade_side="open",
                 order_type="limit",
@@ -171,26 +179,38 @@ def test_run_once_submits_reduce_only_partials_and_updates_plan(
         internal_order_id=root_order_id,
         request=OrderCreateRequest(
             source_service="manual",
-                symbol="BTCUSDT",
+            symbol="BTCUSDT",
             side="buy",
             trade_side="open",
             order_type="limit",
             size="1",
             price="100",
-                preset_stop_loss_price="99.8",
-                preset_stop_surplus_price="103",
-            trace={"leverage": 7, "allowed_leverage": 7, "signal_id": "sig-1", "timeframe": "5m"},
+            preset_stop_loss_price="99.8",
+            preset_stop_surplus_price="103",
+            trace={
+                "leverage": 7,
+                "allowed_leverage": 7,
+                "signal_id": "sig-1",
+                "timeframe": "5m",
+            },
         ),
     )
     assert preview is not None
-    service.persist_order_exit_plan(order={"internal_order_id": root_order_id}, preview=preview)
+    service.persist_order_exit_plan(
+        order={"internal_order_id": root_order_id}, preview=preview
+    )
     repo.exchange_snapshots.append(
         {
             "snapshot_type": "positions",
             "symbol": "BTCUSDT",
             "raw_data": {
                 "items": [
-                    {"instId": "BTCUSDT", "holdSide": "long", "total": "1", "openPriceAvg": "100"}
+                    {
+                        "instId": "BTCUSDT",
+                        "holdSide": "long",
+                        "total": "1",
+                        "openPriceAvg": "100",
+                    }
                 ]
             },
         }
@@ -214,7 +234,9 @@ def test_run_once_submits_reduce_only_partials_and_updates_plan(
     assert plan["tp_plan_json"]["execution_state"]["hit_tp_indices"] == [0, 1]
     assert plan["tp_plan_json"]["break_even"]["applied"] is True
     assert plan["tp_plan_json"]["runner"]["armed"] is True
-    assert {item["trace"]["reason"] for item in order_service.submitted} == {"take_profit_hit"}
+    assert {item["trace"]["reason"] for item in order_service.submitted} == {
+        "take_profit_hit"
+    }
 
 
 def test_run_once_submits_runner_trail_close_and_marks_plan_closing(
@@ -234,14 +256,14 @@ def test_run_once_submits_runner_trail_close_and_marks_plan_closing(
         internal_order_id=root_order_id,
         request=OrderCreateRequest(
             source_service="manual",
-                symbol="BTCUSDT",
+            symbol="BTCUSDT",
             side="buy",
             trade_side="open",
             order_type="limit",
             size="1",
             price="100",
-                preset_stop_loss_price="99.8",
-                preset_stop_surplus_price="103",
+            preset_stop_loss_price="99.8",
+            preset_stop_surplus_price="103",
             trace={"leverage": 7, "allowed_leverage": 7},
         ),
     )
@@ -260,7 +282,12 @@ def test_run_once_submits_runner_trail_close_and_marks_plan_closing(
             "symbol": "BTCUSDT",
             "raw_data": {
                 "items": [
-                    {"instId": "BTCUSDT", "holdSide": "long", "total": "0.4", "openPriceAvg": "100"}
+                    {
+                        "instId": "BTCUSDT",
+                        "holdSide": "long",
+                        "total": "0.4",
+                        "openPriceAvg": "100",
+                    }
                 ]
             },
         }

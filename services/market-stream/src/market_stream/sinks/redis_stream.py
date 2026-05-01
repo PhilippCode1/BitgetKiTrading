@@ -7,7 +7,10 @@ import time
 
 from redis.asyncio import Redis
 from redis.exceptions import RedisError
-from shared_py.observability.metrics import inc_pipeline_event_drop, set_pipeline_backpressure_queue_size
+from shared_py.observability.metrics import (
+    inc_pipeline_event_drop,
+    set_pipeline_backpressure_queue_size,
+)
 
 from market_stream.normalization.models import NormalizedEvent
 
@@ -77,7 +80,9 @@ class RedisStreamSink:
             "channel": event.channel or "",
             "inst_id": event.inst_id or "",
             "action": event.action,
-            "exchange_ts_ms": "" if event.exchange_ts_ms is None else str(event.exchange_ts_ms),
+            "exchange_ts_ms": (
+                "" if event.exchange_ts_ms is None else str(event.exchange_ts_ms)
+            ),
             "ingest_ts_ms": str(event.ingest_ts_ms),
             "payload": json.dumps(event.payload, separators=(",", ":"), sort_keys=True),
         }

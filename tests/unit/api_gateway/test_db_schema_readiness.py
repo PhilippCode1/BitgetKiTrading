@@ -28,7 +28,9 @@ def test_list_expected_migration_filenames_respects_sort(tmp_path: Path) -> None
     (d / "020_second.sql").write_text("SELECT 1;", encoding="utf-8")
     (d / "010_first.sql").write_text("SELECT 1;", encoding="utf-8")
     (d / "readme.txt").write_text("x", encoding="utf-8")
-    with patch.dict("os.environ", {"BITGET_POSTGRES_MIGRATIONS_DIR": str(d)}, clear=False):
+    with patch.dict(
+        "os.environ", {"BITGET_POSTGRES_MIGRATIONS_DIR": str(d)}, clear=False
+    ):
         names = list_expected_migration_filenames()
     assert names == ["010_first.sql", "020_second.sql"]
 
@@ -37,7 +39,14 @@ def test_list_expected_migration_filenames_respects_sort(tmp_path: Path) -> None
     ("payload", "exp_ok"),
     [
         ({"status": "ok"}, True),
-        ({"status": "error", "missing_tables": ["app.x"], "pending_migrations_preview": []}, False),
+        (
+            {
+                "status": "error",
+                "missing_tables": ["app.x"],
+                "pending_migrations_preview": [],
+            },
+            False,
+        ),
         ({"status": "error", "pending_migrations": ["010_a.sql"]}, False),
     ],
 )

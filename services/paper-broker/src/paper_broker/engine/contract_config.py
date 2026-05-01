@@ -243,10 +243,7 @@ class ContractConfigProvider:
             size_multiplier=_dec(data.get("sizeMultiplier"), "1"),
             fund_interval_hours=int(
                 Decimal(
-                    str(
-                        data.get("fundInterval")
-                        or ("8" if mf0 == "futures" else "0")
-                    )
+                    str(data.get("fundInterval") or ("8" if mf0 == "futures" else "0"))
                 )
             ),
             max_lever=int(Decimal(str(data.get("maxLever") or default_max_lever))),

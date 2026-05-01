@@ -24,7 +24,9 @@ def test_redact_nested_mapping_strips_nested_secrets_and_pii() -> None:
     assert out["nested"]["ok"] == 1
 
 
-def test_build_live_broker_forensic_snapshot_includes_specialists_and_stop_budget() -> None:
+def test_build_live_broker_forensic_snapshot_includes_specialists_and_stop_budget() -> (
+    None
+):
     signal_payload = {
         "trade_action": "do_not_trade",
         "decision_state": "downgraded",
@@ -65,11 +67,17 @@ def test_build_live_broker_forensic_snapshot_includes_specialists_and_stop_budge
             "specialists": {
                 "base_model": {
                     "specialist_id": "base",
-                    "proposal": {"proposed_trade_action": "allow_trade", "confidence_0_1": 0.7},
+                    "proposal": {
+                        "proposed_trade_action": "allow_trade",
+                        "confidence_0_1": 0.7,
+                    },
                 },
                 "playbook_specialist": {
                     "specialist_id": "playbook:pb_trend",
-                    "proposal": {"proposed_trade_action": "do_not_trade", "reasons": ["anti_pattern"]},
+                    "proposal": {
+                        "proposed_trade_action": "do_not_trade",
+                        "reasons": ["anti_pattern"],
+                    },
                 },
                 "adversary_check": {
                     "dissent_score_0_1": 0.51,
@@ -103,15 +111,34 @@ def test_build_live_broker_forensic_snapshot_includes_specialists_and_stop_budge
     }
     snapshot = build_live_broker_forensic_snapshot(
         signal_payload=signal_payload,
-        risk_decision={"trade_action": "do_not_trade", "decision_reason": "shared_risk_blocked"},
-        shadow_live_report={"shadow_live_divergence": {"match_ok": False, "hard_violations": ["shadow_gap"]}},
-        trace={"catalog_instrument": {"market_family": "futures", "symbol": "BTCUSDT", "product_type": "USDT-FUTURES"}},
+        risk_decision={
+            "trade_action": "do_not_trade",
+            "decision_reason": "shared_risk_blocked",
+        },
+        shadow_live_report={
+            "shadow_live_divergence": {
+                "match_ok": False,
+                "hard_violations": ["shadow_gap"],
+            }
+        },
+        trace={
+            "catalog_instrument": {
+                "market_family": "futures",
+                "symbol": "BTCUSDT",
+                "product_type": "USDT-FUTURES",
+            }
+        },
     )
     assert snapshot["schema_version"] == 2
     assert snapshot["router"]["router_id"] == "deterministic_specialist_router_v1"
-    assert snapshot["specialists"]["playbook_specialist"]["specialist_id"] == "playbook:pb_trend"
+    assert (
+        snapshot["specialists"]["playbook_specialist"]["specialist_id"]
+        == "playbook:pb_trend"
+    )
     assert snapshot["stop_budget"]["outcome"] == "blocked"
-    assert snapshot["decision_control_flow"]["no_trade_path"]["phase_block_drivers_head"] == [
+    assert snapshot["decision_control_flow"]["no_trade_path"][
+        "phase_block_drivers_head"
+    ] == [
         "stop_budget",
         "adversary_veto",
     ]

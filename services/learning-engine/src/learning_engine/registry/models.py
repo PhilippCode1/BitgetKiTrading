@@ -57,7 +57,13 @@ class StrategyScope(BaseModel):
     supports_leverage: bool = False
     timeframes: list[str] = Field(default_factory=list)
 
-    @field_validator("venue", "canonical_instrument_id", "category_key", "metadata_source", mode="before")
+    @field_validator(
+        "venue",
+        "canonical_instrument_id",
+        "category_key",
+        "metadata_source",
+        mode="before",
+    )
     @classmethod
     def _text(cls, v: Any) -> Any:
         if v is None:
@@ -87,7 +93,9 @@ class StrategyScope(BaseModel):
         s = str(v).strip().upper()
         return s or None
 
-    @field_validator("margin_coin", "base_coin", "quote_coin", "settle_coin", mode="before")
+    @field_validator(
+        "margin_coin", "base_coin", "quote_coin", "settle_coin", mode="before"
+    )
     @classmethod
     def _coin(cls, v: Any) -> Any:
         if v is None:
@@ -107,7 +115,9 @@ class StrategyScope(BaseModel):
         if not self.symbol:
             cid = str(self.canonical_instrument_id or "").strip()
             if cid and ":" in cid:
-                object.__setattr__(self, "symbol", cid.rsplit(":", 1)[-1].strip().upper())
+                object.__setattr__(
+                    self, "symbol", cid.rsplit(":", 1)[-1].strip().upper()
+                )
         if self.market_family is None:
             if self.product_type:
                 object.__setattr__(self, "market_family", "futures")
@@ -187,7 +197,9 @@ class StrategyScope(BaseModel):
             base_coin=self.base_coin,
             quote_coin=self.quote_coin,
             settle_coin=self.settle_coin,
-            public_ws_inst_type=self.product_type if self.market_family == "futures" else "SPOT",
+            public_ws_inst_type=(
+                self.product_type if self.market_family == "futures" else "SPOT"
+            ),
             private_ws_inst_type=(
                 self.product_type
                 if self.market_family == "futures"

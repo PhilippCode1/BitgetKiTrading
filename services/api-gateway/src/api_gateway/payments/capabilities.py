@@ -22,7 +22,11 @@ def build_payment_capabilities(settings: GatewaySettings) -> dict[str, Any]:
         subscription_recurring_eligible: bool | None = None,
         requires_active_checkout: bool = True,
     ) -> dict[str, Any]:
-        eff = (enabled and master) if requires_active_checkout else (enabled and settings.commercial_enabled)
+        eff = (
+            (enabled and master)
+            if requires_active_checkout
+            else (enabled and settings.commercial_enabled)
+        )
         m: dict[str, Any] = {
             "id": mid,
             "label": label_en,
@@ -70,7 +74,11 @@ def build_payment_capabilities(settings: GatewaySettings) -> dict[str, Any]:
             "Card",
             enabled=stripe_ok or mock_ok,
             providers=[p for p, ok in (("stripe", stripe_ok), ("mock", mock_ok)) if ok],
-            disabled_reason=None if (stripe_ok or mock_ok) else "Enable PAYMENT_STRIPE_ENABLED or PAYMENT_MOCK (sandbox)",
+            disabled_reason=(
+                None
+                if (stripe_ok or mock_ok)
+                else "Enable PAYMENT_STRIPE_ENABLED or PAYMENT_MOCK (sandbox)"
+            ),
             usage_constraint="wallet_topup",
             subscription_recurring_eligible=True,
         ),
@@ -95,7 +103,8 @@ def build_payment_capabilities(settings: GatewaySettings) -> dict[str, Any]:
         method(
             "paypal",
             "PayPal (via Stripe Link)",
-            enabled=stripe_ok and "link" in settings.payment_stripe_method_types.lower(),
+            enabled=stripe_ok
+            and "link" in settings.payment_stripe_method_types.lower(),
             providers=["stripe"],
             disabled_reason="Add `link` to PAYMENT_STRIPE_METHOD_TYPES where Stripe supports PayPal",
             usage_constraint="wallet_topup",
@@ -114,7 +123,8 @@ def build_payment_capabilities(settings: GatewaySettings) -> dict[str, Any]:
         method(
             "alipay",
             "Alipay",
-            enabled=stripe_ok and "alipay" in settings.payment_stripe_method_types.lower(),
+            enabled=stripe_ok
+            and "alipay" in settings.payment_stripe_method_types.lower(),
             providers=["stripe"],
             disabled_reason="Add `alipay` to PAYMENT_STRIPE_METHOD_TYPES (region-dependent)",
             usage_constraint="wallet_topup_only",
@@ -123,7 +133,8 @@ def build_payment_capabilities(settings: GatewaySettings) -> dict[str, Any]:
         method(
             "wechat_pay",
             "WeChat Pay",
-            enabled=stripe_ok and "wechat_pay" in settings.payment_stripe_method_types.lower(),
+            enabled=stripe_ok
+            and "wechat_pay" in settings.payment_stripe_method_types.lower(),
             providers=["stripe"],
             disabled_reason="Add `wechat_pay` to PAYMENT_STRIPE_METHOD_TYPES (region-dependent)",
             usage_constraint="wallet_topup_only",

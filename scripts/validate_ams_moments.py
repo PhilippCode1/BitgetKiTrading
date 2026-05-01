@@ -38,7 +38,11 @@ def _post_json(url: str, body: dict[str, Any]) -> dict[str, Any]:
 
 def main() -> int:
     p = argparse.ArgumentParser(description="AMS Momenten-Validierung")
-    p.add_argument("--base-url", default="http://127.0.0.1:8145", help="adversarial-engine Basis-URL")
+    p.add_argument(
+        "--base-url",
+        default="http://127.0.0.1:8145",
+        help="adversarial-engine Basis-URL",
+    )
     p.add_argument("--toxicity", type=float, default=0.88)
     p.add_argument("--seq-len", type=int, default=256)
     args = p.parse_args()

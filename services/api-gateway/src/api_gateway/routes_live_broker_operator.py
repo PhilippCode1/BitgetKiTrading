@@ -9,7 +9,10 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from api_gateway.auth import GatewayAuthContext
 from api_gateway.config import get_gateway_settings
-from api_gateway.live_broker_forward import LiveBrokerForwardHttpError, post_live_broker_json
+from api_gateway.live_broker_forward import (
+    LiveBrokerForwardHttpError,
+    post_live_broker_json,
+)
 from api_gateway.mutation_deps import LiveBrokerOperatorReleaseGuard
 
 router = APIRouter(prefix="/v1/live-broker", tags=["live-broker-operator"])
@@ -20,7 +23,9 @@ _operator_release_guard = LiveBrokerOperatorReleaseGuard()
 @router.post("/executions/{execution_id}/operator-release")
 def live_broker_operator_release(
     execution_id: UUID,
-    _ctx: Annotated[tuple[GatewayAuthContext, dict[str, Any]], Depends(_operator_release_guard)],
+    _ctx: Annotated[
+        tuple[GatewayAuthContext, dict[str, Any]], Depends(_operator_release_guard)
+    ],
 ) -> Any:
     auth, body = _ctx
     eff: dict[str, Any] = dict(body) if isinstance(body, dict) else {}

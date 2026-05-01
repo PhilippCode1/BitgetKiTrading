@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from decimal import Decimal, ROUND_DOWN
+from decimal import ROUND_DOWN, Decimal
 from typing import Literal
 
 ExecutionMode = Literal["paper", "shadow", "live"]
@@ -50,7 +50,12 @@ class OrderSizingResult:
 
 def _tier_blocks_size(risk_tier: str | None) -> bool:
     normalized = (risk_tier or "").upper()
-    return normalized in {"", "RISK_TIER_4_SHADOW_ONLY", "RISK_TIER_5_BANNED_OR_DELISTED", "RISK_TIER_0_BLOCKED"}
+    return normalized in {
+        "",
+        "RISK_TIER_4_SHADOW_ONLY",
+        "RISK_TIER_5_BANNED_OR_DELISTED",
+        "RISK_TIER_0_BLOCKED",
+    }
 
 
 def _to_step_down(value: float, step: float) -> float:
@@ -85,12 +90,20 @@ def compute_max_notional_for_asset(data: OrderSizingInput) -> float:
     if data.account_equity is None or data.available_margin is None:
         return 0.0
     budget_by_margin = max(0.0, data.available_margin * data.max_account_margin_usage)
-    budget_by_equity = max(0.0, data.account_equity * data.max_position_risk_pct * max(1, data.leverage_cap))
-    remaining = max(0.0, budget_by_margin - data.open_positions_notional - data.pending_orders_notional)
+    budget_by_equity = max(
+        0.0,
+        data.account_equity * data.max_position_risk_pct * max(1, data.leverage_cap),
+    )
+    remaining = max(
+        0.0,
+        budget_by_margin - data.open_positions_notional - data.pending_orders_notional,
+    )
     return min(budget_by_equity, remaining)
 
 
-def apply_asset_tier_sizing_caps(*, risk_tier: str | None, max_notional: float) -> tuple[float, list[str]]:
+def apply_asset_tier_sizing_caps(
+    *, risk_tier: str | None, max_notional: float
+) -> tuple[float, list[str]]:
     reduced: list[str] = []
     normalized = (risk_tier or "").upper()
     tier_cap = {
@@ -107,7 +120,9 @@ def apply_asset_tier_sizing_caps(*, risk_tier: str | None, max_notional: float) 
     return out, reduced
 
 
-def apply_liquidity_sizing_cap(*, liquidity_tier: str | None, max_notional: float) -> tuple[float, list[str]]:
+def apply_liquidity_sizing_cap(
+    *, liquidity_tier: str | None, max_notional: float
+) -> tuple[float, list[str]]:
     reduced: list[str] = []
     normalized = (liquidity_tier or "").upper()
     liquidity_cap = {
@@ -135,9 +150,13 @@ def compute_order_qty_from_risk(data: OrderSizingInput) -> OrderSizingResult:
         block_reasons.append("risk_tier_blockiert_groesse")
 
     max_notional = compute_max_notional_for_asset(data)
-    max_notional, tier_reduced = apply_asset_tier_sizing_caps(risk_tier=data.risk_tier, max_notional=max_notional)
+    max_notional, tier_reduced = apply_asset_tier_sizing_caps(
+        risk_tier=data.risk_tier, max_notional=max_notional
+    )
     reduced_reasons.extend(tier_reduced)
-    max_notional, liq_reduced = apply_liquidity_sizing_cap(liquidity_tier=data.liquidity_tier, max_notional=max_notional)
+    max_notional, liq_reduced = apply_liquidity_sizing_cap(
+        liquidity_tier=data.liquidity_tier, max_notional=max_notional
+    )
     reduced_reasons.extend(liq_reduced)
 
     if data.mode == "live":
@@ -162,7 +181,9 @@ def compute_order_qty_from_risk(data: OrderSizingInput) -> OrderSizingResult:
 
     margin_usage_pct = 0.0
     if data.available_margin and data.available_margin > 0:
-        margin_usage_pct = ((data.open_positions_notional + data.pending_orders_notional + qty) / data.available_margin)
+        margin_usage_pct = (
+            data.open_positions_notional + data.pending_orders_notional + qty
+        ) / data.available_margin
     if margin_usage_pct > data.max_account_margin_usage:
         block_reasons.append("margin_usage_ueber_limit")
 

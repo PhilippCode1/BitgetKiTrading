@@ -1,4 +1,7 @@
-import { getGatewayFetchErrorInfo, gatewayFetchErrorMessage } from "@/lib/gateway-fetch-errors";
+import {
+  getGatewayFetchErrorInfo,
+  gatewayFetchErrorMessage,
+} from "@/lib/gateway-fetch-errors";
 
 describe("gateway-fetch-errors", () => {
   it("getGatewayFetchErrorInfo liefert kind + technische Zeile", () => {

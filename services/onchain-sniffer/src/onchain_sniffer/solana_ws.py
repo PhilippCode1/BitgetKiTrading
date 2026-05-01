@@ -17,7 +17,9 @@ logger = logging.getLogger("onchain_sniffer.solana_ws")
 
 async def run_solana_listener(settings: OnchainSnifferSettings, _bus) -> None:
     if not settings.solana_ws_url or not settings.solana_listener_enabled:
-        logger.info("Solana-Sniffer aus (SOLANA_WS_URL / ONCHAIN_SOLANA_LISTENER_ENABLED)")
+        logger.info(
+            "Solana-Sniffer aus (SOLANA_WS_URL / ONCHAIN_SOLANA_LISTENER_ENABLED)"
+        )
         return
     while True:
         logger.warning(

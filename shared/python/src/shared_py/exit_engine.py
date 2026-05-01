@@ -65,7 +65,9 @@ def merge_plan_override(
     stop_plan = deepcopy(base_stop)
     tp_plan = deepcopy(base_tp)
     if override_stop:
-        stop_plan.update({key: value for key, value in override_stop.items() if value is not None})
+        stop_plan.update(
+            {key: value for key, value in override_stop.items() if value is not None}
+        )
     if override_tp:
         for key, value in override_tp.items():
             if value is None:
@@ -77,7 +79,10 @@ def merge_plan_override(
                 tp_plan["runner"] = {**(tp_plan.get("runner") or {}), **deepcopy(value)}
                 continue
             if key == "break_even" and isinstance(value, dict):
-                tp_plan["break_even"] = {**(tp_plan.get("break_even") or {}), **deepcopy(value)}
+                tp_plan["break_even"] = {
+                    **(tp_plan.get("break_even") or {}),
+                    **deepcopy(value),
+                }
                 continue
             tp_plan[key] = value
     return stop_plan, tp_plan
@@ -100,7 +105,9 @@ def _ensure_execution_defaults(plan: dict[str, Any]) -> dict[str, Any]:
     execution.setdefault("reduce_only", True)
     execution.setdefault("order_type", "market")
     execution.setdefault("timing", "immediate")
-    execution.setdefault("cancel_replace_behavior", "cancel_existing_reduce_only_then_submit")
+    execution.setdefault(
+        "cancel_replace_behavior", "cancel_existing_reduce_only_then_submit"
+    )
     execution.setdefault("estimated_fee_bps", "0")
     execution.setdefault("estimated_slippage_bps", "0")
     plan["execution"] = execution
@@ -313,7 +320,9 @@ def build_exit_intent_document(
     }
 
 
-def append_exit_execution_log(plan_record: dict[str, Any], entry: dict[str, Any]) -> dict[str, Any]:
+def append_exit_execution_log(
+    plan_record: dict[str, Any], entry: dict[str, Any]
+) -> dict[str, Any]:
     """Haengt eine tatsaechliche Exit-Ausfuehrung an context_json.execution_log_json an."""
     ctx = dict(plan_record.get("context_json") or {})
     log = list(ctx.get("execution_log_json") or [])
@@ -459,9 +468,15 @@ def build_live_exit_plans(
     tp_plan = None
     if take_profit is not None and take_profit > 0 and entry_price > 0:
         final_distance = abs(take_profit - entry_price)
-        trail_offset = (final_distance / Decimal("3")) * runner_trail_mult if final_distance > 0 else Decimal("0")
+        trail_offset = (
+            (final_distance / Decimal("3")) * runner_trail_mult
+            if final_distance > 0
+            else Decimal("0")
+        )
         retrace = runner_trail_retrace_bps
-        r_mode = "callback_bps" if retrace is not None and retrace > 0 else "fixed_offset"
+        r_mode = (
+            "callback_bps" if retrace is not None and retrace > 0 else "fixed_offset"
+        )
         arm_idx = int(runner_arm_after_tp_index)
         if arm_idx < 0 or arm_idx > 2:
             arm_idx = 1
@@ -473,7 +488,9 @@ def build_live_exit_plans(
             "mode": r_mode,
             "trail_atr_mult": str(runner_trail_mult),
             "trail_offset": str(trail_offset) if r_mode == "fixed_offset" else "0",
-            "callback_retrace_bps": str(retrace) if retrace is not None and retrace > 0 else None,
+            "callback_retrace_bps": (
+                str(retrace) if retrace is not None and retrace > 0 else None
+            ),
             "arm_after_tp2": arm_idx >= 2,
             "arm_after_tp_index": arm_idx,
             "armed": False,
@@ -624,8 +641,14 @@ def update_runner_state(
     changed = False
     sn = str(side).lower()
     if sn == "long":
-        high_water = max(_dec(state.get("high_water"), default=str(fill_price)), fill_price)
-        low_c = _dec(state.get("low_water"), default=str(fill_price)) if (state.get("low_water") not in (None, "")) else fill_price
+        high_water = max(
+            _dec(state.get("high_water"), default=str(fill_price)), fill_price
+        )
+        low_c = (
+            _dec(state.get("low_water"), default=str(fill_price))
+            if (state.get("low_water") not in (None, ""))
+            else fill_price
+        )
         if str(high_water) != str(state.get("high_water")):
             changed = True
         state["high_water"] = str(high_water)
@@ -643,7 +666,11 @@ def update_runner_state(
     else:
         low_w = _dec(state.get("low_water"), default=str(fill_price))
         low_water = min(low_w, fill_price)
-        high_c = _dec(state.get("high_water"), default=str(fill_price)) if (state.get("high_water") not in (None, "")) else fill_price
+        high_c = (
+            _dec(state.get("high_water"), default=str(fill_price))
+            if (state.get("high_water") not in (None, ""))
+            else fill_price
+        )
         if str(low_water) != str(state.get("low_water")):
             changed = True
         state["low_water"] = str(low_water)
@@ -697,7 +724,10 @@ def apply_break_even_update(
     if break_even.get("applied"):
         return stop_plan, tp_plan, False
     trigger_after = int(break_even.get("trigger_after_tp_index") or 0)
-    hits = {int(item) for item in ((tp_plan.get("execution_state") or {}).get("hit_tp_indices") or [])}
+    hits = {
+        int(item)
+        for item in ((tp_plan.get("execution_state") or {}).get("hit_tp_indices") or [])
+    }
     if trigger_after not in hits:
         return stop_plan, tp_plan, False
     next_stop = _copy_plan(stop_plan)
@@ -731,7 +761,13 @@ def _take_pct(target: dict[str, Any]) -> Decimal:
     return take_pct
 
 
-def _price_relation_valid(*, side: str, entry_price: Decimal, stop_price: Decimal | None, target_prices: list[Decimal]) -> list[str]:
+def _price_relation_valid(
+    *,
+    side: str,
+    entry_price: Decimal,
+    stop_price: Decimal | None,
+    target_prices: list[Decimal],
+) -> list[str]:
     reasons: list[str] = []
     side_norm = str(side).lower()
     if entry_price <= 0:
@@ -802,8 +838,18 @@ def validate_exit_plan(
 
     stop_price = _dec((stop_copy or {}).get("stop_price"))
     stop_ref = stop_price if stop_price > 0 else None
-    targets = [_dec(item.get("target_price")) for item in ((tp_copy or {}).get("targets") or [])]
-    reasons.extend(_price_relation_valid(side=side, entry_price=entry_price, stop_price=stop_ref, target_prices=targets))
+    targets = [
+        _dec(item.get("target_price"))
+        for item in ((tp_copy or {}).get("targets") or [])
+    ]
+    reasons.extend(
+        _price_relation_valid(
+            side=side,
+            entry_price=entry_price,
+            stop_price=stop_ref,
+            target_prices=targets,
+        )
+    )
     if session_trade_allowed is False:
         reasons.append("instrument_session_not_tradeable")
     if session_open_new_positions_allowed is False:
@@ -840,17 +886,20 @@ def validate_exit_plan(
             tick_size_bps=tick_size_bps,
             volatility_bps=volatility_bps,
             depth_ratio=depth_ratio,
-            liquidation_buffer_bps=min_liquidation_buffer_bps if check_liquidation_buffer else None,
+            liquidation_buffer_bps=(
+                min_liquidation_buffer_bps if check_liquidation_buffer else None
+            ),
         )
         executable_floor_bps = stop_budget_meta["executable_floor_bps"]
-        if stop_budget_bps is not None and stop_distance_bps is not None and stop_distance_bps > stop_budget_bps:
+        if (
+            stop_budget_bps is not None
+            and stop_distance_bps is not None
+            and stop_distance_bps > stop_budget_bps
+        ):
             reasons.append("stop_distance_exceeds_leverage_budget")
         if stop_distance_bps is not None and stop_distance_bps < executable_floor_bps:
             reasons.append("stop_distance_below_executable_floor")
-        if (
-            stop_budget_bps is not None
-            and executable_floor_bps > stop_budget_bps
-        ):
+        if stop_budget_bps is not None and executable_floor_bps > stop_budget_bps:
             reasons.append("leverage_budget_infeasible_for_market_microstructure")
 
     if (
@@ -898,8 +947,15 @@ def validate_exit_plan(
                 reasons.append(code)
                 break
 
-    initial_qty = _dec(((tp_copy or {}).get("execution_state") or {}).get("initial_qty"))
-    if quantity_min is not None and quantity_min > 0 and initial_qty > 0 and initial_qty < quantity_min:
+    initial_qty = _dec(
+        ((tp_copy or {}).get("execution_state") or {}).get("initial_qty")
+    )
+    if (
+        quantity_min is not None
+        and quantity_min > 0
+        and initial_qty > 0
+        and initial_qty < quantity_min
+    ):
         reasons.append("exit_plan_initial_qty_below_minimum")
     if quantity_max is not None and quantity_max > 0 and initial_qty > quantity_max:
         reasons.append("exit_plan_initial_qty_above_maximum")
@@ -909,7 +965,11 @@ def validate_exit_plan(
             if pct <= 0 or initial_qty <= 0:
                 continue
             target_qty = initial_qty * pct
-            if quantity_min is not None and quantity_min > 0 and target_qty < quantity_min:
+            if (
+                quantity_min is not None
+                and quantity_min > 0
+                and target_qty < quantity_min
+            ):
                 reasons.append("exit_plan_partial_qty_below_minimum")
                 break
 
@@ -918,8 +978,13 @@ def validate_exit_plan(
         fee_pct = (fee_bps or Decimal("0")) / Decimal("10000")
         slippage_pct = (slippage_bps or Decimal("0")) / Decimal("10000")
         stop_distance_pct = abs(entry_price - stop_ref) / entry_price
-        position_risk_pct = float((stop_distance_pct + fee_pct + slippage_pct) * leverage_value)
-        if max_position_risk_pct is not None and position_risk_pct > max_position_risk_pct:
+        position_risk_pct = float(
+            (stop_distance_pct + fee_pct + slippage_pct) * leverage_value
+        )
+        if (
+            max_position_risk_pct is not None
+            and position_risk_pct > max_position_risk_pct
+        ):
             reasons.append("exit_plan_position_risk_exceeds_max")
 
     return {
@@ -928,8 +993,12 @@ def validate_exit_plan(
         "metrics": {
             "position_risk_pct": position_risk_pct,
             "take_pct_sum": float(total_take_pct) if total_take_pct > 0 else 0.0,
-            "stop_distance_bps": float(stop_distance_bps) if stop_distance_bps is not None else None,
-            "stop_budget_bps": float(stop_budget_bps) if stop_budget_bps is not None else None,
+            "stop_distance_bps": (
+                float(stop_distance_bps) if stop_distance_bps is not None else None
+            ),
+            "stop_budget_bps": (
+                float(stop_budget_bps) if stop_budget_bps is not None else None
+            ),
             "stop_budget_meta": (
                 {key: float(value) for key, value in (stop_budget_meta or {}).items()}
                 if stop_budget_meta is not None
@@ -978,9 +1047,15 @@ def evaluate_exit_plan(
             return dict(tp_next.get("execution") or {})
         return {}
 
-    if current_qty > 0 and stop_next is not None and _truthy_flag(stop_next.get("force_emergency_close")):
+    if (
+        current_qty > 0
+        and stop_next is not None
+        and _truthy_flag(stop_next.get("force_emergency_close"))
+    ):
         execution = _execution_for_close()
-        trigger = pick_trigger_price(str(stop_next.get("trigger_type") or "mark_price"), mark_price, fill_price)
+        trigger = pick_trigger_price(
+            str(stop_next.get("trigger_type") or "mark_price"), mark_price, fill_price
+        )
         stop_next["force_emergency_close"] = False
         return {
             "policy_version": EXIT_POLICY_VERSION,
@@ -1031,9 +1106,13 @@ def evaluate_exit_plan(
                         "reduce_only": bool(execution.get("reduce_only", True)),
                         "order_type": execution.get("order_type") or "market",
                         "timing": execution.get("timing") or "immediate",
-                        "cancel_replace_behavior": execution.get("cancel_replace_behavior"),
+                        "cancel_replace_behavior": execution.get(
+                            "cancel_replace_behavior"
+                        ),
                         "estimated_fee_bps": execution.get("estimated_fee_bps"),
-                        "estimated_slippage_bps": execution.get("estimated_slippage_bps"),
+                        "estimated_slippage_bps": execution.get(
+                            "estimated_slippage_bps"
+                        ),
                         "trigger_price": str(trigger),
                     }
                 ],
@@ -1056,7 +1135,9 @@ def evaluate_exit_plan(
         wick_n = _wick_confirm_n(r0)
         runner_enabled = bool(r0.get("enabled", True))
         if runner_enabled and r0.get("armed"):
-            r0, run_ch = update_runner_state(side=side, fill_price=fill_price, runner=r0)
+            r0, run_ch = update_runner_state(
+                side=side, fill_price=fill_price, runner=r0
+            )
             if run_ch:
                 runner_pre_changed = True
             tp_next["runner"] = r0
@@ -1080,7 +1161,7 @@ def evaluate_exit_plan(
                 wick_streak_changed = True
             _wick_streak_set(r0, 0)
             tp_next["runner"] = r0
-        r_final_pre = (tp_next.get("runner") or {})
+        r_final_pre = tp_next.get("runner") or {}
         trail_breach_confirmed = bool(
             (bool(r_final_pre.get("enabled", True)))
             and (r_final_pre.get("armed"))
@@ -1114,7 +1195,11 @@ def evaluate_exit_plan(
                 "estimated_fee_bps": execution.get("estimated_fee_bps"),
                 "estimated_slippage_bps": execution.get("estimated_slippage_bps"),
                 "trigger_price": str(
-                    pick_trigger_price(str(stop_next.get("trigger_type") or "mark_price"), mark_price, fill_price)
+                    pick_trigger_price(
+                        str(stop_next.get("trigger_type") or "mark_price"),
+                        mark_price,
+                        fill_price,
+                    )
                 ),
                 "stop_price": stop_next.get("stop_price"),
             }
@@ -1143,7 +1228,11 @@ def evaluate_exit_plan(
                 "estimated_fee_bps": execution.get("estimated_fee_bps"),
                 "estimated_slippage_bps": execution.get("estimated_slippage_bps"),
                 "trigger_price": str(
-                    pick_trigger_price(str(runner.get("trigger_type") or tp_default), mark_price, fill_price)
+                    pick_trigger_price(
+                        str(runner.get("trigger_type") or tp_default),
+                        mark_price,
+                        fill_price,
+                    )
                 ),
                 "trail_stop": runner.get("trail_stop"),
             }
@@ -1182,7 +1271,11 @@ def evaluate_exit_plan(
                 "estimated_fee_bps": execution.get("estimated_fee_bps"),
                 "estimated_slippage_bps": execution.get("estimated_slippage_bps"),
                 "trigger_price": str(
-                    pick_trigger_price(str(target.get("trigger_type") or tp_default), mark_price, fill_price)
+                    pick_trigger_price(
+                        str(target.get("trigger_type") or tp_default),
+                        mark_price,
+                        fill_price,
+                    )
                 ),
                 "target_price": target.get("target_price"),
             }
@@ -1201,7 +1294,9 @@ def evaluate_exit_plan(
         ):
             runner["armed"] = True
             runner["activation_price"] = str(fill_price)
-            runner, changed = update_runner_state(side=side, fill_price=fill_price, runner=runner)
+            runner, changed = update_runner_state(
+                side=side, fill_price=fill_price, runner=runner
+            )
             if changed:
                 reasons.append("runner_armed")
             if tp_next is not None:
@@ -1232,7 +1327,9 @@ def evaluate_exit_plan(
             {
                 "action": "plan_update",
                 "reason_code": "trailing_updated",
-                "trail_stop": (tp_next and (tp_next.get("runner") or {}).get("trail_stop")),
+                "trail_stop": (
+                    tp_next and (tp_next.get("runner") or {}).get("trail_stop")
+                ),
             }
         )
         reasons.append("trailing_updated")

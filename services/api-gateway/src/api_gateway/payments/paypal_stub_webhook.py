@@ -17,10 +17,10 @@ import secrets
 from typing import Any
 
 import psycopg
+from config.gateway_settings import GatewaySettings
 from fastapi import HTTPException
 
 from api_gateway.payments.billing_sync import try_insert_rail_webhook_inbox
-from config.gateway_settings import GatewaySettings
 
 
 def process_paypal_stub_webhook(
@@ -51,12 +51,16 @@ def process_paypal_stub_webhook(
 
     ev = data.get("event_type") or data.get("eventType") or "unknown"
     rid = data.get("resource") or data.get("id") or data
-    fp_raw = json.dumps({"ev": ev, "r": rid}, sort_keys=True, separators=(",", ":"))[:4000]
+    fp_raw = json.dumps({"ev": ev, "r": rid}, sort_keys=True, separators=(",", ":"))[
+        :4000
+    ]
     fp = f"paypal_stub:{hashlib.sha256(fp_raw.encode()).hexdigest()}"
     meta: dict[str, Any] = {
         "schema_version": "paypal-stub-webhook-v1",
         "event_type": str(ev)[:128],
     }
-    if not try_insert_rail_webhook_inbox(conn, rail="paypal_stub", event_fingerprint=fp, meta_json=meta):
+    if not try_insert_rail_webhook_inbox(
+        conn, rail="paypal_stub", event_fingerprint=fp, meta_json=meta
+    ):
         return {"received": True, "rail": "paypal_stub", "duplicate": True}
     return {"received": True, "rail": "paypal_stub", "stored": True}

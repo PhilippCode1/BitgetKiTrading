@@ -74,7 +74,9 @@ def main() -> int:
     else:
         _ok("LLM_USE_FAKE_PROVIDER=true — OPENAI_API_KEY optional")
 
-    for label, keys in (("Bitget", ("BITGET_API_KEY", "BITGET_API_SECRET", "BITGET_API_PASSPHRASE")),):
+    for label, keys in (
+        ("Bitget", ("BITGET_API_KEY", "BITGET_API_SECRET", "BITGET_API_PASSPHRASE")),
+    ):
         missing = [k for k in keys if not _present(k)]
         if missing:
             _fail(f"{label}: fehlen oder Platzhalter ({', '.join(missing)})")
@@ -96,7 +98,9 @@ def main() -> int:
     pt = (s.bitget_futures_default_product_type or "").strip().upper()
     allowed = s.bitget_futures_allowed_product_types_list()
     if pt and allowed and pt not in allowed:
-        _fail("BITGET_FUTURES_DEFAULT_PRODUCT_TYPE nicht in BITGET_FUTURES_ALLOWED_PRODUCT_TYPES")
+        _fail(
+            "BITGET_FUTURES_DEFAULT_PRODUCT_TYPE nicht in BITGET_FUTURES_ALLOWED_PRODUCT_TYPES"
+        )
         return 1
     _ok("Futures Produkttyp konsistent (falls gesetzt)")
 

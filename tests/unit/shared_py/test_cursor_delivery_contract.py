@@ -20,7 +20,9 @@ def test_response_sections_five() -> None:
 
 
 def test_phases_ordered_ba00_first() -> None:
-    assert IMPLEMENTATION_PHASE_ORDER[0] == ImplementationPhaseId.BA00_CONTRACTS_AND_DOCS
+    assert (
+        IMPLEMENTATION_PHASE_ORDER[0] == ImplementationPhaseId.BA00_CONTRACTS_AND_DOCS
+    )
 
 
 def test_phase_index_monotonic() -> None:

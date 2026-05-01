@@ -4,12 +4,12 @@ import json
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
+from shared_py.eventbus import RedisStreamBus
 
 from learning_engine.analytics.runner import parse_windows
 from learning_engine.config import LearningEngineSettings
-from learning_engine.storage.connection import db_connect
 from learning_engine.storage import repo_learning_v1
-from shared_py.eventbus import RedisStreamBus
+from learning_engine.storage.connection import db_connect
 
 
 def build_learning_health_router(

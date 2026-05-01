@@ -161,8 +161,7 @@ def _build_policy_hits_de(
         )
         if le is not None and lim_le is not None:
             hits.append(
-                "Portfolio-Exposure: groesstes Positionsrisiko "
-                f"{le:.2f} (Deckel {lim_le:.2f})."
+                f"Portfolio-Exposure: groesstes Positionsrisiko {le:.2f} (Deckel {lim_le:.2f})."
             )
 
     reasons = risk.get("reasons_json")
@@ -175,8 +174,7 @@ def _build_policy_hits_de(
     pany = any("PORTFOLIO" in str(x).upper() for x in rlist)
     if pfx or pany:
         hits.append(
-            "Policy: Portfolio-Exposure-Deckel (Notional/Cluster) — "
-            "siehe Metriken/Reason-Codes."
+            "Policy: Portfolio-Exposure-Deckel (Notional/Cluster) — siehe Metriken/Reason-Codes."
         )
     vpin_block = "RISK_VPIN" in pr.upper() or (vpin is not None and vpin >= ref - 1e-9)
     if vpin_block:
@@ -224,9 +222,11 @@ def build_risk_rejection_inquiry(timeline: dict[str, Any]) -> dict[str, Any]:
             "trade_action": rs.get("trade_action"),
             "decision_state": rs.get("decision_state"),
             "primary_reason": rs.get("primary_reason") or det.get("decision_reason"),
-            "reasons_json_head": (rs.get("reasons_json") or [])[:20]
-            if isinstance(rs.get("reasons_json"), list)
-            else [],
+            "reasons_json_head": (
+                (rs.get("reasons_json") or [])[:20]
+                if isinstance(rs.get("reasons_json"), list)
+                else []
+            ),
         },
         "limits_excerpt": {k: lim.get(k) for k in list(lim)[:32]},
         "metrics_excerpt": {

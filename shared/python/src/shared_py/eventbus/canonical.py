@@ -10,24 +10,23 @@ from __future__ import annotations
 import hashlib
 import json
 import math
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 
 from .envelope import EventEnvelope
 
 _FLOAT_DECIMALS = 8
-_UTC = timezone.utc
+_UTC = UTC
 
 
 def _load_event_streams_catalog() -> dict[str, Any]:
     for base in Path(__file__).resolve().parents:
         path = base / "shared" / "contracts" / "catalog" / "event_streams.json"
         if path.is_file():
-            return json.loads(path.read_text(encoding="utf-8"))
+            return json.loads(path.read_text(encoding="utf-8"))  # type: ignore
     raise FileNotFoundError(
-        "shared/contracts/catalog/event_streams.json nicht gefunden "
-        "(Monorepo-Root erwartet)."
+        "shared/contracts/catalog/event_streams.json nicht gefunden (Monorepo-Root erwartet)."
     )
 
 
@@ -101,8 +100,11 @@ def normalize_json_number(value: float) -> float | int:
 
 def canonicalize_json_value(value: Any, *, _key: str | None = None) -> Any:
     """Rekursiv sortierte Keys, 8-Dezimal-Floats, *_ts_ms als ISO-8601-UTC-String (µs, Z)."""
-    if _key is not None and _is_ms_timestamp_key(_key) and isinstance(value, int) and not isinstance(
-        value, bool
+    if (
+        _key is not None
+        and _is_ms_timestamp_key(_key)
+        and isinstance(value, int)
+        and not isinstance(value, bool)
     ):
         return ms_to_iso_utc_z_micros(value)
     if value is None or isinstance(value, bool):
@@ -116,7 +118,9 @@ def canonicalize_json_value(value: Any, *, _key: str | None = None) -> Any:
     if isinstance(value, list):
         return [canonicalize_json_value(v) for v in value]
     if isinstance(value, dict):
-        return {k: canonicalize_json_value(value[k], _key=k) for k in sorted(value.keys())}
+        return {
+            k: canonicalize_json_value(value[k], _key=k) for k in sorted(value.keys())
+        }
     if isinstance(value, datetime):
         if value.tzinfo is None:
             value = value.replace(tzinfo=_UTC)

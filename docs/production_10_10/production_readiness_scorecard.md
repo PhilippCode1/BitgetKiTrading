@@ -16,6 +16,13 @@
 - `private_live_allowed`: `NO_GO` - Private Live braucht verifizierte Bitget-, Restore-, Burn-in-, Safety-, Asset-, Broker-, Reconcile- und Owner-Evidence sowie die maschinelle Datei reports/owner_private_live_release.json (gitignored) mit gueltiger Struktur.
 - `full_autonomous_live`: `NO_GO` - Full Autonomous Live bleibt standardmaessig NO_GO ohne vollstaendig verified Matrix und lange echte Live-Historie.
 
+## Demo-Lifecycle-Evidence
+
+- Neue Demo-Stufe: `demo_lifecycle_verified`
+- Nachweisquelle: `reports/demo_lifecycle_evidence.json`
+- Bedeutung: kompletter Demo-Lifecycle (open -> reconcile -> close -> clean) ist technisch verifiziert
+- Grenze: zaehlt nicht als `live_verified` und aktiviert niemals `private_live_allowed`
+
 ## Kategorieuebersicht
 
 - `private_owner_scope`: `verified` / `GO` / severity `P1` / live_blocker `false`

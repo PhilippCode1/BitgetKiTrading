@@ -64,7 +64,9 @@ def _load_report(path: Path) -> dict[str, Any] | None:
     return loaded if isinstance(loaded, dict) else None
 
 
-def analyze_market_data_quality(*, report_path: Path = DEFAULT_REPORT, strict_live: bool = False) -> dict[str, Any]:
+def analyze_market_data_quality(
+    *, report_path: Path = DEFAULT_REPORT, strict_live: bool = False
+) -> dict[str, Any]:
     issues: list[CheckerIssue] = []
     report = _load_report(report_path)
     if report is None:
@@ -148,7 +150,9 @@ def render_text(summary: dict[str, Any]) -> str:
     ]
     for issue in summary["issues"]:
         where = f" [{issue['path']}]" if issue.get("path") else ""
-        lines.append(f"{issue['severity'].upper()} {issue['code']}: {issue['message']}{where}")
+        lines.append(
+            f"{issue['severity'].upper()} {issue['code']}: {issue['message']}{where}"
+        )
     return "\n".join(lines)
 
 
@@ -160,7 +164,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
 
-    summary = analyze_market_data_quality(report_path=args.report, strict_live=args.strict_live)
+    summary = analyze_market_data_quality(
+        report_path=args.report, strict_live=args.strict_live
+    )
     if args.json:
         print(json.dumps(summary, indent=2, sort_keys=True))
     else:

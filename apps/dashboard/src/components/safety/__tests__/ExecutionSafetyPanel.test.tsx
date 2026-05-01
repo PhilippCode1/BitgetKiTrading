@@ -17,10 +17,13 @@ describe("ExecutionSafetyPanel", () => {
         reconcileOk={true}
       />,
     );
-    const arm = screen.getByRole("button", { name: /Kill-Switch armieren pruefen/i });
+    const arm = screen.getByRole("button", {
+      name: /Kill-Switch armieren pruefen/i,
+    });
     expect(arm).toBeEnabled();
     expect(
-      screen.getAllByText(/Endpoint fehlt, Aktion ist sicher deaktiviert./i).length,
+      screen.getAllByText(/Endpoint fehlt, Aktion ist sicher deaktiviert./i)
+        .length,
     ).toBeGreaterThan(0);
   });
 
@@ -34,9 +37,15 @@ describe("ExecutionSafetyPanel", () => {
     );
     const btn = screen.getByRole("button", { name: /Emergency-Flatten/i });
     fireEvent.click(btn);
-    expect(screen.getByRole("dialog", { name: /Bestaetigung fuer Sicherheitsaktion/i })).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /Aktion ausfuehren \(derzeit deaktiviert\)/i }),
+      screen.getByRole("dialog", {
+        name: /Bestaetigung fuer Sicherheitsaktion/i,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: /Aktion ausfuehren \(derzeit deaktiviert\)/i,
+      }),
     ).toBeDisabled();
   });
 

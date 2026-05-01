@@ -14,7 +14,8 @@ const ACTIONS: readonly ActionItem[] = [
   {
     id: "pause-live",
     title: "Live pausieren",
-    description: "Setzt die Plattform in einen blockierenden Sicherheitszustand.",
+    description:
+      "Setzt die Plattform in einen blockierenden Sicherheitszustand.",
     hint: "Nur Simulation in der Oberfläche. Keine direkte Order-Aktion.",
     dangerous: true,
   },
@@ -95,19 +96,25 @@ export function SafetyCommandActions() {
           <h3>{selectedAction.title}</h3>
           <p>{selectedAction.description}</p>
           <p className="muted small">{selectedAction.hint}</p>
-          <label className="muted small" style={{ display: "block", marginBottom: 8 }}>
+          <label
+            className="muted small"
+            style={{ display: "block", marginBottom: 8 }}
+          >
             <input
               type="checkbox"
               checked={confirmed}
               onChange={(event) => setConfirmed(event.target.checked)}
             />{" "}
-            Ich bestätige: Modus und Risiko wurden geprüft, Audit ist erforderlich.
+            Ich bestätige: Modus und Risiko wurden geprüft, Audit ist
+            erforderlich.
           </label>
           <button
             type="button"
             disabled={!confirmed}
             aria-disabled={!confirmed}
-            title={!confirmed ? "Bestätigung erforderlich" : "Simulation starten"}
+            title={
+              !confirmed ? "Bestätigung erforderlich" : "Simulation starten"
+            }
           >
             {selectedAction.dangerous
               ? "Gefährliche Aktion nur mit Bestätigung (Simulation)"

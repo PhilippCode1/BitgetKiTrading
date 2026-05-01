@@ -59,12 +59,18 @@ def test_missing_evidence_blocks_live() -> None:
 
 
 def test_backtest_only_blocks_live() -> None:
-    e = _base(evidence_status="backtest_available", shadow_available=False, shadow_passed=False)
+    e = _base(
+        evidence_status="backtest_available",
+        shadow_available=False,
+        shadow_passed=False,
+    )
     assert "evidence_status_nicht_live_faehig" in validate_strategy_asset_evidence(e)
 
 
 def test_paper_only_blocks_live() -> None:
-    e = _base(evidence_status="paper_available", shadow_available=False, shadow_passed=False)
+    e = _base(
+        evidence_status="paper_available", shadow_available=False, shadow_passed=False
+    )
     assert strategy_evidence_blocks_live(e) is True
 
 

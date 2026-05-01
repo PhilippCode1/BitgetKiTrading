@@ -15,14 +15,20 @@ from monitor_engine.storage.repo_self_healing import (
 )
 from monitor_engine.self_healing.coordinator import publish_recovery_requested
 from monitor_engine.self_healing.service_restarter import ServiceRestarter
-from shared_py.service_auth import INTERNAL_SERVICE_HEADER, InternalServiceAuthContext, assert_internal_service_auth
+from shared_py.service_auth import (
+    INTERNAL_SERVICE_HEADER,
+    InternalServiceAuthContext,
+    assert_internal_service_auth,
+)
 
 router = APIRouter(tags=["ops"])
 
 
 def _require_internal_service(
     request: Request,
-    x_internal_service_key: str | None = Header(default=None, alias=INTERNAL_SERVICE_HEADER),
+    x_internal_service_key: str | None = Header(
+        default=None, alias=INTERNAL_SERVICE_HEADER
+    ),
 ) -> InternalServiceAuthContext:
     settings = request.app.state.settings
     return assert_internal_service_auth(settings, x_internal_service_key)
@@ -128,7 +134,9 @@ def self_healing_status(
 
 class SelfHealingRestartIn(BaseModel):
     service_name: str = Field(
-        min_length=2, max_length=64, description="z.B. feature-engine, drawing-engine, signal-engine"
+        min_length=2,
+        max_length=64,
+        description="z.B. feature-engine, drawing-engine, signal-engine",
     )
 
 
@@ -141,7 +149,9 @@ def get_post_mortem(
     s = request.app.state.settings
     r = fetch_post_mortem(s.database_url, post_mortem_id)
     if r is None:
-        raise HTTPException(status_code=404, detail="post_mortem not found or migration 630 fehlt")
+        raise HTTPException(
+            status_code=404, detail="post_mortem not found or migration 630 fehlt"
+        )
     return {
         "schema_version": "ops-post-mortem-v1",
         "id": r.id,

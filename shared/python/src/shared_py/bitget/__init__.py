@@ -4,7 +4,6 @@ from .catalog import (
     UnknownInstrumentError,
 )
 from .config import BitgetSettings, ProductType
-from .ws_canonical import BitgetWsCanonicalEvent, infer_ws_domain
 from .discovery import BitgetMarketDiscoveryClient
 from .http import (
     build_private_rest_headers,
@@ -15,14 +14,14 @@ from .http import (
     sign_hmac_sha256_base64,
 )
 from .instruments import (
+    MARKET_UNIVERSE_SCHEMA_VERSION,
+    BitgetEndpointProfile,
     BitgetInstrumentCatalogEntry,
     BitgetInstrumentCatalogSnapshot,
-    BitgetEndpointProfile,
     BitgetInstrumentIdentity,
     BitgetMarketCapabilityMatrixRow,
     CatalogSnapshotStatus,
     MarginAccountMode,
-    MARKET_UNIVERSE_SCHEMA_VERSION,
     MarketFamily,
     build_capability_matrix,
     endpoint_profile_for,
@@ -37,6 +36,7 @@ from .metadata import (
     MetadataHealthStatus,
     OrderPreflightResult,
 )
+from .ws_canonical import BitgetWsCanonicalEvent, infer_ws_domain
 
 __all__ = [
     "BitgetInstrumentCatalog",
@@ -71,4 +71,5 @@ __all__ = [
     "sign_hmac_sha256_base64",
     "trading_status_allows_subscription",
     "trading_status_allows_trading",
+    "infer_ws_domain",
 ]

@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Sequence
+from typing import Any
 
 import psycopg
 from psycopg.rows import dict_row
@@ -349,7 +350,9 @@ ON CONFLICT (canonical_instrument_id, timeframe, start_ts_ms) DO UPDATE SET
 
 
 class FeatureRepository:
-    def __init__(self, database_url: str, *, logger: logging.Logger | None = None) -> None:
+    def __init__(
+        self, database_url: str, *, logger: logging.Logger | None = None
+    ) -> None:
         self._database_url = database_url
         self._logger = logger or logging.getLogger("feature_engine.repo")
 
@@ -386,7 +389,9 @@ class FeatureRepository:
         LIMIT %s
         """
         with self._connect(row_factory=dict_row) as conn:
-            rows = conn.execute(sql, (symbol, timeframe, end_start_ts_ms, limit)).fetchall()
+            rows = conn.execute(
+                sql, (symbol, timeframe, end_start_ts_ms, limit)
+            ).fetchall()
         rows.reverse()
         return [self._stored_candle_from_row(row) for row in rows]
 

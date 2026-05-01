@@ -66,7 +66,8 @@ def test_no_tier_sets_live_allowed_automatically_true() -> None:
         tier="RISK_TIER_1_MAJOR_LIQUID",
         mode="live",
         requested_leverage=1,
-        requested_notional_usdt=max_notional_for_asset_tier("RISK_TIER_1_MAJOR_LIQUID") + 1.0,
+        requested_notional_usdt=max_notional_for_asset_tier("RISK_TIER_1_MAJOR_LIQUID")
+        + 1.0,
     )
     assert out["valid"] is False
     assert "position_notional_above_tier_cap" in out["reasons"]

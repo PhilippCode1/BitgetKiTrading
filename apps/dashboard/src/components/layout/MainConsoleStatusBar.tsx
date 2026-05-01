@@ -9,24 +9,34 @@ type Props = Readonly<{
 
 function modeLabel(tier: ExecutionTierSnapshot | null): string {
   if (!tier) return "Live blockiert";
-  if ((tier.execution_mode || "").toLowerCase() === "bitget_demo") return "Bitget Demo";
+  if ((tier.execution_mode || "").toLowerCase() === "bitget_demo")
+    return "Bitget Demo";
   if (tier.trading_plane === "live") {
-    return tier.live_order_submission_enabled ? "Live bereit" : "Live blockiert";
+    return tier.live_order_submission_enabled
+      ? "Live bereit"
+      : "Live blockiert";
   }
-  if ((tier.deployment || "").toLowerCase().includes("staging")) return "Staging";
+  if ((tier.deployment || "").toLowerCase().includes("staging"))
+    return "Staging";
   if ((tier.deployment || "").toLowerCase().includes("local")) return "Local";
   if (tier.trading_plane === "shadow") return "Shadow";
   return "Paper";
 }
 
-function safetyLabel(health: SystemHealthResponse | null, healthError: boolean): string {
+function safetyLabel(
+  health: SystemHealthResponse | null,
+  healthError: boolean,
+): string {
   if (healthError || !health) return "Blockiert";
   if (health.aggregate?.level === "red") return "Blockiert";
   if (health.aggregate?.level === "degraded") return "Warnung";
   return "OK";
 }
 
-function bitgetLabel(health: SystemHealthResponse | null, healthError: boolean): string {
+function bitgetLabel(
+  health: SystemHealthResponse | null,
+  healthError: boolean,
+): string {
   if (healthError || !health) return "Unbekannt";
   const hasBitgetProbe = health.services.some(
     (svc) =>
@@ -45,7 +55,10 @@ function bitgetLabel(health: SystemHealthResponse | null, healthError: boolean):
   return degraded ? "Warnung" : "OK";
 }
 
-function dataQualityLabel(health: SystemHealthResponse | null, healthError: boolean): string {
+function dataQualityLabel(
+  health: SystemHealthResponse | null,
+  healthError: boolean,
+): string {
   if (healthError || !health) return "Unbekannt";
   const hasCoreData =
     health.data_freshness.last_candle_ts_ms != null &&
@@ -63,8 +76,14 @@ function brokerReconcileLabel(
     svc.name.toLowerCase().includes("live-broker"),
   );
   const brokerState = (broker?.status || "unknown").toLowerCase();
-  const reconcile = (health.ops.live_broker.latest_reconcile_status || "unknown").toLowerCase();
-  if (brokerState !== "ok" || reconcile.includes("drift") || reconcile.includes("fail")) {
+  const reconcile = (
+    health.ops.live_broker.latest_reconcile_status || "unknown"
+  ).toLowerCase();
+  if (
+    brokerState !== "ok" ||
+    reconcile.includes("drift") ||
+    reconcile.includes("fail")
+  ) {
     return "Warnung";
   }
   return reconcile === "unknown" ? "Unbekannt" : "OK";
@@ -72,7 +91,10 @@ function brokerReconcileLabel(
 
 export function MainConsoleStatusBar({ health, tier, healthError }: Props) {
   return (
-    <section className="main-console-statusbar" aria-label="Globaler Main-Console-Status">
+    <section
+      className="main-console-statusbar"
+      aria-label="Globaler Main-Console-Status"
+    >
       <div className="main-console-statusbar__project">
         <strong>bitget-btc-ai</strong>
       </div>
@@ -87,10 +109,12 @@ export function MainConsoleStatusBar({ health, tier, healthError }: Props) {
           Bitget: <strong>{bitgetLabel(health, healthError)}</strong>
         </span>
         <span className="main-console-statusbar__badge">
-          Datenqualität: <strong>{dataQualityLabel(health, healthError)}</strong>
+          Datenqualität:{" "}
+          <strong>{dataQualityLabel(health, healthError)}</strong>
         </span>
         <span className="main-console-statusbar__badge">
-          Broker/Reconcile: <strong>{brokerReconcileLabel(health, healthError)}</strong>
+          Broker/Reconcile:{" "}
+          <strong>{brokerReconcileLabel(health, healthError)}</strong>
         </span>
       </div>
     </section>

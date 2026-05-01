@@ -215,7 +215,9 @@ class BitgetRestGapFillWorker:
             self._last_gapfill_error = str(exc)
             self._logger.warning("REST gap-fill failed reason=%s error=%s", reason, exc)
             if self._provider_diagnostics is not None:
-                self._provider_diagnostics.record_protocol_error("rest_gapfill", str(exc))
+                self._provider_diagnostics.record_protocol_error(
+                    "rest_gapfill", str(exc)
+                )
             return
         except Exception as exc:
             self._last_gapfill_error = str(exc)
@@ -271,9 +273,11 @@ class BitgetRestGapFillWorker:
                     code = exc.response.status_code
                     extra = provider_log_extra(
                         provider="bitget",
-                        event="rest_public_rate_limited"
-                        if code == 429
-                        else "rest_public_http_error",
+                        event=(
+                            "rest_public_rate_limited"
+                            if code == 429
+                            else "rest_public_http_error"
+                        ),
                         http_status=code,
                         exchange_mode=mode,
                         symbol=self._bitget_settings.symbol,
@@ -298,8 +302,12 @@ class BitgetRestGapFillWorker:
                     msg = raw.get("msg") or raw.get("message") or ""
                     detail = f"code={response_code!r} msg={str(msg).strip()[:400]!r} path={path}"
                     if self._provider_diagnostics is not None:
-                        self._provider_diagnostics.record_protocol_error("rest_gapfill_api", detail)
-                    raise ValueError(f"Bitget REST response code not ok: {response_code}")
+                        self._provider_diagnostics.record_protocol_error(
+                            "rest_gapfill_api", detail
+                        )
+                    raise ValueError(
+                        f"Bitget REST response code not ok: {response_code}"
+                    )
                 payload = raw
                 break
         if payload is None:

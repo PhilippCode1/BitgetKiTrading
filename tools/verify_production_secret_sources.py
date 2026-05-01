@@ -164,11 +164,7 @@ def verify_env(data: dict[str, str], *, strict: bool) -> CheckResult:
                 "VAULT_MODE gesetzt, aber VAULT_ADDR fehlt oder Platzhalter (Vault-Modus plausibility)."
             )
             r.passed = False
-    elif (
-        vaddr
-        and not _is_placeholder_value(vaddr)
-        and vm in ("false", "none", "")
-    ):
+    elif vaddr and not _is_placeholder_value(vaddr) and vm in ("false", "none", ""):
         r.vault_hint = "VAULT_ADDR ist gesetzt abweichend: prüfen, ob VAULT_MODE konsistent dokumentiert ist."
 
     for k, v in data.items():
@@ -214,9 +210,7 @@ def verify_env(data: dict[str, str], *, strict: bool) -> CheckResult:
                     )
                     r.passed = False
             elif len(_norm_val(s)) < minl:
-                r.findings.append(
-                    f"zu kurz: {k} (min {minl}) — {_redact_value(k, s)}"
-                )
+                r.findings.append(f"zu kurz: {k} (min {minl}) — {_redact_value(k, s)}")
                 r.passed = False
         if strict and k in _URL_VALUE_KEYS and s:
             low = s.lower()
@@ -234,7 +228,9 @@ def verify_env(data: dict[str, str], *, strict: bool) -> CheckResult:
     if strict:
         llm_fake = (data.get("LLM_USE_FAKE_PROVIDER", "") or "").lower()
         if llm_fake in ("1", "true", "yes"):
-            r.findings.append("LLM_USE_FAKE_PROVIDER muss in Production-strict 'false' sein.")
+            r.findings.append(
+                "LLM_USE_FAKE_PROVIDER muss in Production-strict 'false' sein."
+            )
             r.passed = False
     if r.vault_hint and strict:
         r.findings.append(r.vault_hint)
@@ -295,7 +291,9 @@ def main() -> int:
     if args.strict:
         print("mode=strict", file=sys.stderr)
     else:
-        print("mode=permissive (nur harte Muster, ohne URL/LLM-Stricts)", file=sys.stderr)
+        print(
+            "mode=permissive (nur harte Muster, ohne URL/LLM-Stricts)", file=sys.stderr
+        )
     print("--- redacted value shapes (erste 40 Keys) ---", file=sys.stderr)
     for h in r.redacted_line_hints[:40]:
         print(f"  {h}", file=sys.stderr)

@@ -5,7 +5,6 @@ import uuid
 from typing import Any
 
 from pydantic import BaseModel, Field
-
 from shared_py.bitget.ws_canonical import BitgetWsCanonicalEvent
 
 

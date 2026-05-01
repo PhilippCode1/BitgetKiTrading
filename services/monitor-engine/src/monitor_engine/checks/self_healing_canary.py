@@ -10,7 +10,9 @@ from monitor_engine.alerts.rules import AlertSpec
 from monitor_engine.config import MonitorEngineSettings
 
 
-def collect_self_healing_canary_alerts(settings: MonitorEngineSettings) -> list[AlertSpec]:
+def collect_self_healing_canary_alerts(
+    settings: MonitorEngineSettings,
+) -> list[AlertSpec]:
     if not settings.monitor_self_healing_canary_enabled:
         return []
     wrong = "wrong-mix/market/tickers"

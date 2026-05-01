@@ -13,7 +13,11 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Final
 
-from shared_py.product_policy import CommercialExecutionMode, CustomerCommercialGates, resolve_execution_mode
+from shared_py.product_policy import (
+    CommercialExecutionMode,
+    CustomerCommercialGates,
+    resolve_execution_mode,
+)
 
 TRADING_INTEGRATION_CONTRACT_VERSION = "1.0.0"
 TRADING_INTEGRATION_DOCUMENT_ID = "TRADING_INTEGRATION_SECURITY_MODUL_MATE"
@@ -139,7 +143,10 @@ def telegram_effective_level(
     """
     if configured == TelegramIntegrationLevel.DISABLED:
         return TelegramIntegrationLevel.DISABLED
-    if not live_trading_allowed and configured == TelegramIntegrationLevel.CONFIRM_WITH_OTP:
+    if (
+        not live_trading_allowed
+        and configured == TelegramIntegrationLevel.CONFIRM_WITH_OTP
+    ):
         return TelegramIntegrationLevel.NOTIFY_ONLY
     return configured
 

@@ -11,7 +11,9 @@ from psycopg.rows import dict_row
 
 
 class ExplanationRepository:
-    def __init__(self, database_url: str, *, logger: logging.Logger | None = None) -> None:
+    def __init__(
+        self, database_url: str, *, logger: logging.Logger | None = None
+    ) -> None:
         self._database_url = database_url
         self._logger = logger or logging.getLogger("signal_engine.explanations_repo")
 
@@ -51,10 +53,20 @@ class ExplanationRepository:
             bundle["explain_version"],
             bundle["explain_short"],
             bundle["explain_long_md"],
-            json.dumps(bundle["explain_long_json"], separators=(",", ":"), ensure_ascii=False),
-            json.dumps(bundle["risk_warnings_json"], separators=(",", ":"), ensure_ascii=False),
-            json.dumps(bundle["stop_explain_json"], separators=(",", ":"), ensure_ascii=False),
-            json.dumps(bundle["targets_explain_json"], separators=(",", ":"), ensure_ascii=False),
+            json.dumps(
+                bundle["explain_long_json"], separators=(",", ":"), ensure_ascii=False
+            ),
+            json.dumps(
+                bundle["risk_warnings_json"], separators=(",", ":"), ensure_ascii=False
+            ),
+            json.dumps(
+                bundle["stop_explain_json"], separators=(",", ":"), ensure_ascii=False
+            ),
+            json.dumps(
+                bundle["targets_explain_json"],
+                separators=(",", ":"),
+                ensure_ascii=False,
+            ),
         )
         with self._connect() as conn:
             conn.execute(sql, params)

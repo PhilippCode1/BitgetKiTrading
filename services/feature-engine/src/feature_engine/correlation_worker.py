@@ -3,7 +3,8 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import logging
-from typing import TYPE_CHECKING, Any, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 from shared_py.eventbus import (
     STREAM_INTERMARKET_CORRELATION_UPDATE,
@@ -20,7 +21,7 @@ from feature_engine.correlation_graph import (
 )
 
 if TYPE_CHECKING:
-    from feature_engine.app import FeatureEngineSettings
+    pass
 
 logger = logging.getLogger("feature_engine.correlation_worker")
 
@@ -61,7 +62,9 @@ class CorrelationGraphWorker:
 
     async def start_background(self) -> None:
         if not self._settings.correlation_graph_enabled:
-            self._logger.info("CorrelationGraphWorker: deaktiviert (CORRELATION_GRAPH_ENABLED=false)")
+            self._logger.info(
+                "CorrelationGraphWorker: deaktiviert (CORRELATION_GRAPH_ENABLED=false)"
+            )
             return
         self._task = asyncio.create_task(self._loop(), name="correlation-graph-loop")
 
@@ -102,7 +105,9 @@ class CorrelationGraphWorker:
                 rd = snap.get("regime_divergence") or {}
                 if bool(rd.get("triggered")):
                     hour = int(snap.get("computed_ts_ms", 0)) // 3_600_000
-                    rdk = hashlib.sha256(f"REGIME_DIV:{hour}:{rd.get('score_0_1')}".encode()).hexdigest()[:48]
+                    rdk = hashlib.sha256(
+                        f"REGIME_DIV:{hour}:{rd.get('score_0_1')}".encode()
+                    ).hexdigest()[:48]
                     env_r = EventEnvelope(
                         event_type="regime_divergence_detected",
                         symbol="BTCUSDT",

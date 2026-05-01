@@ -12,7 +12,8 @@ export default async function CustomerPortalTradingReadonlyPage() {
       <h1 style={{ marginTop: 0 }}>{t("customerPortal.tradingPage.title")}</h1>
       <p className="muted">{t("customerPortal.tradingPage.lead")}</p>
       <p className="muted" style={{ marginTop: 12 }}>
-        {t("customerPortal.tradingPage.bffState")} <code>{s.tradingReadonly.dataState}</code> /{" "}
+        {t("customerPortal.tradingPage.bffState")}{" "}
+        <code>{s.tradingReadonly.dataState}</code> /{" "}
         <code>{s.tradingReadonly.code}</code>
       </p>
       <p className="muted" style={{ fontSize: "0.95rem" }}>

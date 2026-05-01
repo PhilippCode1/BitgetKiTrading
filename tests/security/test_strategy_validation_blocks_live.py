@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from shared_py.strategy_asset_evidence import StrategyAssetEvidence, strategy_evidence_blocks_live
+from shared_py.strategy_asset_evidence import (
+    StrategyAssetEvidence,
+    strategy_evidence_blocks_live,
+)
 
 
 def _base() -> StrategyAssetEvidence:
@@ -54,22 +57,69 @@ def test_strategy_without_evidence_blocks_live() -> None:
 
 def test_missing_cost_components_or_drawdown_blocks_live() -> None:
     base = _base()
-    assert strategy_evidence_blocks_live(StrategyAssetEvidence(**{**base.__dict__, "fees_included": False})) is True
-    assert strategy_evidence_blocks_live(StrategyAssetEvidence(**{**base.__dict__, "slippage_included": False})) is True
-    assert strategy_evidence_blocks_live(StrategyAssetEvidence(**{**base.__dict__, "max_drawdown": None})) is True
+    assert (
+        strategy_evidence_blocks_live(
+            StrategyAssetEvidence(**{**base.__dict__, "fees_included": False})
+        )
+        is True
+    )
+    assert (
+        strategy_evidence_blocks_live(
+            StrategyAssetEvidence(**{**base.__dict__, "slippage_included": False})
+        )
+        is True
+    )
+    assert (
+        strategy_evidence_blocks_live(
+            StrategyAssetEvidence(**{**base.__dict__, "max_drawdown": None})
+        )
+        is True
+    )
 
 
 def test_missing_oos_or_paper_shadow_or_too_few_trades_blocks_live() -> None:
     base = _base()
-    assert strategy_evidence_blocks_live(StrategyAssetEvidence(**{**base.__dict__, "number_of_trades": 5})) is True
-    assert strategy_evidence_blocks_live(StrategyAssetEvidence(**{**base.__dict__, "out_of_sample_result": "missing"})) is True
-    assert strategy_evidence_blocks_live(StrategyAssetEvidence(**{**base.__dict__, "paper_result": "missing"})) is True
-    assert strategy_evidence_blocks_live(StrategyAssetEvidence(**{**base.__dict__, "shadow_result": "missing"})) is True
+    assert (
+        strategy_evidence_blocks_live(
+            StrategyAssetEvidence(**{**base.__dict__, "number_of_trades": 5})
+        )
+        is True
+    )
+    assert (
+        strategy_evidence_blocks_live(
+            StrategyAssetEvidence(
+                **{**base.__dict__, "out_of_sample_result": "missing"}
+            )
+        )
+        is True
+    )
+    assert (
+        strategy_evidence_blocks_live(
+            StrategyAssetEvidence(**{**base.__dict__, "paper_result": "missing"})
+        )
+        is True
+    )
+    assert (
+        strategy_evidence_blocks_live(
+            StrategyAssetEvidence(**{**base.__dict__, "shadow_result": "missing"})
+        )
+        is True
+    )
 
 
 def test_futures_without_funding_and_synthetic_evidence_never_verified() -> None:
     base = _base()
-    assert strategy_evidence_blocks_live(StrategyAssetEvidence(**{**base.__dict__, "funding_included": False})) is True
-    assert strategy_evidence_blocks_live(
-        StrategyAssetEvidence(**{**base.__dict__, "evidence_level": "synthetic", "profit_factor": 1.8})
-    ) is True
+    assert (
+        strategy_evidence_blocks_live(
+            StrategyAssetEvidence(**{**base.__dict__, "funding_included": False})
+        )
+        is True
+    )
+    assert (
+        strategy_evidence_blocks_live(
+            StrategyAssetEvidence(
+                **{**base.__dict__, "evidence_level": "synthetic", "profit_factor": 1.8}
+            )
+        )
+        is True
+    )

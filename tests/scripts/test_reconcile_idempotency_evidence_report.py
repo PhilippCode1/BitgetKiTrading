@@ -21,7 +21,10 @@ def test_payload_keeps_private_live_no_go_until_external_evidence_exists() -> No
     assert payload["full_autonomous_live"] == "NO_GO"
     assert "real_exchange_truth_reconcile_drill_missing" in payload["external_required"]
     assert "staging_duplicate_client_oid_drill_missing" in payload["external_required"]
-    assert "owner_signed_reconcile_idempotency_acceptance_missing" in payload["external_required"]
+    assert (
+        "owner_signed_reconcile_idempotency_acceptance_missing"
+        in payload["external_required"]
+    )
 
 
 def test_external_template_must_fail_closed_and_cover_required_blockers() -> None:
@@ -29,7 +32,9 @@ def test_external_template_must_fail_closed_and_cover_required_blockers() -> Non
 
     assert payload["failures"] == []
     assert payload["external_template"]["status"] == "FAIL"
-    assert set(REQUIRED_EXTERNAL_BLOCKERS).issubset(set(payload["external_template"]["blockers"]))
+    assert set(REQUIRED_EXTERNAL_BLOCKERS).issubset(
+        set(payload["external_template"]["blockers"])
+    )
     assert payload["external_template"]["missing_required_blockers"] == []
     assert payload["external_template"]["secret_surface_issues"] == []
 
@@ -50,12 +55,14 @@ def test_order_and_reconcile_scenarios_are_live_blocking() -> None:
 
     assert payload["order_idempotency_assertions"]["missing_assertions"] == []
     assert payload["reconcile_assertions"]["missing_assertions"] == []
-    assert payload["order_idempotency_assertions"]["scenario_count"] >= payload[
-        "order_idempotency_assertions"
-    ]["expected_count"]
-    assert payload["reconcile_assertions"]["scenario_count"] >= payload[
-        "reconcile_assertions"
-    ]["expected_count"]
+    assert (
+        payload["order_idempotency_assertions"]["scenario_count"]
+        >= payload["order_idempotency_assertions"]["expected_count"]
+    )
+    assert (
+        payload["reconcile_assertions"]["scenario_count"]
+        >= payload["reconcile_assertions"]["expected_count"]
+    )
 
 
 def test_cli_writes_markdown_and_json(tmp_path: Path) -> None:

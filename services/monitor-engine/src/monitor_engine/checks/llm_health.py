@@ -20,7 +20,9 @@ class LlmHealthResult:
     details: dict[str, Any]
 
 
-def _last_stream_entry_ts_ms(r: redis.Redis, stream: str) -> tuple[str | None, int | None]:
+def _last_stream_entry_ts_ms(
+    r: redis.Redis, stream: str
+) -> tuple[str | None, int | None]:
     try:
         entries = r.xrevrange(stream, max="+", min="-", count=1)
     except Exception as exc:
@@ -67,7 +69,11 @@ def check_llm_streams(
     elif dlq_len >= warn_dlq:
         status = "warn"
 
-    if last_ts is not None and (now_ms - last_ts) < stale_llm_ms and dlq_len >= warn_dlq:
+    if (
+        last_ts is not None
+        and (now_ms - last_ts) < stale_llm_ms
+        and dlq_len >= warn_dlq
+    ):
         # viele Fehler in kurzer Zeit
         status = "critical"
 

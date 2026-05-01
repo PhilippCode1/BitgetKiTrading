@@ -46,7 +46,9 @@ def test_profile_matches_env_filename(
         (".env.production.example", "production"),
     ],
 )
-def test_repository_templates_support_template_flag(env_file: str, profile: str) -> None:
+def test_repository_templates_support_template_flag(
+    env_file: str, profile: str
+) -> None:
     cmd = [
         sys.executable,
         str(REPO / "tools" / "validate_env_profile.py"),
@@ -83,7 +85,9 @@ def test_shadow_template_requires_fail_closed_live_submit_gates(tmp_path: Path) 
     assert "LIVE_ENABLE_PRE_FLIGHT_LIQUIDITY_GUARD=true Pflicht" in r.stderr
 
 
-def test_production_template_requires_exchange_truth_submit_gate(tmp_path: Path) -> None:
+def test_production_template_requires_exchange_truth_submit_gate(
+    tmp_path: Path,
+) -> None:
     env_text = (REPO / ".env.production.example").read_text(encoding="utf-8")
     env_text = env_text.replace(
         "LIVE_BROKER_BLOCK_LIVE_WITHOUT_EXCHANGE_TRUTH=true",

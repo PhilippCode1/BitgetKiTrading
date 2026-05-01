@@ -27,7 +27,9 @@ def infer_topic_tags(candidate: NewsCandidate) -> list[str]:
         tags.append("btc")
     if any(x in blob for x in ("ethereum", " ether", "eth ", " eth,", "defi")):
         tags.append("eth_defi")
-    if any(x in blob for x in ("fed", "fomc", "cpi", "inflation", "interest rate", "rates")):
+    if any(
+        x in blob for x in ("fed", "fomc", "cpi", "inflation", "interest rate", "rates")
+    ):
         tags.append("macro")
     if any(x in blob for x in ("sec", "etf", "regulation", "lawsuit", "ban ")):
         tags.append("regulatory")

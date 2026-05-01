@@ -78,12 +78,16 @@ def test_classify_path_live_and_admin() -> None:
 def test_is_safety_mutation_paths() -> None:
     from api_gateway.rate_limit import _is_safety_mutation
 
-    assert _is_safety_mutation("/v1/live-broker/safety/orders/emergency-flatten", "POST")
+    assert _is_safety_mutation(
+        "/v1/live-broker/safety/orders/emergency-flatten", "POST"
+    )
     assert _is_safety_mutation(
         "/v1/live-broker/executions/00000000-0000-0000-0000-000000000001/operator-release",
         "POST",
     )
-    assert not _is_safety_mutation("/v1/live-broker/safety/orders/emergency-flatten", "GET")
+    assert not _is_safety_mutation(
+        "/v1/live-broker/safety/orders/emergency-flatten", "GET"
+    )
     assert not _is_safety_mutation("/v1/live-broker/runtime", "GET")
 
 
@@ -150,7 +154,9 @@ def test_super_admin_portal_kept_for_configured_subject() -> None:
     assert ctx.access_matrix()["super_admin_portal"] is True
 
 
-def test_require_billing_read_rejects_pure_customer_without_tenant_when_commercial() -> None:
+def test_require_billing_read_rejects_pure_customer_without_tenant_when_commercial() -> (
+    None
+):
     from api_gateway.auth import require_billing_read
 
     async def _run() -> None:
@@ -180,7 +186,9 @@ def test_require_billing_read_rejects_pure_customer_without_tenant_when_commerci
     asyncio.run(_run())
 
 
-def test_require_billing_read_accepts_pure_customer_with_tenant_when_commercial() -> None:
+def test_require_billing_read_accepts_pure_customer_with_tenant_when_commercial() -> (
+    None
+):
     from api_gateway.auth import require_billing_read
 
     async def _run() -> None:
@@ -316,7 +324,9 @@ def test_require_sensitive_auth_accepts_jwt_with_read_role() -> None:
             clear=False,
         ):
             _clear_gateway_settings_cache()
-            tok = _jwt(secret="unit-test-gateway-jwt-secret-32b!", roles=["gateway:read"])
+            tok = _jwt(
+                secret="unit-test-gateway-jwt-secret-32b!", roles=["gateway:read"]
+            )
             req = MagicMock()
             ctx = await require_sensitive_auth(
                 req,
@@ -365,7 +375,9 @@ def test_require_admin_write_forbids_customer_portal_jwt_even_with_write_role() 
     asyncio.run(_run())
 
 
-def test_require_admin_read_forbids_jwt_with_admin_roles_but_missing_role_admin_claim() -> None:
+def test_require_admin_read_forbids_jwt_with_admin_roles_but_missing_role_admin_claim() -> (
+    None
+):
     """/v1/admin: JWT braucht role=admin; fehlender Claim trotz admin:read -> 403."""
     from api_gateway.auth import require_admin_read
 

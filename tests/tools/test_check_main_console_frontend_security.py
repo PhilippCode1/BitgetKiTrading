@@ -9,7 +9,11 @@ from pathlib import Path
 def test_check_main_console_frontend_security_strict_ok() -> None:
     root = Path(__file__).resolve().parents[2]
     proc = subprocess.run(
-        [sys.executable, str(root / "tools" / "check_main_console_frontend_security.py"), "--strict"],
+        [
+            sys.executable,
+            str(root / "tools" / "check_main_console_frontend_security.py"),
+            "--strict",
+        ],
         cwd=str(root),
         capture_output=True,
         text=True,
@@ -21,7 +25,11 @@ def test_check_main_console_frontend_security_strict_ok() -> None:
 def test_check_main_console_frontend_security_json_parseable() -> None:
     root = Path(__file__).resolve().parents[2]
     proc = subprocess.run(
-        [sys.executable, str(root / "tools" / "check_main_console_frontend_security.py"), "--json"],
+        [
+            sys.executable,
+            str(root / "tools" / "check_main_console_frontend_security.py"),
+            "--json",
+        ],
         cwd=str(root),
         capture_output=True,
         text=True,

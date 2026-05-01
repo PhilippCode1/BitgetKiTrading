@@ -3,9 +3,9 @@ from __future__ import annotations
 from shared_py.operator_alerts import (
     OperatorAlert,
     alert_from_reconcile_fail,
+    alert_from_redis_or_db_live_critical,
     alert_from_safety_latch_active,
     alert_informational_p3,
-    alert_from_redis_or_db_live_critical,
     alert_payload_dict,
     assert_no_forbidden_commercial_terms,
     normalize_severity,
@@ -43,7 +43,7 @@ def test_p3_informational() -> None:
 
 
 def test_secret_like_fields_redacted() -> None:
-    raw = 'api_key: sk-secret-12345 token: abc'
+    raw = "api_key: sk-secret-12345 token: abc"
     out = redact_technical_details(raw)
     assert "sk-secret-12345" not in out
     assert "REDACTED" in out
@@ -125,7 +125,9 @@ def test_unknown_severity_fail_safe_p1() -> None:
 
 def test_payload_no_billing_customer_terms() -> None:
     a = alert_from_safety_latch_active()
-    blob = " ".join(str(v) for v in alert_payload_dict(a).values() if isinstance(v, (str, list)))
+    blob = " ".join(
+        str(v) for v in alert_payload_dict(a).values() if isinstance(v, str | list)
+    )
     assert_no_forbidden_commercial_terms(blob.lower())
     lowered = blob.lower()
     for forbidden in ("billing", "kunde", "subscription", "saas", "abo"):

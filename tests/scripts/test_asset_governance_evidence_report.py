@@ -14,15 +14,26 @@ from scripts.asset_preflight_evidence_report import REQUIRED_ASSET_PREFLIGHT_REA
 REPO = Path(__file__).resolve().parents[2]
 
 
-def test_payload_keeps_private_live_no_go_until_external_asset_evidence_exists() -> None:
+def test_payload_keeps_private_live_no_go_until_external_asset_evidence_exists() -> (
+    None
+):
     payload = build_report_payload()
 
     assert payload["private_live_decision"] == "NO_GO"
     assert payload["full_autonomous_live"] == "NO_GO"
     assert "real_bitget_asset_universe_refresh_missing" in payload["external_required"]
-    assert "real_per_asset_market_data_quality_window_missing" in payload["external_required"]
-    assert "real_orderbook_liquidity_slippage_window_missing" in payload["external_required"]
-    assert "owner_signed_asset_risk_tier_acceptance_missing" in payload["external_required"]
+    assert (
+        "real_per_asset_market_data_quality_window_missing"
+        in payload["external_required"]
+    )
+    assert (
+        "real_orderbook_liquidity_slippage_window_missing"
+        in payload["external_required"]
+    )
+    assert (
+        "owner_signed_asset_risk_tier_acceptance_missing"
+        in payload["external_required"]
+    )
     assert payload["summary"]["status"] == "implemented"
     assert payload["summary"]["decision"] == "not_enough_evidence"
 
@@ -44,7 +55,9 @@ def test_required_asset_block_reason_coverage_is_present() -> None:
     payload = build_report_payload()
     coverage = payload["block_reason_coverage"]
 
-    assert set(REQUIRED_BLOCK_REASON_COVERAGE).issubset(set(coverage["covered_block_reasons"]))
+    assert set(REQUIRED_BLOCK_REASON_COVERAGE).issubset(
+        set(coverage["covered_block_reasons"])
+    )
     assert coverage["missing_required_block_reasons"] == []
     assert payload["asset_assertions"]["missing_assertions"] == []
 
@@ -55,11 +68,16 @@ def test_fixture_assets_are_fail_closed_by_governance_and_quality() -> None:
 
     assert assets["ALTUSDT"]["governance_state"] == "quarantine"
     assert assets["ALTUSDT"]["submit_allowed"] is False
-    assert "state_quarantine_nicht_live_freigegeben" in assets["ALTUSDT"]["block_reasons"]
+    assert (
+        "state_quarantine_nicht_live_freigegeben" in assets["ALTUSDT"]["block_reasons"]
+    )
     assert "asset_tier_unknown" in assets["ALTUSDT"]["block_reasons"]
     assert assets["BTCUSDT"]["governance_state"] == "live_candidate"
     assert assets["BTCUSDT"]["submit_allowed"] is False
-    assert "state_live_candidate_nicht_live_freigegeben" in assets["BTCUSDT"]["block_reasons"]
+    assert (
+        "state_live_candidate_nicht_live_freigegeben"
+        in assets["BTCUSDT"]["block_reasons"]
+    )
     assert "slippage_zu_hoch" in assets["BTCUSDT"]["block_reasons"]
 
 

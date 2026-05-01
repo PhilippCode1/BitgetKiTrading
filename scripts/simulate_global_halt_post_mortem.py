@@ -41,7 +41,6 @@ def main() -> int:
     a = p.parse_args()
 
     from config.bootstrap import bootstrap_from_settings
-
     from monitor_engine.config import MonitorEngineSettings
     from monitor_engine.incident_rca.post_mortem import run_incident_post_mortem_once
     from shared_py.eventbus import RedisStreamBus
@@ -75,9 +74,7 @@ def main() -> int:
         bus.close()
     elapsed = time.perf_counter() - t0
     me = f"http://127.0.0.1:{settings.monitor_engine_port}"
-    print(
-        f"ok post_mortem_id={pm} wall_ms={int(elapsed * 1000)}"
-    )
+    print(f"ok post_mortem_id={pm} wall_ms={int(elapsed * 1000)}")
     print(
         f"GET: {me}/ops/post-mortems/{pm}  "
         f"(X-Internal-Service-Key, ggf. Operator-JWT am Gateway)"

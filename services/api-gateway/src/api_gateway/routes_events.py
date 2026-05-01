@@ -2,18 +2,15 @@ from __future__ import annotations
 
 import json
 import os
-from typing import Any
-
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-
-from api_gateway.auth import GatewayAuthContext, require_sensitive_auth
 from redis import Redis
 from redis.exceptions import RedisError
 from shared_py.eventbus import EVENT_STREAMS
 from shared_py.redis_client import get_or_create_sync_pooled_client
 
+from api_gateway.auth import GatewayAuthContext, require_sensitive_auth
 from api_gateway.config import get_gateway_settings
 
 router = APIRouter(prefix="/events", tags=["events"])
@@ -55,7 +52,9 @@ def events_health() -> dict[str, object]:
         return {
             "status": "ok",
             "ping": True,
-            "streams": {stream: int(redis_client.xlen(stream)) for stream in EVENT_STREAMS},
+            "streams": {
+                stream: int(redis_client.xlen(stream)) for stream in EVENT_STREAMS
+            },
         }
     except RedisError as exc:
         raise HTTPException(

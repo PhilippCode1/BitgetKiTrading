@@ -47,9 +47,11 @@ def run_drift_retrain(
     min_ts = _min_decision_ts_ms(window_days=wd)
     extras: dict[str, Any] = {
         "lifecycle_status": "PENDING_EVAL",
-        "origin": _METADATA_ORIGIN_SMOKE
-        if settings.learning_drift_retrain_smoke
-        else _METADATA_ORIGIN,
+        "origin": (
+            _METADATA_ORIGIN_SMOKE
+            if settings.learning_drift_retrain_smoke
+            else _METADATA_ORIGIN
+        ),
         "min_decision_ts_ms": min_ts,
         "window_days": wd,
     }

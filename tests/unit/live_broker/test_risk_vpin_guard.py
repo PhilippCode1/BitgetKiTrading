@@ -28,7 +28,9 @@ from live_broker.execution.service import LiveExecutionService
 
 
 class _FakeRepoVpin:
-    def list_latest_exchange_snapshots(self, snapshot_type: str, *, symbol=None, limit: int = 200):
+    def list_latest_exchange_snapshots(
+        self, snapshot_type: str, *, symbol=None, limit: int = 200
+    ):
         if snapshot_type == "account":
             return [
                 {

@@ -111,5 +111,8 @@ def test_news_shock_downgrades_tsfm_long_consensus_confidence() -> None:
     )
     audit = out["foundation_model_audit"]
     assert audit["shock_penalty_applied"] is True
-    assert audit["quant_confidence_for_consensus_0_1"] < audit["quant_confidence_original_0_1"]
+    assert (
+        audit["quant_confidence_for_consensus_0_1"]
+        < audit["quant_confidence_original_0_1"]
+    )
     assert "Cross-Check" in out["operator_explain"]["explanation_de"]

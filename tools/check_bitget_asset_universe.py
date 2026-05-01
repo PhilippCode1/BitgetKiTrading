@@ -14,12 +14,18 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 DOC_PATH = ROOT / "docs" / "production_10_10" / "bitget_asset_universe.md"
-CONTRACT_DOC_PATH = ROOT / "docs" / "production_10_10" / "instrument_catalog_contract.md"
-MAIN_CONSOLE_DOC_PATH = ROOT / "docs" / "production_10_10" / "main_console_product_direction.md"
+CONTRACT_DOC_PATH = (
+    ROOT / "docs" / "production_10_10" / "instrument_catalog_contract.md"
+)
+MAIN_CONSOLE_DOC_PATH = (
+    ROOT / "docs" / "production_10_10" / "main_console_product_direction.md"
+)
 NO_GO_DOC_PATH = ROOT / "docs" / "production_10_10" / "no_go_rules.md"
 MATRIX_PATH = ROOT / "docs" / "production_10_10" / "evidence_matrix.yaml"
 REFRESH_SCRIPT_PATH = ROOT / "scripts" / "refresh_bitget_asset_universe.py"
-ASSET_UNIVERSE_PATH = ROOT / "shared" / "python" / "src" / "shared_py" / "bitget" / "asset_universe.py"
+ASSET_UNIVERSE_PATH = (
+    ROOT / "shared" / "python" / "src" / "shared_py" / "bitget" / "asset_universe.py"
+)
 INSTRUMENT_PATHS = (
     ROOT / "shared" / "python" / "src" / "shared_py" / "bitget" / "instruments.py",
     ROOT / "shared" / "python" / "src" / "shared_py" / "bitget" / "catalog.py",
@@ -141,7 +147,9 @@ def analyze_asset_universe(
             path=fixture_path,
         )
 
-    missing_instrument_files = [str(path) for path in instrument_paths if not path.is_file()]
+    missing_instrument_files = [
+        str(path) for path in instrument_paths if not path.is_file()
+    ]
     for missing_path in missing_instrument_files:
         _issue(
             issues,
@@ -173,7 +181,9 @@ def analyze_asset_universe(
                 )
         for phrase in AUTO_LIVE_PHRASES:
             if phrase in doc_text:
-                negated = re.search(rf"(nicht|kein)\s+[^.\n]{{0,24}}{re.escape(phrase)}", doc_text)
+                negated = re.search(
+                    rf"(nicht|kein)\s+[^.\n]{{0,24}}{re.escape(phrase)}", doc_text
+                )
                 if negated:
                     continue
                 _issue(
@@ -257,7 +267,8 @@ def analyze_asset_universe(
         categories = matrix.get("categories")
         if isinstance(categories, list):
             matrix_has_category = any(
-                isinstance(item, dict) and str(item.get("id")) == "bitget_asset_universe"
+                isinstance(item, dict)
+                and str(item.get("id")) == "bitget_asset_universe"
                 for item in categories
             )
         if not matrix_has_category:
@@ -302,7 +313,9 @@ def render_text(summary: dict[str, Any]) -> str:
     ]
     for issue in summary["issues"]:
         suffix = f" [{issue['path']}]" if issue.get("path") else ""
-        lines.append(f"{issue['severity'].upper()} {issue['code']}: {issue['message']}{suffix}")
+        lines.append(
+            f"{issue['severity'].upper()} {issue['code']}: {issue['message']}{suffix}"
+        )
     return "\n".join(lines)
 
 

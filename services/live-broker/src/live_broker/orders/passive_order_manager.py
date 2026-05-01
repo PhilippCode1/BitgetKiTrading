@@ -24,7 +24,9 @@ class PassiveMakerParams:
     imbalance_against_threshold: float
 
 
-def passive_maker_trace_enabled(*, settings_default: bool, trace: dict[str, Any]) -> bool:
+def passive_maker_trace_enabled(
+    *, settings_default: bool, trace: dict[str, Any]
+) -> bool:
     """True wenn Market->Post-Only-Rewrite aktiv sein soll."""
     pm = trace.get("predatory_passive_maker")
     if pm is True:
@@ -49,7 +51,9 @@ def passive_params_from_sources(
     return PassiveMakerParams(
         max_slippage_bps=float(d.get("max_slippage_bps", settings_max_slippage_bps)),
         iceberg_slices=int(d.get("iceberg_slices", settings_slices)),
-        imbalance_pause_ms=int(d.get("imbalance_pause_ms", settings_imbalance_pause_ms)),
+        imbalance_pause_ms=int(
+            d.get("imbalance_pause_ms", settings_imbalance_pause_ms)
+        ),
         imbalance_against_threshold=float(
             d.get("imbalance_against_threshold", settings_imbalance_threshold)
         ),
@@ -93,11 +97,15 @@ def chase_price_within_slippage(
     """Absoluter Preisabstand vom Anchor vs. max_slippage_bps (fuer Long/Short gleich)."""
     if anchor_price <= 0 or new_limit_price <= 0:
         return False
-    slip_bps = float(abs(new_limit_price - anchor_price) / anchor_price * Decimal(10000))
+    slip_bps = float(
+        abs(new_limit_price - anchor_price) / anchor_price * Decimal(10000)
+    )
     return slip_bps <= float(max_slippage_bps) + 1e-9
 
 
-def plan_iceberg_sizes(total: Decimal, slices: int, rng: random.Random) -> list[Decimal]:
+def plan_iceberg_sizes(
+    total: Decimal, slices: int, rng: random.Random
+) -> list[Decimal]:
     """
     Zerlegt `total` in `slices` Teile mit Gewichten in [0.8, 1.2] (+-20%),
     normalisiert so dass die Summe exakt `total` ist.
@@ -122,17 +130,19 @@ def coalesce_orderflow_imbalance(trace: dict[str, Any]) -> float | None:
     """Liest orderflow_imbalance aus flachem Trace oder Microstructure-Nesting."""
     for key in ("orderflow_imbalance_5", "orderflow_imbalance_10"):
         v = trace.get(key)
-        if isinstance(v, (int, float)):
+        if isinstance(v, int | float):
             return float(v)
     ms = trace.get("microstructure") or trace.get("orderbook_micro")
     if isinstance(ms, dict):
         v = ms.get("orderflow_imbalance_5")
-        if isinstance(v, (int, float)):
+        if isinstance(v, int | float):
             return float(v)
     return None
 
 
-def passive_anchor_decimal(trace: dict[str, Any], fallback_price: str | None) -> Decimal | None:
+def passive_anchor_decimal(
+    trace: dict[str, Any], fallback_price: str | None
+) -> Decimal | None:
     raw = trace.get("passive_anchor_price")
     if raw is None:
         pm = trace.get("predatory_passive_maker")

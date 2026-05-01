@@ -1,4 +1,5 @@
 """Event-Payload-Validierung (jsonschema) gegen shared/contracts/schemas."""
+
 from __future__ import annotations
 
 import json
@@ -24,7 +25,7 @@ def _monorepo_root() -> Path:
 def _load_payload_schema_map() -> dict[str, str]:
     root = _monorepo_root()
     p = root / "shared" / "contracts" / "catalog" / "payload_schema_map.json"
-    return json.loads(p.read_text(encoding="utf-8"))
+    return json.loads(p.read_text(encoding="utf-8"))  # type: ignore
 
 
 PAYLOAD_SCHEMA_MAP: Final[dict[str, str]] = _load_payload_schema_map()

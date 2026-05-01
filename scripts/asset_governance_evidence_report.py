@@ -17,6 +17,8 @@ if str(ROOT) not in sys.path:
 
 from scripts.asset_preflight_evidence_report import (  # noqa: E402
     REQUIRED_ASSET_PREFLIGHT_REASONS,
+)
+from scripts.asset_preflight_evidence_report import (
     build_report_payload as build_asset_preflight_payload,
 )
 
@@ -73,9 +75,15 @@ def _asset_status_assertions(preflight_payload: dict[str, Any]) -> dict[str, Any
             missing.append(f"asset_not_live_blocked:{symbol}")
         if not row.get("block_reasons"):
             missing.append(f"block_reasons_missing:{symbol}")
-    if "ALTUSDT" in assets and assets["ALTUSDT"].get("governance_state") != "quarantine":
+    if (
+        "ALTUSDT" in assets
+        and assets["ALTUSDT"].get("governance_state") != "quarantine"
+    ):
         missing.append("quarantine_fixture_missing:ALTUSDT")
-    if "BTCUSDT" in assets and assets["BTCUSDT"].get("governance_state") != "live_candidate":
+    if (
+        "BTCUSDT" in assets
+        and assets["BTCUSDT"].get("governance_state") != "live_candidate"
+    ):
         missing.append("live_candidate_fixture_missing:BTCUSDT")
     return {
         "asset_count": len(assets),
@@ -86,8 +94,12 @@ def _asset_status_assertions(preflight_payload: dict[str, Any]) -> dict[str, Any
 def build_report_payload() -> dict[str, Any]:
     preflight = build_asset_preflight_payload()
     covered_reasons = _collect_block_reasons(preflight)
-    missing_block_reasons = sorted(set(REQUIRED_BLOCK_REASON_COVERAGE) - set(covered_reasons))
-    missing_preflight_reasons = list(preflight.get("missing_required_live_preflight_reasons") or [])
+    missing_block_reasons = sorted(
+        set(REQUIRED_BLOCK_REASON_COVERAGE) - set(covered_reasons)
+    )
+    missing_preflight_reasons = list(
+        preflight.get("missing_required_live_preflight_reasons") or []
+    )
     assertions = _asset_status_assertions(preflight)
 
     failures: list[str] = []
@@ -108,14 +120,25 @@ def build_report_payload() -> dict[str, Any]:
         for row in assets
         if any(
             reason in row.get("block_reasons", [])
-            for reason in ("missing_precision", "missing_min_qty", "missing_min_notional", "asset_governance_missing")
+            for reason in (
+                "missing_precision",
+                "missing_min_qty",
+                "missing_min_notional",
+                "asset_governance_missing",
+            )
         )
     )
-    quarantined_count = sum(1 for row in assets if row.get("governance_state") == "quarantine")
-    delisted_count = sum(1 for row in assets if row.get("governance_state") == "delisted")
+    quarantined_count = sum(
+        1 for row in assets if row.get("governance_state") == "quarantine"
+    )
+    delisted_count = sum(
+        1 for row in assets if row.get("governance_state") == "delisted"
+    )
     exchange_evidence_present = False
     overall_status = "implemented" if failures else "implemented"
-    readiness_decision = "not_enough_evidence" if not exchange_evidence_present else "verified"
+    readiness_decision = (
+        "not_enough_evidence" if not exchange_evidence_present else "verified"
+    )
     return {
         "generated_at": datetime.now(tz=UTC).isoformat(),
         "git_sha": _git_sha(),
@@ -125,7 +148,9 @@ def build_report_payload() -> dict[str, Any]:
             "assets_checked": preflight["assets_checked"],
             "live_allowed_count": preflight["live_allowed_count"],
             "live_blocked_count": preflight["live_blocked_count"],
-            "covered_live_preflight_reasons": preflight["covered_live_preflight_reasons"],
+            "covered_live_preflight_reasons": preflight[
+                "covered_live_preflight_reasons"
+            ],
             "required_live_preflight_reasons": list(REQUIRED_ASSET_PREFLIGHT_REASONS),
             "missing_required_live_preflight_reasons": missing_preflight_reasons,
             "source_files": preflight["source_files"],
@@ -222,7 +247,9 @@ def main(argv: list[str] | None = None) -> int:
     payload = build_report_payload()
     if args.output_json:
         args.output_json.parent.mkdir(parents=True, exist_ok=True)
-        args.output_json.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+        args.output_json.write_text(
+            json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
     if args.output_md:
         args.output_md.parent.mkdir(parents=True, exist_ok=True)
         args.output_md.write_text(render_markdown(payload), encoding="utf-8")

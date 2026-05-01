@@ -18,7 +18,10 @@ for candidate in (LEARNING_SRC, SHARED_SRC):
 from learning_engine.config import LearningEngineSettings
 from learning_engine.meta_models.target_bps import train_expected_bps_models
 from learning_engine.storage import repo_model_runs
-from shared_py.model_contracts import build_feature_snapshot, build_model_output_snapshot
+from shared_py.model_contracts import (
+    build_feature_snapshot,
+    build_model_output_snapshot,
+)
 
 
 @pytest.fixture
@@ -28,7 +31,9 @@ def learning_settings(
 ) -> LearningEngineSettings:
     monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:5432/db")
     monkeypatch.setenv("REDIS_URL", "redis://localhost:6379")
-    monkeypatch.setenv("EXPECTED_BPS_MODEL_ARTIFACTS_DIR", str(tmp_path / "expected-bps"))
+    monkeypatch.setenv(
+        "EXPECTED_BPS_MODEL_ARTIFACTS_DIR", str(tmp_path / "expected-bps")
+    )
     return LearningEngineSettings()
 
 
@@ -61,7 +66,10 @@ def test_train_expected_bps_models_write_artifacts_and_metrics(
     for _name, model_report in report["models"].items():
         assert "data_version_hash" in model_report
         assert "cv_report" in model_report
-        assert model_report["cv_report"]["summary"]["walk_forward_mean_mae_bps"] is not None
+        assert (
+            model_report["cv_report"]["summary"]["walk_forward_mean_mae_bps"]
+            is not None
+        )
 
     assert set(report["models"]) == {
         "expected_return_bps",
@@ -83,15 +91,20 @@ def test_train_expected_bps_models_write_artifacts_and_metrics(
         assert math.isfinite(float(model_report["metrics"]["mae_bps"]))
         assert math.isfinite(float(model_report["metrics"]["rmse_bps"]))
         assert len(model_report["regime_metrics"]) >= 2
-        assert model_report["prediction_bounds_bps"]["upper"] > model_report["prediction_bounds_bps"][
-            "lower"
-        ]
-        inserted_row = next(item for item in inserted if item["output_field"] == output_field)
+        assert (
+            model_report["prediction_bounds_bps"]["upper"]
+            > model_report["prediction_bounds_bps"]["lower"]
+        )
+        inserted_row = next(
+            item for item in inserted if item["output_field"] == output_field
+        )
         metadata = inserted_row["metadata_json"]
         assert isinstance(metadata, dict)
         assert metadata["feature_contract"]["output_field"] == output_field
         assert "feature_reference" in metadata
-        assert "signal_strength_0_100" in metadata["feature_reference"]["numeric_fields"]
+        assert (
+            "signal_strength_0_100" in metadata["feature_reference"]["numeric_fields"]
+        )
         assert metadata["metrics"]["mae_bps"] == model_report["metrics"]["mae_bps"]
         if output_field == "expected_return_bps":
             assert metadata["scaling_method"] == "asinh_clip"
@@ -116,17 +129,33 @@ def _evaluation_row(index: int) -> dict[str, object]:
         expected_return -= 11.0
     if shock:
         expected_return -= 18.0
-    expected_mae = 26.0 + funding_bps * 0.8 + (12.0 if missing_liquidity else 0.0) + (
-        18.0 if shock else 0.0
+    expected_mae = (
+        26.0
+        + funding_bps * 0.8
+        + (12.0 if missing_liquidity else 0.0)
+        + (18.0 if shock else 0.0)
     )
-    expected_mfe = max(expected_mae + 6.0, 58.0 + (18.0 if long_bias else -4.0) - (10.0 if shock else 0.0))
+    expected_mfe = max(
+        expected_mae + 6.0,
+        58.0 + (18.0 if long_bias else -4.0) - (10.0 if shock else 0.0),
+    )
 
     feature_rows = {
-        "1m": _feature_row("1m", index, long_bias, missing_liquidity, shock, funding_bps),
-        "5m": _feature_row("5m", index, long_bias, missing_liquidity, shock, funding_bps),
-        "15m": _feature_row("15m", index, long_bias, missing_liquidity, shock, funding_bps),
-        "1H": _feature_row("1H", index, long_bias, missing_liquidity, shock, funding_bps),
-        "4H": _feature_row("4H", index, long_bias, missing_liquidity, shock, funding_bps),
+        "1m": _feature_row(
+            "1m", index, long_bias, missing_liquidity, shock, funding_bps
+        ),
+        "5m": _feature_row(
+            "5m", index, long_bias, missing_liquidity, shock, funding_bps
+        ),
+        "15m": _feature_row(
+            "15m", index, long_bias, missing_liquidity, shock, funding_bps
+        ),
+        "1H": _feature_row(
+            "1H", index, long_bias, missing_liquidity, shock, funding_bps
+        ),
+        "4H": _feature_row(
+            "4H", index, long_bias, missing_liquidity, shock, funding_bps
+        ),
     }
     signal_snapshot = build_model_output_snapshot(
         {

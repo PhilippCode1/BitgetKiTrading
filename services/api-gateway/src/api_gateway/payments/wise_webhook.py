@@ -15,10 +15,10 @@ import json
 from typing import Any
 
 import psycopg
+from config.gateway_settings import GatewaySettings
 from fastapi import HTTPException
 
 from api_gateway.payments.billing_sync import try_insert_rail_webhook_inbox
-from config.gateway_settings import GatewaySettings
 
 
 def verify_wise_hmac_sha256_hex(secret: str, body: bytes, signature_hex: str) -> bool:
@@ -54,7 +54,9 @@ def process_wise_webhook(
         raise HTTPException(status_code=404, detail="wise webhook disabled")
     secret = settings.payment_wise_webhook_secret.strip()
     if not secret:
-        raise HTTPException(status_code=503, detail="wise webhook secret not configured")
+        raise HTTPException(
+            status_code=503, detail="wise webhook secret not configured"
+        )
     sig = (signature_header or "").strip()
     if not verify_wise_hmac_sha256_hex(secret, body, sig):
         raise HTTPException(status_code=401, detail="invalid wise signature")
@@ -69,6 +71,8 @@ def process_wise_webhook(
 
     fp = _fingerprint_from_wise_body(data)
     meta = {"schema_version": "wise-webhook-v1", "keys": list(data.keys())[:24]}
-    if not try_insert_rail_webhook_inbox(conn, rail="wise", event_fingerprint=fp, meta_json=meta):
+    if not try_insert_rail_webhook_inbox(
+        conn, rail="wise", event_fingerprint=fp, meta_json=meta
+    ):
         return {"received": True, "rail": "wise", "duplicate": True}
     return {"received": True, "rail": "wise", "stored": True}

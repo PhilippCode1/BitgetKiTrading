@@ -2,12 +2,10 @@ from __future__ import annotations
 
 from typing import ClassVar, Self
 
+from config.settings import BaseServiceSettings, TriggerType
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import SettingsConfigDict
-
-from config.settings import BaseServiceSettings, TriggerType
 from shared_py.bitget import BitgetSettings
-from shared_py.shadow_live_divergence import ShadowLiveThresholds
 from shared_py.eventbus import (
     EVENT_STREAMS,
     STREAM_SIGNAL_CREATED,
@@ -15,6 +13,7 @@ from shared_py.eventbus import (
     STREAM_TRADE_OPENED,
     STREAM_TRADE_UPDATED,
 )
+from shared_py.shadow_live_divergence import ShadowLiveThresholds
 
 _DEFAULT_REFERENCE_STREAMS = ",".join(
     (STREAM_TRADE_OPENED, STREAM_TRADE_UPDATED, STREAM_TRADE_CLOSED)
@@ -393,7 +392,8 @@ class LiveBrokerSettings(BitgetSettings):
     def commercial_gates_enforced_for_exchange_submit(self) -> bool:
         """True wenn Tenant-Kommerzgates vor Boersen-Submit geladen werden muessen."""
         return bool(
-            self.modul_mate_gate_enforcement or self.live_broker_require_commercial_gates
+            self.modul_mate_gate_enforcement
+            or self.live_broker_require_commercial_gates
         )
 
     @field_validator("shadow_live_max_slippage_expectation_bps", mode="before")
@@ -419,7 +419,9 @@ class LiveBrokerSettings(BitgetSettings):
     @classmethod
     def _metadata_age_sec(cls, value: int) -> int:
         if value < 0 or value > 86_400:
-            raise ValueError("LIVE_PREFLIGHT_MAX_CATALOG_METADATA_AGE_SEC muss 0..86400 sein")
+            raise ValueError(
+                "LIVE_PREFLIGHT_MAX_CATALOG_METADATA_AGE_SEC muss 0..86400 sein"
+            )
         return value
 
     @field_validator(
@@ -432,7 +434,9 @@ class LiveBrokerSettings(BitgetSettings):
         if value is None:
             return None
         if value <= 0 or value > 1_000_000:
-            raise ValueError("Execution-Guard-Schwellen muessen NULL oder > 0 und plausibel sein")
+            raise ValueError(
+                "Execution-Guard-Schwellen muessen NULL oder > 0 und plausibel sein"
+            )
         return value
 
     @field_validator("live_broker_port")
@@ -466,7 +470,9 @@ class LiveBrokerSettings(BitgetSettings):
     @classmethod
     def _validate_signal_stream(cls, value: str) -> str:
         if value not in EVENT_STREAMS:
-            raise ValueError("LIVE_BROKER_SIGNAL_STREAM ist kein gueltiger Event-Stream")
+            raise ValueError(
+                "LIVE_BROKER_SIGNAL_STREAM ist kein gueltiger Event-Stream"
+            )
         return value
 
     @field_validator("order_idempotency_prefix")
@@ -478,9 +484,7 @@ class LiveBrokerSettings(BitgetSettings):
         if len(normalized) > 13:
             raise ValueError("ORDER_IDEMPOTENCY_PREFIX darf max. 13 Zeichen lang sein")
         if any(ch not in "abcdefghijklmnopqrstuvwxyz0123456789-" for ch in normalized):
-            raise ValueError(
-                "ORDER_IDEMPOTENCY_PREFIX erlaubt nur a-z, 0-9 und '-'"
-            )
+            raise ValueError("ORDER_IDEMPOTENCY_PREFIX erlaubt nur a-z, 0-9 und '-'")
         return normalized
 
     @field_validator("stop_trigger_type_default", "tp_trigger_type_default")
@@ -572,7 +576,9 @@ class LiveBrokerSettings(BitgetSettings):
     @classmethod
     def _validate_break_even_index(cls, value: int) -> int:
         if value < 0 or value > 2:
-            raise ValueError("EXIT_BREAK_EVEN_AFTER_TP_INDEX muss im Bereich 0..2 liegen")
+            raise ValueError(
+                "EXIT_BREAK_EVEN_AFTER_TP_INDEX muss im Bereich 0..2 liegen"
+            )
         return value
 
     @field_validator("shadow_live_max_timing_skew_ms")
@@ -593,7 +599,9 @@ class LiveBrokerSettings(BitgetSettings):
     @classmethod
     def _validate_shadow_div(cls, value: float) -> float:
         if not 0.0 <= value <= 1.0:
-            raise ValueError("SHADOW_LIVE_MAX_SIGNAL_SHADOW_DIVERGENCE_0_1 muss 0..1 sein")
+            raise ValueError(
+                "SHADOW_LIVE_MAX_SIGNAL_SHADOW_DIVERGENCE_0_1 muss 0..1 sein"
+            )
         return value
 
     @field_validator("shadow_live_max_slippage_expectation_bps")
@@ -602,7 +610,9 @@ class LiveBrokerSettings(BitgetSettings):
         if value is None:
             return None
         if value <= 0 or value > 500:
-            raise ValueError("SHADOW_LIVE_MAX_SLIPPAGE_EXPECTATION_BPS muss NULL oder 0..500 sein")
+            raise ValueError(
+                "SHADOW_LIVE_MAX_SLIPPAGE_EXPECTATION_BPS muss NULL oder 0..500 sein"
+            )
         return value
 
     @field_validator("live_broker_base_url")
@@ -611,9 +621,7 @@ class LiveBrokerSettings(BitgetSettings):
         normalized = value.strip()
         if not normalized:
             return normalized
-        if not (
-            normalized.startswith("http://") or normalized.startswith("https://")
-        ):
+        if not (normalized.startswith("http://") or normalized.startswith("https://")):
             raise ValueError(
                 "LIVE_BROKER_BASE_URL muss mit http:// oder https:// beginnen"
             )
@@ -625,9 +633,7 @@ class LiveBrokerSettings(BitgetSettings):
         normalized = value.strip()
         if not normalized:
             return normalized
-        if not (
-            normalized.startswith("ws://") or normalized.startswith("wss://")
-        ):
+        if not (normalized.startswith("ws://") or normalized.startswith("wss://")):
             raise ValueError(
                 "LIVE_BROKER_WS_PRIVATE_URL muss mit ws:// oder wss:// beginnen"
             )
@@ -647,7 +653,9 @@ class LiveBrokerSettings(BitgetSettings):
         reference_streams = self.reference_streams
         if not reference_streams:
             raise ValueError("LIVE_BROKER_REFERENCE_STREAMS darf nicht leer sein")
-        invalid = [stream for stream in reference_streams if stream not in EVENT_STREAMS]
+        invalid = [
+            stream for stream in reference_streams if stream not in EVENT_STREAMS
+        ]
         if invalid:
             raise ValueError(
                 f"LIVE_BROKER_REFERENCE_STREAMS enthaelt ungueltige Streams: {invalid}"
@@ -686,12 +694,16 @@ class LiveBrokerSettings(BitgetSettings):
         jlim = self.live_reconcile_journal_tail_limit
         if jlim < 20 or jlim > 2000:
             raise ValueError("LIVE_RECONCILE_JOURNAL_TAIL_LIMIT muss 20..2000 sein")
-        if (self.production or self.app_env == "production") and self.bitget_demo_enabled:
+        if (
+            self.production or self.app_env == "production"
+        ) and self.bitget_demo_enabled:
             raise ValueError(
                 "BITGET_DEMO_ENABLED=true ist fuer PRODUCTION / APP_ENV=production "
                 "nicht zulaessig (Live-Broker: keine Demo/Paper-REST fuer Echtgeld-Pfad)"
             )
-        if (self.production or self.app_env == "production") and self.bitget_relax_credential_isolation:
+        if (
+            self.production or self.app_env == "production"
+        ) and self.bitget_relax_credential_isolation:
             raise ValueError(
                 "BITGET_RELAX_CREDENTIAL_ISOLATION=true ist in Production nicht zulaessig"
             )
@@ -705,7 +717,11 @@ class LiveBrokerSettings(BitgetSettings):
                         "Ausnahme lokal: BITGET_RELAX_CREDENTIAL_ISOLATION=true."
                     )
             elif not self.bitget_demo_enabled and self.private_exchange_access_enabled:
-                if self.demo_api_key or self.demo_api_secret or self.demo_api_passphrase:
+                if (
+                    self.demo_api_key
+                    or self.demo_api_secret
+                    or self.demo_api_passphrase
+                ):
                     raise ValueError(
                         "Private Exchange-Anbindung aktiv (Shadow/Live-Orders) ohne Demo-Modus: "
                         "BITGET_DEMO_API_KEY/SECRET/PASSPHRASE muessen leer sein — keine Demo-Keys im Live-Pfad. "
@@ -715,7 +731,10 @@ class LiveBrokerSettings(BitgetSettings):
             raise ValueError(
                 "MODUL_MATE_GATE_ENFORCEMENT=true erfordert eine gesetzte DATABASE_URL"
             )
-        if self.live_broker_require_commercial_gates and not (self.database_url or "").strip():
+        if (
+            self.live_broker_require_commercial_gates
+            and not (self.database_url or "").strip()
+        ):
             raise ValueError(
                 "LIVE_BROKER_REQUIRE_COMMERCIAL_GATES=true erfordert eine gesetzte DATABASE_URL"
             )

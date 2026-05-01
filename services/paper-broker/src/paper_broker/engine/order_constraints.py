@@ -49,9 +49,7 @@ def validate_paper_base_order_qty(
     if qmin is not None and qty < qmin:
         raise ValueError("paper_order_qty_below_minimum")
     is_m = (order_type or "") == "market"
-    omax = _d(
-        entry.market_order_quantity_max if is_m else entry.quantity_max
-    )
+    omax = _d(entry.market_order_quantity_max if is_m else entry.quantity_max)
     if omax is not None and omax > 0 and qty > omax:
         raise ValueError("paper_order_qty_above_maximum")
     mnq = _d(entry.min_notional_quote)

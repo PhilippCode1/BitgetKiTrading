@@ -7,8 +7,7 @@ from __future__ import annotations
 import asyncio
 from typing import Any, TypeVar
 
-import grpc.aio
-from grpc.aio import UnaryUnaryClientInterceptor
+from grpc.aio import UnaryUnaryClientInterceptor  # type: ignore
 
 RequestT = TypeVar("RequestT")
 
@@ -26,7 +25,7 @@ def build_timesfm_chaos_interceptors(
     if n <= 0 or delay_sec <= 0:
         return []
 
-    class _ChaosInterceptor(UnaryUnaryClientInterceptor):
+    class _ChaosInterceptor(UnaryUnaryClientInterceptor):  # type: ignore
         def __init__(self) -> None:
             self._c = 0
 

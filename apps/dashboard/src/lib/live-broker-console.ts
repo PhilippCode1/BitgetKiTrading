@@ -34,7 +34,11 @@ export function paperOpenQueryKey(
   return ["paper", "positions", "open", s];
 }
 
-export const liveBrokerOrdersQueryKey = ["live-broker", "orders", "recent"] as const;
+export const liveBrokerOrdersQueryKey = [
+  "live-broker",
+  "orders",
+  "recent",
+] as const;
 
 export function isPaperSseForTradeLifecycle(raw: unknown): boolean {
   if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
@@ -121,7 +125,9 @@ export function recordHasKeys(value: unknown): boolean {
 const SECRET_RX =
   /\bauthorization\b\s*[:=]\s*bearer\s+\S+|\b(authorization|bearer|token|secret|api[_-]?key|password)\b\s*[:=]\s*\S+/gi;
 
-export function sanitizeBrokerErrorDetail(raw: string | null | undefined): string {
+export function sanitizeBrokerErrorDetail(
+  raw: string | null | undefined,
+): string {
   if (!raw) return "";
   return raw.slice(0, 220).replace(SECRET_RX, "$1=***");
 }
@@ -135,10 +141,12 @@ export function brokerLiveBlockers(params: {
   const { runtime, health } = params;
   if (!runtime) blockers.push("Live-Runtime fehlt");
   if (runtime?.safety_latch_active) blockers.push("Safety-Latch aktiv");
-  if ((runtime?.active_kill_switches?.length ?? 0) > 0) blockers.push("Kill-Switch aktiv");
+  if ((runtime?.active_kill_switches?.length ?? 0) > 0)
+    blockers.push("Kill-Switch aktiv");
   const reconcile = health?.ops?.live_broker?.latest_reconcile_status ?? null;
   if (!reconcile || reconcile !== "ok") blockers.push("Reconcile nicht ok");
-  if (runtime?.upstream_ok === false) blockers.push("Bitget Private Readiness gestört");
+  if (runtime?.upstream_ok === false)
+    blockers.push("Bitget Private Readiness gestört");
   return Array.from(new Set(blockers));
 }
 
@@ -152,7 +160,10 @@ export function brokerLiveTradingStatus(params: {
     orderCount: 0,
   });
   if (blockers.length > 0) return "blockiert";
-  if (params.runtime?.live_trade_enable && params.runtime?.live_order_submission_enabled) {
+  if (
+    params.runtime?.live_trade_enable &&
+    params.runtime?.live_order_submission_enabled
+  ) {
     return "ja";
   }
   return "nein";
@@ -163,7 +174,8 @@ export function brokerUnknownStates(params: {
   health: SystemHealthResponse | null | undefined;
 }): string[] {
   const out: string[] = [];
-  if (!params.runtime?.bitget_private_status) out.push("Bitget-Private-Status unbekannt");
+  if (!params.runtime?.bitget_private_status)
+    out.push("Bitget-Private-Status unbekannt");
   if (!params.health?.ops?.live_broker?.latest_reconcile_created_ts) {
     out.push("Reconcile-Zeitpunkt unbekannt");
   }

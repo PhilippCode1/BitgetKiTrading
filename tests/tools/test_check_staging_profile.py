@@ -7,7 +7,6 @@ from pathlib import Path
 from tools.check_env_10_10_safety import load_dotenv
 from tools.check_staging_profile import validate_staging_profile
 
-
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -16,7 +15,7 @@ def base_env() -> dict[str, str]:
 
 
 def codes(issues: list[object]) -> set[str]:
-    return {getattr(issue, "code") for issue in issues}
+    return {issue.code for issue in issues}
 
 
 def test_staging_template_accepts_placeholders() -> None:
@@ -68,7 +67,13 @@ def test_production_database_and_redis_are_blocked() -> None:
 
 def test_smoke_dry_run_outputs_expected_checklist() -> None:
     completed = subprocess.run(
-        [sys.executable, "scripts/staging_smoke.py", "--env-file", ".env.staging.example", "--dry-run"],
+        [
+            sys.executable,
+            "scripts/staging_smoke.py",
+            "--env-file",
+            ".env.staging.example",
+            "--dry-run",
+        ],
         cwd=ROOT,
         check=True,
         capture_output=True,

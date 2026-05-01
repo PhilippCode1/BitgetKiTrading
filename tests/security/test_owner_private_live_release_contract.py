@@ -26,11 +26,15 @@ def test_expect_true_cases(vectors: dict) -> None:
     from shared_py.readiness_scorecard import owner_private_live_release_payload_ok
 
     for case in vectors["expect_true"]:
-        assert owner_private_live_release_payload_ok(case["payload"]) is True, case["id"]
+        assert owner_private_live_release_payload_ok(case["payload"]) is True, case[
+            "id"
+        ]
 
 
 def test_expect_false_cases(vectors: dict) -> None:
     from shared_py.readiness_scorecard import owner_private_live_release_payload_ok
 
     for case in vectors["expect_false"]:
-        assert owner_private_live_release_payload_ok(case["payload"]) is False, case["id"]
+        assert owner_private_live_release_payload_ok(case["payload"]) is False, case[
+            "id"
+        ]

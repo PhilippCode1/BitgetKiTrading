@@ -57,10 +57,16 @@ def test_market_context_features_from_orderbook_funding_and_oi() -> None:
     )
     assert features.liquidity_source == "orderbook_levels"
     assert features.spread_bps is not None and features.spread_bps > 0
-    assert features.execution_cost_bps is not None and features.execution_cost_bps > features.spread_bps
+    assert (
+        features.execution_cost_bps is not None
+        and features.execution_cost_bps > features.spread_bps
+    )
     assert features.impact_buy_bps_5000 is not None
     assert features.funding_rate_bps == 2.0
-    assert features.funding_cost_bps_window is not None and features.funding_cost_bps_window > 0
+    assert (
+        features.funding_cost_bps_window is not None
+        and features.funding_cost_bps_window > 0
+    )
     assert features.open_interest == 120_000.0
     assert features.open_interest_change_pct == 20.0
     assert features.funding_time_to_next_ms == 28_795_000

@@ -192,7 +192,9 @@ class StructureWorker:
         if env.event_type != "candle_close":
             self._stats.last_structure_skip = "skip_non_candle_close"
             self._logger.debug(
-                "structure worker skip event_type=%s id=%s", env.event_type, env.event_id
+                "structure worker skip event_type=%s id=%s",
+                env.event_type,
+                env.event_id,
             )
             return
         timeframe = normalize_timeframe(_extract_timeframe(env))
@@ -263,8 +265,12 @@ class StructureWorker:
             symbol=symbol, timeframe=timeframe, kind="low"
         )
         trend_dir = trend_from_swings(last_highs, last_lows)
-        last_h = self._repo.fetch_last_swing_price(symbol=symbol, timeframe=timeframe, kind="high")
-        last_l = self._repo.fetch_last_swing_price(symbol=symbol, timeframe=timeframe, kind="low")
+        last_h = self._repo.fetch_last_swing_price(
+            symbol=symbol, timeframe=timeframe, kind="high"
+        )
+        last_l = self._repo.fetch_last_swing_price(
+            symbol=symbol, timeframe=timeframe, kind="low"
+        )
 
         close = candles[-1].c
         prev_close = candles[-2].c if len(candles) >= 2 else None
@@ -288,8 +294,12 @@ class StructureWorker:
                 timeframe,
                 start_ts_ms,
             )
-        atr_14 = float(feat["atr_14"]) if feat and feat.get("atr_14") is not None else None
-        atrp_14 = float(feat["atrp_14"]) if feat and feat.get("atrp_14") is not None else None
+        atr_14 = (
+            float(feat["atr_14"]) if feat and feat.get("atr_14") is not None else None
+        )
+        atrp_14 = (
+            float(feat["atrp_14"]) if feat and feat.get("atrp_14") is not None else None
+        )
         atr_ratio, _ = atr_pct_ratio_from_feature(atr_14, atrp_14, close)
         if math.isnan(atr_ratio):
             atr_ratio = fallback_atr_pct_ratio(candles)
@@ -315,7 +325,9 @@ class StructureWorker:
         if len(candles) >= 21:
             range20_prev = range_20_ratio(highs[:-1], lows[:-1], candles[-2].c)
 
-        prev_state = self._repo.get_structure_state_row(symbol=symbol, timeframe=timeframe)
+        prev_state = self._repo.get_structure_state_row(
+            symbol=symbol, timeframe=timeframe
+        )
         prev_comp = bool(prev_state["compression_flag"]) if prev_state else False
         prev_box_raw: dict[str, Any] = {}
         if prev_state and isinstance(prev_state.get("breakout_box_json"), dict):
@@ -348,11 +360,11 @@ class StructureWorker:
                 )
                 breakout_box_payload = {}
             else:
-                prebreak = prebreak_side(close, box, self._settings.box_prebreak_dist_bps)
+                prebreak = prebreak_side(
+                    close, box, self._settings.box_prebreak_dist_bps
+                )
                 if fb_enabled:
-                    pending = (
-                        pending_from_json(prev_box_raw) if prev_comp else None
-                    )
+                    pending = pending_from_json(prev_box_raw) if prev_comp else None
                     pending, br_ev = update_false_breakout_watch(
                         close=close,
                         box=box,
@@ -364,13 +376,19 @@ class StructureWorker:
                     br_store.extend(br_ev)
                 else:
                     pending = None
-                breakout_box_payload = box_to_json(box, prebreak=prebreak, pending=pending)
+                breakout_box_payload = box_to_json(
+                    box, prebreak=prebreak, pending=pending
+                )
 
         events_to_store: list[tuple[str, dict[str, Any]]] = []
         if comp_evt == "COMPRESSION_ON":
-            events_to_store.append(("COMPRESSION_ON", {"range20": range20, "atr_pct": atr_ratio}))
+            events_to_store.append(
+                ("COMPRESSION_ON", {"range20": range20, "atr_pct": atr_ratio})
+            )
         elif comp_evt == "COMPRESSION_OFF":
-            events_to_store.append(("COMPRESSION_OFF", {"range20": range20, "atr_pct": atr_ratio}))
+            events_to_store.append(
+                ("COMPRESSION_OFF", {"range20": range20, "atr_pct": atr_ratio})
+            )
 
         if struct_type == "BOS" and struct_dir is not None:
             events_to_store.append(

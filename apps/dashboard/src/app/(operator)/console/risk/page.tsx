@@ -54,16 +54,22 @@ export default async function RiskCenterPage({
       ? settled[0].value
       : { health: null, error: new Error("health failed") };
   const live = settled[1].status === "fulfilled" ? settled[1].value : null;
-  const runtime = settled[2].status === "fulfilled" ? settled[2].value.item : null;
-  const killSwitches = settled[3].status === "fulfilled" ? settled[3].value.items : [];
-  const decisions = settled[4].status === "fulfilled" ? settled[4].value.items : [];
-  const orders = settled[5].status === "fulfilled" ? settled[5].value.items : [];
+  const runtime =
+    settled[2].status === "fulfilled" ? settled[2].value.item : null;
+  const killSwitches =
+    settled[3].status === "fulfilled" ? settled[3].value.items : [];
+  const decisions =
+    settled[4].status === "fulfilled" ? settled[4].value.items : [];
+  const orders =
+    settled[5].status === "fulfilled" ? settled[5].value.items : [];
   const market = settled[6].status === "fulfilled" ? settled[6].value : null;
-  const signals = settled[7].status === "fulfilled" ? settled[7].value.items : [];
+  const signals =
+    settled[7].status === "fulfilled" ? settled[7].value.items : [];
 
   const topError =
     settled.find((x) => x.status === "rejected")?.status === "rejected"
-      ? (settled.find((x) => x.status === "rejected") as PromiseRejectedResult).reason
+      ? (settled.find((x) => x.status === "rejected") as PromiseRejectedResult)
+          .reason
       : null;
 
   const overview = computeRiskOverviewFromRuntime(runtime);
@@ -103,11 +109,19 @@ export default async function RiskCenterPage({
         <div className="signal-grid">
           <div>
             <span className="label">Gesamtstatus</span>
-            <strong>{overall === "ok" ? "OK" : overall === "warnung" ? "Warnung" : "Blockiert"}</strong>
+            <strong>
+              {overall === "ok"
+                ? "OK"
+                : overall === "warnung"
+                  ? "Warnung"
+                  : "Blockiert"}
+            </strong>
           </div>
           <div>
             <span className="label">Betriebsmodus</span>
-            <strong>{healthPack.health?.execution.execution_mode ?? "—"}</strong>
+            <strong>
+              {healthPack.health?.execution.execution_mode ?? "—"}
+            </strong>
           </div>
           <div>
             <span className="label">Daily Loss</span>
@@ -127,7 +141,9 @@ export default async function RiskCenterPage({
           </div>
           <div>
             <span className="label">Offene Positionen / Kandidaten</span>
-            <strong>{orders.length} / {decisions.length}</strong>
+            <strong>
+              {orders.length} / {decisions.length}
+            </strong>
           </div>
           <div>
             <span className="label">Portfolio Exposure</span>
@@ -135,7 +151,10 @@ export default async function RiskCenterPage({
           </div>
         </div>
         <p className="muted small" style={{ marginTop: 8 }}>
-          Groesste Einzelrisiken: {overview.topRisks.length ? overview.topRisks.join(" · ") : "keine Daten"}
+          Groesste Einzelrisiken:{" "}
+          {overview.topRisks.length
+            ? overview.topRisks.join(" · ")
+            : "keine Daten"}
         </p>
       </div>
 
@@ -182,7 +201,9 @@ export default async function RiskCenterPage({
                 ))
               ) : (
                 <tr>
-                  <td colSpan={8}>Keine Asset-Risk-Daten verfuegbar, Live bleibt blockiert.</td>
+                  <td colSpan={8}>
+                    Keine Asset-Risk-Daten verfuegbar, Live bleibt blockiert.
+                  </td>
                 </tr>
               )}
             </tbody>
@@ -200,12 +221,18 @@ export default async function RiskCenterPage({
           <div>
             <span className="label">Direction Exposure</span>
             <strong>
-              {portfolio.directionExposure == null ? "—" : `${(portfolio.directionExposure * 100).toFixed(1)}%`}
+              {portfolio.directionExposure == null
+                ? "—"
+                : `${(portfolio.directionExposure * 100).toFixed(1)}%`}
             </strong>
           </div>
           <div>
             <span className="label">Cluster/Korrelation</span>
-            <strong>{portfolio.cluster == null ? "—" : `${(portfolio.cluster * 100).toFixed(1)}%`}</strong>
+            <strong>
+              {portfolio.cluster == null
+                ? "—"
+                : `${(portfolio.cluster * 100).toFixed(1)}%`}
+            </strong>
           </div>
           <div>
             <span className="label">Pending mirror trades</span>

@@ -27,9 +27,7 @@ def test_classify_public_health_routes_not_used_by_middleware_but_paths() -> Non
 def test_safety_mutation_paths() -> None:
     assert rl._is_safety_mutation("/v1/live-broker/safety/orders/cancel-all", "POST")
     assert not rl._is_safety_mutation("/v1/live-broker/safety/orders/cancel-all", "GET")
-    assert rl._is_safety_mutation(
-        "/v1/foo/executions/x/operator-release", "POST"
-    )
+    assert rl._is_safety_mutation("/v1/foo/executions/x/operator-release", "POST")
     assert not rl._is_safety_mutation("/v1/admin/foo", "POST")
 
 

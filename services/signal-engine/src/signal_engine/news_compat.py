@@ -12,7 +12,7 @@ def news_sentiment_as_float(value: Any) -> float | None:
         return None
     if isinstance(value, bool):
         return None
-    if isinstance(value, (int, float)):
+    if isinstance(value, int | float):
         return float(value)
     s = str(value).strip().lower()
     mapping = {

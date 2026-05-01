@@ -51,19 +51,25 @@ class _FakeRepo:
     def record_execution_decision(self, record: dict):
         return {**record, "execution_id": str(uuid4())}
 
-    def record_execution_risk_snapshot(self, execution_decision_id: str, risk_decision: dict) -> None:
+    def record_execution_risk_snapshot(
+        self, execution_decision_id: str, risk_decision: dict
+    ) -> None:
         return None
 
     def record_shadow_live_assessment(self, **kwargs) -> None:
         return None
 
-    def list_latest_exchange_snapshots(self, snapshot_type: str, *, symbol=None, limit: int = 200):
+    def list_latest_exchange_snapshots(
+        self, snapshot_type: str, *, symbol=None, limit: int = 200
+    ):
         items = list(self.snapshots.get(snapshot_type, []))
         if symbol is not None:
             items = [i for i in items if i.get("symbol") == symbol]
         return items[:limit]
 
-    def list_exchange_snapshots_since(self, snapshot_type: str, *, since_ts_ms: int, limit: int = 5000):
+    def list_exchange_snapshots_since(
+        self, snapshot_type: str, *, since_ts_ms: int, limit: int = 5000
+    ):
         return self.list_latest_exchange_snapshots(snapshot_type, limit=limit)
 
     def latest_reconcile_snapshot(self):
@@ -111,12 +117,19 @@ def _clean_repo() -> _FakeRepo:
         {
             "symbol": "USDT",
             "raw_data": {
-                "items": [{"marginCoin": "USDT", "equity": "10000", "available": "9500"}],
+                "items": [
+                    {"marginCoin": "USDT", "equity": "10000", "available": "9500"}
+                ],
             },
         }
     ]
     repo.reconcile_snapshot = {
-        "details_json": {"drift": {"total_count": 0, "snapshot_health": {"missing_count": 0, "stale_count": 0}}}
+        "details_json": {
+            "drift": {
+                "total_count": 0,
+                "snapshot_health": {"missing_count": 0, "stale_count": 0},
+            }
+        }
     }
     return repo
 
@@ -151,7 +164,9 @@ def _base_intent() -> ExecutionIntentRequest:
     )
 
 
-def test_live_blocked_when_truth_gate_on_and_drift_flagged(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_live_blocked_when_truth_gate_on_and_drift_flagged(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     settings = _live_settings(monkeypatch)
     repo = _clean_repo()
     svc = LiveExecutionService(settings, _FakeExchangeClient(), repo)  # type: ignore[arg-type]
@@ -172,7 +187,9 @@ def test_live_blocked_when_truth_gate_on_and_drift_flagged(monkeypatch: pytest.M
     assert out["decision_reason"] == "exchange_drift_or_snapshot_unhealthy"
 
 
-def test_live_blocked_when_no_fresh_truth_channel(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_live_blocked_when_no_fresh_truth_channel(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     settings = _live_settings(monkeypatch)
     repo = _clean_repo()
     svc = LiveExecutionService(settings, _FakeExchangeClient(), repo)  # type: ignore[arg-type]
@@ -240,7 +257,13 @@ def test_gate_disabled_ignores_bad_truth(monkeypatch: pytest.MonkeyPatch) -> Non
 def test_truth_status_snapshot_reflects_gate(monkeypatch: pytest.MonkeyPatch) -> None:
     settings = _live_settings(monkeypatch)
     svc = LiveExecutionService(settings, _FakeExchangeClient(), _clean_repo())  # type: ignore[arg-type]
-    svc.set_truth_state_fn(lambda: {"truth_channel_ok": True, "truth_reason": "ws_connected", "drift_blocked": False})
+    svc.set_truth_state_fn(
+        lambda: {
+            "truth_channel_ok": True,
+            "truth_reason": "ws_connected",
+            "drift_blocked": False,
+        }
+    )
     snap = svc.truth_status_snapshot()
     assert snap["configured"] is True
     assert snap["gate_enabled"] is True

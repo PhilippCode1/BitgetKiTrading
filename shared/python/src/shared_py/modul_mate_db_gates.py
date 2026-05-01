@@ -116,14 +116,12 @@ def assert_m604_table_and_policies(
         ).fetchone()
         if reg is None or reg.get("t") is None:
             raise RuntimeError(
-                f"Migration-604: Tabelle {M604_GATES_TABLE_FQN} fehlt "
-                f"(to_regclass NULL). Fuehre infra/migrate.py aus."
+                f"Migration-604: Tabelle {M604_GATES_TABLE_FQN} fehlt (to_regclass NULL). Fuehre infra/migrate.py aus."
             )
         g = fetch_tenant_modul_mate_gates(conn, tenant_id=tenant_id)
         if g is None:
             raise RuntimeError(
-                f"Keine Zeile in {M604_GATES_TABLE_FQN} fuer "
-                f"tenant_id={tenant_id!r} (Migration 604 INSERT / Seeds)."
+                f"Keine Zeile in {M604_GATES_TABLE_FQN} fuer tenant_id={tenant_id!r} (Migration 604 INSERT / Seeds)."
             )
         if tenant_id == "default":
             for key, want in _M604_DEFAULT_TENANT_SEED.items():
@@ -186,8 +184,7 @@ def assert_execution_allowed(
             )
         if not tenant_has_active_live_commercial_contract(conn, tenant_id=tenant_id):
             raise ExecutionPolicyViolationError(
-                f"Kein abgeschlossener commercial_contract_workflow (LIVE) fuer "
-                f"tenant_id={tenant_id!r}",
+                f"Kein abgeschlossener commercial_contract_workflow (LIVE) fuer tenant_id={tenant_id!r}",
                 reason="no_active_commercial_contract",
             )
         if not live_trading_allowed(gates):

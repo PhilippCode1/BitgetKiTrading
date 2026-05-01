@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from decimal import Decimal
 from typing import Any
 
@@ -17,7 +18,7 @@ def parse_top25_side(raw: Any) -> list[tuple[Decimal, Decimal]]:
         return []
     out: list[tuple[Decimal, Decimal]] = []
     for row in raw:
-        if not isinstance(row, (list, tuple)) or len(row) < 2:
+        if not isinstance(row, list | tuple) or len(row) < 2:
             continue
         try:
             px = Decimal(str(row[0]))

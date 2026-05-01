@@ -86,9 +86,15 @@ def test_report_keeps_live_no_go_and_covers_required_internal_reasons() -> None:
     assert payload["missing_multi_asset_strategy_reasons"] == []
     assert payload["missing_live_preflight_reasons"] == []
 
-    assert set(REQUIRED_PORTFOLIO_BLOCK_REASONS).issubset(payload["covered_portfolio_block_reasons"])
-    assert set(REQUIRED_STRATEGY_BLOCK_REASONS).issubset(payload["covered_strategy_block_reasons"])
-    assert set(REQUIRED_MULTI_ASSET_STRATEGY_REASONS).issubset(payload["covered_multi_asset_strategy_reasons"])
+    assert set(REQUIRED_PORTFOLIO_BLOCK_REASONS).issubset(
+        payload["covered_portfolio_block_reasons"]
+    )
+    assert set(REQUIRED_STRATEGY_BLOCK_REASONS).issubset(
+        payload["covered_strategy_block_reasons"]
+    )
+    assert set(REQUIRED_MULTI_ASSET_STRATEGY_REASONS).issubset(
+        payload["covered_multi_asset_strategy_reasons"]
+    )
     assert {"portfolio_risk_not_safe", "strategy_evidence_missing_or_invalid"}.issubset(
         payload["covered_live_preflight_reasons"]
     )
@@ -97,19 +103,44 @@ def test_report_keeps_live_no_go_and_covers_required_internal_reasons() -> None:
 def test_portfolio_and_strategy_scenarios_fail_closed() -> None:
     payload = build_report_payload()
 
-    assert all(row["preflight"]["submit_allowed"] is False for row in payload["portfolio_scenarios"])
-    assert any("account_equity_ungueltig" in row["block_reasons"] for row in payload["portfolio_scenarios"])
-    assert any("zu_viele_pending_orders" in row["block_reasons"] for row in payload["portfolio_scenarios"])
-    assert any("family_exposure_zu_hoch" in row["block_reasons"] for row in payload["portfolio_scenarios"])
+    assert all(
+        row["preflight"]["submit_allowed"] is False
+        for row in payload["portfolio_scenarios"]
+    )
+    assert any(
+        "account_equity_ungueltig" in row["block_reasons"]
+        for row in payload["portfolio_scenarios"]
+    )
+    assert any(
+        "zu_viele_pending_orders" in row["block_reasons"]
+        for row in payload["portfolio_scenarios"]
+    )
+    assert any(
+        "family_exposure_zu_hoch" in row["block_reasons"]
+        for row in payload["portfolio_scenarios"]
+    )
 
-    blocking_strategy_rows = [row for row in payload["strategy_asset_scenarios"] if row["blocks_live"]]
+    blocking_strategy_rows = [
+        row for row in payload["strategy_asset_scenarios"] if row["blocks_live"]
+    ]
     assert blocking_strategy_rows
-    assert all(row["preflight"]["submit_allowed"] is False for row in blocking_strategy_rows)
-    assert any("strategy_evidence_expired" in row["block_reasons"] for row in blocking_strategy_rows)
+    assert all(
+        row["preflight"]["submit_allowed"] is False for row in blocking_strategy_rows
+    )
+    assert any(
+        "strategy_evidence_expired" in row["block_reasons"]
+        for row in blocking_strategy_rows
+    )
 
-    failing_multi_asset_rows = [row for row in payload["multi_asset_strategy_scenarios"] if row["verdict"] == "FAIL"]
+    failing_multi_asset_rows = [
+        row
+        for row in payload["multi_asset_strategy_scenarios"]
+        if row["verdict"] == "FAIL"
+    ]
     assert failing_multi_asset_rows
-    assert all(row["preflight"]["submit_allowed"] is False for row in failing_multi_asset_rows)
+    assert all(
+        row["preflight"]["submit_allowed"] is False for row in failing_multi_asset_rows
+    )
 
 
 def test_external_template_fails_until_real_evidence_is_supplied() -> None:
@@ -118,8 +149,14 @@ def test_external_template_fails_until_real_evidence_is_supplied() -> None:
     assert assessment["status"] == "FAIL"
     assert assessment["external_required"] is True
     assert "external_status_nicht_verified" in assessment["failures"]
-    assert "portfolio_drill_missing_snapshot_blocks_live_nicht_belegt" in assessment["failures"]
-    assert "strategy_validation_shadow_reports_present_nicht_belegt" in assessment["failures"]
+    assert (
+        "portfolio_drill_missing_snapshot_blocks_live_nicht_belegt"
+        in assessment["failures"]
+    )
+    assert (
+        "strategy_validation_shadow_reports_present_nicht_belegt"
+        in assessment["failures"]
+    )
 
 
 def test_external_verified_payload_passes_without_secrets() -> None:

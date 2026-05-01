@@ -1,9 +1,17 @@
 import { Header } from "@/components/layout/Header";
 import { SafetyCommandActions } from "@/components/safety/SafetyCommandActions";
-import { fetchLiveBrokerKillSwitchActive, fetchLiveBrokerRuntime, fetchSystemHealthBestEffort } from "@/lib/api";
+import {
+  fetchLiveBrokerKillSwitchActive,
+  fetchLiveBrokerRuntime,
+  fetchSystemHealthBestEffort,
+} from "@/lib/api";
 import type { LiveBrokerRuntimeItem } from "@/lib/types";
 
-function statusLabel(value: unknown, okValue: string, unknownLabel = "Unbekannt"): string {
+function statusLabel(
+  value: unknown,
+  okValue: string,
+  unknownLabel = "Unbekannt",
+): string {
   if (typeof value !== "string" || !value.trim()) return unknownLabel;
   return value === okValue ? "OK" : value;
 }
@@ -14,17 +22,28 @@ function boolLabel(value: boolean | null | undefined): string {
   return "Unbekannt";
 }
 
-function buildNoGoReasons(runtime: LiveBrokerRuntimeItem | null, hasKillSwitch: boolean, healthMissing: boolean): string[] {
+function buildNoGoReasons(
+  runtime: LiveBrokerRuntimeItem | null,
+  hasKillSwitch: boolean,
+  healthMissing: boolean,
+): string[] {
   const reasons: string[] = [];
   const reconcileStatus = String(runtime?.status ?? "").toLowerCase();
   if (!runtime) reasons.push("Live-Broker-Runtime nicht verbunden.");
   if (hasKillSwitch) reasons.push("Kill-Switch aktiv.");
-  if (runtime?.safety_latch_active === true) reasons.push("Safety-Latch aktiv.");
-  if (!reconcileStatus || reconcileStatus === "unknown" || reconcileStatus === "stale" || reconcileStatus === "fail") {
+  if (runtime?.safety_latch_active === true)
+    reasons.push("Safety-Latch aktiv.");
+  if (
+    !reconcileStatus ||
+    reconcileStatus === "unknown" ||
+    reconcileStatus === "stale" ||
+    reconcileStatus === "fail"
+  ) {
     reasons.push("Reconcile ist unbekannt, stale oder fail.");
   }
   const truth = runtime?.upstream_ok;
-  if (truth !== true) reasons.push("Exchange-Truth fehlt oder ist nicht geprüft.");
+  if (truth !== true)
+    reasons.push("Exchange-Truth fehlt oder ist nicht geprüft.");
   if (healthMissing) reasons.push("System-Health nicht geladen.");
   return reasons;
 }
@@ -38,17 +57,27 @@ export default async function SafetyCenterPage() {
     fetchSystemHealthBestEffort(),
   ]);
 
-  const runtime = runtimeRes.status === "fulfilled" ? runtimeRes.value.item : null;
-  const killActiveCount = killRes.status === "fulfilled" ? (killRes.value.items ?? []).length : 0;
-  const health = healthRes.status === "fulfilled" ? healthRes.value.health : null;
+  const runtime =
+    runtimeRes.status === "fulfilled" ? runtimeRes.value.item : null;
+  const killActiveCount =
+    killRes.status === "fulfilled" ? (killRes.value.items ?? []).length : 0;
+  const health =
+    healthRes.status === "fulfilled" ? healthRes.value.health : null;
 
   const mode = runtime?.execution_mode ?? "unknown";
-  const liveLane = runtime?.operator_live_submission?.lane ?? "live_lane_unknown";
+  const liveLane =
+    runtime?.operator_live_submission?.lane ?? "live_lane_unknown";
   const reconcileStatus = runtime?.status ?? "unknown";
-  const exchangeTruth = runtime?.upstream_ok === true ? "vorhanden" : runtime?.upstream_ok === false ? "fehlt" : "nicht geprüft";
+  const exchangeTruth =
+    runtime?.upstream_ok === true
+      ? "vorhanden"
+      : runtime?.upstream_ok === false
+        ? "fehlt"
+        : "nicht geprüft";
   const bitgetPrivate = runtime?.bitget_private_status;
   const readiness =
-    bitgetPrivate?.public_api_ok === true && bitgetPrivate?.private_api_configured === true
+    bitgetPrivate?.public_api_ok === true &&
+    bitgetPrivate?.private_api_configured === true
       ? "public ok / private readonly ok"
       : "unknown";
 
@@ -72,10 +101,13 @@ export default async function SafetyCenterPage() {
         <h2>Gesamtstatus</h2>
         <p>
           Live-Trading-Status:{" "}
-          <strong>{liveBlocked ? "Blockiert" : "Vorbereitet (nächster Gate-Schritt)"}</strong>
+          <strong>
+            {liveBlocked ? "Blockiert" : "Vorbereitet (nächster Gate-Schritt)"}
+          </strong>
         </p>
         <p className="muted small">
-          Kritische Unknown-Zustände werden fail-closed als blockierend behandelt.
+          Kritische Unknown-Zustände werden fail-closed als blockierend
+          behandelt.
         </p>
       </div>
 
@@ -99,7 +131,9 @@ export default async function SafetyCenterPage() {
               <tr>
                 <td>Live-Trading-Status</td>
                 <td>{liveLane}</td>
-                <td>deaktiviert, vorbereitet, blockiert, freigegeben, pausiert</td>
+                <td>
+                  deaktiviert, vorbereitet, blockiert, freigegeben, pausiert
+                </td>
               </tr>
               <tr>
                 <td>Kill-Switch</td>
@@ -129,7 +163,8 @@ export default async function SafetyCenterPage() {
               <tr>
                 <td>Asset-Freigabe</td>
                 <td>
-                  chartfähig={chartFaehig}, shadowfähig={shadowFaehig}, livefähig={liveFaehig}, blockiert={blockiert}
+                  chartfähig={chartFaehig}, shadowfähig={shadowFaehig},
+                  livefähig={liveFaehig}, blockiert={blockiert}
                 </td>
                 <td>Werte aus Instrumentenkatalog-Snapshot</td>
               </tr>
@@ -152,10 +187,13 @@ export default async function SafetyCenterPage() {
             ))}
           </ul>
         ) : (
-          <p className="muted small">Keine akuten No-Go-Gründe im aktuellen Snapshot.</p>
+          <p className="muted small">
+            Keine akuten No-Go-Gründe im aktuellen Snapshot.
+          </p>
         )}
         <p className="muted small">
-          Nicht handelbar, weil kritische Sicherheitszustände fehlen oder blockieren.
+          Nicht handelbar, weil kritische Sicherheitszustände fehlen oder
+          blockieren.
         </p>
       </div>
 

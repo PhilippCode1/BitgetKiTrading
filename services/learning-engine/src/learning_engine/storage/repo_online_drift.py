@@ -6,10 +6,13 @@ from uuid import UUID
 
 import psycopg
 from psycopg import errors as pg_errors
+
 _TAKE_TRADE = "take_trade_prob"
 
 
-def fetch_online_drift_state(conn: psycopg.Connection[Any], *, scope: str = "global") -> dict[str, Any] | None:
+def fetch_online_drift_state(
+    conn: psycopg.Connection[Any], *, scope: str = "global"
+) -> dict[str, Any] | None:
     try:
         row = conn.execute(
             """
@@ -24,7 +27,9 @@ def fetch_online_drift_state(conn: psycopg.Connection[Any], *, scope: str = "glo
     return dict(row) if row else None
 
 
-def fetch_drift_events_recent(conn: psycopg.Connection[Any], *, limit: int) -> list[dict[str, Any]]:
+def fetch_drift_events_recent(
+    conn: psycopg.Connection[Any], *, limit: int
+) -> list[dict[str, Any]]:
     try:
         rows = conn.execute(
             """
@@ -105,7 +110,9 @@ def fetch_recent_signals_for_online_drift(
     return [dict(r) for r in rows]
 
 
-def fetch_take_trade_champion_reference(conn: psycopg.Connection[Any]) -> dict[str, Any] | None:
+def fetch_take_trade_champion_reference(
+    conn: psycopg.Connection[Any],
+) -> dict[str, Any] | None:
     try:
         row = conn.execute(
             """

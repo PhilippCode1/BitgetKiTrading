@@ -99,8 +99,7 @@ class RedisStreamBus:
         expected_stream = env.default_stream()
         if stream != expected_stream:
             raise ValueError(
-                f"event_type={env.event_type} darf nicht auf {stream} publiziert werden "
-                f"(erwartet {expected_stream})"
+                f"event_type={env.event_type} darf nicht auf {stream} publiziert werden (erwartet {expected_stream})"
             )
         if env.dedupe_key and self.dedupe_ttl_sec > 0:
             key = f"dedupe:{stream}:{env.dedupe_key}"
@@ -115,7 +114,7 @@ class RedisStreamBus:
         with contextlib.suppress(Exception):
             set_pipeline_backpressure_queue_size(
                 stream=stream,
-                size=int(self.redis.xlen(stream)),
+                size=int(self.redis.xlen(stream)),  # type: ignore
             )
         return mid
 
@@ -145,7 +144,7 @@ class RedisStreamBus:
             block=block_ms or self.default_block_ms,
         )
         consumed: list[ConsumedEvent] = []
-        for stream_name, messages in items:
+        for stream_name, messages in items:  # type: ignore
             for message_id, fields in messages:
                 raw_payload = fields.get("data", "")
                 try:
@@ -180,7 +179,7 @@ class RedisStreamBus:
 
     def ack(self, stream: str, group: str, message_id: str) -> int:
         _validate_stream(stream)
-        return int(self.redis.xack(stream, group, message_id))
+        return int(self.redis.xack(stream, group, message_id))  # type: ignore
 
     def publish_dlq(self, original: Any, error_info: dict[str, Any]) -> str:
         original_payload = _normalize_original_payload(original)
@@ -204,12 +203,14 @@ class RedisStreamBus:
             if self.redis.set(key, "1", nx=True, ex=self.dedupe_ttl_sec) is None:
                 return "deduped"
         dlq_id = str(
-            self.redis.xadd(STREAM_DLQ, {"data": event_envelope_to_canonical_json_text(envelope)}),
+            self.redis.xadd(
+                STREAM_DLQ, {"data": event_envelope_to_canonical_json_text(envelope)}
+            ),
         )
         with contextlib.suppress(Exception):
             set_pipeline_backpressure_queue_size(
                 stream=STREAM_DLQ,
-                size=int(self.redis.xlen(STREAM_DLQ)),
+                size=int(self.redis.xlen(STREAM_DLQ)),  # type: ignore
             )
         return dlq_id
 
@@ -228,7 +229,7 @@ def _normalize_original_payload(original: Any) -> dict[str, Any]:
 
 
 def _json_safe_dict(value: dict[str, Any]) -> dict[str, Any]:
-    return json.loads(json.dumps(value, default=str))
+    return json.loads(json.dumps(value, default=str))  # type: ignore
 
 
 def _build_dlq_dedupe_key(payload: dict[str, Any]) -> str | None:

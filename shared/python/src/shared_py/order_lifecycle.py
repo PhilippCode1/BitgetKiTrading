@@ -36,7 +36,9 @@ class OrderSubmitContext:
     client_order_id: str | None
     known_client_order_ids: set[str]
     previous_state: OrderLifecycleState
-    submit_result: Literal["ack", "reject", "timeout", "db_failure_after_submit", "unknown"]
+    submit_result: Literal[
+        "ack", "reject", "timeout", "db_failure_after_submit", "unknown"
+    ]
 
 
 def build_client_order_id(*, execution_id: str, symbol: str, nonce: str) -> str:
@@ -45,16 +47,41 @@ def build_client_order_id(*, execution_id: str, symbol: str, nonce: str) -> str:
     return f"cid_{digest}"
 
 
-def validate_order_lifecycle_transition(*, previous: OrderLifecycleState, new: OrderLifecycleState) -> bool:
+def validate_order_lifecycle_transition(
+    *, previous: OrderLifecycleState, new: OrderLifecycleState
+) -> bool:
     allowed: dict[OrderLifecycleState, set[OrderLifecycleState]] = {
         "candidate": {"preflight_passed", "blocked"},
         "preflight_passed": {"owner_released", "blocked"},
         "owner_released": {"submit_prepared", "blocked"},
         "submit_prepared": {"submit_attempted", "blocked"},
-        "submit_attempted": {"exchange_acknowledged", "exchange_rejected", "unknown_submit_state", "reconcile_required"},
-        "exchange_acknowledged": {"open", "partially_filled", "filled", "cancel_requested", "replace_requested"},
-        "open": {"partially_filled", "filled", "cancel_requested", "replace_requested", "reduce_only_exit_requested", "emergency_flatten_requested"},
-        "partially_filled": {"filled", "cancel_requested", "reduce_only_exit_requested", "emergency_flatten_requested"},
+        "submit_attempted": {
+            "exchange_acknowledged",
+            "exchange_rejected",
+            "unknown_submit_state",
+            "reconcile_required",
+        },
+        "exchange_acknowledged": {
+            "open",
+            "partially_filled",
+            "filled",
+            "cancel_requested",
+            "replace_requested",
+        },
+        "open": {
+            "partially_filled",
+            "filled",
+            "cancel_requested",
+            "replace_requested",
+            "reduce_only_exit_requested",
+            "emergency_flatten_requested",
+        },
+        "partially_filled": {
+            "filled",
+            "cancel_requested",
+            "reduce_only_exit_requested",
+            "emergency_flatten_requested",
+        },
         "cancel_requested": {"canceled", "failed"},
         "replace_requested": {"replaced", "failed"},
         "reduce_only_exit_requested": {"closed", "failed"},
@@ -72,23 +99,32 @@ def validate_order_lifecycle_transition(*, previous: OrderLifecycleState, new: O
     return new in allowed.get(previous, set())
 
 
-def duplicate_order_blocks_submit(*, client_order_id: str | None, known_client_order_ids: set[str]) -> bool:
+def duplicate_order_blocks_submit(
+    *, client_order_id: str | None, known_client_order_ids: set[str]
+) -> bool:
     if not client_order_id:
         return False
     return client_order_id in known_client_order_ids
 
 
-def submit_result_requires_reconcile(result: Literal["ack", "reject", "timeout", "db_failure_after_submit", "unknown"]) -> bool:
+def submit_result_requires_reconcile(
+    result: Literal["ack", "reject", "timeout", "db_failure_after_submit", "unknown"],
+) -> bool:
     return result in {"timeout", "db_failure_after_submit", "unknown"}
 
 
-def evaluate_submit_safety(ctx: OrderSubmitContext) -> tuple[OrderLifecycleState, list[str]]:
+def evaluate_submit_safety(
+    ctx: OrderSubmitContext,
+) -> tuple[OrderLifecycleState, list[str]]:
     reasons: list[str] = []
     if not ctx.execution_id:
         reasons.append("execution_id_fehlt")
     if not ctx.idempotency_key and not ctx.client_order_id:
         reasons.append("idempotency_fehlt")
-    if duplicate_order_blocks_submit(client_order_id=ctx.client_order_id, known_client_order_ids=ctx.known_client_order_ids):
+    if duplicate_order_blocks_submit(
+        client_order_id=ctx.client_order_id,
+        known_client_order_ids=ctx.known_client_order_ids,
+    ):
         reasons.append("duplicate_client_order_id")
     if ctx.previous_state == "unknown_submit_state":
         reasons.append("unknown_submit_state_blockiert_neue_openings")

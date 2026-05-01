@@ -62,9 +62,7 @@ export async function PlatformExecutionStreamsGrid({
         </div>
       </div>
       <div>
-        <span className="label">
-          {t("pages.marketUniverse.lineageLanes")}
-        </span>
+        <span className="label">{t("pages.marketUniverse.lineageLanes")}</span>
         <div className="market-universe-lineage__lanes">
           <span
             className={

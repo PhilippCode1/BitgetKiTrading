@@ -57,7 +57,9 @@ def assert_symbol_in_instrument_catalog(
     if mf == "margin":
         mode = (margin_account_mode or "isolated").strip().lower()
         if mode not in ("isolated", "crossed"):
-            raise ValueError("margin: margin_account_mode muss isolated oder crossed sein.")
+            raise ValueError(
+                "margin: margin_account_mode muss isolated oder crossed sein."
+            )
         where += " AND LOWER(TRIM(margin_account_mode)) = %s"
         args.append(mode)
     row = conn.execute(
@@ -284,65 +286,91 @@ def fetch_latest_signal_bundle(
         "regime_substate": d.get("regime_substate"),
         "regime_transition_state": d.get("regime_transition_state"),
         "regime_transition_reasons_json": d.get("regime_transition_reasons_json") or [],
-        "regime_persistence_bars": int(d["regime_persistence_bars"])
-        if d.get("regime_persistence_bars") is not None
-        else None,
+        "regime_persistence_bars": (
+            int(d["regime_persistence_bars"])
+            if d.get("regime_persistence_bars") is not None
+            else None
+        ),
         "regime_policy_version": d.get("regime_policy_version"),
         "regime_bias": d.get("regime_bias"),
-        "regime_confidence_0_1": float(d["regime_confidence_0_1"])
-        if d.get("regime_confidence_0_1") is not None
-        else None,
+        "regime_confidence_0_1": (
+            float(d["regime_confidence_0_1"])
+            if d.get("regime_confidence_0_1") is not None
+            else None
+        ),
         "regime_reasons_json": d.get("regime_reasons_json") or [],
         "signal_strength_0_100": float(d["signal_strength_0_100"]),
         "probability_0_1": float(d["probability_0_1"]),
-        "take_trade_prob": float(d["take_trade_prob"])
-        if d.get("take_trade_prob") is not None
-        else None,
+        "take_trade_prob": (
+            float(d["take_trade_prob"])
+            if d.get("take_trade_prob") is not None
+            else None
+        ),
         "take_trade_model_version": d.get("take_trade_model_version"),
-        "take_trade_model_run_id": str(d["take_trade_model_run_id"])
-        if d.get("take_trade_model_run_id") is not None
-        else None,
+        "take_trade_model_run_id": (
+            str(d["take_trade_model_run_id"])
+            if d.get("take_trade_model_run_id") is not None
+            else None
+        ),
         "take_trade_calibration_method": d.get("take_trade_calibration_method"),
-        "expected_return_bps": float(d["expected_return_bps"])
-        if d.get("expected_return_bps") is not None
-        else None,
-        "expected_mae_bps": float(d["expected_mae_bps"])
-        if d.get("expected_mae_bps") is not None
-        else None,
-        "expected_mfe_bps": float(d["expected_mfe_bps"])
-        if d.get("expected_mfe_bps") is not None
-        else None,
+        "expected_return_bps": (
+            float(d["expected_return_bps"])
+            if d.get("expected_return_bps") is not None
+            else None
+        ),
+        "expected_mae_bps": (
+            float(d["expected_mae_bps"])
+            if d.get("expected_mae_bps") is not None
+            else None
+        ),
+        "expected_mfe_bps": (
+            float(d["expected_mfe_bps"])
+            if d.get("expected_mfe_bps") is not None
+            else None
+        ),
         "target_projection_models_json": d.get("target_projection_models_json") or [],
-        "model_uncertainty_0_1": float(d["model_uncertainty_0_1"])
-        if d.get("model_uncertainty_0_1") is not None
-        else None,
-        "uncertainty_effective_for_leverage_0_1": float(
-            d["uncertainty_effective_for_leverage_0_1"]
-        )
-        if d.get("uncertainty_effective_for_leverage_0_1") is not None
-        else None,
-        "shadow_divergence_0_1": float(d["shadow_divergence_0_1"])
-        if d.get("shadow_divergence_0_1") is not None
-        else None,
-        "model_ood_score_0_1": float(d["model_ood_score_0_1"])
-        if d.get("model_ood_score_0_1") is not None
-        else None,
+        "model_uncertainty_0_1": (
+            float(d["model_uncertainty_0_1"])
+            if d.get("model_uncertainty_0_1") is not None
+            else None
+        ),
+        "uncertainty_effective_for_leverage_0_1": (
+            float(d["uncertainty_effective_for_leverage_0_1"])
+            if d.get("uncertainty_effective_for_leverage_0_1") is not None
+            else None
+        ),
+        "shadow_divergence_0_1": (
+            float(d["shadow_divergence_0_1"])
+            if d.get("shadow_divergence_0_1") is not None
+            else None
+        ),
+        "model_ood_score_0_1": (
+            float(d["model_ood_score_0_1"])
+            if d.get("model_ood_score_0_1") is not None
+            else None
+        ),
         "model_ood_alert": bool(d.get("model_ood_alert")),
         "uncertainty_reasons_json": d.get("uncertainty_reasons_json") or [],
         "ood_reasons_json": d.get("ood_reasons_json") or [],
         "abstention_reasons_json": d.get("abstention_reasons_json") or [],
         "trade_action": d.get("trade_action"),
         "meta_trade_lane": d.get("meta_trade_lane"),
-        "decision_confidence_0_1": float(d["decision_confidence_0_1"])
-        if d.get("decision_confidence_0_1") is not None
-        else None,
+        "decision_confidence_0_1": (
+            float(d["decision_confidence_0_1"])
+            if d.get("decision_confidence_0_1") is not None
+            else None
+        ),
         "decision_policy_version": d.get("decision_policy_version"),
-        "allowed_leverage": int(d["allowed_leverage"])
-        if d.get("allowed_leverage") is not None
-        else None,
-        "recommended_leverage": int(d["recommended_leverage"])
-        if d.get("recommended_leverage") is not None
-        else None,
+        "allowed_leverage": (
+            int(d["allowed_leverage"])
+            if d.get("allowed_leverage") is not None
+            else None
+        ),
+        "recommended_leverage": (
+            int(d["recommended_leverage"])
+            if d.get("recommended_leverage") is not None
+            else None
+        ),
         "leverage_policy_version": d.get("leverage_policy_version"),
         "leverage_cap_reasons_json": d.get("leverage_cap_reasons_json") or [],
         "signal_class": d["signal_class"],
@@ -358,30 +386,46 @@ def fetch_latest_signal_bundle(
         "risk_warnings_json": d.get("risk_warnings_json") or [],
         "stop_explain_json": d.get("stop_explain_json") or {},
         "targets_explain_json": d.get("targets_explain_json") or {},
-        "reward_risk_ratio": float(d["reward_risk_ratio"])
-        if d.get("reward_risk_ratio") is not None
-        else None,
-        "stop_distance_pct": float(d["stop_distance_pct"])
-        if d.get("stop_distance_pct") is not None
-        else None,
-        "stop_budget_max_pct_allowed": float(d["stop_budget_max_pct_allowed"])
-        if d.get("stop_budget_max_pct_allowed") is not None
-        else None,
-        "stop_min_executable_pct": float(d["stop_min_executable_pct"])
-        if d.get("stop_min_executable_pct") is not None
-        else None,
-        "stop_to_spread_ratio": float(d["stop_to_spread_ratio"])
-        if d.get("stop_to_spread_ratio") is not None
-        else None,
-        "stop_quality_0_1": float(d["stop_quality_0_1"])
-        if d.get("stop_quality_0_1") is not None
-        else None,
-        "stop_executability_0_1": float(d["stop_executability_0_1"])
-        if d.get("stop_executability_0_1") is not None
-        else None,
-        "stop_fragility_0_1": float(d["stop_fragility_0_1"])
-        if d.get("stop_fragility_0_1") is not None
-        else None,
+        "reward_risk_ratio": (
+            float(d["reward_risk_ratio"])
+            if d.get("reward_risk_ratio") is not None
+            else None
+        ),
+        "stop_distance_pct": (
+            float(d["stop_distance_pct"])
+            if d.get("stop_distance_pct") is not None
+            else None
+        ),
+        "stop_budget_max_pct_allowed": (
+            float(d["stop_budget_max_pct_allowed"])
+            if d.get("stop_budget_max_pct_allowed") is not None
+            else None
+        ),
+        "stop_min_executable_pct": (
+            float(d["stop_min_executable_pct"])
+            if d.get("stop_min_executable_pct") is not None
+            else None
+        ),
+        "stop_to_spread_ratio": (
+            float(d["stop_to_spread_ratio"])
+            if d.get("stop_to_spread_ratio") is not None
+            else None
+        ),
+        "stop_quality_0_1": (
+            float(d["stop_quality_0_1"])
+            if d.get("stop_quality_0_1") is not None
+            else None
+        ),
+        "stop_executability_0_1": (
+            float(d["stop_executability_0_1"])
+            if d.get("stop_executability_0_1") is not None
+            else None
+        ),
+        "stop_fragility_0_1": (
+            float(d["stop_fragility_0_1"])
+            if d.get("stop_fragility_0_1") is not None
+            else None
+        ),
         "stop_budget_policy_version": d.get("stop_budget_policy_version"),
     }
 
@@ -442,9 +486,19 @@ def fetch_latest_feature_snapshot(
         "data_completeness_0_1": _maybe_float(d.get("data_completeness_0_1")),
         "staleness_score_0_1": _maybe_float(d.get("staleness_score_0_1")),
         "feature_quality_status": d.get("feature_quality_status"),
-        "orderbook_age_ms": int(d["orderbook_age_ms"]) if d.get("orderbook_age_ms") is not None else None,
-        "funding_age_ms": int(d["funding_age_ms"]) if d.get("funding_age_ms") is not None else None,
-        "open_interest_age_ms": int(d["open_interest_age_ms"]) if d.get("open_interest_age_ms") is not None else None,
+        "orderbook_age_ms": (
+            int(d["orderbook_age_ms"])
+            if d.get("orderbook_age_ms") is not None
+            else None
+        ),
+        "funding_age_ms": (
+            int(d["funding_age_ms"]) if d.get("funding_age_ms") is not None else None
+        ),
+        "open_interest_age_ms": (
+            int(d["open_interest_age_ms"])
+            if d.get("open_interest_age_ms") is not None
+            else None
+        ),
         "liquidity_source": d.get("liquidity_source"),
         "funding_source": d.get("funding_source"),
         "open_interest_source": d.get("open_interest_source"),
@@ -475,13 +529,15 @@ def normalize_drawing_ui(row: dict[str, Any]) -> dict[str, Any]:
         "type": dtype,
         "timeframe": row.get("timeframe"),
         "status": row.get("status"),
-        "confidence": float(row["confidence"]) if row.get("confidence") is not None else None,
+        "confidence": (
+            float(row["confidence"]) if row.get("confidence") is not None else None
+        ),
         "reasons_json": row.get("reasons_json") or [],
         "price_lines": [],
         "trendline": None,
-        "updated_ts_ms": int(row["updated_ts"].timestamp() * 1000)
-        if row.get("updated_ts")
-        else None,
+        "updated_ts_ms": (
+            int(row["updated_ts"].timestamp() * 1000) if row.get("updated_ts") else None
+        ),
     }
     kind = geo.get("kind")
     if kind == "horizontal_zone":
@@ -573,9 +629,9 @@ def fetch_structure_state_summary(
         "timeframe": tf,
         "last_ts_ms": int(d["last_ts_ms"]),
         "trend_dir": str(d.get("trend_dir") or ""),
-        "updated_ts_ms": int(d["updated_ts_ms"])
-        if d.get("updated_ts_ms") is not None
-        else None,
+        "updated_ts_ms": (
+            int(d["updated_ts_ms"]) if d.get("updated_ts_ms") is not None else None
+        ),
         "compression_flag": bool(d.get("compression_flag")),
     }
 
@@ -625,9 +681,7 @@ def fetch_latest_news(
     return out
 
 
-def fetch_paper_state(
-    conn: psycopg.Connection[Any], *, symbol: str
-) -> dict[str, Any]:
+def fetch_paper_state(conn: psycopg.Connection[Any], *, symbol: str) -> dict[str, Any]:
     sym = symbol.upper()
     open_rows = conn.execute(
         """
@@ -712,9 +766,7 @@ def fetch_paper_state(
         last_trade = {
             "position_id": str(lc["position_id"]),
             "side": lc["side"],
-            "closed_ts_ms": int(lc["closed_ts_ms"])
-            if lc.get("closed_ts_ms")
-            else None,
+            "closed_ts_ms": int(lc["closed_ts_ms"]) if lc.get("closed_ts_ms") else None,
             "state": lc.get("state"),
             "meta": meta if isinstance(meta, dict) else {},
         }
@@ -727,7 +779,9 @@ def fetch_paper_state(
     }
 
 
-def fetch_online_drift_state_row(conn: psycopg.Connection[Any]) -> dict[str, Any] | None:
+def fetch_online_drift_state_row(
+    conn: psycopg.Connection[Any],
+) -> dict[str, Any] | None:
     """Materialisierter Online-Drift (learning-engine); fuer Live-State / Proxy."""
     try:
         row = conn.execute(
@@ -873,14 +927,22 @@ def build_data_lineage(
     has_signal = latest_signal is not None
     has_news = len(latest_news) > 0
     ps = paper_state or {}
-    has_paper = bool(ps.get("open_positions")) or ps.get("last_closed_trade") is not None
-    has_drift = online_drift is not None and bool(str(online_drift.get("effective_action") or "").strip())
+    has_paper = (
+        bool(ps.get("open_positions")) or ps.get("last_closed_trade") is not None
+    )
+    has_drift = online_drift is not None and bool(
+        str(online_drift.get("effective_action") or "").strip()
+    )
 
     feat_tags: list[str] = []
     if not has_features:
         if not db_ok:
-            feat_why_de = "Datenbank nicht erreichbar — `features.candle_features` nicht lesbar."
-            feat_why_en = "Database unreachable — cannot read `features.candle_features`."
+            feat_why_de = (
+                "Datenbank nicht erreichbar — `features.candle_features` nicht lesbar."
+            )
+            feat_why_en = (
+                "Database unreachable — cannot read `features.candle_features`."
+            )
             feat_tags.append("db_unavailable")
         elif not has_candles:
             feat_why_de = (
@@ -894,11 +956,15 @@ def build_data_lineage(
             feat_tags.append("upstream:missing_candles")
         elif not redis_ok:
             feat_why_de = (
-                "Redis nicht erreichbar — Consumer-Gruppe `feature-engine` kann `" + _cc + "` "
+                "Redis nicht erreichbar — Consumer-Gruppe `feature-engine` kann `"
+                + _cc
+                + "` "
                 "nicht zuverlaessig lesen (Pending/Lag moeglich)."
             )
             feat_why_en = (
-                "Redis unreachable — consumer group `feature-engine` may not read `" + _cc + "` "
+                "Redis unreachable — consumer group `feature-engine` may not read `"
+                + _cc
+                + "` "
                 "(pending/lag possible)."
             )
             feat_tags.append("redis_unavailable")
@@ -914,10 +980,14 @@ def build_data_lineage(
             )
             feat_tags.append("producer:feature_engine_or_dlq")
         feat_next_de = (
-            "`feature-engine` /ready; Redis `XINFO GROUPS` auf `" + _cc + "`; Logs bei DLQ."
+            "`feature-engine` /ready; Redis `XINFO GROUPS` auf `"
+            + _cc
+            + "`; Logs bei DLQ."
         )
         feat_next_en = (
-            "`feature-engine` /ready; Redis `XINFO GROUPS` on `" + _cc + "`; logs if DLQ."
+            "`feature-engine` /ready; Redis `XINFO GROUPS` on `"
+            + _cc
+            + "`; logs if DLQ."
         )
     else:
         feat_why_de = feat_why_en = feat_next_de = feat_next_en = ""
@@ -925,25 +995,35 @@ def build_data_lineage(
     struct_tags: list[str] = []
     if not has_structure:
         if not db_ok:
-            struct_why_de = "Datenbank nicht erreichbar — `app.structure_state` nicht lesbar."
+            struct_why_de = (
+                "Datenbank nicht erreichbar — `app.structure_state` nicht lesbar."
+            )
             struct_why_en = "Database unreachable — cannot read `app.structure_state`."
             struct_tags.append("db_unavailable")
         elif not has_candles:
             struct_why_de = (
-                "Keine Kerzen — structure-engine verarbeitet `" + _cc + "` und benoetigt "
+                "Keine Kerzen — structure-engine verarbeitet `"
+                + _cc
+                + "` und benoetigt "
                 "Lookback in `tsdb.candles`."
             )
             struct_why_en = (
-                "No candles — structure-engine consumes `" + _cc + "` and needs lookback in "
+                "No candles — structure-engine consumes `"
+                + _cc
+                + "` and needs lookback in "
                 "`tsdb.candles`."
             )
             struct_tags.append("upstream:missing_candles")
         elif not redis_ok:
             struct_why_de = (
-                "Redis nicht erreichbar — Gruppe `structure-engine` kann `" + _cc + "` nicht lesen."
+                "Redis nicht erreichbar — Gruppe `structure-engine` kann `"
+                + _cc
+                + "` nicht lesen."
             )
             struct_why_en = (
-                "Redis unreachable — `structure-engine` group cannot read `" + _cc + "`."
+                "Redis unreachable — `structure-engine` group cannot read `"
+                + _cc
+                + "`."
             )
             struct_tags.append("redis_unavailable")
         else:
@@ -959,9 +1039,15 @@ def build_data_lineage(
             )
             struct_tags.append("producer:structure_engine")
         struct_next_de = (
-            "`structure-engine` /ready; Logs zu „zu wenig Candles“; Stream `" + _cc + "`."
+            "`structure-engine` /ready; Logs zu „zu wenig Candles“; Stream `"
+            + _cc
+            + "`."
         )
-        struct_next_en = "`structure-engine` /ready; logs for insufficient candles; stream `" + _cc + "`."
+        struct_next_en = (
+            "`structure-engine` /ready; logs for insufficient candles; stream `"
+            + _cc
+            + "`."
+        )
     else:
         struct_why_de = struct_why_en = struct_next_de = struct_next_en = ""
 
@@ -973,17 +1059,23 @@ def build_data_lineage(
             draw_tags.append("db_unavailable")
         elif not has_structure:
             draw_why_de = (
-                "Kein Eintrag in `app.structure_state` — drawing-engine konsumiert `" + _su + "` "
+                "Kein Eintrag in `app.structure_state` — drawing-engine konsumiert `"
+                + _su
+                + "` "
                 "und baut aus Struktur + Orderbuch."
             )
             draw_why_en = (
-                "No `app.structure_state` row — drawing-engine consumes `" + _su + "` and builds "
+                "No `app.structure_state` row — drawing-engine consumes `"
+                + _su
+                + "` and builds "
                 "from structure + order book."
             )
             draw_tags.append("upstream:missing_structure")
         elif not redis_ok:
             draw_why_de = (
-                "Redis nicht erreichbar — Gruppe `drawing-engine` kann `" + _su + "` nicht lesen."
+                "Redis nicht erreichbar — Gruppe `drawing-engine` kann `"
+                + _su
+                + "` nicht lesen."
             )
             draw_why_en = (
                 "Redis unreachable — `drawing-engine` group cannot read `" + _su + "`."
@@ -1001,10 +1093,14 @@ def build_data_lineage(
             )
             draw_tags.append("producer:drawing_engine")
         draw_next_de = (
-            "`drawing-engine` /ready; `" + _su + "` und Orderbuch-Pfad pruefen; optional Demo siehe Doku 11."
+            "`drawing-engine` /ready; `"
+            + _su
+            + "` und Orderbuch-Pfad pruefen; optional Demo siehe Doku 11."
         )
         draw_next_en = (
-            "`drawing-engine` /ready; verify `" + _su + "` and order book path; optional demo doc 11."
+            "`drawing-engine` /ready; verify `"
+            + _su
+            + "` and order book path; optional demo doc 11."
         )
     else:
         draw_why_de = draw_why_en = draw_next_de = draw_next_en = ""
@@ -1059,28 +1155,40 @@ def build_data_lineage(
             has_candles,
             "market-stream → Postgres `tsdb.candles` (+ Redis `events:candle_close` fuer SSE)",
             "market-stream → Postgres `tsdb.candles` (+ Redis `events:candle_close` for SSE)",
-            "Keine Kerzenzeilen fuer dieses Symbol/Timeframe in der DB."
-            if db_ok
-            else "Datenbank nicht erreichbar oder nicht konfiguriert.",
-            "No candle rows for this symbol/timeframe in the database."
-            if db_ok
-            else "Database unreachable or not configured.",
-            "Compose: `market-stream` healthy lassen; Watchlist/Symbole pruefen. Optional lokal: "
-            "BITGET_ALLOW_DEMO_SCHEMA_SEEDS=true + migrate --demo-seeds (infra/migrations/postgres_demo)."
-            if db_ok
-            else "Postgres/Migration pruefen (`migrate`-Service, DATABASE_URL).",
-            "Keep `market-stream` healthy; check watchlist/symbols. Optional local: "
-            "BITGET_ALLOW_DEMO_SCHEMA_SEEDS=true + migrate --demo-seeds (postgres_demo)."
-            if db_ok
-            else "Check Postgres/migrations (`migrate` service, DATABASE_URL).",
+            (
+                "Keine Kerzenzeilen fuer dieses Symbol/Timeframe in der DB."
+                if db_ok
+                else "Datenbank nicht erreichbar oder nicht konfiguriert."
+            ),
+            (
+                "No candle rows for this symbol/timeframe in the database."
+                if db_ok
+                else "Database unreachable or not configured."
+            ),
+            (
+                "Compose: `market-stream` healthy lassen; Watchlist/Symbole pruefen. Optional lokal: "
+                "BITGET_ALLOW_DEMO_SCHEMA_SEEDS=true + migrate --demo-seeds (infra/migrations/postgres_demo)."
+                if db_ok
+                else "Postgres/Migration pruefen (`migrate`-Service, DATABASE_URL)."
+            ),
+            (
+                "Keep `market-stream` healthy; check watchlist/symbols. Optional local: "
+                "BITGET_ALLOW_DEMO_SCHEMA_SEEDS=true + migrate --demo-seeds (postgres_demo)."
+                if db_ok
+                else "Check Postgres/migrations (`migrate` service, DATABASE_URL)."
+            ),
         ),
         seg(
             "features",
             "Microstructure / Features",
             "Microstructure / features",
             has_features,
-            "feature-engine → `features.candle_features` (Redis-Consumer `" + _cc + "`, Gruppe `feature-engine`)",
-            "feature-engine → `features.candle_features` (Redis consumer `" + _cc + "`, group `feature-engine`)",
+            "feature-engine → `features.candle_features` (Redis-Consumer `"
+            + _cc
+            + "`, Gruppe `feature-engine`)",
+            "feature-engine → `features.candle_features` (Redis consumer `"
+            + _cc
+            + "`, group `feature-engine`)",
             feat_why_de,
             feat_why_en,
             feat_next_de,
@@ -1092,8 +1200,12 @@ def build_data_lineage(
             "Marktstruktur (Trend/Swings)",
             "Market structure (trend/swings)",
             has_structure,
-            "structure-engine → `app.structure_state` / `app.structure_events` (publiziert `" + _su + "`)",
-            "structure-engine → `app.structure_state` / `app.structure_events` (publishes `" + _su + "`)",
+            "structure-engine → `app.structure_state` / `app.structure_events` (publiziert `"
+            + _su
+            + "`)",
+            "structure-engine → `app.structure_state` / `app.structure_events` (publishes `"
+            + _su
+            + "`)",
             struct_why_de,
             struct_why_en,
             struct_next_de,
@@ -1105,8 +1217,16 @@ def build_data_lineage(
             "Zeichnungen",
             "Drawings",
             has_drawings,
-            "drawing-engine → `app.drawings` (Redis-Consumer `" + _su + "`, SSE `" + _du + "`)",
-            "drawing-engine → `app.drawings` (Redis consumer `" + _su + "`, SSE `" + _du + "`)",
+            "drawing-engine → `app.drawings` (Redis-Consumer `"
+            + _su
+            + "`, SSE `"
+            + _du
+            + "`)",
+            "drawing-engine → `app.drawings` (Redis consumer `"
+            + _su
+            + "`, SSE `"
+            + _du
+            + "`)",
             draw_why_de,
             draw_why_en,
             draw_next_de,
@@ -1157,18 +1277,26 @@ def build_data_lineage(
             has_drift,
             "learning-engine schreibt `learn.online_drift_state` (Evaluator/Scheduler)",
             "learning-engine writes `learn.online_drift_state` (evaluator/scheduler)",
-            "Kein Drift-State (Tabelle fehlt oder noch nicht befuellt)."
-            if db_ok
-            else "DB nicht verfuegbar.",
-            "No drift state (table missing or not filled yet)."
-            if db_ok
-            else "Database unavailable.",
-            "learning-engine und Migration 400 (`online_drift_state`) pruefen; ggf. `/v1/learning/online-drift/evaluate` triggern."
-            if db_ok
-            else "Postgres pruefen, Migration-Job ausfuehren; DATABASE_URL auf den Dienst `postgres` zeigen.",
-            "Check learning-engine and migration 400 (`online_drift_state`); optionally trigger `/v1/learning/online-drift/evaluate`."
-            if db_ok
-            else "Check Postgres, run migration job; point DATABASE_URL at the `postgres` service.",
+            (
+                "Kein Drift-State (Tabelle fehlt oder noch nicht befuellt)."
+                if db_ok
+                else "DB nicht verfuegbar."
+            ),
+            (
+                "No drift state (table missing or not filled yet)."
+                if db_ok
+                else "Database unavailable."
+            ),
+            (
+                "learning-engine und Migration 400 (`online_drift_state`) pruefen; ggf. `/v1/learning/online-drift/evaluate` triggern."
+                if db_ok
+                else "Postgres pruefen, Migration-Job ausfuehren; DATABASE_URL auf den Dienst `postgres` zeigen."
+            ),
+            (
+                "Check learning-engine and migration 400 (`online_drift_state`); optionally trigger `/v1/learning/online-drift/evaluate`."
+                if db_ok
+                else "Check Postgres, run migration job; point DATABASE_URL at the `postgres` service."
+            ),
         ),
         seg(
             "live_sse",
@@ -1223,7 +1351,9 @@ def build_live_state(
                 news_fixture_mode=news_fixture_mode,
                 bitget_demo_enabled=bitget_demo_enabled,
             )
-            candles = fetch_candles(conn, symbol=symbol, timeframe=timeframe, limit=limit)
+            candles = fetch_candles(
+                conn, symbol=symbol, timeframe=timeframe, limit=limit
+            )
             latest_signal = fetch_latest_signal_bundle(
                 conn, symbol=symbol, timeframe=timeframe
             )

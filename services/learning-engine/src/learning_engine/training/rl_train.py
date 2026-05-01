@@ -48,7 +48,7 @@ def _log_metrics(step: int, metrics: dict[str, Any]) -> None:
 
         if mlflow.active_run() is not None:
             for k, v in metrics.items():
-                if isinstance(v, (int, float)):
+                if isinstance(v, int | float):
                     mlflow.log_metric(k, float(v), step=step)
     except Exception:
         pass
@@ -104,25 +104,37 @@ def train_consensus_weights_ppo(
 
     Ohne ``stable-baselines3``: deterministischer Baseline-Run (Gewichte ~ Softmax(0)).
     """
-    c_arr = np.asarray(closes if closes is not None else synthetic_ohlcv(seed=seed)["close"], dtype=np.float64)
+    c_arr = np.asarray(
+        closes if closes is not None else synthetic_ohlcv(seed=seed)["close"],
+        dtype=np.float64,
+    )
 
     def _make_env() -> ConsensusWeightsReplayEnv:
         return ConsensusWeightsReplayEnv(np.array(c_arr, copy=True), window=32)
 
     try:
         from stable_baselines3 import PPO  # type: ignore[import-not-found]
-        from stable_baselines3.common.vec_env import DummyVecEnv  # type: ignore[import-not-found]
+        from stable_baselines3.common.vec_env import (
+            DummyVecEnv,  # type: ignore[import-not-found]
+        )
 
         venv = DummyVecEnv([_make_env])
         model = PPO("MlpPolicy", venv, verbose=0, seed=seed)
         model.learn(total_timesteps=total_timesteps)
         w = (
-            model.policy.action_net.weight.detach().float().cpu().numpy().mean(axis=0)[:3].tolist()
+            model.policy.action_net.weight.detach()
+            .float()
+            .cpu()
+            .numpy()
+            .mean(axis=0)[:3]
+            .tolist()
             if hasattr(model.policy, "action_net")
             else [0.33, 0.33, 0.34]
         )
         loss_proxy = float(
-            np.mean(np.abs(model.policy.action_net.weight.detach().float().cpu().numpy()))
+            np.mean(
+                np.abs(model.policy.action_net.weight.detach().float().cpu().numpy())
+            )
             if hasattr(model.policy, "action_net")
             else 0.0
         )

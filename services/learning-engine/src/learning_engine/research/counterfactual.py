@@ -10,7 +10,9 @@ import json
 from typing import Any
 
 
-def build_counterfactual_scenarios(snapshot_json: dict[str, Any] | None) -> list[dict[str, Any]]:
+def build_counterfactual_scenarios(
+    snapshot_json: dict[str, Any] | None
+) -> list[dict[str, Any]]:
     """
     Liste deterministisch sortierter Szenarien fuer Dokumentation/Reports.
 
@@ -22,8 +24,16 @@ def build_counterfactual_scenarios(snapshot_json: dict[str, Any] | None) -> list
     snap = snapshot_json or {}
     out: list[dict[str, Any]] = []
 
-    spec = snap.get("proposal_and_votes") if isinstance(snap.get("proposal_and_votes"), dict) else {}
-    pb = spec.get("specialists", {}).get("playbook_specialist") if isinstance(spec.get("specialists"), dict) else None
+    spec = (
+        snap.get("proposal_and_votes")
+        if isinstance(snap.get("proposal_and_votes"), dict)
+        else {}
+    )
+    pb = (
+        spec.get("specialists", {}).get("playbook_specialist")
+        if isinstance(spec.get("specialists"), dict)
+        else None
+    )
     cands: list[str] = []
     if isinstance(pb, dict):
         prop = pb.get("proposal") if isinstance(pb.get("proposal"), dict) else {}
@@ -41,7 +51,9 @@ def build_counterfactual_scenarios(snapshot_json: dict[str, Any] | None) -> list
             }
         )
 
-    lev = snap.get("leverage_band") if isinstance(snap.get("leverage_band"), dict) else {}
+    lev = (
+        snap.get("leverage_band") if isinstance(snap.get("leverage_band"), dict) else {}
+    )
     rec = lev.get("recommended_leverage")
     cap = lev.get("execution_leverage_cap")
     try:
@@ -64,7 +76,11 @@ def build_counterfactual_scenarios(snapshot_json: dict[str, Any] | None) -> list
             }
         )
 
-    exit_hint = spec.get("playbook_exit_hint") if isinstance(spec.get("playbook_exit_hint"), dict) else {}
+    exit_hint = (
+        spec.get("playbook_exit_hint")
+        if isinstance(spec.get("playbook_exit_hint"), dict)
+        else {}
+    )
     if exit_hint.get("exit_family_primary"):
         out.append(
             {
@@ -75,7 +91,11 @@ def build_counterfactual_scenarios(snapshot_json: dict[str, Any] | None) -> list
             }
         )
 
-    final = snap.get("final_decision") if isinstance(snap.get("final_decision"), dict) else {}
+    final = (
+        snap.get("final_decision")
+        if isinstance(snap.get("final_decision"), dict)
+        else {}
+    )
     ta = str(final.get("trade_action") or "").strip().lower()
     if ta == "allow_trade":
         out.append(

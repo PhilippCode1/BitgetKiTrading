@@ -35,9 +35,13 @@ def test_operator_release_fingerprint_binds_execution_id() -> None:
 
 
 def test_fingerprint_mismatch_on_extra_body_key() -> None:
-    base = fingerprint_payload_for_operator_release("00000000-0000-0000-0000-0000000000cc", {})
+    base = fingerprint_payload_for_operator_release(
+        "00000000-0000-0000-0000-0000000000cc", {}
+    )
     with_extra = fingerprint_payload_for_operator_release(
         "00000000-0000-0000-0000-0000000000cc",
         {"extra": 1},
     )
-    assert canonical_payload_fingerprint(base) != canonical_payload_fingerprint(with_extra)
+    assert canonical_payload_fingerprint(base) != canonical_payload_fingerprint(
+        with_extra
+    )

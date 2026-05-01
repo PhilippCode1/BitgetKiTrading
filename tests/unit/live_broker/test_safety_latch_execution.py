@@ -50,22 +50,33 @@ class _FakeRepo:
         self.snapshots: dict[str, list] = {}
         self.audit: list[dict] = []
         self.reconcile_snapshot: dict | None = {
-            "details_json": {"drift": {"total_count": 0, "snapshot_health": {"missing_count": 0, "stale_count": 0}}}
+            "details_json": {
+                "drift": {
+                    "total_count": 0,
+                    "snapshot_health": {"missing_count": 0, "stale_count": 0},
+                }
+            }
         }
 
     def record_execution_decision(self, record: dict):
         return {**record, "execution_id": str(uuid4())}
 
-    def record_execution_risk_snapshot(self, execution_decision_id: str, risk_decision: dict) -> None:
+    def record_execution_risk_snapshot(
+        self, execution_decision_id: str, risk_decision: dict
+    ) -> None:
         return None
 
     def record_shadow_live_assessment(self, **kwargs) -> None:
         return None
 
-    def list_latest_exchange_snapshots(self, snapshot_type: str, *, symbol=None, limit: int = 200):
+    def list_latest_exchange_snapshots(
+        self, snapshot_type: str, *, symbol=None, limit: int = 200
+    ):
         return self.snapshots.get(snapshot_type, [])
 
-    def list_exchange_snapshots_since(self, snapshot_type: str, *, since_ts_ms: int, limit: int = 5000):
+    def list_exchange_snapshots_since(
+        self, snapshot_type: str, *, since_ts_ms: int, limit: int = 5000
+    ):
         return []
 
     def latest_reconcile_snapshot(self):
@@ -146,14 +157,20 @@ def _intent() -> ExecutionIntentRequest:
     )
 
 
-def test_live_intent_blocked_when_safety_latch_armed(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_live_intent_blocked_when_safety_latch_armed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     settings = _live_settings(monkeypatch)
     repo = _FakeRepo()
     repo.snapshots = {
         "account": [
             {
                 "symbol": "USDT",
-                "raw_data": {"items": [{"marginCoin": "USDT", "equity": "10000", "available": "9500"}]},
+                "raw_data": {
+                    "items": [
+                        {"marginCoin": "USDT", "equity": "10000", "available": "9500"}
+                    ]
+                },
             }
         ]
     }
@@ -173,14 +190,20 @@ def test_live_intent_blocked_when_safety_latch_armed(monkeypatch: pytest.MonkeyP
     assert out["decision_reason"] == "live_safety_latch_active"
 
 
-def test_order_service_release_safety_latch_clears_flag(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_order_service_release_safety_latch_clears_flag(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     settings = _live_settings(monkeypatch)
     repo = _FakeRepo()
-    repo.audit.append({"category": "safety_latch", "action": "arm", "source": "reconcile"})
+    repo.audit.append(
+        {"category": "safety_latch", "action": "arm", "source": "reconcile"}
+    )
     # LiveBrokerOrderService braucht private client nur fuer cancel-all — hier nicht aufgerufen
     from unittest.mock import MagicMock
 
     osvc = LiveBrokerOrderService(settings, repo, MagicMock(), bus=None)  # type: ignore[arg-type]
     assert repo.safety_latch_is_active() is True
-    osvc.release_safety_latch(SafetyLatchReleaseRequest(reason="ops cleared after review"))
+    osvc.release_safety_latch(
+        SafetyLatchReleaseRequest(reason="ops cleared after review")
+    )
     assert repo.safety_latch_is_active() is False

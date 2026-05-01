@@ -21,7 +21,12 @@ from api_gateway.signal_contract import SIGNAL_API_CONTRACT_VERSION
 
 
 class _FakeCursor:
-    def __init__(self, *, one: dict[str, object] | None = None, many: list[dict[str, object]] | None = None):
+    def __init__(
+        self,
+        *,
+        one: dict[str, object] | None = None,
+        many: list[dict[str, object]] | None = None,
+    ):
         self._one = one
         self._many = many or []
 
@@ -319,8 +324,14 @@ def test_fetch_signal_by_id_includes_hybrid_fields() -> None:
     assert item["meta_decision_action"] == "lane_keep"
     assert item["meta_decision_kernel_version"] == "mkv-2"
     assert item["signal_contract_version"] == SIGNAL_API_CONTRACT_VERSION
-    assert item["signal_view"]["deterministic_engine"]["reasons_json_ref"] == "reasons_json"
-    assert item["signal_view"]["identity"]["signal_id"] == "00000000-0000-0000-0000-000000000001"
+    assert (
+        item["signal_view"]["deterministic_engine"]["reasons_json_ref"]
+        == "reasons_json"
+    )
+    assert (
+        item["signal_view"]["identity"]["signal_id"]
+        == "00000000-0000-0000-0000-000000000001"
+    )
 
 
 def test_fetch_signal_explain_includes_layers() -> None:
@@ -339,7 +350,11 @@ def test_fetch_signal_explain_includes_layers() -> None:
     )
     assert out is not None
     assert out["signal_contract_version"] == SIGNAL_API_CONTRACT_VERSION
-    assert out["explanation_layers"]["persisted_narrative"]["explain_short"] == "Kurztext"
-    assert out["explanation_layers"]["deterministic_engine"]["reasons_json"] == {"engine": True}
+    assert (
+        out["explanation_layers"]["persisted_narrative"]["explain_short"] == "Kurztext"
+    )
+    assert out["explanation_layers"]["deterministic_engine"]["reasons_json"] == {
+        "engine": True
+    }
     assert out["reasons_json"] == {"engine": True}
     assert out["explanation_layers"]["live_llm_advisory"]["separate_request"] is True

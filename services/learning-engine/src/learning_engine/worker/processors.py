@@ -8,6 +8,15 @@ from typing import Any
 from uuid import UUID
 
 import psycopg
+from shared_py.model_contracts import (
+    MODEL_TIMEFRAMES,
+    build_model_contract_bundle,
+    extract_active_models_from_signal_row,
+    normalize_feature_row,
+    normalize_market_regime,
+    normalize_model_output_row,
+    normalize_model_timeframe,
+)
 
 from learning_engine.config import LearningEngineSettings
 from learning_engine.e2e.qc import derive_trade_close_qc_labels
@@ -23,17 +32,8 @@ from learning_engine.labeling.labels import (
     timing_from_events,
 )
 from learning_engine.labeling.rules_v1 import apply_error_labels
-from learning_engine.storage.connection import db_connect
 from learning_engine.storage import repo_context, repo_e2e, repo_eval, repo_processed
-from shared_py.model_contracts import (
-    MODEL_TIMEFRAMES,
-    build_model_contract_bundle,
-    extract_active_models_from_signal_row,
-    normalize_market_regime,
-    normalize_feature_row,
-    normalize_model_output_row,
-    normalize_model_timeframe,
-)
+from learning_engine.storage.connection import db_connect
 
 logger = logging.getLogger("learning_engine.processor")
 
@@ -113,10 +113,21 @@ def _collect_learning_quality_issues(
             issues.append(f"missing_feature_tf_{tf}")
             continue
         if feature_issues:
-            issues.append("feature_snapshot_contract_invalid" if tf == primary_tf else f"feature_snapshot_invalid_{tf}")
+            issues.append(
+                "feature_snapshot_contract_invalid"
+                if tf == primary_tf
+                else f"feature_snapshot_invalid_{tf}"
+            )
         computed_ts_ms = int(normalized.get("computed_ts_ms") or 0)
-        if computed_ts_ms > 0 and decision_ts_ms - computed_ts_ms > settings.learn_max_feature_age_ms:
-            issues.append("stale_feature_snapshot" if tf == primary_tf else f"stale_feature_tf_{tf}")
+        if (
+            computed_ts_ms > 0
+            and decision_ts_ms - computed_ts_ms > settings.learn_max_feature_age_ms
+        ):
+            issues.append(
+                "stale_feature_snapshot"
+                if tf == primary_tf
+                else f"stale_feature_tf_{tf}"
+            )
         if tf == primary_tf:
             liquidity_source = str(normalized.get("liquidity_source") or "").strip()
             if liquidity_source in ("", "missing"):
@@ -124,7 +135,10 @@ def _collect_learning_quality_issues(
             elif liquidity_source != "orderbook_levels":
                 issues.append("liquidity_feature_snapshot_fallback")
             orderbook_age_ms = normalized.get("orderbook_age_ms")
-            if orderbook_age_ms is not None and orderbook_age_ms > settings.learn_max_feature_age_ms:
+            if (
+                orderbook_age_ms is not None
+                and orderbook_age_ms > settings.learn_max_feature_age_ms
+            ):
                 issues.append("stale_liquidity_feature_snapshot")
             if normalized.get("execution_cost_bps") is None:
                 issues.append("missing_execution_cost_snapshot")
@@ -133,14 +147,22 @@ def _collect_learning_quality_issues(
             if funding_source in ("", "missing"):
                 issues.append("missing_funding_feature_snapshot")
             funding_age_ms = normalized.get("funding_age_ms")
-            if funding_age_ms is not None and funding_age_ms > settings.learn_max_feature_age_ms:
+            if (
+                funding_age_ms is not None
+                and funding_age_ms > settings.learn_max_feature_age_ms
+            ):
                 issues.append("stale_funding_feature_snapshot")
 
-            open_interest_source = str(normalized.get("open_interest_source") or "").strip()
+            open_interest_source = str(
+                normalized.get("open_interest_source") or ""
+            ).strip()
             if open_interest_source in ("", "missing"):
                 issues.append("missing_open_interest_feature_snapshot")
             open_interest_age_ms = normalized.get("open_interest_age_ms")
-            if open_interest_age_ms is not None and open_interest_age_ms > settings.learn_max_feature_age_ms:
+            if (
+                open_interest_age_ms is not None
+                and open_interest_age_ms > settings.learn_max_feature_age_ms
+            ):
                 issues.append("stale_open_interest_feature_snapshot")
             if normalized.get("open_interest_change_pct") is None:
                 issues.append("missing_open_interest_delta_snapshot")
@@ -152,7 +174,10 @@ def _collect_learning_quality_issues(
         if signal_issues:
             issues.append("signal_output_contract_invalid")
         analysis_ts_ms = int(normalized_signal.get("analysis_ts_ms") or 0)
-        if analysis_ts_ms > 0 and opened_ts_ms - analysis_ts_ms > settings.learn_stale_signal_ms:
+        if (
+            analysis_ts_ms > 0
+            and opened_ts_ms - analysis_ts_ms > settings.learn_stale_signal_ms
+        ):
             issues.append("stale_signal_snapshot")
 
     return sorted(set(issues))
@@ -183,7 +208,9 @@ def process_trade_closed(
             return
         st = str(pos["state"])
         if st not in ("closed", "liquidated"):
-            logger.info("skip evaluation position not closed state=%s id=%s", st, position_id)
+            logger.info(
+                "skip evaluation position not closed state=%s id=%s", st, position_id
+            )
             return
 
         fills = repo_context.fetch_fills_ordered(conn, position_id)
@@ -200,7 +227,9 @@ def process_trade_closed(
         if closed_ts <= 0 and fills:
             closed_ts = int(fills[-1]["ts_ms"])
 
-        exit_qty, exit_vwap, pnl_gross = compute_exit_stats(fills, side=side, entry_avg=entry_avg)
+        exit_qty, exit_vwap, pnl_gross = compute_exit_stats(
+            fills, side=side, entry_avg=entry_avg
+        )
         if exit_qty <= 0 and fills:
             exit_qty = _dec(fills[0]["qty_base"])
             exit_vwap = _dec(fills[-1]["price"])
@@ -218,11 +247,7 @@ def process_trade_closed(
         sig_row = repo_context.fetch_signal_v1(conn, sig_id) if sig_id else None
         decision_ts = int((sig_row or {}).get("analysis_ts_ms") or opened_ts)
         tf = normalize_model_timeframe(
-            str(
-                (sig_row or {}).get("timeframe")
-                or meta.get("plan_timeframe")
-                or "5m"
-            )
+            str((sig_row or {}).get("timeframe") or meta.get("plan_timeframe") or "5m")
         )
 
         feature_rows: dict[str, dict[str, Any] | None] = {}
@@ -244,13 +269,19 @@ def process_trade_closed(
         )
         fb_until = opened_ts + settings.learn_false_breakout_window_ms
         fb_ev = repo_context.fetch_structure_events_around(
-            conn, symbol=symbol, timeframe=tf, open_ts_ms=opened_ts, until_ts_ms=fb_until
+            conn,
+            symbol=symbol,
+            timeframe=tf,
+            open_ts_ms=opened_ts,
+            until_ts_ms=fb_until,
         )
         false_breakout = [e for e in fb_ev if str(e.get("type")) == "FALSE_BREAKOUT"]
 
         news_start = decision_ts - settings.news_context_lookback_ms
         news_end = decision_ts
-        news_rows = repo_context.fetch_news_window(conn, start_ms=news_start, end_ms=news_end)
+        news_rows = repo_context.fetch_news_window(
+            conn, start_ms=news_start, end_ms=news_end
+        )
         news_json = json.loads(json.dumps([dict(r) for r in news_rows], default=str))
 
         stop_plan = parse_stop_plan(pos)
@@ -281,7 +312,10 @@ def process_trade_closed(
 
         stale = False
         if sig_row and sig_row.get("analysis_ts_ms") is not None:
-            stale = opened_ts - int(sig_row["analysis_ts_ms"]) > settings.learn_stale_signal_ms
+            stale = (
+                opened_ts - int(sig_row["analysis_ts_ms"])
+                > settings.learn_stale_signal_ms
+            )
 
         news_shock = False
         try:
@@ -317,7 +351,9 @@ def process_trade_closed(
 
         regime = normalize_market_regime((sig_row or {}).get("market_regime"))
         if regime is None:
-            regime = normalize_market_regime(struct_state.get("trend_dir") if struct_state else None)
+            regime = normalize_market_regime(
+                struct_state.get("trend_dir") if struct_state else None
+            )
 
         qty_eval = (
             exit_qty
@@ -355,7 +391,9 @@ def process_trade_closed(
                     end_ts_ms=closed_ts,
                 )
 
-        exit_reference_price = candle_close_reference(label_path[-1]) if label_path else None
+        exit_reference_price = (
+            candle_close_reference(label_path[-1]) if label_path else None
+        )
         if exit_reference_price is None and closed_ts > 0:
             exit_ref_candle = repo_context.fetch_latest_candle_before(
                 conn, symbol=symbol, timeframe="1m", ts_ms=closed_ts
@@ -367,7 +405,9 @@ def process_trade_closed(
             exit_reference_price = candle_close_reference(exit_ref_candle)
 
         isolated_margin = (
-            _dec(pos["isolated_margin"]) if pos.get("isolated_margin") is not None else None
+            _dec(pos["isolated_margin"])
+            if pos.get("isolated_margin") is not None
+            else None
         )
         target_comp = compute_trade_targets(
             side=side,
@@ -435,7 +475,9 @@ def process_trade_closed(
                 features_by_tf=feature_rows,
                 quality_issues=quality_issues,
             ),
-            "structure_snapshot_json": structure_snapshot_compact(struct_state, struct_ev_before),
+            "structure_snapshot_json": structure_snapshot_compact(
+                struct_state, struct_ev_before
+            ),
             "error_labels_json": err_labels,
             "model_contract_json": build_model_contract_bundle(
                 quality_issues=quality_issues,
@@ -544,9 +586,13 @@ def process_signal_created(
             if row is not None:
                 repo_e2e.upsert_decision_record_from_signal(conn, row)
             else:
-                logger.warning("e2e: signal row missing after retry signal_id=%s", sig_id)
+                logger.warning(
+                    "e2e: signal row missing after retry signal_id=%s", sig_id
+                )
             repo_processed.mark_processed(conn, stream, redis_message_id)
-    logger.info("e2e decision record upsert signal_id=%s ok=%s", sig_id, row is not None)
+    logger.info(
+        "e2e decision record upsert signal_id=%s ok=%s", sig_id, row is not None
+    )
 
 
 def process_trade_opened(
@@ -602,4 +648,6 @@ def process_trade_opened(
                     side=str(pos.get("side") or "").lower(),
                 )
             repo_processed.mark_processed(conn, stream, redis_message_id)
-    logger.info("e2e paper open linked position_id=%s signal_id=%s", position_id, sig_id)
+    logger.info(
+        "e2e paper open linked position_id=%s signal_id=%s", position_id, sig_id
+    )

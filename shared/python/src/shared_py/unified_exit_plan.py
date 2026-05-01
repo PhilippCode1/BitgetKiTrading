@@ -9,8 +9,9 @@ aus erwartetem MFE/MAE und Exit-Familie ab.
 from __future__ import annotations
 
 import math
+from collections.abc import Mapping
 from decimal import Decimal
-from typing import Any, Mapping
+from typing import Any
 
 UNIFIED_EXIT_PLAN_VERSION = "unified-exit-v1"
 
@@ -87,7 +88,9 @@ def build_unified_exit_plan(
         or "target_ladder"
     ).strip()
 
-    stop_pct = _f(sba.get("stop_distance_pct")) or _f(signal_row.get("stop_distance_pct"))
+    stop_pct = _f(sba.get("stop_distance_pct")) or _f(
+        signal_row.get("stop_distance_pct")
+    )
     mae_bps = _f(signal_row.get("expected_mae_bps"))
     mfe_bps = _f(signal_row.get("expected_mfe_bps"))
     atrp = _f(pf.get("atrp_14"))
@@ -118,7 +121,9 @@ def build_unified_exit_plan(
 
     break_even = {
         "arm_after_first_partial_fill": True,
-        "offset_bps": max(2.0, (spread_bps or 1.0) * 2.0) if spread_bps is not None else 4.0,
+        "offset_bps": (
+            max(2.0, (spread_bps or 1.0) * 2.0) if spread_bps is not None else 4.0
+        ),
         "policy": "move_stop_to_entry_plus_costs",
     }
 

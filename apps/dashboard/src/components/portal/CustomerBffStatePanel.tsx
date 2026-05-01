@@ -31,7 +31,9 @@ export async function CustomerBffStatePanel({ summary }: Props) {
       data-e2e="customer-bff-state"
       style={{ fontSize: "0.95rem", lineHeight: 1.55 }}
     >
-      <h2 style={{ marginTop: 0, fontSize: "1.05rem" }}>{t("customerPortal.bffState.title")}</h2>
+      <h2 style={{ marginTop: 0, fontSize: "1.05rem" }}>
+        {t("customerPortal.bffState.title")}
+      </h2>
       <p>
         <strong>{t("customerPortal.bffState.aggregate")}</strong>{" "}
         {t(dataStateKey(summary.dataState))}
@@ -58,7 +60,11 @@ export async function CustomerBffStatePanel({ summary }: Props) {
         </p>
       )}
       {summary.errorHint && (
-        <p data-e2e="customer-bff-hint" className="small" style={{ opacity: 0.9 }}>
+        <p
+          data-e2e="customer-bff-hint"
+          className="small"
+          style={{ opacity: 0.9 }}
+        >
           {t("customerPortal.bffState.hintPrefix")} {summary.errorHint}
         </p>
       )}

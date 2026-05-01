@@ -13,7 +13,14 @@ def test_report_writes_markdown_and_json(tmp_path: Path) -> None:
     out_md = tmp_path / "live_broker_fail_closed_evidence.md"
     out_json = tmp_path / "live_broker_fail_closed_evidence.json"
     proc = subprocess.run(
-        [sys.executable, str(SCRIPT), "--output-md", str(out_md), "--output-json", str(out_json)],
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--output-md",
+            str(out_md),
+            "--output-json",
+            str(out_json),
+        ],
         cwd=ROOT,
         capture_output=True,
         text=True,

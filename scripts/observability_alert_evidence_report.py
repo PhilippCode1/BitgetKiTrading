@@ -16,8 +16,12 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_ALERT_EVIDENCE = ROOT / "docs" / "production_10_10" / "alert_routing_evidence.template.json"
-DEFAULT_OBSERVABILITY_EVIDENCE = ROOT / "docs" / "production_10_10" / "observability_slos_evidence.template.json"
+DEFAULT_ALERT_EVIDENCE = (
+    ROOT / "docs" / "production_10_10" / "alert_routing_evidence.template.json"
+)
+DEFAULT_OBSERVABILITY_EVIDENCE = (
+    ROOT / "docs" / "production_10_10" / "observability_slos_evidence.template.json"
+)
 ALERTMANAGER_EXAMPLE = ROOT / "infra" / "observability" / "alertmanager.yml.example"
 PROMETHEUS_ALERTS = ROOT / "infra" / "observability" / "prometheus-alerts.yml"
 INCIDENT_DRILL_JSON = ROOT / "reports" / "incident_drill.json"
@@ -34,7 +38,9 @@ SECRET_LIKE = ("password", "token", "secret", "api_key", "webhook", "authorizati
 
 
 def _now() -> str:
-    return datetime.now(tz=UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return (
+        datetime.now(tz=UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    )
 
 
 def _git_sha() -> str:
@@ -119,7 +125,12 @@ def _secret_scan(obj: Any, path: str = "") -> list[str]:
         for k, v in obj.items():
             p = f"{path}.{k}" if path else str(k)
             if any(m in str(k).lower() for m in SECRET_LIKE):
-                if isinstance(v, str) and v not in ("", "[REDACTED]", "REDACTED", "not_stored_in_repo"):
+                if isinstance(v, str) and v not in (
+                    "",
+                    "[REDACTED]",
+                    "REDACTED",
+                    "not_stored_in_repo",
+                ):
                     issues.append(f"{p}_not_redacted")
             issues.extend(_secret_scan(v, p))
     elif isinstance(obj, list):
@@ -132,9 +143,19 @@ def _extract_prometheus_surface() -> dict[str, Any]:
     try:
         import yaml
     except Exception:
-        return {"metrics": [], "alerts": [], "runbooks": [], "error": "yaml_import_failed"}
+        return {
+            "metrics": [],
+            "alerts": [],
+            "runbooks": [],
+            "error": "yaml_import_failed",
+        }
     if not PROMETHEUS_ALERTS.is_file():
-        return {"metrics": [], "alerts": [], "runbooks": [], "error": "prometheus_alerts_missing"}
+        return {
+            "metrics": [],
+            "alerts": [],
+            "runbooks": [],
+            "error": "prometheus_alerts_missing",
+        }
     raw = PROMETHEUS_ALERTS.read_text(encoding="utf-8", errors="replace")
     parsed = yaml.safe_load(raw) or {}
     alerts: list[str] = []
@@ -150,11 +171,17 @@ def _extract_prometheus_surface() -> dict[str, Any]:
                 name = str(rule.get("alert") or "").strip()
                 if name:
                     alerts.append(name)
-                ann = rule.get("annotations") if isinstance(rule.get("annotations"), dict) else {}
+                ann = (
+                    rule.get("annotations")
+                    if isinstance(rule.get("annotations"), dict)
+                    else {}
+                )
                 rb = str(ann.get("runbook") or "").strip()
                 if rb:
                     runbooks.append(rb)
-    metrics = sorted(set(re.findall(r"\b([a-zA-Z_][a-zA-Z0-9_]*)(?:\{| >| ==| <)", raw)))
+    metrics = sorted(
+        set(re.findall(r"\b([a-zA-Z_][a-zA-Z0-9_]*)(?:\{| >| ==| <)", raw))
+    )
     return {
         "metrics": metrics,
         "alerts": sorted(set(alerts)),
@@ -366,8 +393,14 @@ def render_markdown(payload: dict[str, Any]) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--alert-evidence-json", type=Path, default=DEFAULT_ALERT_EVIDENCE)
-    parser.add_argument("--observability-evidence-json", type=Path, default=DEFAULT_OBSERVABILITY_EVIDENCE)
+    parser.add_argument(
+        "--alert-evidence-json", type=Path, default=DEFAULT_ALERT_EVIDENCE
+    )
+    parser.add_argument(
+        "--observability-evidence-json",
+        type=Path,
+        default=DEFAULT_OBSERVABILITY_EVIDENCE,
+    )
     parser.add_argument("--output-md", type=Path)
     parser.add_argument("--output-json", type=Path)
     parser.add_argument(
@@ -393,7 +426,8 @@ def main(argv: list[str] | None = None) -> int:
             path = path / "observability_slos_evidence.template.json"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(
-            json.dumps(build_observability_ops_template(), indent=2, ensure_ascii=False) + "\n",
+            json.dumps(build_observability_ops_template(), indent=2, ensure_ascii=False)
+            + "\n",
             encoding="utf-8",
         )
         print(f"observability_alert_evidence_report: wrote {path}")

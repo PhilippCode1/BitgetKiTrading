@@ -87,7 +87,8 @@ export function SignalDetailRiskStrategySection({ detail, explain, t }: Props) {
       <div className="panel signal-explain-layer" style={{ marginTop: 12 }}>
         <h3 className="h3-quiet">Governance- und Asset-Kontext</h3>
         <p className="muted small">
-          Risk-Governor, Asset-Tier, Datenqualitaet und Live-Freigabe in einer Sicht.
+          Risk-Governor, Asset-Tier, Datenqualitaet und Live-Freigabe in einer
+          Sicht.
         </p>
         <ul className="news-list">
           <li>Trade Action: {tradeActionLabelDe(detail.trade_action)}</li>

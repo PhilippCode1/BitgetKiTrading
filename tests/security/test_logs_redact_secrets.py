@@ -1,7 +1,11 @@
 from __future__ import annotations
 
-from scripts.dr_postgres_restore_test import secret_surface_issues as restore_secret_surface_issues
-from tools.verify_alert_routing import secret_surface_issues as alert_secret_surface_issues
+from scripts.dr_postgres_restore_test import (
+    secret_surface_issues as restore_secret_surface_issues,
+)
+from tools.verify_alert_routing import (
+    secret_surface_issues as alert_secret_surface_issues,
+)
 
 
 def test_secret_like_values_must_be_redacted() -> None:

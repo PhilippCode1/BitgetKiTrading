@@ -25,7 +25,9 @@ def _iso_ts(v: Any) -> str | None:
     return str(v)
 
 
-def fetch_lifecycle_status_counts(conn: psycopg.Connection[Any]) -> list[dict[str, Any]]:
+def fetch_lifecycle_status_counts(
+    conn: psycopg.Connection[Any],
+) -> list[dict[str, Any]]:
     rows = conn.execute(
         """
         SELECT lifecycle_status, COUNT(*)::bigint AS cnt
@@ -35,7 +37,10 @@ def fetch_lifecycle_status_counts(conn: psycopg.Connection[Any]) -> list[dict[st
         """
     ).fetchall()
     return [
-        {"lifecycle_status": str(dict(r)["lifecycle_status"]), "count": int(dict(r)["cnt"])}
+        {
+            "lifecycle_status": str(dict(r)["lifecycle_status"]),
+            "count": int(dict(r)["cnt"]),
+        }
         for r in rows
     ]
 
@@ -148,7 +153,8 @@ def fetch_integration_broker_buckets(
         """
     ).fetchall()
     return [
-        {"broker_state": str(dict(r)["bucket"]), "count": int(dict(r)["cnt"])} for r in rows
+        {"broker_state": str(dict(r)["bucket"]), "count": int(dict(r)["cnt"])}
+        for r in rows
     ]
 
 
@@ -187,7 +193,9 @@ def fetch_customer_notify_outbox_recent(
                 "severity": str(d.get("severity") or ""),
                 "state": str(d.get("state") or ""),
                 "attempt_count": int(d.get("attempt_count") or 0),
-                "last_error": (str(d.get("last_error"))[:500] if d.get("last_error") else None),
+                "last_error": (
+                    str(d.get("last_error"))[:500] if d.get("last_error") else None
+                ),
                 "dedupe_key": str(d.get("dedupe_key")) if d.get("dedupe_key") else None,
                 "customer_category": str(d.get("customer_category") or ""),
                 "tenant_id_masked": mask_tenant_id(tid),
@@ -222,7 +230,9 @@ def fetch_customer_notify_outbox_failed_recent(
                 "created_ts": _iso_ts(d.get("created_ts")),
                 "state": str(d.get("state") or ""),
                 "attempt_count": int(d.get("attempt_count") or 0),
-                "last_error": (str(d.get("last_error"))[:500] if d.get("last_error") else None),
+                "last_error": (
+                    str(d.get("last_error"))[:500] if d.get("last_error") else None
+                ),
                 "customer_category": str(d.get("customer_category") or ""),
                 "tenant_id_masked": mask_tenant_id(tid),
             }
@@ -258,7 +268,9 @@ def fetch_telegram_command_audit_recent(
             {
                 "id": str(d.get("id")),
                 "ts": _iso_ts(d.get("ts")),
-                "chat_id_masked": _mask_chat_id_audit(int(cid)) if cid is not None else None,
+                "chat_id_masked": (
+                    _mask_chat_id_audit(int(cid)) if cid is not None else None
+                ),
                 "user_id": int(d["user_id"]) if d.get("user_id") is not None else None,
                 "command": str(d.get("command") or ""),
                 "args": d.get("args"),

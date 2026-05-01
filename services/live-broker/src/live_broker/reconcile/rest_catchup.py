@@ -39,15 +39,19 @@ def _positions_items_from_payload(payload: dict[str, Any]) -> list[dict[str, Any
 
 
 def run_rest_snapshot_catchup(
-    settings: "LiveBrokerSettings",
-    repo: "LiveBrokerRepository",
-    private: "BitgetPrivateRestClient",
+    settings: LiveBrokerSettings,
+    repo: LiveBrokerRepository,
+    private: BitgetPrivateRestClient,
     *,
     reason: str,
     reconcile_run_id: str | None = None,
 ) -> dict[str, Any]:
     if not settings.private_exchange_access_enabled:
-        return {"ok": True, "skipped": True, "reason": "private_exchange_access_disabled"}
+        return {
+            "ok": True,
+            "skipped": True,
+            "reason": "private_exchange_access_disabled",
+        }
     ingest_ts_ms = int(time.time() * 1000)
     rows_orders = 0
     rows_positions = 0
@@ -56,7 +60,9 @@ def run_rest_snapshot_catchup(
         oitems = _orders_items_from_payload(oresp.payload)
         grouped_o: dict[str, list[dict[str, Any]]] = {}
         for it in oitems:
-            sym = str(it.get("instId") or it.get("symbol") or settings.symbol or "default")
+            sym = str(
+                it.get("instId") or it.get("symbol") or settings.symbol or "default"
+            )
             grouped_o.setdefault(sym, []).append(it)
         if not grouped_o:
             grouped_o[str(settings.symbol)] = []
@@ -85,7 +91,10 @@ def run_rest_snapshot_catchup(
     try:
         presp = private.list_all_positions(priority=True)
         pitems = _positions_items_from_payload(presp.payload)
-        from live_broker.reconcile.position_drift import notional_from_bitget_item, position_key_from_bitget_item
+        from live_broker.reconcile.position_drift import (
+            notional_from_bitget_item,
+            position_key_from_bitget_item,
+        )
 
         for it in pitems:
             k = position_key_from_bitget_item(it)
@@ -106,7 +115,9 @@ def run_rest_snapshot_catchup(
                 logger.warning("rest catchup live.positions sync skip: %s", exc)
         grouped_p: dict[str, list[dict[str, Any]]] = {}
         for it in pitems:
-            sym = str(it.get("instId") or it.get("symbol") or settings.symbol or "default")
+            sym = str(
+                it.get("instId") or it.get("symbol") or settings.symbol or "default"
+            )
             grouped_p.setdefault(sym, []).append(it)
         if not grouped_p:
             grouped_p[str(settings.symbol)] = []

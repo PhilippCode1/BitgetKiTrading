@@ -11,7 +11,9 @@ from shared_py.health_map import (
 )
 
 
-def _base(name: str, *, status: str = "ok", freshness: str = "fresh", block: bool = False) -> HealthMapComponent:
+def _base(
+    name: str, *, status: str = "ok", freshness: str = "fresh", block: bool = False
+) -> HealthMapComponent:
     return HealthMapComponent(
         name=name,
         status=status,  # type: ignore[arg-type]
@@ -26,7 +28,13 @@ def _base(name: str, *, status: str = "ok", freshness: str = "fresh", block: boo
 
 
 def test_all_ok_components_result_ok_if_no_live_blocker() -> None:
-    comps = [_base("API-Gateway"), _base("Live-Broker"), _base("Reconcile"), _base("Postgres"), _base("Redis/Eventbus")]
+    comps = [
+        _base("API-Gateway"),
+        _base("Live-Broker"),
+        _base("Reconcile"),
+        _base("Postgres"),
+        _base("Redis/Eventbus"),
+    ]
     out = evaluate_health_map(comps)
     assert out["gesamtstatus"] == "ok"
     assert out["live_blockiert"] is False
@@ -63,7 +71,12 @@ def test_db_missing_blocks_live_critical() -> None:
 
 
 def test_noncritical_llm_failure_does_not_block_safety() -> None:
-    comps = [_base("LLM-Orchestrator", status="fail"), _base("Postgres"), _base("Redis/Eventbus"), _base("Reconcile")]
+    comps = [
+        _base("LLM-Orchestrator", status="fail"),
+        _base("Postgres"),
+        _base("Redis/Eventbus"),
+        _base("Reconcile"),
+    ]
     out = evaluate_health_map(comps)
     assert out["live_blockiert"] is False
     assert out["gesamtstatus"] == "fail"
@@ -83,6 +96,8 @@ def test_german_fields_present() -> None:
 
 
 def test_ui_payload_has_no_billing_customer_terms() -> None:
-    page = Path("apps/dashboard/src/app/(operator)/console/system-health-map/page.tsx").read_text(encoding="utf-8")
+    page = Path(
+        "apps/dashboard/src/app/(operator)/console/system-health-map/page.tsx"
+    ).read_text(encoding="utf-8")
     assert "Systemzustand & Datenflüsse" in page
     assert_no_commercial_terms(page.lower())

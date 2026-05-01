@@ -1502,7 +1502,7 @@ class BaseServiceSettings(BaseSettings):
         """Siehe `config.execution_runtime` — einheitliches Modusmodell."""
         from config.execution_runtime import build_execution_runtime_snapshot
 
-        return build_execution_runtime_snapshot(self)
+        return build_execution_runtime_snapshot(self)  # type: ignore[arg-type]
 
 
 def emit_secret_management_warning(

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-
 import psycopg
 
 
@@ -21,7 +20,9 @@ class RepoStructureTrend:
             return None
         return str(row[0])
 
-    def set_trend(self, symbol: str, timeframe: str, trend_dir: str, ts_ms: int) -> None:
+    def set_trend(
+        self, symbol: str, timeframe: str, trend_dir: str, ts_ms: int
+    ) -> None:
         with psycopg.connect(self._dsn) as conn:
             conn.execute(
                 """

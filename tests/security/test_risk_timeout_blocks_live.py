@@ -22,7 +22,10 @@ def test_risk_timeout_or_missing_response_blocks_live() -> None:
         max_concurrent_positions=5,
     )
     out = evaluate_trade_risk(
-        signal={"trade_action": "do_not_trade", "rejection_reasons_json": ["risk_timeout"]},
+        signal={
+            "trade_action": "do_not_trade",
+            "rejection_reasons_json": ["risk_timeout"],
+        },
         limits=limits,
     )
     assert out["trade_action"] == "do_not_trade"

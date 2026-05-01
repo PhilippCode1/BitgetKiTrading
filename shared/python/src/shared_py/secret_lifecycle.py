@@ -320,7 +320,9 @@ def classify_secret_name(name: str) -> SecretPolicy:
         normalized = ALIASES[normalized]
     if normalized in SECRET_POLICIES:
         return SECRET_POLICIES[normalized]
-    if "CUSTOMER" in normalized and any(x in normalized for x in ("EXCHANGE", "BITGET")):
+    if "CUSTOMER" in normalized and any(
+        x in normalized for x in ("EXCHANGE", "BITGET")
+    ):
         return SECRET_POLICIES["CUSTOMER_EXCHANGE_SECRET_REFERENCE"]
     if any(fragment in normalized for fragment in TOKEN_FRAGMENTS):
         return SecretPolicy(

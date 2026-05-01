@@ -6,10 +6,6 @@ from contextlib import asynccontextmanager
 
 import psycopg
 from fastapi import FastAPI, HTTPException, Query
-
-from drawing_engine.settings import DrawingEngineSettings, normalize_timeframe
-from drawing_engine.storage.repo import DrawingRepository
-from drawing_engine.worker import DrawingWorker
 from shared_py.eventbus import STREAM_DRAWING_UPDATED
 from shared_py.observability import (
     append_peer_readiness_checks,
@@ -18,6 +14,10 @@ from shared_py.observability import (
     instrument_fastapi,
     merge_ready_details,
 )
+
+from drawing_engine.settings import DrawingEngineSettings, normalize_timeframe
+from drawing_engine.storage.repo import DrawingRepository
+from drawing_engine.worker import DrawingWorker
 
 
 class DrawingEngineRuntime:
@@ -128,7 +128,9 @@ def create_app() -> FastAPI:
         return {"status": "ok", "symbol": symbol, "timeframe": tf, "drawings": rows}
 
     @app.get("/drawings/history")
-    def drawings_history(parent_id: str = Query(..., min_length=1)) -> dict[str, object]:
+    def drawings_history(
+        parent_id: str = Query(..., min_length=1)
+    ) -> dict[str, object]:
         try:
             rows = runtime.repo.fetch_history(parent_id=parent_id)
         except psycopg.Error as exc:

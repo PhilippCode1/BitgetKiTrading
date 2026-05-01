@@ -3,19 +3,20 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 import httpx
+from shared_py.bitget import BitgetSettings
+from shared_py.bitget.instruments import BitgetInstrumentCatalogEntry
+from shared_py.eventbus import STREAM_CANDLE_CLOSE, EventEnvelope
 
 from market_stream.bitget_ws.subscriptions import Subscription
 from market_stream.provider_diagnostics import ProviderDiagnostics
 from market_stream.sinks.eventbus import AsyncRedisEventBus
 from market_stream.storage.candles_repo import CandlesRepository
-from shared_py.bitget import BitgetSettings
-from shared_py.bitget.instruments import BitgetInstrumentCatalogEntry
-from shared_py.eventbus import EventEnvelope, STREAM_CANDLE_CLOSE
 
 if TYPE_CHECKING:
     CatalogEntryProvider = Callable[[], BitgetInstrumentCatalogEntry | None]
@@ -98,7 +99,7 @@ class CandleCollector:
         kline_type: str = "MARKET",
         retention_days_by_timeframe: dict[str, int],
         retention_interval_sec: int = 12 * 60 * 60,
-        catalog_entry_provider: "CatalogEntryProvider | None" = None,
+        catalog_entry_provider: CatalogEntryProvider | None = None,
         provider_diagnostics: ProviderDiagnostics | None = None,
         rest_429_max_retries: int = 3,
     ) -> None:
@@ -217,7 +218,9 @@ class CandleCollector:
                         "error": "invalid WS candle payload",
                     },
                 )
-                self._logger.warning("invalid WS candle payload timeframe=%s row=%s", timeframe, row)
+                self._logger.warning(
+                    "invalid WS candle payload timeframe=%s row=%s", timeframe, row
+                )
                 continue
             try:
                 candles.append(
@@ -400,7 +403,9 @@ class CandleCollector:
         candles: list[Candle] = []
         for row in data:
             if not isinstance(row, list) or len(row) < 7:
-                self._logger.warning("invalid REST candle payload timeframe=%s row=%s", timeframe, row)
+                self._logger.warning(
+                    "invalid REST candle payload timeframe=%s row=%s", timeframe, row
+                )
                 continue
             candles.append(
                 parse_rest_candle(

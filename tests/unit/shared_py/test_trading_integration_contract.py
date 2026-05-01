@@ -34,7 +34,7 @@ def test_execution_path_matches_product_policy() -> None:
         admin_live_trading_granted=False,
         subscription_active=False,
     )
-    assert execution_path_for_order(gates) == CommercialExecutionMode.DEMO
+    assert execution_path_for_order(gates) == CommercialExecutionMode.NONE
 
 
 def test_telegram_downgrade_without_live() -> None:

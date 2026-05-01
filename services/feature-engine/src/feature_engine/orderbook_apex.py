@@ -6,7 +6,8 @@ Falls `apex_core` nicht installiert ist, schlagen Hilfsfunktionen mit ``ImportEr
 
 from __future__ import annotations
 
-from typing import Any, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 try:
     from apex_core import ApexOrderBook as _ApexOrderBook

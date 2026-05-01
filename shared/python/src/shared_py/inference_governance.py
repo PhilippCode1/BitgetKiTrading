@@ -25,7 +25,9 @@ def redis_governance_key(symbol: str) -> str:
     return _REDIS_KEY_FMT.format(symbol=_norm_symbol(symbol) or "UNKNOWN")
 
 
-def record_inference_timeout_state(redis_url: str, symbol: str, *, ttl_sec: int = _TTL_SEC_DEFAULT) -> None:
+def record_inference_timeout_state(
+    redis_url: str, symbol: str, *, ttl_sec: int = _TTL_SEC_DEFAULT
+) -> None:
     if not (redis_url or "").strip() or not _norm_symbol(symbol):
         return
     try:
@@ -52,7 +54,9 @@ def record_inference_timeout_state(redis_url: str, symbol: str, *, ttl_sec: int 
         logger.debug("SET inference governance failed: %s", exc)
 
 
-def read_inference_governance_state(redis_url: str, symbol: str) -> dict[str, Any] | None:
+def read_inference_governance_state(
+    redis_url: str, symbol: str
+) -> dict[str, Any] | None:
     if not (redis_url or "").strip() or not _norm_symbol(symbol):
         return None
     try:
@@ -77,7 +81,9 @@ def read_inference_governance_state(redis_url: str, symbol: str) -> dict[str, An
     return j if isinstance(j, dict) else None
 
 
-def live_broker_payload_inference_blocks_trading(payload: dict[str, Any] | None) -> bool:
+def live_broker_payload_inference_blocks_trading(
+    payload: dict[str, Any] | None,
+) -> bool:
     """
     True, wenn Live-Execution (fail-closed) wegen TimesFM / Apex wegfaellt.
     """

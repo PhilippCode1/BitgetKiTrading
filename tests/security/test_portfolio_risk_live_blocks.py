@@ -26,7 +26,9 @@ def _limits() -> PortfolioRiskLimits:
 
 def _snapshot(**overrides: object) -> PortfolioSnapshot:
     payload = {
-        "open_positions": [ExposureItem("BTCUSDT", "futures", 3000.0, 0.01, "long", 0.001, 5.0)],
+        "open_positions": [
+            ExposureItem("BTCUSDT", "futures", 3000.0, 0.01, "long", 0.001, 5.0)
+        ],
         "pending_orders": [],
         "pending_live_candidates": [],
         "account_equity": 10_000.0,
@@ -45,7 +47,9 @@ def test_live_block_when_snapshot_missing() -> None:
 
 
 def test_live_block_on_high_risk_portfolio() -> None:
-    snap = _snapshot(open_positions=[ExposureItem("A", "futures", 9000.0, 0.05, "long", 0.02, 30.0)])
+    snap = _snapshot(
+        open_positions=[ExposureItem("A", "futures", 9000.0, 0.05, "long", 0.02, 30.0)]
+    )
     out = evaluate_portfolio_risk(snap, _limits())
     assert portfolio_risk_blocks_live(out) is True
     assert len(out.block_reasons) > 0

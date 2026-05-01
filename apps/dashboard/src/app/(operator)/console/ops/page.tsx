@@ -692,7 +692,8 @@ export default async function OperatorCockpitPage({
                 <>
                   <li className="muted">
                     {t("pages.ops.executionRuntimeLine", {
-                      version: health.execution.execution_runtime.schema_version,
+                      version:
+                        health.execution.execution_runtime.schema_version,
                       lb: String(
                         health.execution.execution_runtime.capabilities
                           .live_broker_consumes_signals,
@@ -709,11 +710,10 @@ export default async function OperatorCockpitPage({
                         health.execution.execution_runtime.live_release
                           .fully_released_for_automated_exchange_orders,
                       ),
-                      manualSuffix:
-                        health.execution.execution_runtime.live_release
-                          .manual_strategy_holds_live_firewall
-                          ? t("pages.ops.executionLiveReleaseManualHold")
-                          : "",
+                      manualSuffix: health.execution.execution_runtime
+                        .live_release.manual_strategy_holds_live_firewall
+                        ? t("pages.ops.executionLiveReleaseManualHold")
+                        : "",
                     })}
                   </li>
                 </>

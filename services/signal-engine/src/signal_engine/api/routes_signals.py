@@ -6,7 +6,11 @@ import psycopg
 from fastapi import APIRouter, HTTPException, Query
 
 from signal_engine.config import normalize_timeframe
-from signal_engine.schemas import ErrorResponse, SignalListResponse, SignalSingleResponse
+from signal_engine.schemas import (
+    ErrorResponse,
+    SignalListResponse,
+    SignalSingleResponse,
+)
 from signal_engine.storage.repo import SignalRepository
 
 _UUID_RE = re.compile(
@@ -32,7 +36,10 @@ def build_signals_router(*, repo: SignalRepository) -> APIRouter:
         except psycopg.Error:
             raise HTTPException(
                 status_code=503,
-                detail={"status": "error", "message": "Datenbank voruebergehend nicht erreichbar"},
+                detail={
+                    "status": "error",
+                    "message": "Datenbank voruebergehend nicht erreichbar",
+                },
             ) from None
         if row is None:
             raise HTTPException(
@@ -61,7 +68,10 @@ def build_signals_router(*, repo: SignalRepository) -> APIRouter:
         except psycopg.Error:
             raise HTTPException(
                 status_code=503,
-                detail={"status": "error", "message": "Datenbank voruebergehend nicht erreichbar"},
+                detail={
+                    "status": "error",
+                    "message": "Datenbank voruebergehend nicht erreichbar",
+                },
             ) from None
         if not include_explain_md:
             for srow in rows:
@@ -86,7 +96,10 @@ def build_signals_router(*, repo: SignalRepository) -> APIRouter:
         except psycopg.Error:
             raise HTTPException(
                 status_code=503,
-                detail={"status": "error", "message": "Datenbank voruebergehend nicht erreichbar"},
+                detail={
+                    "status": "error",
+                    "message": "Datenbank voruebergehend nicht erreichbar",
+                },
             ) from None
         if row is None:
             raise HTTPException(

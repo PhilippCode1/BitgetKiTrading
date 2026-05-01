@@ -10,8 +10,20 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def analyze() -> dict[str, object]:
     issues: list[dict[str, str]] = []
-    doc = ROOT / "docs" / "production_10_10" / "main_console_observability_health_map.md"
-    page = ROOT / "apps" / "dashboard" / "src" / "app" / "(operator)" / "console" / "system-health-map" / "page.tsx"
+    doc = (
+        ROOT / "docs" / "production_10_10" / "main_console_observability_health_map.md"
+    )
+    page = (
+        ROOT
+        / "apps"
+        / "dashboard"
+        / "src"
+        / "app"
+        / "(operator)"
+        / "console"
+        / "system-health-map"
+        / "page.tsx"
+    )
     vm = ROOT / "apps" / "dashboard" / "src" / "lib" / "health-map-view-model.ts"
     py_module = ROOT / "shared" / "python" / "src" / "shared_py" / "health_map.py"
     nav = ROOT / "apps" / "dashboard" / "src" / "lib" / "main-console" / "navigation.ts"
@@ -27,7 +39,14 @@ def analyze() -> dict[str, object]:
         (tool_test, "tool_test_missing", "Tool-Test fehlt."),
     ):
         if not path.is_file():
-            issues.append({"severity": "error", "code": code, "message": message, "path": str(path)})
+            issues.append(
+                {
+                    "severity": "error",
+                    "code": code,
+                    "message": message,
+                    "path": str(path),
+                }
+            )
 
     if nav.is_file():
         txt = nav.read_text(encoding="utf-8")
@@ -41,10 +60,22 @@ def analyze() -> dict[str, object]:
                 }
             )
     else:
-        issues.append({"severity": "error", "code": "nav_file_missing", "message": "Navigationsdatei fehlt.", "path": str(nav)})
+        issues.append(
+            {
+                "severity": "error",
+                "code": "nav_file_missing",
+                "message": "Navigationsdatei fehlt.",
+                "path": str(nav),
+            }
+        )
 
     errors = sum(1 for item in issues if item["severity"] == "error")
-    return {"ok": errors == 0, "error_count": errors, "warning_count": 0, "issues": issues}
+    return {
+        "ok": errors == 0,
+        "error_count": errors,
+        "warning_count": 0,
+        "issues": issues,
+    }
 
 
 def main() -> int:
@@ -61,7 +92,9 @@ def main() -> int:
             f"errors={payload['error_count']} warnings={payload['warning_count']}"
         )
         for item in payload["issues"]:
-            print(f"{item['severity'].upper()} {item['code']}: {item['message']} [{item['path']}]")
+            print(
+                f"{item['severity'].upper()} {item['code']}: {item['message']} [{item['path']}]"
+            )
     if payload["error_count"] > 0:
         return 1
     if args.strict and payload["warning_count"] > 0:

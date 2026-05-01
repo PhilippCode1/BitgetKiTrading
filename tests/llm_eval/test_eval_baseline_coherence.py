@@ -56,4 +56,6 @@ def test_governance_summary_includes_eval_and_system(client: TestClient) -> None
     assert er.get("case_count", 0) >= 9
     cases = er.get("cases")
     assert isinstance(cases, list)
-    assert any(x.get("id") == "operator_explain_smoke" for x in cases if isinstance(x, dict))
+    assert any(
+        x.get("id") == "operator_explain_smoke" for x in cases if isinstance(x, dict)
+    )

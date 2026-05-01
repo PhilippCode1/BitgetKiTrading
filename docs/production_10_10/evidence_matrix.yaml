@@ -1324,3 +1324,36 @@ categories:
     owner_role: Owner / Release Engineering
     next_action: Alle nicht verifizierten Live-Blocker schliessen und Owner-Go/No-Go dokumentieren.
     notes: Diese Scorecard darf keine 10/10-Freigabe ohne Evidence behaupten. test_no_go_rules_contract prueft fortlaufende Harte-Blocker-Nummern und Owner-Release-Regeltext. test_ci_workflow_evidence_gates prueft u.a., dass job release-approval-gate check_release_approval_gates.py ausfuehrt und python/dashboard/compose_healthcheck als needs hat.
+
+  - id: demo_trading_lifecycle
+    title: Demo Trading Lifecycle
+    description: Voller Demo-Lifecycle mit Open-Order, Positionserkennung, Close und finalem CLEAN ohne Live-Freigabe.
+    target_10_10: DEMO_LIFECYCLE_VERIFIED ist belegt und verbessert die Evidence-Lage, ohne private Live oder Full Autonomous zu aktivieren.
+    required_evidence:
+      - Demo-Order erfolgreich.
+      - Demo-Reconcile mit Positionserkennung.
+      - Demo-Close erfolgreich.
+      - Finaler Reconcile CLEAN.
+      - live_trading_allowed=false und private_live_allowed=false.
+    evidence_files:
+      - scripts/demo_trading_evidence_report.py
+      - scripts/demo_reconcile_evidence_report.py
+      - scripts/demo_lifecycle_evidence_report.py
+      - reports/demo_trading_evidence_DEMO_VERIFIED.json
+      - reports/demo_reconcile_evidence_CLOSE_VERIFIED.json
+      - reports/demo_reconcile_evidence_CLEAN.json
+      - reports/demo_lifecycle_evidence.json
+      - tests/scripts/test_demo_lifecycle_evidence_report.py
+      - tests/security/test_demo_lifecycle_never_enables_live.py
+      - tests/security/test_demo_evidence_does_not_count_as_live_verified.py
+    required_commands:
+      - python scripts/demo_lifecycle_evidence_report.py --output-md reports/demo_lifecycle_evidence.md --output-json reports/demo_lifecycle_evidence.json
+      - pytest tests/scripts/test_demo_lifecycle_evidence_report.py -q
+      - pytest tests/security/test_demo_lifecycle_never_enables_live.py -q
+      - pytest tests/security/test_demo_evidence_does_not_count_as_live_verified.py -q
+    status: implemented
+    blocks_live_trading: false
+    severity: P1
+    owner_role: Demo Operations / Release Safety
+    next_action: DEMO_LIFECYCLE_VERIFIED regelmaessig archivieren und als Shadow-Vorstufe nutzen; private_live_allowed bleibt NO_GO.
+    notes: Diese Kategorie ist ein Demo-Fortschritt und kein Live-Go. live_verified bleibt false.

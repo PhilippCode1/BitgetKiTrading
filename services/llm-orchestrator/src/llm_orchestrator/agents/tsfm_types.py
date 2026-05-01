@@ -42,7 +42,9 @@ class TsfmSignalCandidatePayloadV1(BaseModel):
         return out
 
     @classmethod
-    def from_envelope_payload(cls, raw: dict[str, Any] | None) -> TsfmSignalCandidatePayloadV1 | None:
+    def from_envelope_payload(
+        cls, raw: dict[str, Any] | None
+    ) -> TsfmSignalCandidatePayloadV1 | None:
         if not isinstance(raw, dict):
             return None
         if str(raw.get("schema") or "") != "tsfm_signal_candidate/v1":

@@ -10,11 +10,19 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
-DOC_PATH = ROOT / "docs" / "production_10_10" / "multi_asset_order_sizing_margin_safety.md"
+DOC_PATH = (
+    ROOT / "docs" / "production_10_10" / "multi_asset_order_sizing_margin_safety.md"
+)
 MODULE_PATH = ROOT / "shared" / "python" / "src" / "shared_py" / "order_sizing.py"
-RISK_DOC_PATH = ROOT / "docs" / "production_10_10" / "asset_risk_tiers_and_leverage_caps.md"
-INSTRUMENT_DOC_PATH = ROOT / "docs" / "production_10_10" / "instrument_precision_order_contract.md"
-MAIN_CONSOLE_DOC_PATH = ROOT / "docs" / "production_10_10" / "main_console_product_direction.md"
+RISK_DOC_PATH = (
+    ROOT / "docs" / "production_10_10" / "asset_risk_tiers_and_leverage_caps.md"
+)
+INSTRUMENT_DOC_PATH = (
+    ROOT / "docs" / "production_10_10" / "instrument_precision_order_contract.md"
+)
+MAIN_CONSOLE_DOC_PATH = (
+    ROOT / "docs" / "production_10_10" / "main_console_product_direction.md"
+)
 NO_GO_DOC_PATH = ROOT / "docs" / "production_10_10" / "no_go_rules.md"
 TEST_PATHS = (
     ROOT / "tests" / "risk" / "test_multi_asset_order_sizing.py",
@@ -31,8 +39,22 @@ class Issue:
     path: str | None = None
 
 
-def _issue(issues: list[Issue], *, severity: str, code: str, message: str, path: Path | None = None) -> None:
-    issues.append(Issue(severity=severity, code=code, message=message, path=str(path) if path else None))
+def _issue(
+    issues: list[Issue],
+    *,
+    severity: str,
+    code: str,
+    message: str,
+    path: Path | None = None,
+) -> None:
+    issues.append(
+        Issue(
+            severity=severity,
+            code=code,
+            message=message,
+            path=str(path) if path else None,
+        )
+    )
 
 
 def analyze() -> dict[str, Any]:
@@ -41,13 +63,23 @@ def analyze() -> dict[str, Any]:
         (DOC_PATH, "doc_missing", "Order-Sizing-Doku fehlt."),
         (MODULE_PATH, "module_missing", "order_sizing.py fehlt."),
         (RISK_DOC_PATH, "risk_doc_missing", "Risk-Tier-Doku fehlt."),
-        (INSTRUMENT_DOC_PATH, "instrument_doc_missing", "Instrument-Contract-Doku fehlt."),
+        (
+            INSTRUMENT_DOC_PATH,
+            "instrument_doc_missing",
+            "Instrument-Contract-Doku fehlt.",
+        ),
     ):
         if not path.is_file():
             _issue(issues, severity="error", code=code, message=message, path=path)
     for path in TEST_PATHS:
         if not path.is_file():
-            _issue(issues, severity="error", code="test_missing", message="Erforderlicher Test fehlt.", path=path)
+            _issue(
+                issues,
+                severity="error",
+                code="test_missing",
+                message="Erforderlicher Test fehlt.",
+                path=path,
+            )
 
     if MAIN_CONSOLE_DOC_PATH.is_file():
         text = MAIN_CONSOLE_DOC_PATH.read_text(encoding="utf-8").lower()
@@ -60,7 +92,13 @@ def analyze() -> dict[str, Any]:
                 path=MAIN_CONSOLE_DOC_PATH,
             )
     else:
-        _issue(issues, severity="error", code="main_console_doc_missing", message="Main-Console-Doku fehlt.", path=MAIN_CONSOLE_DOC_PATH)
+        _issue(
+            issues,
+            severity="error",
+            code="main_console_doc_missing",
+            message="Main-Console-Doku fehlt.",
+            path=MAIN_CONSOLE_DOC_PATH,
+        )
 
     if NO_GO_DOC_PATH.is_file():
         text = NO_GO_DOC_PATH.read_text(encoding="utf-8").lower()
@@ -73,7 +111,13 @@ def analyze() -> dict[str, Any]:
                 path=NO_GO_DOC_PATH,
             )
     else:
-        _issue(issues, severity="error", code="no_go_doc_missing", message="No-Go-Doku fehlt.", path=NO_GO_DOC_PATH)
+        _issue(
+            issues,
+            severity="error",
+            code="no_go_doc_missing",
+            message="No-Go-Doku fehlt.",
+            path=NO_GO_DOC_PATH,
+        )
 
     errors = [item for item in issues if item.severity == "error"]
     warnings = [item for item in issues if item.severity == "warning"]
@@ -100,7 +144,9 @@ def main(argv: list[str] | None = None) -> int:
         )
         for issue in summary["issues"]:
             where = f" [{issue['path']}]" if issue.get("path") else ""
-            print(f"{issue['severity'].upper()} {issue['code']}: {issue['message']}{where}")
+            print(
+                f"{issue['severity'].upper()} {issue['code']}: {issue['message']}{where}"
+            )
 
     if summary["error_count"] > 0:
         return 1

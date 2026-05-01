@@ -22,7 +22,7 @@ def orderbook_top5_redis_key(symbol: str) -> str:
     return ORDERBOOK_TOP5_REDIS_KEY_FMT.format(symbol=s or "UNKNOWN")
 
 
-def _notional_top(levels: list) -> float:
+def _notional_top(levels: list) -> float:  # type: ignore
     total = 0.0
     for row in levels or []:
         if not isinstance(row, list | tuple) or len(row) < 2:

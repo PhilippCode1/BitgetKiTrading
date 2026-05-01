@@ -7,7 +7,6 @@ from pathlib import Path
 
 from tools.check_secret_lifecycle import build_summary, run_checks
 
-
 ROOT = Path(__file__).resolve().parents[2]
 TOOL = ROOT / "tools" / "check_secret_lifecycle.py"
 
@@ -65,8 +64,7 @@ def test_missing_evidence_matrix_reference_fails(tmp_path: Path) -> None:
     summary = build_summary(run_checks(tmp_path))
     assert summary["ok"] is False
     assert any(
-        f["id"] == "evidence_matrix_secrets_management"
-        for f in summary["failures"]
+        f["id"] == "evidence_matrix_secrets_management" for f in summary["failures"]
     )
 
 
@@ -81,14 +79,12 @@ def test_rotation_docs_with_raw_secret_pattern_fail(tmp_path: Path) -> None:
     _valid_fixture(tmp_path)
     raw = "value=" + "sk-live-" + ("a" * 24)
     _write(
-        tmp_path
-        / "docs/production_10_10/secrets_rotation_and_credential_hygiene.md",
+        tmp_path / "docs/production_10_10/secrets_rotation_and_credential_hygiene.md",
         raw,
     )
     summary = build_summary(run_checks(tmp_path))
     assert any(
-        f["id"].startswith("no_raw_secret_pattern:")
-        for f in summary["failures"]
+        f["id"].startswith("no_raw_secret_pattern:") for f in summary["failures"]
     )
 
 

@@ -60,7 +60,9 @@ def run_tests_in_sandbox(
             repo_root,
             work,
             dirs_exist_ok=True,
-            ignore=shutil.ignore_patterns(".git", "__pycache__", ".pytest_cache", "node_modules"),
+            ignore=shutil.ignore_patterns(
+                ".git", "__pycache__", ".pytest_cache", "node_modules"
+            ),
         )
     else:
         work = repo_root

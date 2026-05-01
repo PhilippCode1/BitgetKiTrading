@@ -4,13 +4,13 @@ import logging
 from typing import Any
 
 from shared_py.eventbus import (
-    EventEnvelope,
-    RedisStreamBus,
     STREAM_FUNDING_BOOKED,
     STREAM_RISK_ALERT,
     STREAM_TRADE_CLOSED,
     STREAM_TRADE_OPENED,
     STREAM_TRADE_UPDATED,
+    EventEnvelope,
+    RedisStreamBus,
 )
 
 logger = logging.getLogger("paper_broker.publisher")
@@ -58,7 +58,11 @@ def publish_trade_updated(
     tp_index: int | None = None,
     trace: dict[str, Any] | None = None,
 ) -> str:
-    pl: dict[str, Any] = {"position_id": position_id, "qty_base": qty_base, "state": state}
+    pl: dict[str, Any] = {
+        "position_id": position_id,
+        "qty_base": qty_base,
+        "state": state,
+    }
     if tp_index is not None:
         pl["tp_index"] = tp_index
         pl["reason"] = "tp_hit"

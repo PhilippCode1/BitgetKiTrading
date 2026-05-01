@@ -100,10 +100,14 @@ def update_false_breakout_watch(
                 new_pending = None
             else:
                 left = new_pending.bars_remaining - 1
-                new_pending = None if left <= 0 else FalseBreakoutState(
-                    side="up",
-                    bars_remaining=left,
-                    anchor_ts_ms=new_pending.anchor_ts_ms,
+                new_pending = (
+                    None
+                    if left <= 0
+                    else FalseBreakoutState(
+                        side="up",
+                        bars_remaining=left,
+                        anchor_ts_ms=new_pending.anchor_ts_ms,
+                    )
                 )
         else:
             if close >= box.low:
@@ -116,10 +120,14 @@ def update_false_breakout_watch(
                 new_pending = None
             else:
                 left = new_pending.bars_remaining - 1
-                new_pending = None if left <= 0 else FalseBreakoutState(
-                    side="down",
-                    bars_remaining=left,
-                    anchor_ts_ms=new_pending.anchor_ts_ms,
+                new_pending = (
+                    None
+                    if left <= 0
+                    else FalseBreakoutState(
+                        side="down",
+                        bars_remaining=left,
+                        anchor_ts_ms=new_pending.anchor_ts_ms,
+                    )
                 )
         return new_pending, events
 

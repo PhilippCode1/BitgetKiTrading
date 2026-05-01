@@ -4,7 +4,6 @@ from decimal import Decimal, InvalidOperation
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
-
 from shared_py.bitget.instruments import MarginAccountMode, MarketFamily
 from shared_py.signal_contracts import SignalDirection
 

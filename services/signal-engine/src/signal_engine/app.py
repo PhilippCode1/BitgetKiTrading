@@ -5,6 +5,13 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from shared_py.observability import (
+    append_peer_readiness_checks,
+    check_postgres,
+    check_redis_url,
+    instrument_fastapi,
+    merge_ready_details,
+)
 
 from signal_engine.api import (
     build_explain_router,
@@ -16,13 +23,6 @@ from signal_engine.service import SignalEngineService
 from signal_engine.storage.explanations_repo import ExplanationRepository
 from signal_engine.storage.repo import SignalRepository
 from signal_engine.worker import SignalWorker
-from shared_py.observability import (
-    append_peer_readiness_checks,
-    check_postgres,
-    check_redis_url,
-    instrument_fastapi,
-    merge_ready_details,
-)
 
 
 class SignalEngineRuntime:

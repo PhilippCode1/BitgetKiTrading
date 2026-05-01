@@ -95,7 +95,9 @@ def load_candle_rows(
                 row = cur.fetchone()
                 last = int(row[0]) if row and row[0] is not None else None
             age = now - last if last is not None else None
-            thresh = stale_thresholds_ms.get(tf, stale_thresholds_ms.get(tf.lower(), 600_000))
+            thresh = stale_thresholds_ms.get(
+                tf, stale_thresholds_ms.get(tf.lower(), 600_000)
+            )
             st = classify_age(age, thresh)
             gap_count = 0
             with conn.cursor() as cur:

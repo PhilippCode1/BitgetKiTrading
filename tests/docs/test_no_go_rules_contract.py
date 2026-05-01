@@ -52,4 +52,6 @@ def test_no_go_rules_owner_release_machine_gate_documented() -> None:
     text = NO_GO.read_text(encoding="utf-8")
     lower = text.lower()
     assert "owner_private_live_release.json" in text
-    assert "gitignored" in lower or "git-index" in lower or "nicht ins repository" in lower
+    assert (
+        "gitignored" in lower or "git-index" in lower or "nicht ins repository" in lower
+    )

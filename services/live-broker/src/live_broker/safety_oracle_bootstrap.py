@@ -20,7 +20,9 @@ logger = logging.getLogger("live_broker.safety_oracle")
 
 
 def _default_symbol(settings: LiveBrokerSettings) -> str:
-    configured = getattr(settings, "symbol", None) or settings.default_operational_symbol()
+    configured = (
+        getattr(settings, "symbol", None) or settings.default_operational_symbol()
+    )
     s = str(configured or "").strip()
     return s[:64] if s else "SAFETY"
 

@@ -44,7 +44,9 @@ def _build_report(items: list[MultiAssetStrategyEvidence]) -> dict[str, Any]:
         if item.trade_count < 30:
             reasons.append("trade_count_unter_minimum")
         strategy_versions.add((item.strategy_id, item.strategy_version))
-        market_family_by_strategy.setdefault(item.strategy_id, set()).add(item.market_family)
+        market_family_by_strategy.setdefault(item.strategy_id, set()).add(
+            item.market_family
+        )
         asset_classes.add(item.asset_class)
         if reasons:
             verdict = "FAIL"
@@ -67,7 +69,9 @@ def _build_report(items: list[MultiAssetStrategyEvidence]) -> dict[str, Any]:
         if len(families) > 1:
             summary["FAIL"] += 1
             reasons_global.append(f"market_family_mix_verboten:{strategy_id}")
-    drift_guard = len(strategy_versions) == len({f"{sid}:{ver}" for sid, ver in strategy_versions})
+    drift_guard = len(strategy_versions) == len(
+        {f"{sid}:{ver}" for sid, ver in strategy_versions}
+    )
     status = "NOT_ENOUGH_EVIDENCE"
     if summary["FAIL"] == 0 and summary["PASS"] > 0:
         status = "implemented"
@@ -105,7 +109,11 @@ def _to_md(report: dict[str, Any]) -> str:
                 f"- Bewertung: `{item['verdict']}`",
                 f"- Entscheidung (de): {item['entscheidung_de']}",
                 "- Blockgründe (de): "
-                + (", ".join(item["blockgruende_de"]) if item["blockgruende_de"] else "keine"),
+                + (
+                    ", ".join(item["blockgruende_de"])
+                    if item["blockgruende_de"]
+                    else "keine"
+                ),
                 "",
             ]
         )
@@ -113,16 +121,23 @@ def _to_md(report: dict[str, Any]) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Prueft Multi-Asset Strategy-Performance-Evidence.")
+    parser = argparse.ArgumentParser(
+        description="Prueft Multi-Asset Strategy-Performance-Evidence."
+    )
     parser.add_argument("--dry-run", action="store_true")
-    parser.add_argument("--input-json", default="tests/fixtures/multi_asset_strategy_evidence_sample.json")
+    parser.add_argument(
+        "--input-json",
+        default="tests/fixtures/multi_asset_strategy_evidence_sample.json",
+    )
     parser.add_argument("--output-md")
     parser.add_argument("--output-json")
     parser.add_argument("--allow-failures", action="store_true")
     args = parser.parse_args(argv)
 
     if args.dry_run:
-        print("verify_multi_asset_strategy_evidence: dry-run=true network_calls=0 no_orders=true")
+        print(
+            "verify_multi_asset_strategy_evidence: dry-run=true network_calls=0 no_orders=true"
+        )
         return 0
 
     items = _load_items(Path(args.input_json))
@@ -136,7 +151,10 @@ def main(argv: list[str] | None = None) -> int:
     if args.output_json:
         out_json = Path(args.output_json)
         out_json.parent.mkdir(parents=True, exist_ok=True)
-        out_json.write_text(json.dumps(report, indent=2, ensure_ascii=False, sort_keys=True), encoding="utf-8")
+        out_json.write_text(
+            json.dumps(report, indent=2, ensure_ascii=False, sort_keys=True),
+            encoding="utf-8",
+        )
 
     if args.allow_failures:
         return 0

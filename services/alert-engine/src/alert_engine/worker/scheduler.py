@@ -63,7 +63,9 @@ class WorkerController:
             name="ae-sender",
             daemon=True,
         )
-        t3 = threading.Thread(target=self._telegram_thread, name="ae-telegram", daemon=True)
+        t3 = threading.Thread(
+            target=self._telegram_thread, name="ae-telegram", daemon=True
+        )
         self._threads = [t1, t2, t3]
         for t in self._threads:
             t.start()
