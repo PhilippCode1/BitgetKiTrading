@@ -4,7 +4,7 @@ import logging
 import threading
 import time
 from decimal import Decimal
-from typing import Any
+from typing import Any, Callable
 
 import psycopg
 from shared_py.bitget.runtime_safety_oracle import (
@@ -27,7 +27,7 @@ def _default_symbol(settings: LiveBrokerSettings) -> str:
     return s[:64] if s else "SAFETY"
 
 
-def _halt_fn(runtime: Any) -> None:
+def _halt_fn(runtime: Any) -> Callable[[bool], None]:
     def _inner(b: bool) -> None:
         s = (runtime.settings.redis_url or "").strip()
         if not s:

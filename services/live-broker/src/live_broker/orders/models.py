@@ -4,7 +4,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Any, Literal, Self
 from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, ValidationInfo, field_validator, model_validator
 from shared_py.bitget import ProductType
 from shared_py.bitget.instruments import MarginAccountMode, MarketFamily
 
@@ -132,7 +132,7 @@ class OrderCreateRequest(BaseModel):
         mode="before",
     )
     @classmethod
-    def _normalize_numeric_values(cls, value: object, info) -> object:
+    def _normalize_numeric_values(cls, value: object, info: ValidationInfo) -> object:
         return _normalize_decimal_text(value, str(info.field_name))
 
     @field_validator("symbol")
@@ -234,7 +234,7 @@ class OrderReplaceRequest(BaseModel):
         mode="before",
     )
     @classmethod
-    def _normalize_numeric_values(cls, value: object, info) -> object:
+    def _normalize_numeric_values(cls, value: object, info: ValidationInfo) -> object:
         return _normalize_decimal_text(value, str(info.field_name))
 
     @field_validator("note", mode="before")
@@ -449,7 +449,8 @@ class EmergencyFlattenRequest(BaseModel):
             raise ValueError("emergency flatten reason darf nicht leer sein")
         if (self.side is None) != (self.size is None):
             raise ValueError(
-                "emergency flatten braucht side+size gemeinsam oder beides leer fuer Auto-Resolve"
+                "emergency flatten braucht side+size gemeinsam oder beides "
+                "leer fuer Auto-Resolve"
             )
         if self.internal_order_id is None and not self.symbol:
             raise ValueError("emergency flatten braucht symbol oder internal_order_id")
@@ -457,7 +458,10 @@ class EmergencyFlattenRequest(BaseModel):
 
 
 class CancelAllOrdersRequest(BaseModel):
-    """Operatorisches Cancel-All (REST Bitget) — auditierbar, unabhaengig vom Kill-Switch-Auto-Cancel."""
+    """
+    Operatorisches Cancel-All (REST Bitget) — auditierbar,
+    unabhaengig vom Kill-Switch-Auto-Cancel.
+    """
 
     source: str = "operator"
     reason: str

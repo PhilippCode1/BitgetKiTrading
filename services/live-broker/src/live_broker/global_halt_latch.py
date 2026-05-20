@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 import threading
-from typing import Any
+from typing import Any, cast
 
 import redis
 
@@ -39,9 +39,7 @@ def _parse_halt_value(raw: str | None) -> bool:
         "stop",
         "global_halt",
         "emergency",
-    ) or s.startswith(
-        "halt"
-    )  # "halt:reason"
+    ) or s.startswith("halt")  # "halt:reason"
 
 
 class GlobalHaltLatch:
@@ -126,7 +124,7 @@ class GlobalHaltLatch:
             logger.error("GLOBAL_HALT: Redis-Client fehlgeschlagen: %s", exc)
             return
         try:
-            v = self._main_r.get(REDIS_KEY_GLOBAL_HALT)
+            v = cast(str | None, self._main_r.get(REDIS_KEY_GLOBAL_HALT))
             self._apply_from_raw(v)
         except Exception as exc:  # noqa: BLE001
             logger.warning("GLOBAL_HALT: initialer GET fehlgeschlagen: %s", exc)

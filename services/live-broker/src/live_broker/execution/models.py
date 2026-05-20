@@ -184,7 +184,10 @@ OperatorReleaseSource = Literal["internal-api", "telegram_operator"]
 
 
 class OperatorReleasePostBody(BaseModel):
-    """Optionale Audit-Metadaten fuer operator_release (z. B. Telegram-Zweistufen-Flow)."""
+    """
+    Optionale Audit-Metadaten fuer operator_release
+    (z. B. Telegram-Zweistufen-Flow).
+    """
 
     source: OperatorReleaseSource = "internal-api"
     audit: dict[str, Any] = Field(default_factory=dict)

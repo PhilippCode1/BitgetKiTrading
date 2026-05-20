@@ -66,7 +66,9 @@ class LiveReconcileService:
                 "public_detail": "not_required",
                 "private_api_configured": None,
                 "private_detail": "not_required",
-                "private_detail_de": "Privater Bitget-Zugriff ist fuer diesen Lauf nicht aktiv.",
+                "private_detail_de": (
+                    "Privater Bitget-Zugriff ist fuer diesen Lauf nicht aktiv."
+                ),
                 "private_auth_ok": None,
                 "private_auth_detail": None,
                 "private_auth_detail_de": None,
@@ -175,7 +177,9 @@ class LiveReconcileService:
                         else private_ok
                     ),
                     "shadow_enabled": self._settings.shadow_path_active,
-                    "live_submission_enabled": self._settings.live_order_submission_enabled,
+                    "live_submission_enabled": (
+                        self._settings.live_order_submission_enabled
+                    ),
                     "decision_counts_json": decision_counts,
                     "reconcile_run_id": reconcile_run_id,
                     "details_json": {
@@ -185,18 +189,24 @@ class LiveReconcileService:
                         "schema_detail": schema_detail,
                         "execution_controls": {
                             "execution_mode": self._settings.execution_mode,
-                            "strategy_execution_mode": self._settings.strategy_execution_mode,
+                            "strategy_execution_mode": (
+                                self._settings.strategy_execution_mode
+                            ),
                             "paper_path_active": self._settings.paper_path_active,
                             "shadow_trade_enable": self._settings.shadow_trade_enable,
                             "shadow_path_active": self._settings.shadow_path_active,
                             "live_trade_enable": self._settings.live_trade_enable,
-                            "live_order_submission_enabled": self._settings.live_order_submission_enabled,
+                            "live_order_submission_enabled": (
+                                self._settings.live_order_submission_enabled
+                            ),
                             "exchange_state_expected": exchange_state_expected,
                             "safety_latch_active": self._repo.safety_latch_is_active(),
                             "live_safety_latch_on_reconcile_fail": (
                                 self._settings.live_safety_latch_on_reconcile_fail
                             ),
-                            "live_order_replace_enabled": self._settings.live_order_replace_enabled,
+                            "live_order_replace_enabled": (
+                                self._settings.live_order_replace_enabled
+                            ),
                             "live_require_execution_binding": (
                                 self._settings.live_require_execution_binding
                             ),
@@ -209,7 +219,9 @@ class LiveReconcileService:
                             "shadow_match_latch_timeout_ms": (
                                 self._settings.shadow_match_latch_timeout_ms
                             ),
-                            "shadow_match_redis_ttl_sec": self._settings.shadow_match_redis_ttl_sec,
+                            "shadow_match_redis_ttl_sec": (
+                                self._settings.shadow_match_redis_ttl_sec
+                            ),
                             "shadow_live_max_signal_shadow_divergence_0_1": (
                                 self._settings.shadow_live_max_signal_shadow_divergence_0_1
                             ),
@@ -219,8 +231,12 @@ class LiveReconcileService:
                         },
                         "exchange_probe": probe,
                         "interfaces": {
-                            "signal_engine_stream": self._settings.live_broker_signal_stream,
-                            "paper_broker_reference_streams": self._settings.reference_streams,
+                            "signal_engine_stream": (
+                                self._settings.live_broker_signal_stream
+                            ),
+                            "paper_broker_reference_streams": (
+                                self._settings.reference_streams
+                            ),
                         },
                         "recovery_state": recovery_state,
                         "drift": drift_summary,
@@ -259,7 +275,8 @@ class LiveReconcileService:
             drift_total=int(drift_summary.get("total_count") or 0),
         )
         logger.info(
-            "live-broker reconcile status=%s runtime_mode=%s upstream_ok=%s drift_count=%s",
+            "live-broker reconcile status=%s runtime_mode=%s upstream_ok=%s "
+            "drift_count=%s",
             snapshot["status"],
             snapshot["runtime_mode"],
             snapshot["upstream_ok"],
@@ -307,7 +324,8 @@ class LiveReconcileService:
                 severity="critical",
                 title="live-broker safety latch armed",
                 message=(
-                    "Reconcile=fail bei aktivem Live-Submit — automatischer Safety-Latch "
+                    "Reconcile=fail bei aktivem Live-Submit — automatischer "
+                    "Safety-Latch "
                     "(kein stilles Live ohne operatorisches release)."
                 ),
                 details={
@@ -496,7 +514,8 @@ class LiveReconcileService:
             "persisted": True,
             "note": (
                 "Exit-Plaene (stop/tp/runner) liegen in live.exit_plans; "
-                "Operator-Release in live.execution_operator_releases + execution_journal."
+                "Operator-Release in live.execution_operator_releases + "
+                "execution_journal."
             ),
         }
 

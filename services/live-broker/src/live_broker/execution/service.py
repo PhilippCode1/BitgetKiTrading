@@ -12,7 +12,11 @@ import psycopg
 from psycopg.rows import dict_row
 from shared_py.bitget import (
     BitgetInstrumentCatalog,
+    BitgetInstrumentCatalogEntry,
     BitgetInstrumentMetadataService,
+    BitgetInstrumentResolvedMetadata,
+    MarginAccountMode,
+    MarketFamily,
     UnknownInstrumentError,
 )
 from shared_py.eventbus import EventEnvelope, RedisStreamBus
@@ -286,10 +290,9 @@ class LiveExecutionService:
         sp = self._signal_payload(intent)
         router = _signal_router_arbitration(sp)
         dcf = _signal_decision_control_flow(sp)
-        end_binding = (
-            dcf.get("end_decision_binding")
-            if isinstance(dcf.get("end_decision_binding"), dict)
-            else {}
+        raw_end_binding = dcf.get("end_decision_binding")
+        end_binding: dict[str, Any] = (
+            raw_end_binding if isinstance(raw_end_binding, dict) else {}
         )
         playbook_id = str(sp.get("playbook_id") or "").strip() or None
         regime_guess = str(sp.get("market_regime") or "").strip() or None
@@ -307,6 +310,7 @@ class LiveExecutionService:
             leverage_band = (
                 f"{leverage_band} stop_fragility={stop_fragility} stop_exec={stop_exec}"
             )
+        payload_json = saved.get("payload_json")
         pl = build_operator_intel_envelope_payload(
             intel_kind=kind,
             symbol=str(intent.symbol),
@@ -337,10 +341,13 @@ class LiveExecutionService:
             dedupe_key=f"opintel:exec:{ex_id}:{action}",
             dedupe_ttl_minutes=3,
             notes=(
-                f"Live-Submit bleibt operator-gated; Telegram aendert keine Policy. "
-                f"mirror_eligible={saved.get('payload_json', {}).get('live_mirror_eligible')}"
-                if isinstance(saved.get("payload_json"), dict)
-                else "Live-Submit bleibt operator-gated; Telegram aendert keine Policy."
+                "Live-Submit bleibt operator-gated; Telegram aendert keine "
+                "Policy. "
+                f"mirror_eligible={payload_json.get('live_mirror_eligible')}"
+                if isinstance(payload_json, dict)
+                else (
+                    "Live-Submit bleibt operator-gated; Telegram aendert keine Policy."
+                )
             ),
         )
         try:
@@ -493,9 +500,15 @@ class LiveExecutionService:
             ),
             "monitor_engine_service_name": "live-broker",
             "shadow_path_active": self._settings.shadow_path_active,
-            "live_order_submission_enabled": self._settings.live_order_submission_enabled,
-            "require_shadow_match_before_live": self._settings.require_shadow_match_before_live,
-            "shadow_match_latch_timeout_ms": self._settings.shadow_match_latch_timeout_ms,
+            "live_order_submission_enabled": (
+                self._settings.live_order_submission_enabled
+            ),
+            "require_shadow_match_before_live": (
+                self._settings.require_shadow_match_before_live
+            ),
+            "shadow_match_latch_timeout_ms": (
+                self._settings.shadow_match_latch_timeout_ms
+            ),
             "shadow_match_redis_ttl_sec": self._settings.shadow_match_redis_ttl_sec,
             "shadow_live_thresholds": asdict(self._settings.shadow_live_thresholds()),
             "instrument": self._settings.instrument_identity().model_dump(mode="json"),
@@ -525,9 +538,9 @@ class LiveExecutionService:
                 **self._exchange_client.describe(),
                 "public_api_ok": None,
                 "public_detail": "not_requested",
-                "private_api_configured": self._exchange_client.private_api_configured()[
-                    0
-                ],
+                "private_api_configured": (
+                    self._exchange_client.private_api_configured()[0]
+                ),
                 "private_detail": self._exchange_client.private_api_configured()[1],
                 "market_snapshot": {},
             }
@@ -546,8 +559,9 @@ class LiveExecutionService:
             and vpin_f <= VPIN_HARD_HALT_THRESHOLD_0_1
             and intent_eval.qty_base is not None
         ):
+            reduced_qty = Decimal(intent_eval.qty_base) * Decimal("0.5")
             intent_eval = intent_eval.model_copy(
-                update={"qty_base": intent_eval.qty_base * Decimal("0.5")}
+                update={"qty_base": format(reduced_qty, "f")}
             )
         router_arb = _signal_router_arbitration(signal_payload)
         exit_preview = self._exit_preview(intent_eval)
@@ -609,7 +623,9 @@ class LiveExecutionService:
                 action, reason = "blocked", "shadow_live_divergence_gate"
         shadow_match_latch: dict[str, Any] = {
             "skipped": True,
-            "require_shadow_match_before_live": self._settings.require_shadow_match_before_live,
+            "require_shadow_match_before_live": (
+                self._settings.require_shadow_match_before_live
+            ),
         }
         if (
             effective_mode == "live"
@@ -627,6 +643,7 @@ class LiveExecutionService:
                     }
                 )
             else:
+                assert prebound_execution_id is not None
                 wait_out = wait_for_shadow_match_latch(
                     str(self._settings.redis_url or ""),
                     prebound_execution_id,
@@ -786,7 +803,8 @@ class LiveExecutionService:
                 )
             except Exception as exc:
                 logger.warning(
-                    "execution journal execution_decision failed execution_id=%s err=%s",
+                    "execution journal execution_decision failed "
+                    "execution_id=%s err=%s",
                     ex_id,
                     exc,
                 )
@@ -809,7 +827,8 @@ class LiveExecutionService:
                     )
                 except Exception as exc:
                     logger.warning(
-                        "execution journal RISK_VPIN_HALT failed execution_id=%s err=%s",
+                        "execution journal RISK_VPIN_HALT failed "
+                        "execution_id=%s err=%s",
                         ex_id,
                         exc,
                     )
@@ -828,7 +847,8 @@ class LiveExecutionService:
         logger.info(
             (
                 "live-broker decision action=%s reason=%s source=%s symbol=%s "
-                "requested=%s effective=%s mirror_eligible=%s router_id=%s stop_fragility=%s"
+                "requested=%s effective=%s mirror_eligible=%s router_id=%s "
+                "stop_fragility=%s"
             ),
             action,
             reason,
@@ -859,8 +879,10 @@ class LiveExecutionService:
 
     def telegram_operator_release_summary(self, execution_id: str) -> dict[str, Any]:
         """
-        Lesender Snapshot fuer Telegram-Zweistufen-Freigabe (keine Secrets, keine payload_json).
-        Nur bestehende KI-Execution-IDs; Freigabe nur fuer live-Kandidaten ohne bestehendes Release.
+        Lesender Snapshot fuer Telegram-Zweistufen-Freigabe
+        (keine Secrets, keine payload_json).
+        Nur bestehende KI-Execution-IDs; Freigabe nur fuer live-Kandidaten
+        ohne bestehendes Release.
         """
         row = self._repo.get_execution_decision(execution_id)
         if row is None:
@@ -1092,19 +1114,21 @@ class LiveExecutionService:
             symbol=str(
                 payload.get("symbol") or envelope.symbol or self._settings.symbol
             ),
-            market_family=(
+            market_family=cast(
+                MarketFamily,
                 str(
                     payload.get("market_family")
                     or instrument.get("market_family")
                     or self._settings.market_family
-                )
+                ),
             ),
-            margin_account_mode=(
+            margin_account_mode=cast(
+                MarginAccountMode,
                 str(
                     payload.get("margin_account_mode")
                     or instrument.get("margin_account_mode")
                     or self._settings.margin_account_mode
-                )
+                ),
             ),
             timeframe=str(payload.get("timeframe") or envelope.timeframe or "").strip()
             or None,
@@ -1246,7 +1270,7 @@ class LiveExecutionService:
             return "blocked", "market_family_not_allowed"
         if (
             market_family == "futures"
-            and self._settings.product_type.upper()
+            and str(self._settings.product_type or "").upper()
             not in self._settings.allowed_product_types_set
         ):
             return "blocked", "product_type_not_allowed"
@@ -1427,7 +1451,7 @@ class LiveExecutionService:
     def _resolve_catalog_entry(
         self,
         intent: ExecutionIntentRequest,
-    ):
+    ) -> BitgetInstrumentCatalogEntry | None:
         if self._catalog is None:
             return self._settings.instrument_identity()
         try:
@@ -1450,7 +1474,9 @@ class LiveExecutionService:
         except UnknownInstrumentError:
             return None
 
-    def _resolve_metadata(self, intent: ExecutionIntentRequest):
+    def _resolve_metadata(
+        self, intent: ExecutionIntentRequest
+    ) -> BitgetInstrumentResolvedMetadata | None:
         if self._metadata_service is None:
             return None
         try:

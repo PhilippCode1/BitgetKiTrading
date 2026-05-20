@@ -4,7 +4,7 @@ import json
 import logging
 import time
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable, Literal, TypeAlias
 
 import httpx
 from shared_py.bitget import (
@@ -13,7 +13,7 @@ from shared_py.bitget import (
     canonical_json_body,
 )
 from shared_py.bitget.errors import (
-    BitgetErrorClassification,
+    BitgetErrorClassification as UpstreamBitgetErrorClassification,
     classify_bitget_private_rest_failure,
 )
 from shared_py.resilience import (
@@ -30,6 +30,13 @@ if TYPE_CHECKING:
     from live_broker.config import LiveBrokerSettings
 
 logger = logging.getLogger("live_broker.private_rest")
+
+BitgetErrorClassification: TypeAlias = UpstreamBitgetErrorClassification | Literal[
+    "billing_blocked",
+    "service_misconfigured",
+    "policy_blocked",
+    "insufficient_liquidity",
+]
 
 _SECRET_KEY_SUBSTR = (
     "secret",
@@ -107,12 +114,14 @@ def _probe_bitget_error_de(exc: BitgetRestError, *, demo: bool) -> str:
     if exc.classification in ("auth", "permission"):
         return (
             f"Bitget hat die Anmeldung abgelehnt ({mode}). "
-            "Haeufig: falsches Secret, falsche Passphrase, oder Live-Keys gegen Demo-Endpoint (oder umgekehrt). "
+            "Haeufig: falsches Secret, falsche Passphrase, oder Live-Keys "
+            "gegen Demo-Endpoint (oder umgekehrt). "
             f"Boerse code={code or '—'}: {msg[:180]}"
         )
     if exc.classification == "timestamp":
         return (
-            "Zeitstempel/Signatur abgewiesen — lokale Uhr oder Server-Time-Sync pruefen "
+            "Zeitstempel/Signatur abgewiesen — lokale Uhr oder "
+            "Server-Time-Sync pruefen "
             f"(code={code or '—'})."
         )
     if exc.classification == "clock_skew":
@@ -171,20 +180,22 @@ class BitgetPrivateRestClient:
         settings: LiveBrokerSettings,
         *,
         transport: httpx.BaseTransport | None = None,
-        sleep_fn=time.sleep,
-        monotonic_fn=time.monotonic,
-        now_ms_fn=None,
+        sleep_fn: Callable[[float], object] = time.sleep,
+        monotonic_fn: Callable[[], float] = time.monotonic,
+        now_ms_fn: Callable[[], int] | None = None,
     ) -> None:
-        self._settings = settings
-        self._transport = transport
-        self._sleep = sleep_fn
-        self._monotonic = monotonic_fn
-        self._now_ms = now_ms_fn or (lambda: int(time.time() * 1000))
-        self._circuit = CircuitBreaker(
+        self._settings: LiveBrokerSettings = settings
+        self._transport: httpx.BaseTransport | None = transport
+        self._sleep: Callable[[float], object] = sleep_fn
+        self._monotonic: Callable[[], float] = monotonic_fn
+        self._now_ms: Callable[[], int] = now_ms_fn or (
+            lambda: int(time.time() * 1000)
+        )
+        self._circuit: CircuitBreaker = CircuitBreaker(
             fail_threshold=settings.live_broker_circuit_fail_threshold,
             open_seconds=settings.live_broker_circuit_open_sec,
         )
-        self._server_time_offset_ms = 0
+        self._server_time_offset_ms: int = 0
         self._last_server_sync_mono: float | None = None
         self._last_server_rtt_ms: int | None = None
 
@@ -254,7 +265,10 @@ class BitgetPrivateRestClient:
         return self.state_snapshot()
 
     def _reject_if_clock_skew_too_large(self) -> None:
-        """Hard gate: keine privaten Trading-Requests bei Zeitdrift (ohne Blind-Retry an der Boerse)."""
+        """
+        Hard gate: keine privaten Trading-Requests bei Zeitdrift
+        (ohne Blind-Retry an der Boerse).
+        """
         budget = int(self._settings.live_broker_server_time_max_skew_ms)
         off = abs(int(self._server_time_offset_ms))
         if off > budget:
@@ -271,7 +285,8 @@ class BitgetPrivateRestClient:
     def probe_private_access(self) -> dict[str, Any]:
         """
         Read-only: synchronisiert Serverzeit und ruft ein Konto-/Asset-Read auf.
-        Unterscheidet fehlende Keys, falsche Signatur/Passphrase und Transport — ohne Order.
+        Unterscheidet fehlende Keys, falsche Signatur/Passphrase und
+        Transport — ohne Order.
         """
         demo = bool(self._settings.bitget_demo_enabled)
         base: dict[str, Any] = {
@@ -290,7 +305,8 @@ class BitgetPrivateRestClient:
             scope = "Demo (BITGET_DEMO_*)" if demo else "Live (BITGET_API_*)"
             msg = (
                 f"API-Key, Secret oder Passphrase fehlt fuer {scope}. "
-                "Ohne vollstaendiges Tripel ist keine private Bitget-Anbindung moeglich."
+                "Ohne vollstaendiges Tripel ist keine private "
+                "Bitget-Anbindung moeglich."
             )
             return {
                 **base,
@@ -306,7 +322,8 @@ class BitgetPrivateRestClient:
                 **base,
                 "private_auth_detail": "no_private_account_path",
                 "private_auth_detail_de": (
-                    "Fuer diese market_family gibt es keinen konfigurierten Konto-Read-Pfad — "
+                    "Fuer diese market_family gibt es keinen konfigurierten "
+                    "Konto-Read-Pfad — "
                     "Endpoint-Profil pruefen (BITGET_MARKET_FAMILY / Produkttyp)."
                 ),
             }
@@ -326,7 +343,8 @@ class BitgetPrivateRestClient:
                     **base,
                     "private_auth_detail": "missing_symbol_for_futures_account_probe",
                     "private_auth_detail_de": (
-                        "Futures-Konto-Read (/api/v2/mix/account/account) verlangt laut Bitget-Doku "
+                        "Futures-Konto-Read (/api/v2/mix/account/account) "
+                        "verlangt laut Bitget-Doku "
                         "ein symbol-Query — BITGET_SYMBOL setzen."
                     ),
                 }
@@ -370,7 +388,8 @@ class BitgetPrivateRestClient:
             "private_auth_detail": "ok",
             "private_auth_detail_de": (
                 "Private Bitget-API: Authentifizierung und Konto-Read erfolgreich "
-                f"({'Demo/Paper' if demo else 'Live'}-Keys, REST-Basis wie konfiguriert)."
+                f"({'Demo/Paper' if demo else 'Live'}-Keys, REST-Basis wie "
+                "konfiguriert)."
             ),
         }
 
@@ -778,7 +797,8 @@ class BitgetPrivateRestClient:
                         max_sec=self._settings.live_broker_http_retry_max_sec,
                     )
                     logger.warning(
-                        "bitget retry operation=%s attempt=%s classification=%s handling=%s delay_sec=%.3f",
+                        "bitget retry operation=%s attempt=%s classification=%s "
+                        "handling=%s delay_sec=%.3f",
                         operation,
                         attempt + 1,
                         exc.classification,

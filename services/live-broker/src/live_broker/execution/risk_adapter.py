@@ -143,7 +143,8 @@ def assert_portfolio_exposure_limit(
 ) -> tuple[bool, dict[str, Any]]:
     """
     True, wenn Summe(Notional offene DB-Positionen) + geplante Eroeffnung
-    die effektive Portfoliogrenze (Equity * Limit, Surival-Buffer bei vielen Instrumenten) nicht uebersteigt.
+    die effektive Portfoliogrenze (Equity * Limit, Surival-Buffer bei vielen
+    Instrumenten) nicht uebersteigt.
     """
     detail: dict[str, Any] = {
         "active": bool(
@@ -153,9 +154,7 @@ def assert_portfolio_exposure_limit(
     if not detail["active"] or total_equity <= 0:
         return True, detail
 
-    rows = (
-        repo.list_live_positions() if hasattr(repo, "list_live_positions") else []  # type: ignore[union-attr]
-    )
+    rows = repo.list_live_positions() if hasattr(repo, "list_live_positions") else []
     if not isinstance(rows, list):
         rows = []
     open_rows = [r for r in rows if isinstance(r, dict) and _is_live_position_open(r)]
@@ -589,7 +588,7 @@ def _load_account_history(
             since_ts_ms = 0
         else:
             since_ts_ms = max(0, now_ms - window_ms)
-        snapshots = repo.list_exchange_snapshots_since(  # type: ignore[attr-defined]
+        snapshots = repo.list_exchange_snapshots_since(
             "account",
             since_ts_ms=since_ts_ms,
             limit=5000,
@@ -610,7 +609,7 @@ def _load_account_history(
 def _operational_staleness_reasons(repo: LiveBrokerRepository) -> list[str]:
     if not hasattr(repo, "latest_reconcile_snapshot"):
         return []
-    latest = repo.latest_reconcile_snapshot()  # type: ignore[attr-defined]
+    latest = repo.latest_reconcile_snapshot()
     if not isinstance(latest, dict):
         return []
     details = latest.get("details_json") or {}

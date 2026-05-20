@@ -279,7 +279,8 @@ class LiveBrokerWorker:
                         except Exception as exc:
                             self._stats["last_error"] = str(exc)[:200]
                             logger.exception(
-                                "worker event processing failed stream=%s message_id=%s error=%s",
+                                "worker event processing failed stream=%s "
+                                "message_id=%s error=%s",
                                 item.stream,
                                 item.message_id,
                                 exc,

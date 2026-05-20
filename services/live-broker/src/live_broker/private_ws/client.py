@@ -19,6 +19,7 @@ from live_broker.private_ws.models import NormalizedPrivateEvent
 MessageHandler = Callable[[NormalizedPrivateEvent], Awaitable[None]]
 ConnectedCallback = Callable[[bool], Awaitable[None]]
 StaleRecoverCallback = Callable[[], None]
+PrivateWsChannel = dict[str, str | None]
 
 
 @dataclass(slots=True)
@@ -85,7 +86,7 @@ class BitgetPrivateWsClient:
         self._message_handlers = message_handlers or []
         self._connected_callbacks = connected_callbacks or []
         inst = self._settings.product_type
-        self._channels = [
+        self._channels: list[PrivateWsChannel] = [
             {"instType": inst, "channel": "orders", "instId": "default"},
             {"instType": inst, "channel": "positions", "instId": "default"},
             {"instType": inst, "channel": "fill", "instId": "default"},
@@ -202,7 +203,7 @@ class BitgetPrivateWsClient:
             self._settings.effective_api_secret, payload
         )
 
-        login_msg = {
+        login_msg: dict[str, object] = {
             "op": "login",
             "args": [
                 {
@@ -232,11 +233,11 @@ class BitgetPrivateWsClient:
                 if sc not in ("0", "00000", ""):
                     raise ValueError(f"WS login rejected code={code} body={resp_data}")
                 self._logger.info("Private WS login successful")
-        except TimeoutError:
-            raise TimeoutError("Timeout waiting for WS login response")
+        except TimeoutError as exc:
+            raise TimeoutError("Timeout waiting for WS login response") from exc
 
     async def _subscribe_channels(self) -> None:
-        sub_msg = {
+        sub_msg: dict[str, object] = {
             "op": "subscribe",
             "args": self._channels,
         }

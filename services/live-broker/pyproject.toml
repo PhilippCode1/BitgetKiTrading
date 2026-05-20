@@ -35,3 +35,12 @@ src = ["src"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+mypy_path = ["src", "../../shared/python/src", "../.."]
+
+[[tool.mypy.overrides]]
+module = ["config.*"]
+ignore_errors = true

@@ -405,7 +405,9 @@ class LiveBrokerRuntime:
             "shadow_trade_enable": self.settings.shadow_trade_enable,
             "shadow_path_active": self.settings.shadow_path_active,
             "live_trade_enable": self.settings.live_trade_enable,
-            "live_order_submission_enabled": self.settings.live_order_submission_enabled,
+            "live_order_submission_enabled": (
+                self.settings.live_order_submission_enabled
+            ),
             "exchange": self.exchange_client.describe(),
             "orders": self.order_service.state_snapshot(),
             "interfaces": self.execution_service.interfaces_payload(),
@@ -519,11 +521,12 @@ class LiveBrokerRuntime:
             try:
                 state = self.private_rest_client.sync_server_time(force=True)
                 offset = abs(int(state["server_time_offset_ms"]))
+                budget = self.settings.live_broker_server_time_max_skew_ms
                 parts["bitget_server_time"] = (
                     bool(state["offset_within_budget"]) and offset <= 30_000,
                     (
                         f"offset_ms={offset} "
-                        f"budget_ms={self.settings.live_broker_server_time_max_skew_ms} "
+                        f"budget_ms={budget} "
                         f"rtt_ms={state['last_server_rtt_ms']}"
                     ),
                 )

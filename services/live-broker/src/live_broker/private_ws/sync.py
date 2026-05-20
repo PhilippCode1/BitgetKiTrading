@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 from collections import defaultdict
+from collections.abc import Callable
 from typing import Any
 from uuid import NAMESPACE_URL, uuid5
 
@@ -83,13 +84,19 @@ class ExchangeStateSyncService:
         snapshot_type: str,
     ) -> dict[str, Any]:
         if snapshot_type == "positions":
-            key_getter = lambda item: self._text(item.get("instId")) or event.inst_id
+
+            def key_getter(item: dict[str, Any]) -> str:
+                return self._text(item.get("instId")) or event.inst_id
+
         else:
-            key_getter = (
-                lambda item: self._text(item.get("marginCoin"))
-                or self._text(item.get("coin"))
-                or event.inst_id
-            )
+
+            def key_getter(item: dict[str, Any]) -> str:
+                return (
+                    self._text(item.get("marginCoin"))
+                    or self._text(item.get("coin"))
+                    or event.inst_id
+                )
+
         snapshots = self._persist_snapshot_groups(
             event,
             snapshot_type=snapshot_type,
@@ -107,7 +114,7 @@ class ExchangeStateSyncService:
         event: NormalizedPrivateEvent,
         *,
         snapshot_type: str,
-        key_getter,
+        key_getter: Callable[[dict[str, Any]], str],
     ) -> list[dict[str, Any]]:
         grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
         for item in event.data:
@@ -274,7 +281,8 @@ class ExchangeStateSyncService:
             self._fill_taker_count += 1
         role = "maker" if is_maker else "taker"
         logger.info(
-            "liquidity_fill role=%s tradeScope=%s symbol=%s side=%s baseVol=%s price=%s",
+            "liquidity_fill role=%s tradeScope=%s symbol=%s side=%s "
+            "baseVol=%s price=%s",
             role,
             self._text(item.get("tradeScope")),
             self._text(item.get("symbol")) or event.inst_id or self._settings.symbol,

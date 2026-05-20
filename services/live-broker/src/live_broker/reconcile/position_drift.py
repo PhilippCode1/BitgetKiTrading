@@ -1,4 +1,7 @@
-"""Aktive Positions-Drift: DB live.positions vs. Bitget GET all_positions (Reconcile-Zyklus)."""
+"""
+Aktive Positions-Drift: DB live.positions vs. Bitget GET all_positions
+(Reconcile-Zyklus).
+"""
 
 from __future__ import annotations
 
@@ -29,7 +32,10 @@ def _to_decimal(value: Any) -> Decimal | None:
 
 
 def notional_from_bitget_item(item: dict[str, Any]) -> Decimal | None:
-    """Schaetzwert in Quote (z. B. USDT) fuer Prozent-Drift; linear futures: size * open."""
+    """
+    Schaetzwert in Quote (z. B. USDT) fuer Prozent-Drift;
+    linear futures: size * open.
+    """
     total = _to_decimal(item.get("total")) or _to_decimal(item.get("available"))
     px = _to_decimal(
         item.get("openPriceAvg") or item.get("openAvgPrice") or item.get("markPrice")
@@ -89,9 +95,9 @@ def run_position_drift_once(
 
     ex_map: dict[tuple[str, str, str], dict[str, Any]] = {}
     for it in ex_items:
-        k = position_key_from_bitget_item(it)
-        if k is not None:
-            ex_map[k] = it
+        ex_key = position_key_from_bitget_item(it)
+        if ex_key is not None:
+            ex_map[ex_key] = it
 
     ha_ratio = Decimal(str(settings.live_broker_position_notional_halt_ratio))
     ghosts: list[dict[str, str]] = []
@@ -123,9 +129,13 @@ def run_position_drift_once(
                         bus,
                         alert_key="live-broker:GHOST_POSITION_DETECTED",
                         severity="critical",
-                        title="GHOST position — exchange ja, DB nein (Shadow-Sync ausgefuehrt)",
+                        title=(
+                            "GHOST position — exchange ja, DB nein "
+                            "(Shadow-Sync ausgefuehrt)"
+                        ),
                         message=(
-                            f"Reconcile: Position {k[0]} {k[2]} (product={k[1] or 'n/a'}) auf Bitget, "
+                            f"Reconcile: Position {k[0]} {k[2]} "
+                            f"(product={k[1] or 'n/a'}) auf Bitget, "
                             "fehlte in live.positions — DB-Zeile angelegt."
                         ),
                         details={
@@ -165,9 +175,13 @@ def run_position_drift_once(
                                 bus,
                                 alert_key="live-broker:POSITION_NOTIONAL_DIVERGENCE_HALT",
                                 severity="critical",
-                                title="Global halt — Positions-Notional-Drift > Schwellwert",
+                                title=(
+                                    "Global halt — Positions-Notional-Drift "
+                                    "> Schwellwert"
+                                ),
                                 message=(
-                                    f"Notional-Differenz > {float(ha_ratio) * 100:.1f}% fuer {k[0]} — "
+                                    "Notional-Differenz > "
+                                    f"{float(ha_ratio) * 100:.1f}% fuer {k[0]} — "
                                     "system:global_halt aktiviert."
                                 ),
                                 details=(

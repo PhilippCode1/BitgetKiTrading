@@ -176,8 +176,9 @@ def verify_execution_liquidity(
     _snapshot: dict[str, Any] | None = None,
 ) -> None:
     """
-    Liest Top-5 aus Redis-JSON (ms:orderbook_top5:{symbol}) und prueft erwartete Slippage
-    (VWAP vs. Mid). Bei Ueber-/Unterdeckung: :class:`InsufficientLiquidityError`.
+    Liest Top-5 aus Redis-JSON (ms:orderbook_top5:{symbol}) und prueft
+    erwartete Slippage (VWAP vs. Mid). Bei Ueber-/Unterdeckung:
+    :class:`InsufficientLiquidityError`.
     """
     if size <= 0:
         return
@@ -193,7 +194,8 @@ def verify_execution_liquidity(
     if snap is None:
         if not strict:
             logger.warning(
-                "Liquidity guard: no Redis top5 (symbol=%s) — not strict, submit allowed",
+                "Liquidity guard: no Redis top5 (symbol=%s) — not strict, "
+                "submit allowed",
                 symbol,
             )
             return
@@ -221,8 +223,13 @@ def verify_execution_liquidity(
             )
         age_ms = int(now_ts_ms - int(snap_ts))
         if age_ms > int(max_orderbook_age_ms):
+            msg = (
+                f"{_BLOCKED_LOG}: orderbook stale "
+                f"(age_ms={age_ms} > {max_orderbook_age_ms}, "
+                f"symbol={symbol!s})"
+            )
             raise InsufficientLiquidityError(
-                f"{_BLOCKED_LOG}: orderbook stale (age_ms={age_ms} > {max_orderbook_age_ms}, symbol={symbol!s})",
+                msg,
                 detail={
                     "symbol": symbol,
                     "side": side,
@@ -259,7 +266,10 @@ def verify_execution_liquidity(
             detail={"symbol": symbol, "side": side, "reason": "side_invalid"},
         )
     if vwap is None:
-        msg = f"{_BLOCKED_LOG}: Tiefen-Nichtbedeckung in Top-{_TOPN_USE} ({vwhy!s}, symbol={symbol!s} size={size!s} side={side!s})"
+        msg = (
+            f"{_BLOCKED_LOG}: Tiefen-Nichtbedeckung in Top-{_TOPN_USE} "
+            f"({vwhy!s}, symbol={symbol!s} size={size!s} side={side!s})"
+        )
         logger.warning("%s", msg)
         raise InsufficientLiquidityError(
             msg,
@@ -274,7 +284,8 @@ def verify_execution_liquidity(
     if bps > cap:
         msg = (
             f"{_BLOCKED_LOG}: slippage {bps:.1f} bps > {cap!s} bps "
-            f"(symbol={symbol!s} size={size!s} side={side_l} mid={format(mid, 'f')} vwap={format(vwap, 'f')})"
+            f"(symbol={symbol!s} size={size!s} side={side_l} "
+            f"mid={format(mid, 'f')} vwap={format(vwap, 'f')})"
         )
         logger.warning("%s", msg)
         raise InsufficientLiquidityError(

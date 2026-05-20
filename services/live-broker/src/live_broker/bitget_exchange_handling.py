@@ -33,6 +33,10 @@ def exchange_handling_for_classification(
     if classification in (
         "clock_skew",
         "validation",
+        "billing_blocked",
+        "service_misconfigured",
+        "policy_blocked",
+        "insufficient_liquidity",
         "not_found",
         "conflict",
         "duplicate",

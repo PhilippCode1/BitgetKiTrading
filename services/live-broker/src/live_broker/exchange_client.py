@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 import httpx
 from shared_py.bitget import build_rest_headers
-from shared_py.bitget.instruments import MarginAccountMode, endpoint_profile_for
+from shared_py.bitget.instruments import MarginAccountMode, MarketFamily, endpoint_profile_for
 
 if TYPE_CHECKING:
     from live_broker.config import LiveBrokerSettings
@@ -16,7 +16,8 @@ logger = logging.getLogger("live_broker.exchange_client")
 
 _PRIVATE_DETAIL_DE: dict[str, str] = {
     "missing_api_key_or_secret": (
-        "API-Key oder Secret fehlt. Demo: BITGET_DEMO_ENABLED=true sowie BITGET_DEMO_API_KEY und "
+        "API-Key oder Secret fehlt. Demo: BITGET_DEMO_ENABLED=true sowie "
+        "BITGET_DEMO_API_KEY und "
         "BITGET_DEMO_API_SECRET. Live: BITGET_API_KEY und BITGET_API_SECRET."
     ),
     "missing_api_passphrase": (
@@ -153,7 +154,12 @@ class BitgetExchangeClient:
         margin_account_mode: str | None = None,
     ) -> dict[str, Any]:
         """Public Ticker fuer beliebige Marktfamilie (kein Private-Auth)."""
-        fam = str(market_family).lower()
+        raw_family = str(market_family).lower()
+        fam: MarketFamily
+        if raw_family in ("spot", "margin", "futures"):
+            fam = raw_family
+        else:
+            fam = "futures"
         mode: MarginAccountMode = "cash"
         if fam == "margin":
             raw = str(margin_account_mode or self._settings.margin_account_mode).lower()

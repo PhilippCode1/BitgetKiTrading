@@ -1,4 +1,7 @@
-"""REST-basierte Snapshots nach WS-Reconnect oder Start — ergaenzt WS-Incremental-Feeds."""
+"""
+REST-basierte Snapshots nach WS-Reconnect oder Start
+— ergaenzt WS-Incremental-Feeds.
+"""
 
 from __future__ import annotations
 
@@ -144,7 +147,8 @@ def run_rest_snapshot_catchup(
         raise
 
     logger.info(
-        "rest snapshot catchup ok reason=%s order_snapshot_rows=%s position_snapshot_rows=%s",
+        "rest snapshot catchup ok reason=%s order_snapshot_rows=%s "
+        "position_snapshot_rows=%s",
         reason,
         rows_orders,
         rows_positions,

@@ -210,7 +210,8 @@ class LiveBrokerOrderService:
                 raise BitgetRestError(
                     classification="policy_blocked",
                     message=(
-                        f"modul_mate_gates_missing: kein Eintrag fuer tenant_id={tid!r} "
+                        "modul_mate_gates_missing: kein Eintrag fuer "
+                        f"tenant_id={tid!r} "
                         "in app.tenant_modul_mate_gates"
                     ),
                     retryable=False,
@@ -220,7 +221,8 @@ class LiveBrokerOrderService:
                     classification="policy_blocked",
                     message=(
                         f"no_active_commercial_contract: fehlender oder nicht "
-                        f"abgeschlossener contract_workflow fuer tenant_id={tid!r} (LIVE)"
+                        "abgeschlossener contract_workflow fuer "
+                        f"tenant_id={tid!r} (LIVE)"
                     ),
                     retryable=False,
                 ) from pe
@@ -346,7 +348,10 @@ class LiveBrokerOrderService:
         if not symbol:
             raise BitgetRestError(
                 classification="validation",
-                message="cancel_order braucht symbol oder ein lokales internal_order_id mit Symbol",
+                message=(
+                    "cancel_order braucht symbol oder ein lokales "
+                    "internal_order_id mit Symbol"
+                ),
                 retryable=False,
             )
         margin_coin = (
@@ -453,7 +458,9 @@ class LiveBrokerOrderService:
         if self._repo.safety_latch_is_active():
             raise BitgetRestError(
                 classification="kill_switch",
-                message="Safety latch aktiv — replace blockiert bis operatorisches release",
+                message=(
+                    "Safety latch aktiv — replace blockiert bis operatorisches release"
+                ),
                 retryable=False,
             )
         if not self._settings.live_order_submission_enabled:
@@ -479,10 +486,18 @@ class LiveBrokerOrderService:
                     np = self._to_decimal(request.new_price)
                     if np is not None:
                         params = passive_params_from_sources(
-                            settings_max_slippage_bps=self._settings.live_passive_max_slippage_bps_default,
-                            settings_slices=self._settings.live_passive_iceberg_slices_default,
-                            settings_imbalance_pause_ms=self._settings.live_passive_imbalance_pause_ms,
-                            settings_imbalance_threshold=self._settings.live_passive_imbalance_against_threshold,
+                            settings_max_slippage_bps=(
+                                self._settings.live_passive_max_slippage_bps_default
+                            ),
+                            settings_slices=(
+                                self._settings.live_passive_iceberg_slices_default
+                            ),
+                            settings_imbalance_pause_ms=(
+                                self._settings.live_passive_imbalance_pause_ms
+                            ),
+                            settings_imbalance_threshold=(
+                                self._settings.live_passive_imbalance_against_threshold
+                            ),
                             trace=tj,
                         )
                         if not chase_price_within_slippage(
@@ -494,7 +509,8 @@ class LiveBrokerOrderService:
                                 classification="validation",
                                 message=(
                                     "passive_maker_chase_exceeds_max_slippage: "
-                                    f"anchor={anchor} new_price={np} max_bps={params.max_slippage_bps}"
+                                    f"anchor={anchor} new_price={np} "
+                                    f"max_bps={params.max_slippage_bps}"
                                 ),
                                 retryable=False,
                             )
@@ -549,7 +565,10 @@ class LiveBrokerOrderService:
         if not mod_path:
             raise BitgetRestError(
                 classification="service_disabled",
-                message=f"Order-Replace (modify) fuer market_family={fam} nicht unterstuetzt",
+                message=(
+                    "Order-Replace (modify) fuer "
+                    f"market_family={fam} nicht unterstuetzt"
+                ),
                 retryable=False,
             )
         response = self._call_private(
@@ -650,7 +669,10 @@ class LiveBrokerOrderService:
         if not symbol:
             raise BitgetRestError(
                 classification="validation",
-                message="query_order braucht symbol oder ein lokales internal_order_id mit Symbol",
+                message=(
+                    "query_order braucht symbol oder ein lokales "
+                    "internal_order_id mit Symbol"
+                ),
                 retryable=False,
             )
         order_family = str(
@@ -866,7 +888,10 @@ class LiveBrokerOrderService:
             alert_key="live-broker:safety-latch:released",
             severity="info",
             title="live-broker safety latch released",
-            message="Operator hat Safety-Latch geloest — Live-Fire wieder moeglich sofern uebrige Gates passen.",
+            message=(
+                "Operator hat Safety-Latch geloest — Live-Fire wieder "
+                "moeglich sofern uebrige Gates passen."
+            ),
             details={"reason": request.reason, "source": request.source},
         )
         return {"ok": True}
@@ -970,7 +995,9 @@ class LiveBrokerOrderService:
                 alert_key=f"live-broker:kill-switch:{scope}:{scope_key}:auto-cancel-failed",
                 severity="critical",
                 title="live-broker kill switch auto-cancel failed",
-                message=f"Kill switch ist aktiv, Auto-Cancel schlug fehl fuer {scope_key}.",
+                message=(
+                    f"Kill switch ist aktiv, Auto-Cancel schlug fehl fuer {scope_key}."
+                ),
                 details={
                     "scope": scope,
                     "scope_key": scope_key,
@@ -1377,7 +1404,10 @@ class LiveBrokerOrderService:
                 alert_key="live-broker:order-timeout:failures",
                 severity="critical",
                 title="live-broker order timeout cancel failed",
-                message=f"Mindestens ein Timeout-Cancel ist fehlgeschlagen ({len(errors)} Fehler).",
+                message=(
+                    "Mindestens ein Timeout-Cancel ist fehlgeschlagen "
+                    f"({len(errors)} Fehler)."
+                ),
                 details={"errors": errors, "timeout_sec": timeout_sec},
             )
         elif timed_out:
@@ -1385,7 +1415,9 @@ class LiveBrokerOrderService:
                 alert_key="live-broker:order-timeout:cancelled",
                 severity="warn",
                 title="live-broker order timeout cancelled stale orders",
-                message=f"{len(timed_out)} Live-Order(s) wurden wegen Timeout gecancelt.",
+                message=(
+                    f"{len(timed_out)} Live-Order(s) wurden wegen Timeout gecancelt."
+                ),
                 details={
                     "timeout_sec": timeout_sec,
                     "internal_order_ids": [
@@ -1428,20 +1460,32 @@ class LiveBrokerOrderService:
             "shadow_trade_enable": self._settings.shadow_trade_enable,
             "shadow_path_active": self._settings.shadow_path_active,
             "live_trade_enable": self._settings.live_trade_enable,
-            "live_order_submission_enabled": self._settings.live_order_submission_enabled,
+            "live_order_submission_enabled": (
+                self._settings.live_order_submission_enabled
+            ),
             "global_halt_latch": gh,
             "private_rest": self._private.state_snapshot(),
             "order_status_counts": order_status_counts,
             "kill_switch_enabled": self._settings.live_kill_switch_enabled,
-            "risk_force_reduce_only_on_alert": self._settings.risk_force_reduce_only_on_alert,
+            "risk_force_reduce_only_on_alert": (
+                self._settings.risk_force_reduce_only_on_alert
+            ),
             "order_timeout_sec": getattr(self._settings, "live_order_timeout_sec", 0),
             "active_kill_switches": active_kill_switches,
             "safety_latch_active": safety_latch_active,
             "live_order_replace_enabled": self._settings.live_order_replace_enabled,
-            "live_safety_latch_on_reconcile_fail": self._settings.live_safety_latch_on_reconcile_fail,
-            "predatory_passive_maker_default": self._settings.live_predatory_passive_maker_default,
-            "passive_max_slippage_bps_default": self._settings.live_passive_max_slippage_bps_default,
-            "passive_iceberg_slices_default": self._settings.live_passive_iceberg_slices_default,
+            "live_safety_latch_on_reconcile_fail": (
+                self._settings.live_safety_latch_on_reconcile_fail
+            ),
+            "predatory_passive_maker_default": (
+                self._settings.live_predatory_passive_maker_default
+            ),
+            "passive_max_slippage_bps_default": (
+                self._settings.live_passive_max_slippage_bps_default
+            ),
+            "passive_iceberg_slices_default": (
+                self._settings.live_passive_iceberg_slices_default
+            ),
         }
 
     def _can_submit_order(self, *, allow_safety_bypass: bool) -> bool:
@@ -2087,7 +2131,9 @@ class LiveBrokerOrderService:
                 alert_key=f"live-broker:flatten:{scope}:{scope_key}:cancel-open-orders-failed",
                 severity="critical",
                 title="live-broker emergency flatten cancel-open-orders failed",
-                message=f"Open-Order-Cancel vor Emergency flatten schlug fehl fuer {symbol}",
+                message=(
+                    f"Open-Order-Cancel vor Emergency flatten schlug fehl fuer {symbol}"
+                ),
                 details={
                     "scope": scope,
                     "scope_key": scope_key,
@@ -2206,7 +2252,9 @@ class LiveBrokerOrderService:
                 alert_key="live-broker:execution-guard:reconcile_fail_block",
                 severity="critical",
                 title="live-broker submit blockiert (reconcile fail)",
-                message=f"Operation {operation} abgelehnt: letzter Reconcile-Status=fail.",
+                message=(
+                    f"Operation {operation} abgelehnt: letzter Reconcile-Status=fail."
+                ),
                 details={"operation": operation, "reconcile_snapshot": snap},
             )
             raise BitgetRestError(
@@ -2222,7 +2270,10 @@ class LiveBrokerOrderService:
                 alert_key="live-broker:execution-guard:reconcile_degraded_block",
                 severity="warn",
                 title="live-broker submit blockiert (reconcile degraded)",
-                message=f"Operation {operation} abgelehnt: letzter Reconcile-Status=degraded.",
+                message=(
+                    f"Operation {operation} abgelehnt: letzter "
+                    "Reconcile-Status=degraded."
+                ),
                 details={"operation": operation, "reconcile_snapshot": snap},
             )
             raise BitgetRestError(
@@ -2301,7 +2352,8 @@ class LiveBrokerOrderService:
             severity="critical",
             title="live-broker safety latch — duplicate recovery failed",
             message=(
-                "Bitget meldete duplicate, lokale Order fehlt und Remote-Detail nicht lesbar — "
+                "Bitget meldete duplicate, lokale Order fehlt und "
+                "Remote-Detail nicht lesbar — "
                 "Safety-Latch gesetzt (LIVE_SAFETY_LATCH_ON_DUPLICATE_RECOVERY_FAIL)."
             ),
             details={
@@ -2483,7 +2535,8 @@ class LiveBrokerOrderService:
                 raise BitgetRestError(
                     classification="validation",
                     message=(
-                        "execution binding: decision_action muss live_candidate_recorded sein "
+                        "execution binding: decision_action muss "
+                        "live_candidate_recorded sein "
                         f"(ist {row.get('decision_action')!r})"
                     ),
                     retryable=False,
@@ -2491,7 +2544,10 @@ class LiveBrokerOrderService:
             if str(row.get("symbol") or "").upper() != request.symbol.upper():
                 raise BitgetRestError(
                     classification="validation",
-                    message="execution binding: symbol stimmt nicht mit Execution-Decision ueberein",
+                    message=(
+                        "execution binding: symbol stimmt nicht mit "
+                        "Execution-Decision ueberein"
+                    ),
                     retryable=False,
                 )
         if self._settings.live_require_operator_release_for_live_open:
@@ -2525,7 +2581,8 @@ class LiveBrokerOrderService:
             if st == "absent":
                 raise ShadowDivergenceError(
                     f"Echtgeld-Submit ohne Shadow-Redis-Quittung: execution_id={eid} "
-                    "(Erwartung: shadow:match:{{id}}; Paper-Shadow ausgefallen oder TTL abgelaufen).",
+                    "(Erwartung: shadow:match:{{id}}; Paper-Shadow ausgefallen "
+                    "oder TTL abgelaufen).",
                     reason="shadow_match_latch_absent",
                 )
 
@@ -2593,7 +2650,10 @@ class LiveBrokerOrderService:
         if bool(request.reduce_only) and not bool(catalog_entry.supports_reduce_only):
             raise BitgetRestError(
                 classification="validation",
-                message="Instrument unterstuetzt keine reduce-only Orders fuer diese Marktfamilie",
+                message=(
+                    "Instrument unterstuetzt keine reduce-only Orders fuer "
+                    "diese Marktfamilie"
+                ),
                 retryable=False,
             )
         if (
@@ -2617,7 +2677,10 @@ class LiveBrokerOrderService:
         margin_mode_for_profile: str | None,
         internal_order_id: UUID,
     ) -> OrderCreateRequest:
-        """Market-Open (Futures) -> Post-Only Limit am Best-Bid/Ask; erste Iceberg-Tranche."""
+        """
+        Market-Open (Futures) -> Post-Only Limit am Best-Bid/Ask;
+        erste Iceberg-Tranche.
+        """
         if request.reduce_only or effective_family != "futures":
             return request
         if request.order_type != "market":
@@ -2630,10 +2693,16 @@ class LiveBrokerOrderService:
         if self._exchange_client is None:
             return request
         params = passive_params_from_sources(
-            settings_max_slippage_bps=self._settings.live_passive_max_slippage_bps_default,
+            settings_max_slippage_bps=(
+                self._settings.live_passive_max_slippage_bps_default
+            ),
             settings_slices=self._settings.live_passive_iceberg_slices_default,
-            settings_imbalance_pause_ms=self._settings.live_passive_imbalance_pause_ms,
-            settings_imbalance_threshold=self._settings.live_passive_imbalance_against_threshold,
+            settings_imbalance_pause_ms=(
+                self._settings.live_passive_imbalance_pause_ms
+            ),
+            settings_imbalance_threshold=(
+                self._settings.live_passive_imbalance_against_threshold
+            ),
             trace=trace_merged,
         )
         imb = coalesce_orderflow_imbalance(trace_merged)
@@ -2646,7 +2715,8 @@ class LiveBrokerOrderService:
                 classification="validation",
                 message=(
                     "passive_maker_orderbook_wall: orderflow gegen unsere Seite "
-                    f"(imbalance={imb}, threshold={params.imbalance_against_threshold}, "
+                    f"(imbalance={imb}, "
+                    f"threshold={params.imbalance_against_threshold}, "
                     f"suggested_pause_ms={params.imbalance_pause_ms})"
                 ),
                 retryable=True,
@@ -2815,7 +2885,10 @@ class LiveBrokerOrderService:
         if effective_family not in {"spot", "margin", "futures"}:
             raise BitgetRestError(
                 classification="validation",
-                message=f"invalid_or_missing_market_family_fail_closed:{effective_family or 'missing'}",
+                message=(
+                    "invalid_or_missing_market_family_fail_closed:"
+                    f"{effective_family or 'missing'}"
+                ),
                 retryable=False,
             )
         margin_mode_for_profile: str | None = None
@@ -2926,8 +2999,9 @@ class LiveBrokerOrderService:
         elif str(request.order_type or "").lower() == "market" and not bool(
             request.reduce_only
         ):
-            # Opening-Market ohne aktivierten Slippage-/Orderbook-Pre-Flight: fail-closed.
-            # Reduce-only Market (Flatten/Close) darf ohne diesen Gate laufen; Slippage-Risiko
+            # Opening-Market ohne aktivierten Slippage-/Orderbook-Pre-Flight:
+            # fail-closed. Reduce-only Market (Flatten/Close) darf ohne
+            # diesen Gate laufen; Slippage-Risiko
             # ist begrenzt und Emergency-Pfade setzen allow_safety_bypass separat.
             raise BitgetRestError(
                 classification="validation",
@@ -3282,7 +3356,9 @@ class LiveBrokerOrderService:
             }
         raise BitgetRestError(
             classification="not_found",
-            message="Kein lokal korrelierter Order-Datensatz fuer diese Anfrage gefunden",
+            message=(
+                "Kein lokal korrelierter Order-Datensatz fuer diese Anfrage gefunden"
+            ),
             retryable=False,
         )
 

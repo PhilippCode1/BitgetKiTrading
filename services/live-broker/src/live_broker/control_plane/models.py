@@ -12,7 +12,9 @@ class ControlPlaneReadHistoryRequest(BaseModel):
     end_time_ms: str | None = None
     operator_jti: str | None = Field(
         default=None,
-        description="Korrelation zu Operator-/Dashboard-Mutation (z. B. JWT jti oder UUID)",
+        description=(
+            "Korrelation zu Operator-/Dashboard-Mutation (z. B. JWT jti oder UUID)"
+        ),
     )
     audit_note: str | None = None
 

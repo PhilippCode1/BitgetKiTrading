@@ -67,7 +67,8 @@ def orderflow_wall_against_side(
     threshold: float,
 ) -> bool:
     """
-    Vereinfachtes Safety-Latch: starke Gegenseite im Orderbuch (Imbalance aus Prompt 16).
+    Vereinfachtes Safety-Latch: starke Gegenseite im Orderbuch
+    (Imbalance aus Prompt 16).
 
     Imbalance > 0 tendenziell bid-lastig; < 0 ask-lastig (Konvention wie VPIN-Seite).
     """
@@ -94,7 +95,10 @@ def chase_price_within_slippage(
     new_limit_price: Decimal,
     max_slippage_bps: float,
 ) -> bool:
-    """Absoluter Preisabstand vom Anchor vs. max_slippage_bps (fuer Long/Short gleich)."""
+    """
+    Absoluter Preisabstand vom Anchor vs. max_slippage_bps
+    (fuer Long/Short gleich).
+    """
     if anchor_price <= 0 or new_limit_price <= 0:
         return False
     slip_bps = float(
