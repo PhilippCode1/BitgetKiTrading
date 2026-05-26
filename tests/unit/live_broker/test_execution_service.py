@@ -588,7 +588,7 @@ def test_evaluate_intent_shadow_live_gate_blocks_high_signal_divergence(
         STRATEGY_EXEC_MODE="auto",
         SHADOW_TRADE_ENABLE="false",
         REQUIRE_SHADOW_MATCH_BEFORE_LIVE="true",
-        RISK_GOVERNOR_LIVE_RAMP_MAX_LEVERAGE="12",
+        RISK_GOVERNOR_LIVE_RAMP_MAX_LEVERAGE="10",
     )
     repo = _repo_with_clean_live_snapshots()
     service = LiveExecutionService(settings, _FakeExchangeClient(), repo)  # type: ignore[arg-type]
@@ -599,7 +599,7 @@ def test_evaluate_intent_shadow_live_gate_blocks_high_signal_divergence(
         symbol="BTCUSDT",
         direction="long",
         requested_runtime_mode="live",
-        leverage=12,
+        leverage=10,
         qty_base="0.001",
         entry_price="50000",
         stop_loss="49900",
@@ -615,8 +615,8 @@ def test_evaluate_intent_shadow_live_gate_blocks_high_signal_divergence(
                 "expected_return_bps": 14.0,
                 "expected_mae_bps": 15.0,
                 "expected_mfe_bps": 28.0,
-                "allowed_leverage": 12,
-                "recommended_leverage": 12,
+                "allowed_leverage": 10,
+                "recommended_leverage": 10,
                 "shadow_divergence_0_1": 0.99,
                 "analysis_ts_ms": now_ms - 10_000,
             }
@@ -642,7 +642,7 @@ def test_evaluate_intent_shadow_live_allows_when_aligned_with_gate(
         STRATEGY_EXEC_MODE="auto",
         SHADOW_TRADE_ENABLE="false",
         REQUIRE_SHADOW_MATCH_BEFORE_LIVE="true",
-        RISK_GOVERNOR_LIVE_RAMP_MAX_LEVERAGE="12",
+        RISK_GOVERNOR_LIVE_RAMP_MAX_LEVERAGE="10",
     )
     repo = _repo_with_clean_live_snapshots()
     service = LiveExecutionService(settings, _FakeExchangeClient(), repo)  # type: ignore[arg-type]
@@ -653,7 +653,7 @@ def test_evaluate_intent_shadow_live_allows_when_aligned_with_gate(
         symbol="BTCUSDT",
         direction="long",
         requested_runtime_mode="live",
-        leverage=12,
+        leverage=10,
         qty_base="0.001",
         entry_price="50000",
         stop_loss="49900",
@@ -669,8 +669,8 @@ def test_evaluate_intent_shadow_live_allows_when_aligned_with_gate(
                 "expected_return_bps": 14.0,
                 "expected_mae_bps": 15.0,
                 "expected_mfe_bps": 28.0,
-                "allowed_leverage": 12,
-                "recommended_leverage": 12,
+                "allowed_leverage": 10,
+                "recommended_leverage": 10,
                 "shadow_divergence_0_1": 0.04,
                 "analysis_ts_ms": now_ms - 10_000,
             }
@@ -756,7 +756,7 @@ def test_evaluate_intent_shadow_live_mismatch_without_gate_still_live_candidate(
         STRATEGY_EXEC_MODE="auto",
         SHADOW_TRADE_ENABLE="false",
         REQUIRE_SHADOW_MATCH_BEFORE_LIVE="false",
-        RISK_GOVERNOR_LIVE_RAMP_MAX_LEVERAGE="12",
+        RISK_GOVERNOR_LIVE_RAMP_MAX_LEVERAGE="10",
     )
     repo = _repo_with_clean_live_snapshots()
     service = LiveExecutionService(settings, _FakeExchangeClient(), repo)  # type: ignore[arg-type]
@@ -767,7 +767,7 @@ def test_evaluate_intent_shadow_live_mismatch_without_gate_still_live_candidate(
         symbol="BTCUSDT",
         direction="long",
         requested_runtime_mode="live",
-        leverage=12,
+        leverage=10,
         qty_base="0.001",
         entry_price="50000",
         stop_loss="49900",
@@ -783,8 +783,8 @@ def test_evaluate_intent_shadow_live_mismatch_without_gate_still_live_candidate(
                 "expected_return_bps": 14.0,
                 "expected_mae_bps": 15.0,
                 "expected_mfe_bps": 28.0,
-                "allowed_leverage": 12,
-                "recommended_leverage": 12,
+                "allowed_leverage": 10,
+                "recommended_leverage": 10,
                 "shadow_divergence_0_1": 0.99,
                 "analysis_ts_ms": now_ms - 10_000,
             }
@@ -886,7 +886,7 @@ def test_paper_broker_outage_blocks_live_no_redis_shadow_match_latch(
         STRATEGY_EXEC_MODE="auto",
         SHADOW_TRADE_ENABLE="false",
         REQUIRE_SHADOW_MATCH_BEFORE_LIVE="true",
-        RISK_GOVERNOR_LIVE_RAMP_MAX_LEVERAGE="12",
+        RISK_GOVERNOR_LIVE_RAMP_MAX_LEVERAGE="10",
     )
     repo = _repo_with_clean_live_snapshots()
     service = LiveExecutionService(settings, _FakeExchangeClient(), repo)  # type: ignore[arg-type]
@@ -897,7 +897,7 @@ def test_paper_broker_outage_blocks_live_no_redis_shadow_match_latch(
         symbol="BTCUSDT",
         direction="long",
         requested_runtime_mode="live",
-        leverage=12,
+        leverage=10,
         qty_base="0.001",
         entry_price="50000",
         stop_loss="49900",
@@ -915,8 +915,8 @@ def test_paper_broker_outage_blocks_live_no_redis_shadow_match_latch(
                 "expected_return_bps": 14.0,
                 "expected_mae_bps": 15.0,
                 "expected_mfe_bps": 28.0,
-                "allowed_leverage": 12,
-                "recommended_leverage": 12,
+                "allowed_leverage": 10,
+                "recommended_leverage": 10,
                 "shadow_divergence_0_1": 0.04,
                 "analysis_ts_ms": now_ms - 10_000,
             },

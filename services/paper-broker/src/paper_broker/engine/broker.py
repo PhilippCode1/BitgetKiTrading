@@ -590,6 +590,217 @@ class PaperBrokerService:
             )
         return aid
 
+    def initialize_paper_grid_bot(
+        self,
+        conn: psycopg.Connection[Any],
+        *,
+        account_id: UUID,
+        symbol: str,
+        side: str,
+        qty_base: Decimal,
+        leverage: Decimal,
+        margin_mode: str,
+        order_type: str,
+        now_ms: int,
+        timeframe: str | None,
+        signal_payload: dict[str, Any],
+        tenant_id: str,
+        acc: dict[str, Any],
+        cfg: Any,
+        fill_px: Decimal,
+        liq: str,
+        fee_rate: Decimal,
+    ) -> dict[str, Any]:
+        s = side.lower()
+        exec_side = "buy" if s == "long" else "sell"
+        bot_params = signal_payload.get("bot_params") or {}
+        upper_bound = _dec(bot_params.get("upper_bound") or (fill_px * Decimal("1.05")))
+        lower_bound = _dec(bot_params.get("lower_bound") or (fill_px * Decimal("0.95")))
+        grid_count = int(bot_params.get("grid_count") or 10)
+        if grid_count < 2:
+            grid_count = 2
+        
+        # Grid-Preise generieren
+        grid_prices = [lower_bound + i * (upper_bound - lower_bound) / (grid_count - 1) for i in range(grid_count)]
+        grid_prices = [p.quantize(Decimal("0.0001")) for p in grid_prices]
+        
+        # Hebel-Begrenzung für Grid Bots: maximal 22x
+        final_leverage = min(leverage, Decimal("22"))
+        
+        notional = order_notional_usdt(qty_base, fill_px)
+        fee = calc_transaction_fee_usdt(qty_base, fill_px, fee_rate)
+        margin = notional / final_leverage
+        
+        # Kontostand prüfen
+        equity = _dec(acc["equity"])
+        account_metrics = build_paper_account_risk_metrics(
+            conn,
+            account_id=account_id,
+            tenant_id=tenant_id,
+            account_row=acc,
+            now_ms=now_ms,
+            projected_margin=margin,
+            projected_fee=fee,
+        )
+        repo_account_ledger.assert_sufficient_paper_cash(
+            available_cash_usdt=account_metrics["available_equity"],
+            initial_margin_usdt=margin,
+            order_fee_usdt=fee,
+        )
+        
+        # Initialer Zustand der Gitterlinien
+        grid_lines_meta = []
+        for p in grid_prices:
+            line_side = "buy" if p < fill_px else "sell"
+            grid_lines_meta.append({
+                "price": format(p, "f"),
+                "side": line_side,
+                "state": "pending",
+                "qty": format(qty_base / Decimal(str(grid_count)), "f")
+            })
+            
+        ex_ctx = {
+            "canonical_instrument_id": f"bitget:futures:usdt-futures:{symbol}",
+            "market_family": "futures",
+            "product_type": "USDT-FUTURES",
+        }
+        
+        position_meta = {
+            "execution_mode": "BOT_GRID",
+            "bot_params": {
+                "upper_bound": format(upper_bound, "f"),
+                "lower_bound": format(lower_bound, "f"),
+                "grid_count": grid_count,
+                "trailing_enabled": bool(bot_params.get("trailing_enabled", False)),
+            },
+            "grid_bot": {
+                "upper_bound": format(upper_bound, "f"),
+                "lower_bound": format(lower_bound, "f"),
+                "grid_count": grid_count,
+                "grid_lines": grid_lines_meta,
+                "last_price": format(fill_px, "f"),
+            },
+            "instrument_catalog_entry": cfg.raw.get("instrument_catalog_entry") if cfg else None,
+            "execution_context": ex_ctx,
+            "requested_leverage": format(final_leverage, "f"),
+            "signal_id": str(signal_payload.get("signal_id")) if signal_payload.get("signal_id") else None,
+        }
+        
+        sig_uid = None
+        if signal_payload.get("signal_id"):
+            try:
+                sig_uid = UUID(str(signal_payload["signal_id"]))
+            except ValueError:
+                sig_uid = None
+                
+        pid = repo_positions.insert_position(
+            conn,
+            account_id=account_id,
+            tenant_id=tenant_id,
+            symbol=symbol,
+            side=s,
+            qty_base=qty_base,
+            entry_price_avg=fill_px,
+            leverage=final_leverage,
+            margin_mode=margin_mode,
+            isolated_margin=margin,
+            state="open",
+            opened_ts_ms=now_ms,
+            updated_ts_ms=now_ms,
+            meta=position_meta,
+            signal_id=sig_uid,
+            canonical_instrument_id=ex_ctx.get("canonical_instrument_id"),
+            market_family=ex_ctx.get("market_family"),
+            product_type=ex_ctx.get("product_type"),
+        )
+        
+        # Initialer Order- und Fill-Eintrag für den Bot-Start
+        oid = repo_orders.insert_order(
+            conn,
+            position_id=pid,
+            otype=order_type,
+            side=exec_side,
+            qty_base=qty_base,
+            limit_price=None,
+            state="filled",
+            created_ts_ms=now_ms,
+            filled_ts_ms=now_ms,
+        )
+        repo_ledgers.insert_fill(
+            conn,
+            order_id=oid,
+            position_id=pid,
+            ts_ms=now_ms,
+            price=fill_px,
+            qty_base=qty_base,
+            liquidity=liq,
+            fee_usdt=fee,
+            notional_usdt=notional,
+        )
+        repo_ledgers.insert_fee_ledger(
+            conn, position_id=pid, ts_ms=now_ms, fee_usdt=fee, reason="entry"
+        )
+        
+        new_eq = equity - margin - fee
+        repo_accounts.update_account_equity(conn, account_id, new_eq, tenant_id=tenant_id)
+        
+        # Position Event
+        repo_position_events.insert_position_event(
+            conn,
+            position_id=pid,
+            ts_ms=now_ms,
+            event_type="POSITION_OPENED",
+            details={
+                "execution_mode": "BOT_GRID",
+                "account_equity_after": str(new_eq),
+                "grid_count": str(grid_count),
+                "upper_bound": str(upper_bound),
+                "lower_bound": str(lower_bound),
+            },
+        )
+        
+        tid_open = (self.settings.billing_prepaid_tenant_id or "default").strip()
+        try:
+            enqueue_customer_notify(
+                conn,
+                tenant_id=tid_open,
+                text=(
+                    f"Demo-Grid Bot gestartet: {symbol} {s.upper()} "
+                    f"Menge={qty_base} Hebel={final_leverage}x [{lower_bound} - {upper_bound}]"
+                )[:3500],
+                category="paper_order_open",
+                severity="info",
+                dedupe_key=f"paper_order_open:{pid}",
+                audit_actor="paper_broker",
+            )
+        except Exception:
+            pass
+            
+        publish_trade_opened(
+            self.bus,
+            position_id=str(pid),
+            account_id=str(account_id),
+            symbol=symbol,
+            side=s,
+            qty_base=str(qty_base),
+            entry_price_avg=str(fill_px),
+            leverage=str(final_leverage),
+            trace={
+                "source": "paper-broker",
+                "execution_mode": "BOT_GRID",
+            },
+        )
+        
+        return {
+            "position_id": str(pid),
+            "fill_price": str(fill_px),
+            "fee_usdt": str(fee),
+            "notional_usdt": str(notional),
+            "isolated_margin": str(margin),
+            "account_equity_after": str(new_eq),
+            "recommended_leverage": int(final_leverage),
+        }
+
     def open_position(
         self,
         *,
@@ -689,6 +900,32 @@ class PaperBrokerService:
                 )
                 if fill_px <= 0:
                     raise ValueError("kein gueltiger Preis")
+
+                exec_mode = "STANDARD_FUTURES"
+                if isinstance(signal_payload, dict):
+                    exec_mode = str(signal_payload.get("execution_mode") or "STANDARD_FUTURES").strip().upper()
+                
+                if exec_mode == "BOT_GRID":
+                    return self.initialize_paper_grid_bot(
+                        conn,
+                        account_id=account_id,
+                        symbol=symbol,
+                        side=side,
+                        qty_base=qty_base,
+                        leverage=leverage,
+                        margin_mode=margin_mode,
+                        order_type=order_type,
+                        now_ms=now_ms,
+                        timeframe=timeframe,
+                        signal_payload=signal_payload,
+                        tenant_id=td,
+                        acc=acc,
+                        cfg=cfg,
+                        fill_px=fill_px,
+                        liq=liq,
+                        fee_rate=taker_r if order_type == "market" else maker_r,
+                    )
+
                 _ice0 = _catalog_entry_from_contract_view(cfg)
                 if _ice0 is not None:
                     validate_paper_base_order_qty(
@@ -1015,6 +1252,175 @@ class PaperBrokerService:
                     done = run_stop_tp_for_position(self, conn, pos, now_ms)
                     if done:
                         stop_tp_closed.append(str(pos["position_id"]))
+            positions = repo_positions.list_open_positions(conn, tenant_id=pten)
+            for pos in positions:
+                pid = UUID(str(pos["position_id"]))
+                sym = str(pos["symbol"])
+                meta = _meta_dict(pos.get("meta"))
+                grid_bot = meta.get("grid_bot")
+                
+                if grid_bot:
+                    # Simulation fuer Grid Bot Kreuzungen
+                    last_price = _dec(grid_bot.get("last_price") or pos["entry_price_avg"])
+                    mark, fill = self.get_mark_and_fill(conn, sym)
+                    current_price = fill
+                    
+                    grid_lines = grid_bot.get("grid_lines") or []
+                    grid_count = int(grid_bot.get("grid_count") or len(grid_lines))
+                    
+                    qty_base = _dec(pos["qty_base"])
+                    entry_price_avg = _dec(pos["entry_price_avg"])
+                    isolated_margin = _dec(pos["isolated_margin"])
+                    leverage = _dec(pos["leverage"])
+                    side = str(pos["side"])
+                    account_id = UUID(str(pos["account_id"]))
+                    acc = repo_accounts.get_account(conn, account_id, tenant_id=pten)
+                    equity = _dec(acc["equity"]) if acc else Decimal("0")
+                    
+                    cfg = self.contract_provider.get(sym, conn, signal_payload=_contract_payload_from_position_meta(meta))
+                    maker_r, taker_r = self.contract_provider.effective_fees(cfg)
+                    
+                    price_changed = False
+                    grid_updated_lines = list(grid_lines)
+                    
+                    is_falling = current_price < last_price
+                    sorted_lines_with_idx = sorted(
+                        enumerate(grid_lines),
+                        key=lambda x: _dec(x[1]["price"]),
+                        reverse=is_falling
+                    )
+                    
+                    for idx, line in sorted_lines_with_idx:
+                        line_price = _dec(line["price"])
+                        qty_line = _dec(line.get("qty") or (qty_base / Decimal(str(grid_count))))
+                        line_state = str(line.get("state") or "pending")
+                        
+                        crossed = False
+                        if is_falling:
+                            if last_price > line_price >= current_price:
+                                crossed = True
+                        else:
+                            if last_price < line_price <= current_price:
+                                crossed = True
+                                
+                        if crossed:
+                            exec_side = "buy" if is_falling else "sell"
+                            if exec_side == "buy" and line_state == "buy_filled":
+                                continue
+                            if exec_side == "sell" and line_state == "sell_filled":
+                                continue
+                                
+                            fee = calc_transaction_fee_usdt(qty_line, line_price, maker_r)
+                            notional = order_notional_usdt(qty_line, line_price)
+                            
+                            realized_pnl = Decimal("0")
+                            margin_change = Decimal("0")
+                            
+                            if side == "long":
+                                if exec_side == "buy":
+                                    new_qty = qty_base + qty_line
+                                    entry_price_avg = (qty_base * entry_price_avg + qty_line * line_price) / new_qty
+                                    margin_change = (notional / leverage)
+                                    qty_base = new_qty
+                                else:
+                                    if qty_base >= qty_line:
+                                        new_qty = qty_base - qty_line
+                                        realized_pnl = (line_price - entry_price_avg) * qty_line
+                                        margin_change = -(qty_line * entry_price_avg / leverage)
+                                        qty_base = new_qty
+                            else:
+                                if exec_side == "sell":
+                                    new_qty = qty_base + qty_line
+                                    entry_price_avg = (qty_base * entry_price_avg + qty_line * line_price) / new_qty
+                                    margin_change = (notional / leverage)
+                                    qty_base = new_qty
+                                else:
+                                    if qty_base >= qty_line:
+                                        new_qty = qty_base - qty_line
+                                        realized_pnl = (entry_price_avg - line_price) * qty_line
+                                        margin_change = -(qty_line * entry_price_avg / leverage)
+                                        qty_base = new_qty
+                                        
+                            with conn.transaction():
+                                oid = repo_orders.insert_order(
+                                    conn,
+                                    position_id=pid,
+                                    otype="limit",
+                                    side=exec_side,
+                                    qty_base=qty_line,
+                                    limit_price=line_price,
+                                    state="filled",
+                                    created_ts_ms=now_ms,
+                                    filled_ts_ms=now_ms,
+                                )
+                                repo_ledgers.insert_fill(
+                                    conn,
+                                    order_id=oid,
+                                    position_id=pid,
+                                    ts_ms=now_ms,
+                                    price=line_price,
+                                    qty_base=qty_line,
+                                    liquidity="maker",
+                                    fee_usdt=fee,
+                                    notional_usdt=notional,
+                                )
+                                repo_ledgers.insert_fee_ledger(
+                                    conn, position_id=pid, ts_ms=now_ms, fee_usdt=fee, reason="grid_fill"
+                                )
+                                
+                                isolated_margin = max(Decimal("0"), isolated_margin + margin_change)
+                                equity = equity - margin_change + realized_pnl - fee
+                                repo_accounts.update_account_equity(conn, account_id, equity, tenant_id=pten)
+                                
+                                grid_updated_lines[idx]["state"] = "buy_filled" if exec_side == "buy" else "sell_filled"
+                                price_changed = True
+                                
+                                repo_position_events.insert_position_event(
+                                    conn,
+                                    position_id=pid,
+                                    ts_ms=now_ms,
+                                    event_type="GRID_CROSSED",
+                                    details={
+                                        "price": str(line_price),
+                                        "side": exec_side,
+                                        "realized_pnl": str(realized_pnl),
+                                        "fee": str(fee),
+                                        "new_qty": str(qty_base),
+                                        "new_equity": str(equity),
+                                    }
+                                )
+                                
+                    if price_changed:
+                        grid_bot["grid_lines"] = grid_updated_lines
+                        grid_bot["last_price"] = format(current_price, "f")
+                        meta["grid_bot"] = grid_bot
+                        
+                        repo_positions.update_position_qty_state(
+                            conn,
+                            pid,
+                            tenant_id=pten,
+                            qty_base=qty_base,
+                            entry_price_avg=entry_price_avg,
+                            isolated_margin=isolated_margin,
+                            state="partially_closed" if qty_base > 0 else "closed",
+                            updated_ts_ms=now_ms,
+                            closed_ts_ms=now_ms if qty_base == 0 else None,
+                            meta=meta,
+                        )
+                        
+                        publish_trade_updated(
+                            self.bus,
+                            position_id=str(pid),
+                            symbol=sym,
+                            qty_base=str(qty_base),
+                            state="partially_closed" if qty_base > 0 else "closed",
+                        )
+                        if qty_base == 0:
+                            publish_trade_closed_evt(
+                                self.bus, position_id=str(pid), symbol=sym, reason="GRID_COMPLETE"
+                            )
+
+            # Standard-Liquidationspruefung nach allfälligen Grid Updates
             positions = repo_positions.list_open_positions(conn, tenant_id=pten)
             for pos in positions:
                 pid = UUID(str(pos["position_id"]))

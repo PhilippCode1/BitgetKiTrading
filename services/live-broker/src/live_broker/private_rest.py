@@ -665,6 +665,54 @@ class BitgetPrivateRestClient:
             priority=priority,
         )
 
+    def create_futures_grid_bot(
+        self,
+        body: dict[str, Any],
+        *,
+        priority: bool = False,
+    ) -> BitgetRestResponse:
+        """
+        Schnittstelle zur Erstellung eines Futures Grid Bots auf Bitget.
+        Endpunkt: /api/v1/mix/strategy/createTradingBot
+        """
+        path = "/api/v1/mix/strategy/createTradingBot"
+        
+        # Preflight Leverage-Validierung
+        lev = int(body.get("leverage") or 22)
+        if lev > 22:
+            raise BitgetRestError(
+                classification="policy_blocked",
+                message=f"Leverage {lev} exceeds uncompromisible BOT_GRID limit of 22x.",
+                retryable=False,
+            )
+
+        return self._private_request(
+            "POST",
+            path,
+            body=body,
+            operation="create_futures_grid_bot",
+            priority=priority,
+        )
+
+    def cancel_strategy_bot(
+        self,
+        body: dict[str, Any],
+        *,
+        priority: bool = True,
+    ) -> BitgetRestResponse:
+        """
+        Schnittstelle zur Loeschung/Stornierung eines aktiven Bots/Strategie.
+        Endpunkt: /api/v1/mix/strategy/cancelStrategy
+        """
+        path = "/api/v1/mix/strategy/cancelStrategy"
+        return self._private_request(
+            "POST",
+            path,
+            body=body,
+            operation="cancel_strategy_bot",
+            priority=priority,
+        )
+
     def _require_endpoint_path(self, attr_name: str, operation: str) -> str:
         value = str(
             getattr(self._settings.endpoint_profile, attr_name, "") or ""

@@ -4,14 +4,88 @@
   "title": "signal_created payload (Kernfelder)",
   "type": "object",
   "additionalProperties": true,
-  "required": ["signal_id", "direction"],
+  "required": [
+    "signal_id",
+    "direction",
+    "execution_mode",
+    "leverage_cap_applied"
+  ],
   "properties": {
-    "signal_id": { "type": "string", "minLength": 1 },
-    "direction": { "type": "string" },
-    "market_regime": { "type": "string" },
-    "regime_bias": { "type": "string" },
-    "regime_confidence_0_1": { "type": "number" },
-    "signal_strength_0_100": { "type": "number" },
-    "probability_0_1": { "type": "number" }
+    "signal_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "direction": {
+      "type": "string"
+    },
+    "market_regime": {
+      "type": ["string", "null"]
+    },
+    "regime_bias": {
+      "type": ["string", "null"]
+    },
+    "regime_confidence_0_1": {
+      "type": ["number", "null"]
+    },
+    "signal_strength_0_100": {
+      "type": ["number", "null"]
+    },
+    "probability_0_1": {
+      "type": ["number", "null"]
+    },
+    "execution_mode": {
+      "type": "string",
+      "enum": [
+        "BOT_GRID",
+        "BOT_DCA",
+        "STANDARD_FUTURES"
+      ]
+    },
+    "bot_params": {
+      "type": ["object", "null"],
+      "properties": {
+        "upper_bound": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "lower_bound": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "grid_count": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 500
+        },
+        "trailing_enabled": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "upper_bound",
+        "lower_bound",
+        "grid_count",
+        "trailing_enabled"
+      ],
+      "additionalProperties": false
+    },
+    "leverage_cap_applied": {
+      "type": "boolean"
+    }
+  },
+  "if": {
+    "properties": {
+      "execution_mode": {
+        "enum": ["BOT_GRID", "BOT_DCA"]
+      }
+    }
+  },
+  "then": {
+    "properties": {
+      "bot_params": {
+        "type": "object"
+      }
+    },
+    "required": ["bot_params"]
   }
 }

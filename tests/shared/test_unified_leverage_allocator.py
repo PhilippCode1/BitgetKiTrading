@@ -48,11 +48,12 @@ def test_recompute_execution_cap_below_recommended() -> None:
         risk_account_snapshot={},
         signal_row={"market_family": "futures", "source_snapshot_json": {}},
         settings=st,
+        execution_mode="STANDARD_FUTURES",
     )
     assert out["version"] == UNIFIED_LEVERAGE_ALLOCATOR_VERSION
-    assert out["mirror_leverage"] == 25
+    assert out["mirror_leverage"] == 11  # Capped at 11 since recommended (25) > hard cap (11)
     assert out["execution_leverage_cap"] is not None
-    assert out["execution_leverage_cap"] <= 25
+    assert out["execution_leverage_cap"] <= 11
 
 
 def test_cold_start_caps_execution() -> None:
@@ -72,10 +73,11 @@ def test_cold_start_caps_execution() -> None:
             },
         },
         settings=st,
+        execution_mode="STANDARD_FUTURES",
     )
     assert out["instrument_evidence_tier"] == "cold_start"
     assert out["execution_leverage_cap"] is not None
-    assert out["execution_leverage_cap"] <= 12
+    assert out["execution_leverage_cap"] <= 11
 
 
 def test_extract_execution_cap_from_row() -> None:
@@ -106,6 +108,7 @@ def test_evidence_cap_breakdown_includes_drawdown_binding() -> None:
         risk_account_snapshot={"daily_drawdown_0_1": 0.05},
         signal_row={"market_family": "futures", "source_snapshot_json": {}},
         settings=st,
+        execution_mode="STANDARD_FUTURES",
     )
     assert "drawdown_kill_switch_cap" in out["binding_caps_json"]
     names = {x.get("name") for x in (out.get("evidence_cap_breakdown_json") or [])}
@@ -133,3 +136,55 @@ def test_refresh_writes_snapshot() -> None:
     assert u is not None
     hd = db_row["source_snapshot_json"]["hybrid_decision"]
     assert "unified_leverage_allocation" in hd["leverage_allocator"]
+
+
+def test_execution_mode_leverage_caps() -> None:
+    st = _settings(risk_allowed_leverage_max=75)
+    
+    # Test for standard futures (should cap at 11x)
+    out_futures = recompute_unified_leverage_allocation(
+        allowed_leverage=40,
+        recommended_leverage=25,
+        stop_distance_pct=0.01,
+        meta_trade_lane="candidate_for_live",
+        trade_action="allow_trade",
+        governor={"max_exposure_fraction_0_1": 1.0},
+        risk_account_snapshot={},
+        signal_row={"market_family": "futures", "source_snapshot_json": {}},
+        settings=st,
+        execution_mode="STANDARD_FUTURES",
+    )
+    assert out_futures["allowed_leverage_echo"] == 11
+    assert out_futures["recommended_leverage_echo"] == 11
+
+    # Test for BOT_GRID (should cap at 22x)
+    out_grid = recompute_unified_leverage_allocation(
+        allowed_leverage=40,
+        recommended_leverage=25,
+        stop_distance_pct=0.01,
+        meta_trade_lane="candidate_for_live",
+        trade_action="allow_trade",
+        governor={"max_exposure_fraction_0_1": 1.0},
+        risk_account_snapshot={},
+        signal_row={"market_family": "futures", "source_snapshot_json": {}},
+        settings=st,
+        execution_mode="BOT_GRID",
+    )
+    assert out_grid["allowed_leverage_echo"] == 22
+    assert out_grid["recommended_leverage_echo"] == 22
+
+    # Test for BOT_DCA (should cap at 22x)
+    out_dca = recompute_unified_leverage_allocation(
+        allowed_leverage=40,
+        recommended_leverage=25,
+        stop_distance_pct=0.01,
+        meta_trade_lane="candidate_for_live",
+        trade_action="allow_trade",
+        governor={"max_exposure_fraction_0_1": 1.0},
+        risk_account_snapshot={},
+        signal_row={"market_family": "futures", "source_snapshot_json": {}},
+        settings=st,
+        execution_mode="BOT_DCA",
+    )
+    assert out_dca["allowed_leverage_echo"] == 22
+    assert out_dca["recommended_leverage_echo"] == 22

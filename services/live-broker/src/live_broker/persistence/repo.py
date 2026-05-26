@@ -903,7 +903,10 @@ class LiveBrokerRepository:
                     is_maker,
                     exchange_ts_ms,
                     ingest_source,
-                    raw_json
+                    raw_json,
+                    execution_mode,
+                    applied_leverage,
+                    bot_strategy_id
                 ) VALUES (
                     %(internal_order_id)s,
                     %(exchange_order_id)s,
@@ -917,7 +920,10 @@ class LiveBrokerRepository:
                     %(is_maker)s,
                     %(exchange_ts_ms)s,
                     %(ingest_source)s,
-                    %(raw_json)s
+                    %(raw_json)s,
+                    %(execution_mode)s,
+                    %(applied_leverage)s,
+                    %(bot_strategy_id)s
                 )
                 ON CONFLICT (exchange_trade_id) DO UPDATE SET
                     internal_order_id = EXCLUDED.internal_order_id,
@@ -931,13 +937,19 @@ class LiveBrokerRepository:
                     is_maker = EXCLUDED.is_maker,
                     exchange_ts_ms = EXCLUDED.exchange_ts_ms,
                     ingest_source = EXCLUDED.ingest_source,
-                    raw_json = EXCLUDED.raw_json
+                    raw_json = EXCLUDED.raw_json,
+                    execution_mode = EXCLUDED.execution_mode,
+                    applied_leverage = EXCLUDED.applied_leverage,
+                    bot_strategy_id = EXCLUDED.bot_strategy_id
                 RETURNING *
                 """,
                 {
                     **record,
                     "ingest_source": record.get("ingest_source") or "exchange",
                     "raw_json": Json(_json_safe(record.get("raw_json", {}))),
+                    "execution_mode": record.get("execution_mode"),
+                    "applied_leverage": record.get("applied_leverage"),
+                    "bot_strategy_id": record.get("bot_strategy_id"),
                 },
             ).fetchone()
         if row is None:

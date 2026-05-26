@@ -1067,6 +1067,7 @@ class SignalEngineService:
             causal_trace=causal_trace,
             upstream_event_id=upstream_event_id,
         )
+        bundle["ctx"] = ctx
         self._apply_catalog_resolution(bundle, ctx.symbol)
         take_trade_prediction = self._apply_take_trade_model(bundle, ctx)
         target_projection = self._apply_target_bps_models(bundle, ctx)
@@ -1768,6 +1769,21 @@ class SignalEngineService:
 
     def _apply_meta_decision_kernel(self, bundle: dict[str, Any]) -> None:
         db_row = bundle["db_row"]
+        ctx = bundle.get("ctx")
+        
+        # Kopiere die Gitter- und Bot-Parameter aus structure_state in db_row, damit der Kernel sie lesen kann
+        if ctx and ctx.structure_state:
+            for k in (
+                "bot_trading_supported",
+                "grid_lower_bound",
+                "grid_upper_bound",
+                "grid_count",
+                "trend_breakout_detected",
+                "trend_strength_0_1",
+            ):
+                if k in ctx.structure_state:
+                    db_row[k] = ctx.structure_state[k]
+
         out = apply_meta_decision_kernel(settings=self._settings, db_row=db_row)
         db_row["meta_decision_action"] = out["meta_decision_action"]
         db_row["meta_decision_kernel_version"] = out["meta_decision_kernel_version"]
@@ -1775,6 +1791,16 @@ class SignalEngineService:
         db_row["operator_override_audit_json"] = db_row.get(
             "operator_override_audit_json"
         )
+
+        # Sende den ermittelten execution_mode und die bot_params mit
+        db_row["execution_mode"] = out.get("execution_mode", "STANDARD_FUTURES")
+        db_row["bot_params"] = out.get("bot_params")
+
+        event_payload = bundle.get("event_payload")
+        if isinstance(event_payload, dict):
+            event_payload["execution_mode"] = db_row["execution_mode"]
+            event_payload["bot_params"] = db_row["bot_params"]
+            event_payload["leverage_cap_applied"] = db_row.get("leverage_cap_applied", False)
 
         if out["kernel_forces_do_not_trade"]:
             db_row["trade_action"] = "do_not_trade"

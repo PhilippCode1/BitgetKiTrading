@@ -10,7 +10,7 @@ from shared_py.bitget.instruments import MarginAccountMode, MarketFamily, endpoi
 if TYPE_CHECKING:
     from live_broker.config import LiveBrokerSettings
     from live_broker.execution.models import ExecutionIntentRequest
-    from live_broker.private_rest import BitgetPrivateRestClient
+    from live_broker.private_rest import BitgetPrivateRestClient, BitgetRestResponse
 
 logger = logging.getLogger("live_broker.exchange_client")
 
@@ -228,3 +228,23 @@ class BitgetExchangeClient:
             "demo_mode": self._settings.bitget_demo_enabled,
             "instrument": self._settings.instrument_identity().model_dump(mode="json"),
         }
+
+    def create_futures_grid_bot(
+        self,
+        private_rest: BitgetPrivateRestClient,
+        body: dict[str, Any],
+        *,
+        priority: bool = False,
+    ) -> BitgetRestResponse:
+        """Schnittstelle zur Erstellung eines Futures Grid Bots."""
+        return private_rest.create_futures_grid_bot(body, priority=priority)
+
+    def cancel_strategy_bot(
+        self,
+        private_rest: BitgetPrivateRestClient,
+        body: dict[str, Any],
+        *,
+        priority: bool = True,
+    ) -> BitgetRestResponse:
+        """Schnittstelle zur Loeschung/Stornierung eines aktiven Bots."""
+        return private_rest.cancel_strategy_bot(body, priority=priority)

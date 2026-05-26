@@ -62,7 +62,7 @@ from live_broker.execution.risk_adapter import (
     build_live_trade_risk_decision,
 )
 from live_broker.persistence.repo import LiveBrokerRepository
-from live_broker.private_rest import BitgetRestError
+from live_broker.private_rest import BitgetPrivateRestClient, BitgetRestError
 
 logger = logging.getLogger("live_broker.execution")
 SECURITY = logging.getLogger("live_broker.security")
@@ -139,12 +139,14 @@ class LiveExecutionService:
         repo: LiveBrokerRepository,
         catalog: BitgetInstrumentCatalog | None = None,
         metadata_service: BitgetInstrumentMetadataService | None = None,
+        private_rest_client: BitgetPrivateRestClient | None = None,
     ) -> None:
         self._settings = settings
         self._exchange_client = exchange_client
         self._repo = repo
         self._catalog = catalog
         self._metadata_service = metadata_service
+        self._private_rest_client = private_rest_client or BitgetPrivateRestClient(settings)
         self._truth_state_fn: Callable[[], dict[str, Any]] | None = None
         self._event_bus: RedisStreamBus | None = None
 
@@ -582,6 +584,13 @@ class LiveExecutionService:
             payload=pload,
             trace=ttrace,
         )
+
+        # Import preflight leverage verification guard
+        from live_broker.execution.liquidity_guard import verify_preflight_leverage
+
+        exec_mode = str(signal_payload.get("execution_mode") or "STANDARD_FUTURES").strip().upper()
+        leverage_val = int(intent_eval.leverage or 1)
+
         action, reason = self._decide(
             intent_eval,
             requested_mode,
@@ -592,6 +601,21 @@ class LiveExecutionService:
             shadow_path_simulation=False,
             survival_execution_lock=survival_lock,
         )
+
+        # Millisekundengenauer Preflight Check vor jeglicher API-Absendung oder Entscheidungs-Aufzeichnung!
+        if effective_mode == "live" and action == "live_candidate_recorded":
+            if not verify_preflight_leverage(
+                leverage=leverage_val,
+                mode=exec_mode,
+                symbol=intent_eval.symbol,
+                redis_url=str(self._settings.redis_url or ""),
+            ):
+                # Sofortiger Execution Abort bei unautorisiertem Hebel-Verstoß
+                raise SecurityException(
+                    f"EXECUTION_ABORT: Preflight leverage cap violation! Leverage {leverage_val}x "
+                    f"is strictly illegal for mode {exec_mode}.",
+                    reason="leverage_cap_violation",
+                )
 
         shadow_live_report: dict[str, Any] | None = None
         if effective_mode == "live":
@@ -722,6 +746,48 @@ class LiveExecutionService:
                 "engine_metrics": me,
                 "engine_limits": lim,
             }
+
+        # Strikte Python match-case-Struktur basierend auf dem Feld execution_mode (SCHRITT 2)
+        match exec_mode:
+            case "BOT_GRID" | "BOT_DCA":
+                bot_params = signal_payload.get("bot_params") or {}
+                upper_bound = float(bot_params.get("upper_bound") or 0)
+                lower_bound = float(bot_params.get("lower_bound") or 0)
+                grid_count = int(bot_params.get("grid_count") or 2)
+
+                bot_body = {
+                    "symbol": intent_eval.symbol,
+                    "marginCoin": str(self._settings.effective_margin_coin or "USDT"),
+                    "strategyType": "futures_grid",
+                    "leverage": leverage_val,
+                    "upperPrice": upper_bound,
+                    "lowerPrice": lower_bound,
+                    "gridNum": grid_count,
+                }
+
+                if effective_mode == "live" and action == "live_candidate_recorded" and self._settings.strategy_execution_mode == "auto":
+                    try:
+                        logger.info("Auto-execution of Futures Grid Bot initiated for symbol %s", intent_eval.symbol)
+                        bot_resp = self._private_rest_client.create_futures_grid_bot(bot_body, priority=True)
+                        payload_base["bot_creation_response"] = bot_resp.payload
+                        payload_base["bot_created_live"] = True
+                    except Exception as exc:
+                        logger.exception("Failed to auto-create Futures Grid Bot: %s", exc)
+                        raise BitgetRestError(
+                            classification="transport",
+                            message=f"Auto-creation of Futures Grid Bot failed: {exc}",
+                            retryable=False,
+                        ) from exc
+                else:
+                    logger.info("Bot execution mode %s for symbol %s bypassed real submission. mode=%s action=%s strategy=%s", 
+                                exec_mode, intent_eval.symbol, effective_mode, action, self._settings.strategy_execution_mode)
+
+            case "STANDARD_FUTURES" | _:
+                # Für STANDARD_FUTURES wird das Signal über die bewährte manuelle Order-Executionkette (Limit-/Market-Orders) ausgeführt.
+                # Dies bedeutet, dass wir hier keine direkte Order anlegen, sondern die Standard-Aktionen im orders/service.py
+                # greifen lassen, sobald die API routes_ops /orders/create oder /operator-release aufgerufen wird.
+                pass
+
         record: dict[str, Any] = {
             "source_service": intent_eval.source_service,
             "source_signal_id": intent_eval.signal_id,
@@ -954,6 +1020,55 @@ class LiveExecutionService:
                 message=f"execution_id nicht gefunden: {execution_id}",
                 retryable=False,
             )
+
+        existing_payload = existing.get("payload_json") or {}
+        sig_payload = existing_payload.get("signal_payload") or existing_payload
+        exec_mode = str(sig_payload.get("execution_mode") or "STANDARD_FUTURES").strip().upper()
+        
+        # Falls es sich um ein Bot-Signal handelt, erstellen wir den Bot direkt beim Release (SCHRITT 2)
+        if exec_mode in ("BOT_GRID", "BOT_DCA"):
+            bot_params = sig_payload.get("bot_params") or {}
+            upper_bound = float(bot_params.get("upper_bound") or 0)
+            lower_bound = float(bot_params.get("lower_bound") or 0)
+            grid_count = int(bot_params.get("grid_count") or 2)
+            leverage_val = int(existing.get("leverage") or 1)
+            
+            # Preflight Hebel-Check zur Absicherung beim manuellen Release!
+            from live_broker.execution.liquidity_guard import verify_preflight_leverage
+            if not verify_preflight_leverage(
+                leverage=leverage_val,
+                mode=exec_mode,
+                symbol=str(existing.get("symbol") or "BTCUSDT"),
+                redis_url=str(self._settings.redis_url or ""),
+            ):
+                raise SecurityException(
+                    f"EXECUTION_ABORT: Preflight leverage cap violation on manual release! Leverage {leverage_val}x "
+                    f"is strictly illegal for mode {exec_mode}.",
+                    reason="leverage_cap_violation",
+                )
+            
+            bot_body = {
+                "symbol": str(existing.get("symbol") or "BTCUSDT"),
+                "marginCoin": str(self._settings.effective_margin_coin or "USDT"),
+                "strategyType": "futures_grid",
+                "leverage": leverage_val,
+                "upperPrice": upper_bound,
+                "lowerPrice": lower_bound,
+                "gridNum": grid_count,
+            }
+            
+            try:
+                logger.info("Manual-release execution of Futures Grid Bot initiated for symbol %s", existing.get("symbol"))
+                bot_resp = self._private_rest_client.create_futures_grid_bot(bot_body, priority=True)
+                logger.info("Futures Grid Bot successfully created on manual release. response=%s", bot_resp.payload)
+            except Exception as exc:
+                logger.exception("Failed to create Futures Grid Bot on manual release: %s", exc)
+                raise BitgetRestError(
+                    classification="transport",
+                    message=f"Manual-release creation of Futures Grid Bot failed: {exc}",
+                    retryable=False,
+                ) from exc
+
         rel = self._repo.record_operator_release(
             execution_id=execution_id,
             source=src,

@@ -453,6 +453,9 @@ class BitgetInstrumentCatalogEntry(BitgetInstrumentIdentity):
     session_metadata: dict[str, Any] = Field(default_factory=dict)
     refresh_ts_ms: int | None = None
     raw_metadata: dict[str, Any] = Field(default_factory=dict)
+    bot_trading_supported: bool = False
+    assigned_leverage: int | None = None
+    execution_mode: str | None = None
 
     @field_validator("symbol_aliases", mode="before")
     @classmethod

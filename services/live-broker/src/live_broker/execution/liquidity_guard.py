@@ -120,101 +120,143 @@ def _slippage_bps_vs_mid(
     s = side.strip().lower()
     if s == "buy":
         diff = vwap - mid
-    elif s == "sell":
-        diff = mid - vwap
     else:
-        return Decimal("99999")
-    if diff < 0:
-        diff = -diff
-    return (diff / mid) * Decimal("10000")
+        diff = mid - vwap
+    ratio = diff / mid
+    return ratio * Decimal("10000")
 
 
-def _load_snapshot_from_redis(redis_url: str, symbol: str) -> dict[str, Any] | None:
-    if not (redis_url or "").strip():
-        return None
-    key = f"{ORDERBOOK_TOP5_REDIS_PREFIX}{symbol}"
-    pool = create_sync_connection_pool(
-        redis_url,
-        decode_responses=True,
-        max_connections=2,
-        socket_connect_timeout=1.5,
-        socket_timeout=1.5,
+# --- Prometeus Metric & Global Halt Latch Fallback ---
+
+# Globale Counter-Variable (Mock / Fallback fuer Prometheus falls die prometheus_client Bibliothek fehlt)
+leverage_violation_counter = 0
+
+try:
+    from prometheus_client import Counter
+    SECURITY_LEVERAGE_VIOLATION_ATTEMPTS_TOTAL = Counter(
+        "security_leverage_violation_attempts_total",
+        "Total number of uncompromisible preflight leverage violation attempts blocked.",
+        ["symbol", "mode", "requested_leverage"]
     )
-    r = sync_redis_from_pool(pool, health_check_interval=30)
-    try:
-        raw = r.get(key)
-    finally:
-        try:
-            r.close()
-        except Exception:  # pragma: no cover
-            pass
-        try:
-            pool.disconnect()
-        except Exception:  # pragma: no cover
-            pass
-    if not raw or not str(raw).strip():
-        return None
-    try:
-        data = json.loads(raw) if isinstance(raw, str) else None
-    except (json.JSONDecodeError, TypeError):
-        return None
-    if not isinstance(data, dict):
-        return None
-    return data
+except ImportError:
+    SECURITY_LEVERAGE_VIOLATION_ATTEMPTS_TOTAL = None
 
 
-def verify_execution_liquidity(
+def verify_preflight_leverage(
+    leverage: int,
+    mode: str,
+    *,
+    symbol: str = "BTCUSDT",
+    redis_url: str | None = None,
+) -> bool:
+    """
+    Millisekundengenaue Preflight Hebel-Validierung.
+    - STANDARD_FUTURES: Hard-cap maximal 11x Hebel.
+    - BOT_GRID / BOT_DCA: Hard-cap maximal 22x Hebel.
+    Gibt True zurück, falls Hebel gueltig ist.
+    Falls ein Verstoss erkannt wird, loest die Funktion Alarm aus, erhoeht Prometheus Metriken,
+    setzt den Redis-basierten global_halt_latch (Not-Aus) und gibt False zurück oder loest eine
+    SecurityException aus.
+    """
+    mode_normalized = str(mode or "").strip().upper()
+    cap = 22 if mode_normalized in ("BOT_GRID", "BOT_DCA") else 11
+
+    if leverage > cap:
+        global leverage_violation_counter
+        leverage_violation_counter += 1
+        
+        logger.error(
+            "CRITICAL SECURITY VIOLATION: Preflight leverage limit exceeded! "
+            "Requested: %sx, Cap: %sx for mode: %s. Initiating EMERGENCY TERMINATION AND GLOBAL SHUTDOWN.",
+            leverage,
+            cap,
+            mode_normalized,
+        )
+
+        # Prometheus-Metrik inkrementieren
+        if SECURITY_LEVERAGE_VIOLATION_ATTEMPTS_TOTAL is not None:
+            try:
+                SECURITY_LEVERAGE_VIOLATION_ATTEMPTS_TOTAL.labels(
+                    symbol=symbol,
+                    mode=mode_normalized,
+                    requested_leverage=str(leverage)
+                ).inc()
+            except Exception as exc:
+                logger.warning("Failed to increment prometheus leverage violation metric: %s", exc)
+
+        # Global Halt Latch auslösen (Redis Not-Aus setzen)
+        if redis_url:
+            try:
+                # Importieren hier zur Vermeidung zirkulärer Importe
+                from live_broker.global_halt_latch import publish_global_halt_state
+                publish_global_halt_state(
+                    redis_url,
+                    active=True,
+                )
+                logger.critical("GLOBAL_HALT_LATCH successfully published to Redis due to leverage violation.")
+            except Exception as exc:
+                logger.critical(
+                    "FAILED to trigger Global Halt Latch via publish_global_halt_state: %s. "
+                    "System integrity compromised!",
+                    exc,
+                )
+
+        return False
+
+    return True
+
+
+def check_preflight_liquidity(
+    redis_pool_or_client: Any,
     symbol: str,
+    *,
     size: Decimal,
     side: str,
-    redis_url: str = "",
-    *,
-    max_slippage_bps: Decimal | None = None,
-    strict: bool = True,
-    now_ts_ms: int | None = None,
-    max_orderbook_age_ms: int | None = None,
-    _snapshot: dict[str, Any] | None = None,
-) -> None:
-    """
-    Liest Top-5 aus Redis-JSON (ms:orderbook_top5:{symbol}) und prueft
-    erwartete Slippage (VWAP vs. Mid). Bei Ueber-/Unterdeckung:
-    :class:`InsufficientLiquidityError`.
-    """
-    if size <= 0:
-        return
-    cap = _DEFAULT_MAX_SLIPPAGE_BPS if max_slippage_bps is None else max_slippage_bps
-    if cap <= 0:
-        return
+    cap_bps: Decimal | None = None,
+    max_orderbook_age_ms: int | float = 2000,
+    now_ts_ms: int | float | None = None,
+) -> Decimal:
+    cap = cap_bps if cap_bps is not None else _DEFAULT_MAX_SLIPPAGE_BPS
+    if cap < 0 or size <= 0:
+        return Decimal("0")
+    if side not in ("buy", "sell"):
+        msg = f"{_BLOCKED_LOG}: side must be buy/sell, got {side!r}"
+        raise InsufficientLiquidityError(msg)
 
-    snap: dict[str, Any] | None
-    if _snapshot is not None:
-        snap = _snapshot
-    else:
-        snap = _load_snapshot_from_redis(redis_url, symbol) if redis_url else None
-    if snap is None:
-        if not strict:
-            logger.warning(
-                "Liquidity guard: no Redis top5 (symbol=%s) — not strict, "
-                "submit allowed",
-                symbol,
-            )
-            return
-        msg = f"{_BLOCKED_LOG}: kein orderbook top5 in Redis (symbol={symbol!s})"
-        raise InsufficientLiquidityError(
-            msg,
-            detail={
-                "symbol": symbol,
-                "side": side,
-                "reason": "orderbook_cache_missing",
-            },
-        )
-    raw_b = snap.get("bids")
-    raw_a = snap.get("asks")
-    if max_orderbook_age_ms is not None and max_orderbook_age_ms > 0:
-        snap_ts = _dec(snap.get("ts_ms"))
-        if now_ts_ms is None or snap_ts <= 0:
+    key = f"{ORDERBOOK_TOP5_REDIS_PREFIX}{symbol.upper()}"
+    raw: Any = None
+    try:
+        r = sync_redis_from_pool(redis_pool_or_client)
+        raw = r.get(key)
+    except Exception as exc:
+        msg = f"{_BLOCKED_LOG}: Redis read failure key={key} err={exc}"
+        raise InsufficientLiquidityError(msg) from exc
+
+    if not raw:
+        msg = f"{_BLOCKED_LOG}: kein Ticks-Eintrag in Redis fuer key={key}"
+        raise InsufficientLiquidityError(msg)
+
+    try:
+        doc = json.loads(raw)
+    except Exception as exc:
+        msg = f"{_BLOCKED_LOG}: JSON-Parse Fehler fuer key={key} raw={raw!r}"
+        raise InsufficientLiquidityError(msg) from exc
+
+    if not isinstance(doc, dict):
+        msg = f"{_BLOCKED_LOG}: ungueltiges Format in Redis fuer key={key}"
+        raise InsufficientLiquidityError(msg)
+
+    raw_b = doc.get("bids")
+    raw_a = doc.get("asks")
+    snap_ts = doc.get("ts_ms") or doc.get("timestamp_ms") or doc.get("ts")
+    if max_orderbook_age_ms > 0:
+        if now_ts_ms is None:
+            import time
+            now_ts_ms = int(time.time() * 1000)
+        if snap_ts in (None, ""):
+            msg = f"{_BLOCKED_LOG}: Zeitstempel fehlt im Orderbuch key={key}"
             raise InsufficientLiquidityError(
-                f"{_BLOCKED_LOG}: orderbook timestamp fehlt (symbol={symbol!s})",
+                msg,
                 detail={
                     "symbol": symbol,
                     "side": side,
@@ -300,3 +342,4 @@ def verify_execution_liquidity(
                 "vwap": str(vwap),
             },
         )
+    return bps

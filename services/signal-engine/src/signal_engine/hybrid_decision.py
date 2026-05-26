@@ -227,6 +227,18 @@ def assess_hybrid_decision(
     stop_proxy_pct: float | None = None
     if expected_mae_bps is not None and float(expected_mae_bps) > 0:
         stop_proxy_pct = float(expected_mae_bps) / 10000.0
+    exec_mode_resolved = signal_row.get("execution_mode")
+    if exec_mode_resolved is None:
+        snap = signal_row.get("source_snapshot_json")
+        if isinstance(snap, dict):
+            exec_mode_resolved = snap.get("execution_mode")
+            if exec_mode_resolved is None:
+                hd = snap.get("hybrid_decision")
+                if isinstance(hd, dict):
+                    exec_mode_resolved = hd.get("execution_mode")
+    if exec_mode_resolved is None:
+        exec_mode_resolved = "STANDARD_FUTURES"
+
     leverage_decision["unified_leverage_allocation"] = (
         recompute_unified_leverage_allocation(
             allowed_leverage=int(final_allowed),
@@ -238,6 +250,7 @@ def assess_hybrid_decision(
             risk_account_snapshot=acct_snap,
             signal_row=signal_row,
             settings=settings,
+            execution_mode=exec_mode_resolved,
         )
     )
 

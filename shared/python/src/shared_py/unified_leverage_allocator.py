@@ -98,11 +98,12 @@ def recompute_unified_leverage_allocation(
     risk_account_snapshot: Mapping[str, Any],
     signal_row: Mapping[str, Any],
     settings: Any,
+    execution_mode: str,
 ) -> dict[str, Any]:
+    leverage_hard_cap = 22 if execution_mode in ("BOT_GRID", "BOT_DCA") else 11
     min_lev = int(getattr(settings, "risk_allowed_leverage_min", 7))
-    risk_max = int(
-        max(min_lev, min(int(getattr(settings, "risk_allowed_leverage_max", 75)), 75)),
-    )
+    risk_max = int(max(min_lev, min(int(getattr(settings, "risk_allowed_leverage_max", 75)), leverage_hard_cap)))
+    
     allowed = max(0, min(risk_max, int(allowed_leverage)))
     rec = recommended_leverage
     if rec is not None:
@@ -357,6 +358,7 @@ def refresh_unified_leverage_allocation_in_snapshot(
     settings: Any,
     governor: Mapping[str, Any] | None = None,
     risk_account_snapshot: Mapping[str, Any] | None = None,
+    execution_mode: str | None = None,
 ) -> dict[str, Any] | None:
     """Schreibt frische Unified-Allocation in source_snapshot.hybrid_decision.leverage_allocator."""
     snap = db_row.get("source_snapshot_json")
@@ -391,6 +393,17 @@ def refresh_unified_leverage_allocation_in_snapshot(
     meta_lane = str(db_row.get("meta_trade_lane") or hd.get("meta_trade_lane") or "")
     trade_action = str(db_row.get("trade_action") or "")
 
+    # Resolve execution mode
+    exec_mode_resolved = execution_mode
+    if exec_mode_resolved is None:
+        exec_mode_resolved = db_row.get("execution_mode")
+    if exec_mode_resolved is None:
+        exec_mode_resolved = snap.get("execution_mode")
+        if exec_mode_resolved is None:
+            exec_mode_resolved = hd.get("execution_mode")
+    if exec_mode_resolved is None:
+        exec_mode_resolved = "STANDARD_FUTURES"
+
     unified = recompute_unified_leverage_allocation(
         allowed_leverage=allowed,
         recommended_leverage=rec,
@@ -401,6 +414,7 @@ def refresh_unified_leverage_allocation_in_snapshot(
         risk_account_snapshot=acct if isinstance(acct, dict) else {},
         signal_row=db_row,
         settings=settings,
+        execution_mode=exec_mode_resolved,
     )
     la2 = dict(la)
     la2["unified_leverage_allocation"] = unified

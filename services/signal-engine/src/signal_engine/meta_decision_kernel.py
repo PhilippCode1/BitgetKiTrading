@@ -24,6 +24,7 @@ MDK_STOP_EXECUTABLE = "mdk_abstain_stop_executability"
 MDK_PORTFOLIO_RISK = "mdk_abstain_portfolio_risk_universal"
 MDK_SHADOW_DIVERGENCE = "mdk_abstain_shadow_live_divergence"
 MDK_NEGATIVE_EU = "mdk_abstain_negative_expected_utility"
+MDK_GRID_TREND_BREAKOUT = "mdk_abstain_grid_trend_breakout"
 
 
 def _clamp01(x: float) -> float:
@@ -35,6 +36,15 @@ def _f(v: Any) -> float | None:
         if v is None:
             return None
         return float(v)
+    except (TypeError, ValueError):
+        return None
+
+
+def _i(v: Any) -> int | None:
+    try:
+        if v is None:
+            return None
+        return int(v)
     except (TypeError, ValueError):
         return None
 
@@ -181,6 +191,64 @@ def apply_meta_decision_kernel(
 
     evidence = _collect_evidence_abstentions(settings, db_row, snap, hd, spec_adv, rg)
 
+    # --- Dreistufige Routing-Weiche fuer Bot-Trading vs. Fallback ---
+    bot_supported = bool(db_row.get("bot_trading_supported") or snap.get("bot_trading_supported"))
+    trend_strength = _f(db_row.get("trend_strength_0_1"))
+    if trend_strength is None:
+        trend_strength = _f(snap.get("trend_strength_0_1"))
+    
+    trend_breakout_detected = bool(
+        db_row.get("trend_breakout_detected")
+        or snap.get("trend_breakout_detected")
+        or (trend_strength is not None and trend_strength > 0.65)
+    )
+
+    preliminary_mode = "STANDARD_FUTURES"
+    bot_params = None
+
+    if bot_supported:
+        market_regime = str(db_row.get("market_regime") or snap.get("market_regime") or "").strip().lower()
+        is_sideways = market_regime in ("range", "consolidation", "sideways") or _f(db_row.get("structure_score")) in (None, 0.0) or _f(db_row.get("structure_score")) < 60.0
+        
+        if is_sideways:
+            preliminary_mode = "BOT_GRID"
+            if trend_breakout_detected:
+                evidence.append(MDK_GRID_TREND_BREAKOUT)
+                preliminary_mode = "STANDARD_FUTURES"
+        else:
+            preliminary_mode = "BOT_DCA"
+
+    # Gitter-Parameter kulissieren, falls BOT_GRID aktiv ist
+    if preliminary_mode == "BOT_GRID":
+        bp = db_row.get("bot_params") or snap.get("bot_params")
+        if isinstance(bp, dict):
+            bot_params = {
+                "upper_bound": float(bp.get("upper_bound", 0.0)),
+                "lower_bound": float(bp.get("lower_bound", 0.0)),
+                "grid_count": int(bp.get("grid_count", 20)),
+            }
+        else:
+            # Dynamische Bounds aus structure_score (Falls dort berechnet)
+            lo = _f(db_row.get("grid_lower_bound") or snap.get("grid_lower_bound"))
+            up = _f(db_row.get("grid_upper_bound") or snap.get("grid_upper_bound"))
+            cnt = _i(db_row.get("grid_count") or snap.get("grid_count")) or 20
+            
+            if lo is not None and up is not None:
+                bot_params = {
+                    "upper_bound": up,
+                    "lower_bound": lo,
+                    "grid_count": cnt,
+                }
+            else:
+                # Absoluter mathematischer Fallback
+                close = _f(db_row.get("last_close") or snap.get("last_close") or db_row.get("close") or 50000.0)
+                bot_params = {
+                    "upper_bound": round(close * 1.1, 2),
+                    "lower_bound": round(close * 0.9, 2),
+                    "grid_count": 30,
+                }
+
+    # expected utility proxy
     eu01, eu_breakdown = expected_utility_proxy_0_1(db_row, hd)
     models_ok = db_row.get("take_trade_prob") is not None and all(
         db_row.get(k) is not None
@@ -218,6 +286,8 @@ def apply_meta_decision_kernel(
         "expected_utility_breakdown": eu_breakdown,
         "abstention_codes_evidence": evidence,
         "policy_layer_hint": policy_layer,
+        "execution_mode": preliminary_mode,
+        "bot_params": bot_params,
         "decision_control_flow_semantics_de": (
             "Kernel fusioniert Hybrid, Risk Engine, Spezialisten (Family/Cluster/Regime/Playbook), "
             "Stop/Microstructure, Datenqualitaet und Unsicherheit. "
@@ -234,6 +304,8 @@ def apply_meta_decision_kernel(
             "kernel_forced_do_not_trade": kernel_forces_dnt,
             "live_execution_block_count": len(live_blocks),
             "operator_gate_required": operator_gate,
+            "bot_trading_supported": bot_supported,
+            "trend_breakout_detected": trend_breakout_detected,
         },
     }
 
@@ -243,4 +315,6 @@ def apply_meta_decision_kernel(
         "meta_decision_bundle_json": bundle,
         "kernel_forces_do_not_trade": kernel_forces_dnt,
         "kernel_abstention_codes": evidence,
+        "execution_mode": preliminary_mode,
+        "bot_params": bot_params,
     }

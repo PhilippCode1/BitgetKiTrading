@@ -36,6 +36,15 @@ export type FundingUpdatePayload = { [k: string]: unknown };
 export type StructureUpdatedPayload = { [k: string]: unknown };
 export type DrawingUpdatedPayload = { [k: string]: unknown };
 
+export type ExecutionMode = "BOT_GRID" | "BOT_DCA" | "STANDARD_FUTURES";
+
+export type BotParams = {
+  upper_bound: number;
+  lower_bound: number;
+  grid_count: number;
+  trailing_enabled: boolean;
+};
+
 export type SignalCreatedPayload = {
   signal_id: string;
   direction: string;
@@ -44,6 +53,9 @@ export type SignalCreatedPayload = {
   regime_confidence_0_1?: number;
   signal_strength_0_100?: number;
   probability_0_1?: number;
+  execution_mode: ExecutionMode;
+  bot_params?: BotParams;
+  leverage_cap_applied: boolean;
 };
 
 export type TradeLifecyclePayload = {

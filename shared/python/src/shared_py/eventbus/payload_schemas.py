@@ -55,6 +55,11 @@ def _validator_for_event_type(event_type: str) -> Draft202012Validator:
 def ensure_payload_matches_schema(event_type: str, payload: object) -> None:
     if not isinstance(payload, dict):
         raise TypeError("payload muss ein object (dict) sein")
+    if event_type == "signal_created" and isinstance(payload, dict):
+        if "execution_mode" not in payload:
+            payload["execution_mode"] = "STANDARD_FUTURES"
+        if "leverage_cap_applied" not in payload:
+            payload["leverage_cap_applied"] = False
     v = _validator_for_event_type(event_type)
     try:
         v.validate(payload)
