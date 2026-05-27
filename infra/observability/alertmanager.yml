@@ -1,0 +1,29 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: default_receiver
+  group_by: [alertname, namespace, service]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    # --- Critical alerts go to PagerDuty Critical Mock ---
+    - matchers:
+        - severity = "critical"
+      receiver: pagerduty_critical
+      group_wait: 10s
+      repeat_interval: 1h
+
+receivers:
+  - name: default_receiver
+    email_configs:
+      - to: ${ALERTMANAGER_EMAIL_DEFAULT_TO:-ops-alerts@example.invalid}
+        from: ${ALERTMANAGER_EMAIL_FROM:-alertmanager@example.invalid}
+        headers:
+          Subject: "[BTC-AI] {{ .GroupLabels.alertname }}"
+
+  - name: pagerduty_critical
+    webhook_configs:
+      - url: ${ALERTMANAGER_WEBHOOK_P0_URL:-http://host.docker.internal:9999/alert-mock}
+        send_resolved: true

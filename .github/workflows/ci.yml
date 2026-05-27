@@ -93,6 +93,13 @@ jobs:
           python3 tools/validate_env_profile.py --env-file .env.shadow.example --profile shadow --template
           python3 tools/validate_env_profile.py --env-file .env.production.example --profile production --template
 
+      - name: ENV 10/10 + Go-Live ops preflight (production template)
+        run: |
+          set -euo pipefail
+          python3 tools/check_env_10_10_safety.py --env-file .env.production.example --profile production --template
+          python3 tools/go_live_ops_preflight.py --env-file .env.production.example
+          python3 tools/go_live_launch_checklist.py --env-file .env.production.example --skip-audit
+
       - name: Release sanity (Secrets / Ballast / Compose-Bindings)
         run: python tools/release_sanity_checks.py
 
@@ -112,6 +119,8 @@ jobs:
           tools/check_coverage_gates.py tools/release_sanity_checks.py
           tools/validate_env_profile.py tools/pip_audit_supply_chain_gate.py
           tools/check_production_env_template_security.py
+          tools/go_live_ops_preflight.py
+          tools/go_live_launch_checklist.py
           tools/check_ai_operator_assistant_safety.py
           tools/modul_mate_selfcheck.py tools/production_selfcheck.py
           scripts/release_gate.py

@@ -61,6 +61,7 @@ from live_broker.execution.risk_adapter import (
     RISK_VPIN_HALT,
     build_live_trade_risk_decision,
 )
+from live_broker.tenant_gate import gate_tenant_from_intent
 from live_broker.persistence.repo import LiveBrokerRepository
 from live_broker.private_rest import BitgetPrivateRestClient, BitgetRestError
 
@@ -208,14 +209,21 @@ class LiveExecutionService:
         except Exception as rec_err:  # noqa: BLE001 — Sicherheits-Pfad: nie Exchange
             logger.warning("audit_trail SECURITY_INCIDENT failed: %s", rec_err)
 
-    def _assert_db_live_execution_policy(self) -> None:
+    def _assert_db_live_execution_policy(
+        self,
+        intent: ExecutionIntentRequest | None = None,
+    ) -> None:
         """
         Unbedingt vor jeder Bitget-I/O in evaluate_intent (LIVE-Modus).
         Nicht deaktivierbar: MODUL_MATE-Flags gelten u. a. für Orders, nicht
         um MANUAL-Mirror-Live hier zu zirkumventieren.
         """
         dsn = (self._settings.database_url or "").strip()
-        tid = (self._settings.modul_mate_gate_tenant_id or "default").strip()
+        tid = gate_tenant_from_intent(
+            config_tenant_id=self._settings.modul_mate_gate_tenant_id,
+            trace=intent.trace if intent is not None else None,
+            payload=intent.payload if intent is not None else None,
+        )
         if not dsn:
             self._log_security_incident_attempt(
                 reason="database_url_required_for_gates", policy_exc=None, extra={}
@@ -530,7 +538,7 @@ class LiveExecutionService:
         requested_mode = intent_eval.requested_runtime_mode
         effective_mode = self._effective_runtime_mode(requested_mode)
         if effective_mode == "live":
-            self._assert_db_live_execution_policy()
+            self._assert_db_live_execution_policy(intent)
 
         preview = self._exchange_client.build_order_preview(intent_eval)
         probe = (
@@ -1198,6 +1206,13 @@ class LiveExecutionService:
                 payload.get("mirror_leverage")
             ),
         }
+        gate_tid = gate_tenant_from_intent(
+            config_tenant_id=self._settings.modul_mate_gate_tenant_id,
+            trace=envelope.trace,
+            payload=payload if isinstance(payload, dict) else None,
+        )
+        if gate_tid:
+            trace_body["tenant_id"] = gate_tid
         if self._settings.live_predatory_passive_maker_default:
             pm0 = trace_body.get("predatory_passive_maker")
             pm0d = dict(pm0) if isinstance(pm0, dict) else {}

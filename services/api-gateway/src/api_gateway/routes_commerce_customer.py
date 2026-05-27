@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import logging
 import re
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Annotated, Any
 from uuid import UUID
 
 import psycopg
 import psycopg.errors
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Body
 from fastapi.responses import Response
 from psycopg.rows import dict_row
 from pydantic import BaseModel, Field
@@ -29,11 +29,24 @@ from shared_py.customer_telegram_repo import (
     mask_chat_id,
 )
 
+from shared_py.modul_mate_db_gates import (
+    fetch_tenant_modul_mate_gates,
+    go_live_cooldown_sec,
+    tenant_has_active_live_commercial_contract,
+)
+
 from api_gateway.audit import record_gateway_audit_line
 from api_gateway.auth import (
     GatewayAuthContext,
     require_billing_admin,
     require_billing_read,
+    require_customer_role,
+)
+from api_gateway.bitget_verify import verify_bitget_api_keys_for_tenant
+from api_gateway.go_live_step_up import assert_go_live_step_up_verified
+from api_gateway.provider_ops_summary import (
+    bitget_credentials_ready_for_tenant,
+    bitget_env_hints_for_customer_portal,
 )
 from api_gateway.billing.daily_run import build_billing_status_public
 from api_gateway.config import get_gateway_settings
@@ -57,6 +70,7 @@ from api_gateway.db_customer_portal import (
     fetch_payment_events,
     fetch_portal_audit_recent,
     fetch_portal_identity_security,
+    upsert_portal_identity_from_oidc,
     insert_payment_event,
     sanitize_display_name,
     update_customer_display_name,
@@ -94,7 +108,16 @@ def _resolve_target_tenant(ctx: GatewayAuthContext, query_tenant: str | None) ->
     default_tid = settings.commercial_default_tenant_id.strip() or "default"
     if ctx.can_admin_write() and query_tenant and query_tenant.strip():
         return query_tenant.strip()
-    return ctx.effective_tenant(default_tenant_id=default_tid)
+    tid = ctx.effective_tenant(default_tenant_id=default_tid)
+    if not tid or (tid == "default" and ctx.is_customer_portal_jwt()):
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "TENANT_ID_REQUIRED",
+                "message": "Fuer Kunden-Commerce ist eine gueltige tenant_id erforderlich.",
+            },
+        )
+    return tid
 
 
 def _mask_checkout_ref(ref: str, *, keep: int = 8) -> str:
@@ -740,7 +763,7 @@ def customer_integrations(
         "tenant_id_masked": _mask_tenant_id(tid),
         "integration": snap,
         "telegram_onboarding": tg_public,
-        "bitget_env": bitget_env_hints_for_customer_portal(settings),
+        "bitget_env": bitget_env_hints_for_customer_portal(settings, tenant_id=tid),
     }
 
 
@@ -1360,6 +1383,367 @@ def admin_integrations_patch(
         extra={"tenant_id": tid},
     )
     return {"status": "ok"}
+
+
+# Stabile Error-Codes fuer Go-Live-Preflight (vom Frontend ausgewertet).
+LIVE_EXECUTION_ERROR_CODES = (
+    "MISSING_API_KEYS",
+    "INVALID_API_KEYS",
+    "EMAIL_NOT_VERIFIED",
+    "CONTRACT_NOT_SIGNED",
+    "INSUFFICIENT_BALANCE",
+    "ACCOUNT_SUSPENDED",
+    "ACCOUNT_PAUSED",
+    "STEP_UP_REQUIRED",
+    "STEP_UP_INVALID",
+)
+
+
+class GoLiveEnableBody(BaseModel):
+    step_up_code: str | None = Field(
+        default=None,
+        max_length=32,
+        description="Authenticator-Code oder Step-Up-PIN (wenn GO_LIVE_REQUIRE_STEP_UP=true).",
+    )
+
+
+class OidcIdentitySyncBody(BaseModel):
+    email_verified: bool = Field(
+        default=False,
+        description="True wenn IdP email_verified-Claim gesetzt ist.",
+    )
+    mfa_totp_enabled: bool = Field(
+        default=False,
+        description="True wenn IdP MFA/TOTP aktiv meldet.",
+    )
+
+
+@customer_router.post(
+    "/identity/oidc-sync",
+    summary="Portal-Identitaet nach OIDC-Login synchronisieren",
+)
+def customer_identity_oidc_sync(
+    auth: Annotated[GatewayAuthContext, Depends(require_customer_role)],
+    body: OidcIdentitySyncBody,
+) -> dict[str, str]:
+    tid = _live_execution_tenant_for_self_service(auth)
+    dsn = get_database_url()
+    with gateway_psycopg(
+        dsn, row_factory=dict_row, connect_timeout=5, tenant_id=tid
+    ) as conn:
+        _require_tenant_commercial_state(conn, tid)
+        with conn.transaction():
+            upsert_portal_identity_from_oidc(
+                conn,
+                tenant_id=tid,
+                email_verified=bool(body.email_verified),
+                mfa_totp_enabled=bool(body.mfa_totp_enabled),
+            )
+    record_gateway_audit_line(
+        "commerce_customer_identity_oidc_sync",
+        extra={
+            "tenant_id": tid,
+            "email_verified": bool(body.email_verified),
+            "mfa_totp_enabled": bool(body.mfa_totp_enabled),
+        },
+    )
+    return {"status": "ok", "tenant_id": tid}
+
+
+def _live_execution_tenant_for_self_service(ctx: GatewayAuthContext) -> str:
+    """
+    Self-Service Go-Live: ausschliesslich der eigene Tenant aus dem JWT.
+    Admin-/S2S-Header duerfen *nicht* fuer fremde Tenants aktivieren — sonst
+    waere die Verbindung 'Frontend-Cookie -> fremder Tenant' moeglich.
+    """
+    tid = (ctx.tenant_id or "").strip()
+    if not tid or tid == "default":
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "TENANT_ID_REQUIRED",
+                "message": (
+                    "Self-Service Go-Live erfordert ein Kunden-JWT mit gueltigem "
+                    "tenant_id-Claim (keine Default- oder Admin-Tenant-Override)."
+                ),
+            },
+        )
+    if not ctx.is_customer_portal_jwt():
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "CUSTOMER_PORTAL_REQUIRED",
+                "message": (
+                    "Go-Live-Aktivierung ist ausschliesslich aus dem Kunden-Portal "
+                    "(portal_roles=customer) erlaubt — nicht aus Admin-/S2S-Pfaden."
+                ),
+            },
+        )
+    return tid
+
+
+@customer_router.get(
+    "/live-execution/preflight",
+    summary="Go-Live UI-Preflight (Readiness-Hinweise, keine Mutation)",
+)
+def customer_live_execution_preflight(
+    auth: Annotated[GatewayAuthContext, Depends(require_customer_role)],
+) -> dict[str, Any]:
+    tid = _live_execution_tenant_for_self_service(auth)
+    settings = get_gateway_settings()
+    _ensure_commercial(settings)
+    from api_gateway.go_live_step_up import go_live_step_up_required
+
+    payload: dict[str, Any] = {
+        "step_up_required": go_live_step_up_required(settings),
+        "cooldown_sec": go_live_cooldown_sec(),
+        "demo_mode_active": bool(settings.bitget_demo_enabled),
+    }
+
+    if settings.bitget_demo_enabled:
+        payload.update(
+            {
+                "api_keys_ready": False,
+                "contract_signed": False,
+                "balance_sufficient": False,
+                "email_verified": None,
+                "account_paused": False,
+                "account_suspended": False,
+                "ready": False,
+                "blockers": ["DEMO_MODE_ACTIVE"],
+            }
+        )
+        return payload
+
+    keys_ok, _gaps = bitget_credentials_ready_for_tenant(tid, demo=False)
+    payload["api_keys_ready"] = keys_ok
+
+    min_balance = Decimal(
+        str(settings.billing_min_balance_new_trade_usd.strip() or "50")
+    )
+    blockers: list[str] = []
+    if not keys_ok:
+        blockers.append("MISSING_API_KEYS")
+
+    dsn = get_database_url()
+    with gateway_psycopg(
+        dsn, row_factory=dict_row, connect_timeout=5, tenant_id=tid
+    ) as conn:
+        contract_signed = tenant_has_active_live_commercial_contract(
+            conn, tenant_id=tid
+        )
+        payload["contract_signed"] = contract_signed
+        if not contract_signed:
+            blockers.append("CONTRACT_NOT_SIGNED")
+
+        prepaid = fetch_prepaid_balance_list_usd(conn, tenant_id=tid)
+        balance_ok = prepaid >= min_balance
+        payload["balance_sufficient"] = balance_ok
+        payload["min_balance_usd"] = str(min_balance)
+        payload["current_balance_usd"] = str(prepaid)
+        if not balance_ok:
+            blockers.append("INSUFFICIENT_BALANCE")
+
+        email_verified: bool | None = None
+        if settings.go_live_require_email_verified:
+            identity = fetch_portal_identity_security(conn, tenant_id=tid)
+            email_verified = bool(
+                identity is not None and identity.get("email_verified_at") is not None
+            )
+            payload["email_verified"] = email_verified
+            if not email_verified:
+                blockers.append("EMAIL_NOT_VERIFIED")
+        else:
+            payload["email_verified"] = None
+
+        gates = fetch_tenant_modul_mate_gates(conn, tenant_id=tid)
+        account_paused = bool(gates.account_paused) if gates else False
+        account_suspended = bool(gates.account_suspended) if gates else False
+        payload["account_paused"] = account_paused
+        payload["account_suspended"] = account_suspended
+        if account_paused:
+            blockers.append("ACCOUNT_PAUSED")
+        if account_suspended:
+            blockers.append("ACCOUNT_SUSPENDED")
+
+    payload["blockers"] = blockers
+    payload["ready"] = len(blockers) == 0
+    return payload
+
+
+@customer_router.post(
+    "/live-execution/enable",
+    summary="Aktiviert den Echtgeld-Handel fuer den eigenen Tenant (Self-Service)",
+    description=(
+        "Erfordert Kunden-JWT (portal_roles=customer) mit gueltigem tenant_id. "
+        "Preflight-Checks: API-Keys, abgeschlossener commercial_contract_workflow, "
+        "Mindestguthaben. Fail-Closed 400 mit stabilem error-code."
+    ),
+)
+def customer_live_execution_enable(
+    request: Request,
+    auth: Annotated[GatewayAuthContext, Depends(require_customer_role)],
+    body: GoLiveEnableBody | None = Body(default=None),
+) -> dict[str, Any]:
+    settings = get_gateway_settings()
+    _ensure_commercial(settings)
+    tid = _live_execution_tenant_for_self_service(auth)
+    parsed_body = body if isinstance(body, GoLiveEnableBody) else None
+    assert_go_live_step_up_verified(
+        step_up_code=parsed_body.step_up_code if parsed_body else None,
+        settings=settings,
+    )
+
+    demo = bool(settings.bitget_demo_enabled)
+    if demo:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "DEMO_MODE_ACTIVE",
+                "message": (
+                    "BITGET_DEMO_ENABLED=true: Echtgeld-Aktivierung ist im Demo-Modus "
+                    "nicht erlaubt. Demo-/Live-Profile sind serverseitig getrennt."
+                ),
+            },
+        )
+    keys_ok, _gaps = bitget_credentials_ready_for_tenant(tid, demo=False)
+    if not keys_ok:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "MISSING_API_KEYS",
+                "message": "In der Server-Umgebung fehlen die erforderlichen Bitget Live API-Keys.",
+            },
+        )
+        
+    if not verify_bitget_api_keys_for_tenant(tid):
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "INVALID_API_KEYS",
+                "message": "Die Bitget API-Keys sind ungueltig, abgelaufen oder koennen nicht verifiziert werden.",
+            },
+        )
+
+    dsn = get_database_url()
+    with gateway_psycopg(
+        dsn, row_factory=dict_row, connect_timeout=5, tenant_id=tid
+    ) as conn:
+        _require_tenant_commercial_state(conn, tid)
+
+        if settings.go_live_require_email_verified:
+            identity = fetch_portal_identity_security(conn, tenant_id=tid)
+            if identity is None or identity.get("email_verified_at") is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "error": "EMAIL_NOT_VERIFIED",
+                        "message": (
+                            "E-Mail-Verifikation ist fuer Go-Live erforderlich. "
+                            "Bitte zuerst die Identitaet im Portal abschliessen."
+                        ),
+                    },
+                )
+
+        if not tenant_has_active_live_commercial_contract(conn, tenant_id=tid):
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": "CONTRACT_NOT_SIGNED",
+                    "message": (
+                        "Es liegt kein vollstaendig abgeschlossener commercial_contract_workflow "
+                        "(admin_review_complete) vor."
+                    ),
+                },
+            )
+
+        gates_pre = fetch_tenant_modul_mate_gates(conn, tenant_id=tid)
+        if gates_pre is not None:
+            if gates_pre.account_suspended:
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "error": "ACCOUNT_SUSPENDED",
+                        "message": "Account ist gesperrt. Go-Live nicht moeglich.",
+                    },
+                )
+            if gates_pre.account_paused:
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "error": "ACCOUNT_PAUSED",
+                        "message": "Account ist pausiert. Go-Live aktuell nicht moeglich.",
+                    },
+                )
+
+        prepaid = fetch_prepaid_balance_list_usd(conn, tenant_id=tid)
+        min_balance = Decimal(
+            str(settings.billing_min_balance_new_trade_usd.strip() or "50")
+        )
+        if prepaid < min_balance:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": "INSUFFICIENT_BALANCE",
+                    "message": (
+                        f"Guthaben {prepaid} USD unter Mindestgrenze {min_balance} USD."
+                    ),
+                    "min": str(min_balance),
+                    "current": str(prepaid),
+                },
+            )
+
+        with conn.transaction():
+            if gates_pre is None:
+                conn.execute(
+                    """
+                    INSERT INTO app.tenant_modul_mate_gates (
+                        tenant_id, trial_active, contract_accepted,
+                        admin_live_trading_granted, subscription_active,
+                        account_paused, account_suspended, live_go_live_at, updated_ts
+                    )
+                    VALUES (%s, false, true, true, true, false, false, now(), now())
+                    """,
+                    (tid,),
+                )
+            else:
+                conn.execute(
+                    """
+                    UPDATE app.tenant_modul_mate_gates
+                    SET admin_live_trading_granted = true,
+                        contract_accepted = true,
+                        live_go_live_at = now(),
+                        updated_ts = now()
+                    WHERE tenant_id = %s
+                    """,
+                    (tid,),
+                )
+
+    cooldown = go_live_cooldown_sec()
+    shadow_only_until: str | None = None
+    if cooldown > 0:
+        shadow_only_until = (
+            datetime.now(tz=UTC) + timedelta(seconds=cooldown)
+        ).isoformat()
+
+    record_gateway_audit_line(
+        request,
+        auth,
+        "commerce_customer_live_execution_enabled",
+        extra={
+            "tenant_id": tid,
+            "actor": auth.actor,
+            "shadow_only_until": shadow_only_until,
+            "cooldown_sec": cooldown,
+        },
+    )
+    return {
+        "status": "ok",
+        "live_trading_allowed": True,
+        "tenant_id": tid,
+        "shadow_only_until": shadow_only_until,
+        "cooldown_sec": cooldown,
+    }
 
 
 from api_gateway.customer_performance_attach import (  # noqa: E402

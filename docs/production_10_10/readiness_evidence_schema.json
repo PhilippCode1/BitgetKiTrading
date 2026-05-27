@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "bitget-btc-ai/production-readiness-evidence-schema/v1",
+  "title": "Production Readiness Evidence Schema",
+  "description": "Maschinenlesbare Kategorie- und Level-Definition fuer tools/production_readiness_audit.py (L0–L5). Externe L4/L5-Nachweise werden ueber docs/release_evidence/*.md mit readiness_mark-Markern referenziert.",
+  "type": "object",
+  "required": ["version", "levels", "categories", "release_evidence_marker"],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 1
+    },
+    "levels": {
+      "type": "object",
+      "description": "Evidenz-Level: 0=fehlend, 1=Teil-Doku, 2=Repo-Tooling, 3=CI+Tests, 4/5=externe Betriebs-/Rechts-Evidence",
+      "properties": {
+        "L0": { "const": "missing" },
+        "L1": { "const": "partial_doc" },
+        "L2": { "const": "repo_tooling" },
+        "L3": { "const": "ci_verified_repo" },
+        "L4": { "const": "external_ops_evidence" },
+        "L5": { "const": "external_signed_compliance" }
+      }
+    },
+    "release_evidence_marker": {
+      "type": "object",
+      "description": "Regex in docs/release_evidence Markdown-Dateien",
+      "properties": {
+        "pattern": {
+          "type": "string",
+          "const": "readiness_mark: L(4|5)  category=<category_id>"
+        },
+        "example": {
+          "type": "string",
+          "const": "readiness_mark: L4  category=disaster_recovery"
+        }
+      }
+    },
+    "categories": {
+      "type": "array",
+      "minItems": 12,
+      "items": {
+        "type": "object",
+        "required": ["id", "label_de", "strict_min", "external"],
+        "properties": {
+          "id": { "type": "string" },
+          "label_de": { "type": "string" },
+          "strict_min": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 5
+          },
+          "external": { "type": "boolean" },
+          "mark_aliases": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    }
+  },
+  "categories": [
+    {
+      "id": "ci_branch",
+      "label_de": "CI/Workflow & Merge-Release-Gates (Definition im Repo)",
+      "strict_min": 3,
+      "external": false
+    },
+    {
+      "id": "github_branch_protection",
+      "label_de": "GitHub Branch-Protection (Org, nicht klonpruefbar)",
+      "strict_min": 0,
+      "external": true
+    },
+    {
+      "id": "disaster_recovery",
+      "label_de": "Disaster Recovery (Backup/Restore-Realitaet)",
+      "strict_min": 4,
+      "external": false,
+      "mark_aliases": ["dr"]
+    },
+    {
+      "id": "shadow_burn_in",
+      "label_de": "Shadow / Burn-in Strecke",
+      "strict_min": 4,
+      "external": false,
+      "mark_aliases": ["shadow"]
+    },
+    {
+      "id": "alert_routing",
+      "label_de": "Alert-Routing (Monitor/Outbox/Operator)",
+      "strict_min": 3,
+      "external": false
+    },
+    {
+      "id": "security_audit",
+      "label_de": "Sicherheitspruefung (Supply-Tooling vs. ext. Audit)",
+      "strict_min": 4,
+      "external": false,
+      "mark_aliases": ["security"]
+    },
+    {
+      "id": "customer_ui",
+      "label_de": "Kunden-UI (Dashboard) + E2E",
+      "strict_min": 3,
+      "external": false
+    },
+    {
+      "id": "secrets_vault",
+      "label_de": "Secrets, ENV-Validierung, Vault-Realitaet (Repo-Anteil)",
+      "strict_min": 4,
+      "external": false,
+      "mark_aliases": ["secrets"]
+    },
+    {
+      "id": "live_mirror",
+      "label_de": "Live-Mirror / Manual-Ramp-Gates (technisch im Repo)",
+      "strict_min": 3,
+      "external": false
+    },
+    {
+      "id": "performance_alpha",
+      "label_de": "Performance / Qualitaet / SLO-Gates (keine Markt-Alpha-Garantie)",
+      "strict_min": 3,
+      "external": false
+    },
+    {
+      "id": "compliance",
+      "label_de": "Compliance / Recht (signierte Evidenz)",
+      "strict_min": 5,
+      "external": false
+    },
+    {
+      "id": "release_evidence",
+      "label_de": "Release- und Evidenz-Artefakte",
+      "strict_min": 3,
+      "external": false
+    }
+  ]
+}

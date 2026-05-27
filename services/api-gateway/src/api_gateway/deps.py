@@ -255,7 +255,8 @@ def verify_live_trading_capability(auth: GatewayAuthContext) -> None:
     (assert_execution_allowed LIVE). Aufruf z. B. in mutation_deps. 403/503 siehe Code.
     """
     s = get_gateway_settings()
-    if not s.live_broker_gateway_live_policy_enforce:
+    enforce_policy = s.live_broker_gateway_live_policy_enforce or s.production
+    if not enforce_policy:
         return
     if _bypasses_live_tenant_trading_check(auth):
         return
@@ -275,10 +276,14 @@ def verify_live_trading_capability(auth: GatewayAuthContext) -> None:
                 "message": "Policy-Datenbank nicht verfuegbar.",
             },
         ) from exc
-    except ExecutionPolicyViolationError:
+    except ExecutionPolicyViolationError as exc:
         raise HTTPException(
             status_code=403,
-            detail={"error": LIVE_TRADING_NOT_ALLOWED_ERROR_CODE},
+            detail={
+                "error": LIVE_TRADING_NOT_ALLOWED_ERROR_CODE,
+                "message": "Echtgeld-Handel für diesen Account nicht freigeschaltet. Bitte Vertrag abschließen.",
+                "reason": exc.reason,
+            },
         ) from None
     except Exception as exc:
         logger.exception("live trading policy check failed tenant_id=%s", tid)

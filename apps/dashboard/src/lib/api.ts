@@ -161,6 +161,20 @@ function _qsToSearchParams(
   return sp;
 }
 
+async function _resolveServerAuthorization(): Promise<string> {
+  if (typeof window !== "undefined") return "";
+  try {
+    const { readPortalAuthorizationFromCookies } = await import(
+      "@/lib/portal-jwt-server"
+    );
+    const fromCookie = await readPortalAuthorizationFromCookies();
+    if (fromCookie) return fromCookie;
+  } catch {
+    // Aufruf ausserhalb eines Request-Scopes (Build, statische Render) — Fallback.
+  }
+  return serverEnv.gatewayAuthorizationHeader || "";
+}
+
 async function getJsonServer<T>(
   path: string,
   qs?: Record<string, string | number | undefined | null>,
@@ -169,7 +183,7 @@ async function getJsonServer<T>(
   if (probe.blocksV1Reads) {
     throw apiFetchErrorConfig(path, blockedV1MessageForPath(path, probe));
   }
-  const auth = serverEnv.gatewayAuthorizationHeader || "";
+  const auth = await _resolveServerAuthorization();
   const sp = _qsToSearchParams(qs);
   let res: Response;
   try {

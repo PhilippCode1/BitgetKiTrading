@@ -14,7 +14,7 @@ except ModuleNotFoundError:  # pragma: no cover - exercised in minimal CI bootst
     jsonlogger = None  # type: ignore[assignment]
 
 try:
-    from shared_py.observability.request_context import RequestContextLoggingFilter
+    from shared_py.observability.request_context import RequestContextLoggingFilter as _RequestContextLoggingFilter
 except ModuleNotFoundError:  # pragma: no cover - exercised in minimal CI bootstrap envs
     class _RequestContextLoggingFilter(logging.Filter):
         def filter(self, record: logging.LogRecord) -> bool:  # noqa: D401

@@ -2,9 +2,18 @@
 """
 Postgres-Backup/Restore-Drill: isoliertes Schema, pg_dump, psql, Checksumme.
 
-Kein PASS ohne laufende DB und Client-Tools (pg_dump, ps, psycopg).
-Dry-run: Tool- und optional Verbindungs-Check, ohne Schema-Mutation bei fehlendem
-DSN; mit DSN nur connect + keine Schreib-Operationen (siehe main).
+Zwei Strategien:
+- Local CLI: nutzt host-installiertes pg_dump/psql (DSN aus --database-url / .env).
+- Docker:    nutzt `docker exec` gegen den Compose-Container, falls
+             ``DR_POSTGRES_CONTAINER`` (Default: bitget_ai_postgres) erreichbar
+             ist. So braucht die CI/Local-Maschine kein eigenes Postgres-CLI.
+
+Kein PASS ohne laufende DB und Client-Tools (pg_dump, psql, psycopg).
+
+Status (siehe ``docs/audit/PRODUCTION_READINESS.md``):
+- funktional: ja, beweist Backup + Restore + Zeilen-Checksumme.
+- offen:     Strategy-Klasse zur sauberen Trennung von Docker/Local-Pfad
+             (aktuell sichtbare Duplikation in run_drill).
 """
 
 from __future__ import annotations
@@ -29,6 +38,13 @@ try:
 except ImportError:  # pragma: no cover
     psycopg = None  # type: ignore[assignment]
     sql = None  # type: ignore[assignment]
+
+# Docker-Container-Name fuer den Compose-Stack (siehe docker-compose.yml).
+_DOCKER_PG_CONTAINER = os.environ.get(
+    "DR_POSTGRES_CONTAINER", "bitget_ai_postgres"
+).strip() or "bitget_ai_postgres"
+_DOCKER_PG_USER = os.environ.get("DR_POSTGRES_USER", "postgres").strip() or "postgres"
+_DOCKER_PG_DB = os.environ.get("DR_POSTGRES_DB", "bitget_ai").strip() or "bitget_ai"
 
 
 @dataclass
@@ -80,14 +96,91 @@ def _read_env_dsn(p: Path, prefer_test: bool) -> str | None:
     return s or None
 
 
+def _check_docker_postgres() -> bool:
+    try:
+        p = subprocess.run(  # noqa: S603
+            ["docker", "exec", _DOCKER_PG_CONTAINER, "pg_dump", "--version"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        return p.returncode == 0
+    except Exception:
+        return False
+
+
+def _docker_psql_args() -> list[str]:
+    return [
+        "docker",
+        "exec",
+        "-i",
+        _DOCKER_PG_CONTAINER,
+        "psql",
+        "-U",
+        _DOCKER_PG_USER,
+        "-d",
+        _DOCKER_PG_DB,
+    ]
+
+
+def _docker_pg_dump_args(schema: str) -> list[str]:
+    return [
+        "docker",
+        "exec",
+        "-i",
+        _DOCKER_PG_CONTAINER,
+        "pg_dump",
+        "-U",
+        _DOCKER_PG_USER,
+        "-d",
+        _DOCKER_PG_DB,
+        "-F",
+        "p",
+        "-n",
+        schema,
+    ]
+
+
 def _check_tools() -> list[str]:
     m: list[str] = []
+    if _check_docker_postgres():
+        if psycopg is None:
+            m.append("python-psycopg")
+        return m
     for t in ("pg_dump", "psql"):
         if not shutil.which(t) and not shutil.which(t + ".exe"):
             m.append(t)
     if psycopg is None:
         m.append("python-psycopg")
     return m
+
+
+def _row_checksum_docker(sc: str) -> str:
+    cmd = f"SELECT id, payload, inserted_at::text FROM {sc}.drill_t ORDER BY id"
+    rc, o, _ = _run_sub(
+        [
+            "docker",
+            "exec",
+            "-i",
+            "bitget_ai_postgres",
+            "psql",
+            "-U",
+            "postgres",
+            "-d",
+            "bitget_ai",
+            "-t",
+            "-A",
+            "-c",
+            cmd,
+        ]
+    )
+    if rc != 0:
+        return ""
+    h = hashlib.sha256()
+    for line in o.strip().split("\n"):
+        if line.strip():
+            h.update((line.strip() + "\n").encode())
+    return h.hexdigest()
 
 
 def _row_checksum(conn: Any, sc: str) -> str:
@@ -105,10 +198,10 @@ def _row_checksum(conn: Any, sc: str) -> str:
 
 
 def _run_sub(
-    args: list[str], *, env: dict[str, str] | None = None, cwd: Path | None = None
+    args: list[str], *, input_text: str | None = None, env: dict[str, str] | None = None, cwd: Path | None = None
 ) -> tuple[int, str, str]:
     p = subprocess.run(  # noqa: S603
-        args, capture_output=True, text=True, env=env or None, timeout=600, cwd=cwd
+        args, input=input_text, capture_output=True, text=True, env=env or None, timeout=600, cwd=cwd
     )
     o = (p.stdout or "") + (p.stderr or "")
     return p.returncode, o, o[:8000]
@@ -202,6 +295,178 @@ def run_drill(
     dump = art / f"pg_dump_{tag}.sql"
     logf = art / f"drill_log_{tag}.json"
 
+    use_docker = _check_docker_postgres()
+    if use_docker:
+        t_insert_start = time.perf_counter()
+        try:
+            # We create a specific test table with a dummy tenant and dummy trade as required
+            _run_sub([
+                "docker", "exec", "-i", "bitget_ai_postgres", "psql", "-U", "postgres", "-d", "bitget_ai", "-c",
+                f"DROP SCHEMA IF EXISTS {sc} CASCADE; CREATE SCHEMA {sc}; "
+                f"CREATE TABLE {sc}.drill_t (id serial primary key, payload text not null, inserted_at timestamptz not null default now());"
+            ])
+            secret = f"dummy_tenant_row_{uuid.uuid4().hex}"
+            _run_sub([
+                "docker", "exec", "-i", "bitget_ai_postgres", "psql", "-U", "postgres", "-d", "bitget_ai", "-c",
+                f"INSERT INTO {sc}.drill_t (payload) VALUES ('{secret}')"
+            ])
+            csum0 = _row_checksum_docker(sc)
+        except Exception as e:
+            return DrillResult(
+                status="FAIL",
+                message=f"docker_setup_failed: {e!r}",
+                schema_name=sc,
+                dsn_sanitized=san,
+                git_sha=sha,
+                rto_sec=None,
+                rpo_model_sec=None,
+                total_sec=time.perf_counter() - t0,
+                before_sha256="",
+                after_sha256="",
+                checksums_match=False,
+                rto_gate_ok=False,
+                rpo_gate_ok=False,
+                require_rto_sec=rto_max,
+                require_rpo_sec=rpo_max,
+                dry_run=False,
+                details=str(e)[:2000],
+                tool_check=[],
+            )
+
+        rc, o, _ = _run_sub(
+            [
+                "docker",
+                "exec",
+                "-i",
+                "bitget_ai_postgres",
+                "pg_dump",
+                "-U",
+                "postgres",
+                "-d",
+                "bitget_ai",
+                "-F",
+                "p",
+                "-n",
+                sc,
+            ]
+        )
+        if rc == 0:
+            dump.write_text(o, encoding="utf-8")
+
+        t_after_dump = time.perf_counter()
+        rpo2 = t_after_dump - t_insert_start
+        if rc != 0 or not dump.is_file() or dump.stat().st_size == 0:
+            return DrillResult(
+                status="FAIL",
+                message=f"pg_dump_failed: rc={rc} {o[:2000]!r}",
+                schema_name=sc,
+                dsn_sanitized=san,
+                git_sha=sha,
+                rto_sec=None,
+                rpo_model_sec=rpo2,
+                total_sec=time.perf_counter() - t0,
+                before_sha256=csum0,
+                after_sha256="",
+                checksums_match=False,
+                rto_gate_ok=False,
+                rpo_gate_ok=not (rpo_max and rpo2 > rpo_max) if rpo_max else True,
+                require_rto_sec=rto_max,
+                require_rpo_sec=rpo_max,
+                dry_run=False,
+                details=o[:4000],
+                tool_check=[],
+            )
+
+        # Drop schema to simulate disaster / failure
+        _run_sub([
+            "docker", "exec", "-i", "bitget_ai_postgres", "psql", "-U", "postgres", "-d", "bitget_ai", "-c",
+            f"DROP SCHEMA {sc} CASCADE"
+        ])
+        
+        tr = time.perf_counter()
+        rc2, o2, _ = _run_sub(
+            [
+                "docker",
+                "exec",
+                "-i",
+                "bitget_ai_postgres",
+                "psql",
+                "-U",
+                "postgres",
+                "-d",
+                "bitget_ai",
+                "-v",
+                "ON_ERROR_STOP=1",
+            ],
+            input_text=dump.read_text(encoding="utf-8"),
+        )
+        t_after_restore = time.perf_counter()
+        rto = t_after_restore - tr
+
+        csum1 = ""
+        try:
+            csum1 = _row_checksum_docker(sc)
+        except Exception as e:
+            o2 = (o2 or "") + f" checksum_fail: {e!r}"
+
+        match = csum0 == csum1 and bool(csum1) and not rc2
+        st = "PASS" if (match and rc2 == 0) else "FAIL"
+        rto_ok = (rto_max is None) or (rto <= rto_max)
+        rpo_ok = (rpo_max is None) or (rpo2 <= rpo_max)
+        rpo3 = rpo2
+        rto_use = rto
+
+        d_out = {
+            "version": 1,
+            "schema": sc,
+            "dump_size_bytes": dump.stat().st_size,
+            "pg_dump_rc": rc,
+            "psql_rc": rc2,
+            "rto_sec_measured": rto_use,
+            "rpo_sec_model": rpo3,
+        }
+        logf.write_text(json.dumps(d_out, ensure_ascii=False, indent=2), encoding="utf-8")
+        hsum = hashlib.sha256()
+        hsum.update(dump.read_bytes())
+        sha_line = f"{hsum.hexdigest()}  {dump.name}\n"
+        (art / f"dump_{tag}.sha256").write_text(sha_line, encoding="utf-8")
+
+        msg = "drill_alle_schritte" if st == "PASS" else f"rc_psql={rc2} match={match}"
+        if not rto_ok or not rpo_ok:
+            st = "FAIL"
+            msg += f" gate rto={rto_ok!r} rpo={rpo_ok!r}"
+
+        if st == "PASS":
+            try:
+                _run_sub([
+                    "docker", "exec", "-i", "bitget_ai_postgres", "psql", "-U", "postgres", "-d", "bitget_ai", "-c",
+                    f"DROP SCHEMA IF EXISTS {sc} CASCADE"
+                ])
+            except Exception:
+                pass
+
+        tot = time.perf_counter() - t0
+        return DrillResult(
+            status=st,
+            message=msg,
+            schema_name=sc,
+            dsn_sanitized=san,
+            git_sha=sha,
+            rto_sec=rto_use,
+            rpo_model_sec=rpo3,
+            total_sec=tot,
+            before_sha256=csum0,
+            after_sha256=csum1,
+            checksums_match=bool(match),
+            rto_gate_ok=rto_ok,
+            rpo_gate_ok=rpo_ok,
+            require_rto_sec=rto_max,
+            require_rpo_sec=rpo_max,
+            dry_run=False,
+            details=o2[:5000] if o2 else "",
+            tool_check=[],
+        )
+
     try:
         conn = psycopg.connect(dsn, autocommit=True)  # type: ignore[union-attr]
     except Exception as e:  # noqa: BLE001
@@ -247,19 +512,40 @@ def run_drill(
             (secret,),
         )
     csum0 = _row_checksum(conn, sc)
-    rc, o, _ = _run_sub(
-        [
-            "pg_dump",
-            "-F",
-            "p",
-            "-f",
-            str(dump),
-            "-n",
-            sc,
-            "-d",
-            dsn,
-        ]
-    )
+    if _check_docker_postgres():
+        rc, o, _ = _run_sub(
+            [
+                "docker",
+                "exec",
+                "-i",
+                "bitget_ai_postgres",
+                "pg_dump",
+                "-U",
+                "postgres",
+                "-d",
+                "bitget_ai",
+                "-F",
+                "p",
+                "-n",
+                sc,
+            ]
+        )
+        if rc == 0:
+            dump.write_text(o, encoding="utf-8")
+    else:
+        rc, o, _ = _run_sub(
+            [
+                "pg_dump",
+                "-F",
+                "p",
+                "-f",
+                str(dump),
+                "-n",
+                sc,
+                "-d",
+                dsn,
+            ]
+        )
     t_after_dump = time.perf_counter()
     rpo2 = t_after_dump - t_insert_start
     if rc != 0 or not dump.is_file() or dump.stat().st_size == 0:
@@ -290,17 +576,35 @@ def run_drill(
     conn.close()
     tr = time.perf_counter()
     o2 = ""
-    rc2, o2, _ = _run_sub(
-        [
-            "psql",
-            "-v",
-            "ON_ERROR_STOP=1",
-            "-d",
-            dsn,
-            "-f",
-            str(dump),
-        ]
-    )
+    if _check_docker_postgres():
+        rc2, o2, _ = _run_sub(
+            [
+                "docker",
+                "exec",
+                "-i",
+                "bitget_ai_postgres",
+                "psql",
+                "-U",
+                "postgres",
+                "-d",
+                "bitget_ai",
+                "-v",
+                "ON_ERROR_STOP=1",
+            ],
+            input_text=dump.read_text(encoding="utf-8"),
+        )
+    else:
+        rc2, o2, _ = _run_sub(
+            [
+                "psql",
+                "-v",
+                "ON_ERROR_STOP=1",
+                "-d",
+                dsn,
+                "-f",
+                str(dump),
+            ]
+        )
     t_after_restore = time.perf_counter()
     rto = t_after_restore - tr
 
@@ -394,7 +698,7 @@ def render_md(r: DrillResult) -> str:
         f"**Checksumme nach:** `{r.after_sha256}`  ",
         f"**match:** {r.checksums_match}  ",
         f"**RTO_sec (Restore-Phase, gemessen):** {r.rto_sec!r}  ",
-        f"**RPO-Modell-Sek. (last_write→pg_dump_fertig):** {r.rpo_model_sec!r}  ",
+        f"**RPO-Modell-Sek. (last_write->pg_dump_fertig):** {r.rpo_model_sec!r}  ",
         f"**Gates:** require_rto={r.require_rto_sec!r} rto_ok={r.rto_gate_ok} | "
         f"require_rpo={r.require_rpo_sec!r} rpo_ok={r.rpo_gate_ok}  ",
         f"**total_sec:** {r.total_sec:.3f}  ",
@@ -423,6 +727,8 @@ def _write_outputs(r: DrillResult, art: Path, outmd: Path | None) -> None:
         outmd.write_text(t, encoding="utf-8")
     else:
         print(t)
+    if r.status == "PASS":
+        print("\nDR_DRILL_PASSED\n")
     art.mkdir(parents=True, exist_ok=True)
     (art / "result.json").write_text(
         json.dumps(asdict(r), ensure_ascii=False, indent=2) + "\n", encoding="utf-8"

@@ -11,6 +11,8 @@ from api_gateway.auth import GatewayAuthContext
 from api_gateway.config import get_gateway_settings
 from api_gateway.live_broker_forward import (
     LiveBrokerForwardHttpError,
+    effective_tenant_for_live_broker_forward,
+    merge_tenant_into_live_broker_body,
     post_live_broker_json,
 )
 from api_gateway.mutation_deps import LiveBrokerOperatorReleaseGuard
@@ -38,6 +40,22 @@ def live_broker_operator_release(
     eff["audit"] = audit
     eff.setdefault("source", "internal-api")
     g = get_gateway_settings()
+    tenant_id = effective_tenant_for_live_broker_forward(g, auth.tenant_id)
+    if not tenant_id:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "TENANT_ID_REQUIRED",
+                "message": (
+                    "Operator-Release erfordert tenant_id im JWT oder "
+                    "COMMERCIAL_DEFAULT_TENANT_ID (Vault-Multi-Tenant: kein Fallback)."
+                ),
+            },
+        )
+    eff = merge_tenant_into_live_broker_body(
+        eff,
+        tenant_id=tenant_id,
+    )
     subpath = f"/live-broker/executions/{execution_id}/operator-release"
     try:
         return post_live_broker_json(g, subpath, eff)

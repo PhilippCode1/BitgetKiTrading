@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from shared_py.modul_mate_db_gates import (
+    assert_execution_allowed_async,
     assert_m604_table_and_policies,
     fetch_tenant_modul_mate_gates,
 )
@@ -103,3 +104,23 @@ def test_assert_m604_missing_table(mock_connect: MagicMock) -> None:
 
     with pytest.raises(RuntimeError, match="to_regclass NULL"):
         assert_m604_table_and_policies("postgresql://x", tenant_id="default")
+
+
+@pytest.mark.anyio
+async def test_assert_execution_allowed_async(anyio_backend) -> None:
+    if anyio_backend != "asyncio":
+        pytest.skip("Nur asyncio verfuegbar")
+    mock_conn = MagicMock()
+    with patch("shared_py.modul_mate_db_gates.assert_execution_allowed", return_value=True) as mock_sync_assert:
+        res = await assert_execution_allowed_async(
+            tenant_id="t1",
+            mode="LIVE",
+            db_session=mock_conn,
+        )
+    assert res is True
+    mock_sync_assert.assert_called_once_with(
+        mock_conn,
+        tenant_id="t1",
+        mode="LIVE",
+    )
+

@@ -226,8 +226,13 @@ def check_preflight_liquidity(
     key = f"{ORDERBOOK_TOP5_REDIS_PREFIX}{symbol.upper()}"
     raw: Any = None
     try:
-        r = sync_redis_from_pool(redis_pool_or_client)
-        raw = r.get(key)
+        if hasattr(redis_pool_or_client, "get") and not hasattr(
+            redis_pool_or_client, "from_url"
+        ):
+            raw = redis_pool_or_client.get(key)
+        else:
+            r = sync_redis_from_pool(redis_pool_or_client)
+            raw = r.get(key)
     except Exception as exc:
         msg = f"{_BLOCKED_LOG}: Redis read failure key={key} err={exc}"
         raise InsufficientLiquidityError(msg) from exc
@@ -343,3 +348,67 @@ def check_preflight_liquidity(
             },
         )
     return bps
+
+
+class _InlineOrderbookRedis:
+    """Test-/Inline-Snapshot ohne Redis-Pool."""
+
+    def __init__(self, snapshot: dict[str, Any]) -> None:
+        self._raw = json.dumps(snapshot)
+
+    def get(self, _key: str) -> str | None:
+        return self._raw
+
+
+def verify_execution_liquidity(
+    symbol: str,
+    size: Decimal,
+    side: str,
+    redis_url: str,
+    *,
+    max_slippage_bps: Decimal | None = None,
+    strict: bool = False,
+    now_ts_ms: int | float | None = None,
+    max_orderbook_age_ms: int | float = 2000,
+    _snapshot: dict[str, Any] | None = None,
+) -> Decimal | None:
+    """
+    Order-Submit-Pfad: prueft Top-5-Liquiditaet vor Market-Orders.
+    Gibt Slippage in bps zurueck oder None wenn Guard deaktiviert (non-strict, kein Redis).
+    """
+    cap = max_slippage_bps if max_slippage_bps is not None else _DEFAULT_MAX_SLIPPAGE_BPS
+    if _snapshot is not None:
+        effective_now = now_ts_ms
+        if effective_now is None:
+            snap_ts = (
+                _snapshot.get("ts_ms")
+                or _snapshot.get("timestamp_ms")
+                or _snapshot.get("ts")
+            )
+            if snap_ts not in (None, ""):
+                effective_now = int(snap_ts)
+        return check_preflight_liquidity(
+            _InlineOrderbookRedis(_snapshot),
+            symbol,
+            size=size,
+            side=side,
+            cap_bps=cap,
+            max_orderbook_age_ms=max_orderbook_age_ms,
+            now_ts_ms=effective_now,
+        )
+    url = (redis_url or "").strip()
+    if not url:
+        if strict:
+            msg = f"{_BLOCKED_LOG}: redis_url fehlt (strict=True)"
+            raise InsufficientLiquidityError(msg)
+        return None
+    pool = create_sync_connection_pool(url)
+    return check_preflight_liquidity(
+        pool,
+        symbol,
+        size=size,
+        side=side,
+        cap_bps=cap,
+        max_orderbook_age_ms=max_orderbook_age_ms,
+        now_ts_ms=now_ts_ms,
+    )

@@ -185,11 +185,11 @@ def check_module_contracts() -> list[CheckResult]:
             "signals_risk_reasons",
             "Signale zeigen Risk-Gründe",
             route_exists("/console/signals")
-            and (APP / "lib" / "signal-decision-center.ts").is_file(),
+            and (APP / "lib" / "signal-decision-tokens.ts").is_file(),
             "Signals-Route + Risk-Reason-Mapper vorhanden",
             not (
                 route_exists("/console/signals")
-                and (APP / "lib" / "signal-decision-center.ts").is_file()
+                and (APP / "lib" / "signal-decision-tokens.ts").is_file()
             ),
         )
     )

@@ -16,6 +16,7 @@ from live_broker.control_plane.models import (
     ControlPlaneSetLeverageRequest,
 )
 from live_broker.private_rest import BitgetPrivateRestClient, BitgetRestError
+from live_broker.tenant_credentials import tenant_credentials_scope
 
 if TYPE_CHECKING:
     from live_broker.config import LiveBrokerSettings
@@ -32,6 +33,11 @@ def _response_to_audit(resp: Any) -> dict[str, Any]:
         "attempts": resp.attempts,
         "payload": resp.payload,
     }
+
+
+def _tenant_trace(tenant_id: str | None) -> dict[str, Any] | None:
+    tid = (tenant_id or "").strip()
+    return {"tenant_id": tid} if tid else None
 
 
 class BitgetControlPlaneService:
@@ -92,12 +98,15 @@ class BitgetControlPlaneService:
             "audit_note": body.audit_note,
         }
         try:
-            resp = self._private.list_orders_history(
-                params=params,
-                priority=True,
-                request_path=req_path,
-                market_family=str(profile.market_family),
-            )
+            with tenant_credentials_scope(
+                self._settings, _tenant_trace(body.tenant_id)
+            ):
+                resp = self._private.list_orders_history(
+                    params=params,
+                    priority=True,
+                    request_path=req_path,
+                    market_family=str(profile.market_family),
+                )
         except BitgetRestError as exc:
             self._audit_exchange_action(
                 category="control_plane_read",
@@ -140,12 +149,15 @@ class BitgetControlPlaneService:
             "audit_note": body.audit_note,
         }
         try:
-            resp = self._private.list_fill_history(
-                params=params,
-                priority=True,
-                request_path=req_path,
-                market_family=str(profile.market_family),
-            )
+            with tenant_credentials_scope(
+                self._settings, _tenant_trace(body.tenant_id)
+            ):
+                resp = self._private.list_fill_history(
+                    params=params,
+                    priority=True,
+                    request_path=req_path,
+                    market_family=str(profile.market_family),
+                )
         except BitgetRestError as exc:
             self._audit_exchange_action(
                 category="control_plane_read",
@@ -193,9 +205,12 @@ class BitgetControlPlaneService:
             "audit_note": body.audit_note,
         }
         try:
-            resp = self._private.set_account_leverage(
-                leverage_body, priority=False, request_path=path
-            )
+            with tenant_credentials_scope(
+                self._settings, _tenant_trace(body.tenant_id)
+            ):
+                resp = self._private.set_account_leverage(
+                    leverage_body, priority=False, request_path=path
+                )
         except BitgetRestError as exc:
             self._dead_letter(snapshot, exc)
             self._audit_exchange_action(

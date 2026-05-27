@@ -11,6 +11,8 @@ from api_gateway.auth import GatewayAuthContext
 from api_gateway.config import get_gateway_settings
 from api_gateway.live_broker_forward import (
     LiveBrokerForwardHttpError,
+    effective_tenant_for_live_broker_forward,
+    merge_tenant_into_live_broker_body,
     post_live_broker_json,
 )
 from api_gateway.manual_action import (
@@ -48,10 +50,30 @@ _guard_latch = LiveBrokerSafetyMutationGuard(
 )
 
 
-def _forward(subpath: str, body: dict[str, Any]) -> Any:
+def _forward(
+    subpath: str,
+    body: dict[str, Any],
+    auth: GatewayAuthContext,
+) -> Any:
     g = get_gateway_settings()
+    tenant_id = effective_tenant_for_live_broker_forward(g, auth.tenant_id)
+    if not tenant_id:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "TENANT_ID_REQUIRED",
+                "message": (
+                    "Live-Broker-Safety-Mutation erfordert tenant_id im JWT "
+                    "(Production: kein Default-Mandanten-Fallback)."
+                ),
+            },
+        )
+    enriched = merge_tenant_into_live_broker_body(
+        body,
+        tenant_id=tenant_id,
+    )
     try:
-        return post_live_broker_json(g, subpath, body)
+        return post_live_broker_json(g, subpath, enriched)
     except LiveBrokerForwardHttpError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.payload) from exc
     except RuntimeError as exc:
@@ -64,8 +86,8 @@ def safety_kill_switch_arm(
         tuple[GatewayAuthContext, dict[str, Any]], Depends(_guard_kill_arm)
     ],
 ) -> Any:
-    _, body = _ctx
-    return _forward("/live-broker/kill-switch/arm", body)
+    auth, body = _ctx
+    return _forward("/live-broker/kill-switch/arm", body, auth)
 
 
 @router.post("/kill-switch/release")
@@ -74,8 +96,8 @@ def safety_kill_switch_release(
         tuple[GatewayAuthContext, dict[str, Any]], Depends(_guard_kill_release)
     ],
 ) -> Any:
-    _, body = _ctx
-    return _forward("/live-broker/kill-switch/release", body)
+    auth, body = _ctx
+    return _forward("/live-broker/kill-switch/release", body, auth)
 
 
 @router.post("/orders/cancel-all")
@@ -84,8 +106,8 @@ def safety_orders_cancel_all(
         tuple[GatewayAuthContext, dict[str, Any]], Depends(_guard_cancel_all)
     ],
 ) -> Any:
-    _, body = _ctx
-    return _forward("/live-broker/safety/orders/cancel-all", body)
+    auth, body = _ctx
+    return _forward("/live-broker/safety/orders/cancel-all", body, auth)
 
 
 @router.post("/orders/emergency-flatten")
@@ -94,13 +116,13 @@ def safety_emergency_flatten(
         tuple[GatewayAuthContext, dict[str, Any]], Depends(_guard_emergency_flatten)
     ],
 ) -> Any:
-    _, body = _ctx
-    return _forward("/live-broker/orders/emergency-flatten", body)
+    auth, body = _ctx
+    return _forward("/live-broker/orders/emergency-flatten", body, auth)
 
 
 @router.post("/safety-latch/release")
 def safety_latch_release(
     _ctx: Annotated[tuple[GatewayAuthContext, dict[str, Any]], Depends(_guard_latch)],
 ) -> Any:
-    _, body = _ctx
-    return _forward("/live-broker/safety/safety-latch/release", body)
+    auth, body = _ctx
+    return _forward("/live-broker/safety/safety-latch/release", body, auth)

@@ -147,6 +147,11 @@ def main() -> int:
         choices=("demo-read", "demo-trade", "live-readonly"),
         help="Verifikationsprofil",
     )
+    ap.add_argument(
+        "--tenant-id",
+        default="",
+        help="Mandant fuer tenant-scoped Credentials (Vault/ENV-Resolver).",
+    )
     args = ap.parse_args()
 
     settings = _load_settings()
@@ -166,21 +171,27 @@ def main() -> int:
 
     from live_broker.exchange_client import BitgetExchangeClient
     from live_broker.private_rest import BitgetPrivateRestClient
+    from live_broker.tenant_credentials import tenant_credentials_scope
+
+    tenant_id = (args.tenant_id or os.environ.get("MODUL_MATE_GATE_TENANT_ID") or "").strip()
+    trace = {"tenant_id": tenant_id} if tenant_id else None
 
     client = BitgetPrivateRestClient(settings)
     ex = BitgetExchangeClient(settings)
 
     try:
-        probe = ex.probe_exchange(private_rest=client)
-        reads = _run_reads(client, settings)
-        trade: dict[str, Any] | None = None
-        if args.profile == "demo-trade":
-            trade = _demo_trade_futures(client, settings)
+        with tenant_credentials_scope(settings, trace):
+            probe = ex.probe_exchange(private_rest=client)
+            reads = _run_reads(client, settings)
+            trade: dict[str, Any] | None = None
+            if args.profile == "demo-trade":
+                trade = _demo_trade_futures(client, settings)
         print(
             json.dumps(
                 {
                     "ok": True,
                     "profile": args.profile,
+                    "tenant_id": tenant_id or None,
                     "probe": _summarize_probe(probe),
                     "reads": reads,
                     "trade": trade,

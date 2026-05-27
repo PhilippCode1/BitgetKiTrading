@@ -4620,6 +4620,199 @@ details.reasons > summary {
   text-align: center;
 }
 
+/* ——— Mock-Login (Entwicklungs-Session) ——— */
+.mock-login-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.mock-login-error {
+  margin: 0;
+}
+.mock-login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.mock-login-roles {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mock-login-roles__legend {
+  font-size: var(--text-small, 0.85rem);
+  font-weight: 600;
+  color: var(--fg-muted);
+  padding: 0;
+}
+.mock-login-roles__row {
+  display: flex;
+  gap: 8px;
+}
+.mock-login-role-btn {
+  flex: 1;
+  padding: 0.75rem 0.5rem;
+}
+.mock-login-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mock-login-field__label {
+  font-size: var(--text-small, 0.85rem);
+  font-weight: 600;
+  color: var(--fg-muted);
+}
+.mock-login-input {
+  padding: 0.75rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-muted, #ccc);
+  background: var(--bg-card, transparent);
+  color: var(--fg-default);
+  font: inherit;
+}
+.mock-login-admin-note {
+  margin: 0;
+  padding: 0.75rem;
+  border-left: 3px solid var(--accent-color, #0070f3);
+  background: var(--bg-dim, rgba(0, 0, 0, 0.04));
+  color: var(--fg-muted);
+  font-size: var(--text-small, 0.85rem);
+  border-radius: 4px;
+}
+.mock-login-submit {
+  padding: 0.875rem;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+/* ——— Customer Portal: Live-Ribbon & Execution Mode ——— */
+.live-ribbon {
+  background: #ea4335;
+  color: #fff;
+  padding: 0.5rem 1rem;
+  text-align: center;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  font-size: 0.95rem;
+  position: relative;
+  z-index: 5;
+}
+.execution-mode-card {
+  padding: 1.5rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-muted, #ccc);
+  background: var(--bg-dim, rgba(0, 0, 0, 0.03));
+  margin-bottom: 1.25rem;
+}
+.execution-mode-card.is-live {
+  border: 2px solid #ea4335;
+  background: rgba(234, 67, 53, 0.05);
+}
+.execution-mode-card__title {
+  margin-top: 0;
+  font-size: 1.15rem;
+}
+.execution-mode-card__mode {
+  margin: 0.25rem 0;
+  font-size: 1.05rem;
+}
+.execution-mode-card__mode strong {
+  margin-right: 0.25rem;
+}
+.execution-mode-card__mode .is-live-text {
+  color: #ea4335;
+  font-weight: 700;
+}
+.execution-mode-card__enable {
+  margin-top: 1rem;
+  background: #ea4335;
+  border-color: #ea4335;
+  color: #fff;
+}
+.activation-success-banner {
+  border-left: 4px solid #34a853;
+  background: rgba(52, 168, 83, 0.05);
+  padding: 1rem;
+  margin-bottom: 1.25rem;
+  border-radius: 4px;
+}
+.activation-success-banner h3 {
+  margin-top: 0;
+  color: #34a853;
+}
+.activation-error-banner {
+  border-left: 4px solid #ea4335;
+  background: rgba(234, 67, 53, 0.05);
+  padding: 1rem;
+  margin-bottom: 1.25rem;
+  border-radius: 4px;
+}
+.activation-error-banner__message {
+  margin: 0;
+  color: #ea4335;
+  font-weight: 700;
+}
+.activation-error-banner__actions {
+  margin-top: 1rem;
+  display: flex;
+  gap: 0.5rem;
+}
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+.modal-panel {
+  max-width: 500px;
+  width: 100%;
+  padding: 1.5rem;
+}
+.modal-panel h3 {
+  margin-top: 0;
+  color: #ea4335;
+}
+.modal-panel__warning {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin: 1rem 0;
+}
+.modal-panel__check {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  margin: 1.5rem 0;
+  font-size: 0.9rem;
+}
+.modal-panel__check input {
+  margin-top: 0.2rem;
+}
+.modal-panel__actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+.modal-panel__confirm {
+  background: #ea4335;
+  border-color: #ea4335;
+  color: #fff;
+}
+
+.signal-detail-gov-asset-context {
+  margin-top: 12px;
+}
+.signal-detail-gov-asset-context__blocks {
+  margin-top: 8px;
+}
+
 .onboarding-main {
   min-height: 70vh;
   display: flex;

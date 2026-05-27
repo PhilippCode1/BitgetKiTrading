@@ -2,18 +2,11 @@
 
 import { useEffect } from "react";
 
-import { DEFAULT_LOCALE } from "@/lib/i18n/config";
-import { getMessagesForLocale } from "@/lib/i18n/load-messages";
-import { buildTranslator } from "@/lib/i18n/resolve-message";
-
 import "./globals.css";
 
-const { messages, fallback } = getMessagesForLocale(DEFAULT_LOCALE);
-const t = buildTranslator(DEFAULT_LOCALE, messages, fallback);
-
 /**
- * Mindest-UI ohne App-Provider: ausschliesslich statische i18n-Texte — kein `error.message`,
- * kein JSON, kein Stacktrace (Fehler nur in der Konsole).
+ * Mindest-UI ohne App-Provider und ohne i18n-Imports (die bei Turbopack/HMR
+ * sonst den gesamten Client-Bundle blockieren koennen).
  */
 export default function GlobalError({
   error,
@@ -27,7 +20,7 @@ export default function GlobalError({
   }, [error]);
 
   return (
-    <html lang={DEFAULT_LOCALE}>
+    <html lang="de">
       <body
         style={{
           margin: 0,
@@ -38,10 +31,11 @@ export default function GlobalError({
         }}
       >
         <h1 style={{ fontSize: "1.25rem", margin: "0 0 12px" }}>
-          {t("ui.globalError.title")}
+          Ein Fehler ist aufgetreten
         </h1>
         <p style={{ opacity: 0.85, margin: "0 0 16px", maxWidth: 480 }}>
-          {t("ui.globalError.body")}
+          Bitte laden Sie die Seite neu. Technische Details stehen in der
+          Browser-Konsole.
         </p>
         <button
           type="button"
@@ -56,7 +50,7 @@ export default function GlobalError({
             cursor: "pointer",
           }}
         >
-          {t("ui.globalError.reload")}
+          Neu laden
         </button>
       </body>
     </html>

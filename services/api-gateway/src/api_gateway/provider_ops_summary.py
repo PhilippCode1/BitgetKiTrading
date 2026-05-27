@@ -5,10 +5,18 @@ from __future__ import annotations
 import os
 from typing import TYPE_CHECKING, Any
 
+from shared_py.tenant_exchange_credentials import resolve_bitget_credentials_for_tenant
+
 if TYPE_CHECKING:
     from api_gateway.config import GatewaySettings
 
 _SCHEMA_VERSION = 1
+
+
+def tenant_exchange_credentials_from_vault() -> bool:
+    return os.environ.get(
+        "TENANT_EXCHANGE_CREDENTIALS_FROM_VAULT", ""
+    ).strip().lower() in ("true", "1", "yes")
 
 
 def _env_configured(key: str) -> bool:
@@ -21,17 +29,54 @@ def _env_configured(key: str) -> bool:
     return True
 
 
-def bitget_env_hints_for_customer_portal(g: Any) -> dict[str, Any]:
+def bitget_credentials_ready_for_tenant(
+    tenant_id: str,
+    *,
+    demo: bool,
+) -> tuple[bool, list[str]]:
+    """
+    Prueft Bitget-Zugang fuer Go-Live / Portal-Hinweise.
+
+    Vault-Mandanten-Modus: globale BITGET_*-ENV wird ignoriert; nur
+    resolve_bitget_credentials_for_tenant(tenant_id) zaehlt (fail-closed).
+    """
+    if demo:
+        return _bitget_credentials_flags(demo=True)
+    if tenant_exchange_credentials_from_vault():
+        tid = (tenant_id or "").strip()
+        if not tid or tid == "default":
+            return False, ["bitget_tenant_vault_credentials_missing"]
+        if resolve_bitget_credentials_for_tenant(tid) is None:
+            return False, ["bitget_tenant_vault_credentials_missing"]
+        return True, []
+    return _bitget_credentials_flags(demo=False)
+
+
+def bitget_env_hints_for_customer_portal(
+    g: Any,
+    *,
+    tenant_id: str | None = None,
+) -> dict[str, Any]:
     """
     Oeffentlicher Hinweis fuer Kundenkonto / Broker-Seite (keine Secret-Werte).
     """
     demo = bool(g.bitget_demo_enabled)
-    ok, gaps = _bitget_credentials_flags(demo=demo)
+    tid = (tenant_id or "").strip() or None
+    if demo or not tid:
+        ok, gaps = _bitget_credentials_flags(demo=demo)
+    else:
+        ok, gaps = bitget_credentials_ready_for_tenant(tid, demo=demo)
     mode = "demo" if demo else "live"
     if ok:
         hint = (
             f"Server-ENV: Bitget-{mode}-Zugangsdaten sind vollstaendig gesetzt. "
             "Salden und Orders kommen vom Live-Broker und der Boerse — nicht von diesem Formular."
+        )
+    elif tenant_exchange_credentials_from_vault() and not demo:
+        hint = (
+            f"Bitget-{mode}: Fuer Mandant {tid or '—'} fehlen Vault-Credentials "
+            f"(Pfad bitget/{{tenant_id}}/live). "
+            "Ohne Mandanten-Secret gibt es keine private Bitget-Anbindung."
         )
     else:
         keys = (
@@ -48,6 +93,7 @@ def bitget_env_hints_for_customer_portal(g: Any) -> dict[str, Any]:
         "credentials_complete": ok,
         "gap_codes": gaps,
         "hint_public_de": hint,
+        "credentials_source": "vault_tenant" if tenant_exchange_credentials_from_vault() and not demo else "env_global",
     }
 
 

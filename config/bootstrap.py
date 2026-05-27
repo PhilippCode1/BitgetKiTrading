@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import warnings
 from pathlib import Path
 from typing import Any, TypeVar
@@ -36,6 +37,27 @@ def _hydrate_os_environ_from_dotenv_files() -> None:
         path = Path(raw)
         if path.is_file():
             load_dotenv(path, override=False)
+    _maybe_hydrate_secrets_from_vault()
+
+
+def _maybe_hydrate_secrets_from_vault() -> None:
+    flag = (os.environ.get("VAULT_HYDRATE_ON_BOOT") or "").strip().lower()
+    if flag not in ("true", "1", "yes"):
+        return
+    try:
+        from shared_py.secret_store import hydrate_env_keys_from_vault
+    except ImportError:  # pragma: no cover
+        return
+    path = (os.environ.get("VAULT_GLOBAL_SECRETS_PATH") or "bitget/global/live").strip()
+    hydrate_env_keys_from_vault(
+        (
+            "BITGET_API_KEY",
+            "BITGET_API_SECRET",
+            "BITGET_API_PASSPHRASE",
+            "GATEWAY_JWT_SECRET",
+        ),
+        vault_path=path,
+    )
 
 
 _SENSITIVE_KEY_FRAGMENTS = (

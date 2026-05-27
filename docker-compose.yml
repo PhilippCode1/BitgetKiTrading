@@ -722,6 +722,18 @@ services:
       PORT: 3000
       # Explizit aus COMPOSE_ENV_FILE interpolieren (BFF/Health -> Gateway); siehe docs/LOCAL_START_MINIMUM.md
       DASHBOARD_GATEWAY_AUTHORIZATION: ${DASHBOARD_GATEWAY_AUTHORIZATION:-}
+      GATEWAY_JWT_SECRET: ${GATEWAY_JWT_SECRET:-}
+      GATEWAY_JWT_AUDIENCE: ${GATEWAY_JWT_AUDIENCE:-api-gateway}
+      GATEWAY_JWT_ISSUER: ${GATEWAY_JWT_ISSUER:-bitget-btc-ai-gateway}
+      PORTAL_AUTH_PROVIDER: ${PORTAL_AUTH_PROVIDER:-oidc}
+      OIDC_ISSUER: ${OIDC_ISSUER:-}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-}
+      OIDC_REDIRECT_URI: ${OIDC_REDIRECT_URI:-}
+      OIDC_SCOPES: ${OIDC_SCOPES:-openid profile email}
+      OIDC_DEFAULT_TENANT_ID: ${OIDC_DEFAULT_TENANT_ID:-}
+      OIDC_TENANT_CLAIM: ${OIDC_TENANT_CLAIM:-tenant_id}
+      OIDC_ADMIN_EMAILS: ${OIDC_ADMIN_EMAILS:-}
     ports:
       - "${COMPOSE_EDGE_BIND:-127.0.0.1}:3000:3000"
     depends_on:
@@ -803,3 +815,21 @@ services:
     depends_on:
       prometheus:
         condition: service_started
+
+  alertmanager:
+    <<: *service-defaults
+    image: prom/alertmanager:v0.27.0
+    container_name: bitget_ai_alertmanager
+    profiles:
+      - observability
+    ports:
+      - "${COMPOSE_EDGE_BIND:-127.0.0.1}:9093:9093"
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--storage.path=/alertmanager"
+    volumes:
+      - ./infra/observability/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    depends_on:
+      prometheus:
+        condition: service_started
+

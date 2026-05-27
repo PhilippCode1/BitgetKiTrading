@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import datetime
 from decimal import Decimal
 from enum import Enum
 from typing import Any, Literal
@@ -63,6 +64,7 @@ class CustomerCommercialGates:
     subscription_active: bool = False
     account_suspended: bool = False
     account_paused: bool = False
+    live_go_live_at: datetime | None = None
 
 
 def trial_period_days() -> int:
@@ -199,6 +201,16 @@ class ExecutionPolicyViolationError(ValueError):
     def __init__(self, message: str, *, reason: str) -> None:
         super().__init__(message)
         self.reason = reason
+
+
+class ExecutionForbiddenError(ExecutionPolicyViolationError):
+    """Echtgeld-Sperre: Order-Ausfuehrung wegen ungenuegender Freischaltung verboten."""
+    pass
+
+
+class PolicyViolationError(ExecutionPolicyViolationError):
+    """Spezifische Verletzung der vertraglichen Geschaeftsbedingungen."""
+    pass
 
 
 def product_policy_descriptor() -> dict[str, str | int | bool]:

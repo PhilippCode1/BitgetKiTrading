@@ -10,6 +10,10 @@ class ControlPlaneReadHistoryRequest(BaseModel):
     symbol: str | None = None
     start_time_ms: str | None = None
     end_time_ms: str | None = None
+    tenant_id: str | None = Field(
+        default=None,
+        description="Mandant fuer tenant-scoped Bitget-Credentials (Vault/ENV).",
+    )
     operator_jti: str | None = Field(
         default=None,
         description=(
@@ -24,6 +28,7 @@ class ControlPlaneSetLeverageRequest(BaseModel):
     leverage: str
     product_type: str | None = None
     margin_coin: str | None = None
+    tenant_id: str | None = None
     operator_jti: str | None = None
     source: str = "operator"
     reason: str = "control_plane_set_leverage"

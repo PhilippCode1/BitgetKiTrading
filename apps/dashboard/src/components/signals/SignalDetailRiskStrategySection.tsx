@@ -1,21 +1,22 @@
-import { ContentPanel } from "@/components/ui/ContentPanel";
 import { RiskWarningsPanel } from "@/components/panels/RiskWarningsPanel";
+import { ContentPanel } from "@/components/ui/ContentPanel";
 import { formatDistancePctField, formatNum, formatPct01 } from "@/lib/format";
 import {
-  signalDetailAssetTierDe,
-  signalDetailDataQualityDe,
-  signalDetailLiquidityDe,
-  signalDetailLiveReleaseDe,
-  signalRiskStatusDe,
-  summarizeBlockReasonsDe,
-  tradeActionLabelDe,
-} from "@/lib/signal-decision-center";
+  blockReasonTokens,
+  renderDecisionToken,
+  signalAssetTierToken,
+  signalDataQualityToken,
+  signalLiquidityToken,
+  signalLiveReleaseToken,
+  signalRiskStatusToken,
+  tradeActionToken,
+  type TranslateLike,
+} from "@/lib/signal-decision-tokens";
 import {
   summarizeNoTradeReasons,
   summarizeTradeRationale,
 } from "@/lib/signal-rationale";
-import type { SignalDetail } from "@/lib/types";
-import type { SignalExplainResponse } from "@/lib/types";
+import type { SignalDetail, SignalExplainResponse } from "@/lib/types";
 
 type Translate = (
   key: string,
@@ -27,6 +28,8 @@ type Props = Readonly<{
   explain: SignalExplainResponse | null;
   t: Translate;
 }>;
+
+const DC_SCOPE = "pages.signalsDetail.decisionCenter" as const;
 
 /**
  * Schicht: Risiko & Strategie — Warnungen, kompakte Zahlen in Worten, No-Trade / Trade-Begründung.
@@ -81,43 +84,70 @@ export function SignalDetailRiskStrategySection({ detail, explain, t }: Props) {
       ) : null}
       {explain ? (
         <div className="signal-detail-risk-warnings">
-          <RiskWarningsPanel warnings={explain.risk_warnings_json} />
+          <RiskWarningsPanel warnings={explain.risk_warnings_json} t={t} />
         </div>
       ) : null}
-      <div className="panel signal-explain-layer" style={{ marginTop: 12 }}>
-        <h3 className="h3-quiet">Governance- und Asset-Kontext</h3>
+      <div className="panel signal-explain-layer signal-detail-gov-asset-context">
+        <h3 className="h3-quiet">
+          {t("pages.signalsDetail.govAssetContextTitle")}
+        </h3>
         <p className="muted small">
-          Risk-Governor, Asset-Tier, Datenqualitaet und Live-Freigabe in einer
-          Sicht.
+          {t("pages.signalsDetail.govAssetContextLead")}
         </p>
         <ul className="news-list">
-          <li>Trade Action: {tradeActionLabelDe(detail.trade_action)}</li>
           <li>
-            Risk-Status:{" "}
-            {signalRiskStatusDe({
-              ...detail,
-              signal_id: detail.signal_id,
-              symbol: detail.symbol,
-              timeframe: detail.timeframe,
-              direction: detail.direction,
-              signal_class: detail.signal_class,
-              decision_state: detail.decision_state,
-              signal_strength_0_100: detail.signal_strength_0_100,
-              probability_0_1: detail.probability_0_1,
-              analysis_ts_ms: detail.analysis_ts_ms,
-              created_ts: detail.created_ts,
-              outcome_badge: detail.outcome_badge,
-            })}
+            {t("pages.signalsDetail.tradeActionLabel")}:{" "}
+            {renderDecisionToken(
+              t as TranslateLike,
+              DC_SCOPE,
+              tradeActionToken(detail.trade_action),
+            )}
           </li>
-          <li>Asset-Tier: {signalDetailAssetTierDe(detail)}</li>
-          <li>Datenqualitaet: {signalDetailDataQualityDe(detail)}</li>
-          <li>Liquiditaet: {signalDetailLiquidityDe(detail)}</li>
-          <li>Live-Freigabestatus: {signalDetailLiveReleaseDe(detail)}</li>
+          <li>
+            {t("pages.signalsDetail.riskStatusLabel")}:{" "}
+            {renderDecisionToken(
+              t as TranslateLike,
+              DC_SCOPE,
+              signalRiskStatusToken(detail),
+            )}
+          </li>
+          <li>
+            {t("pages.signalsDetail.assetTierLabel")}:{" "}
+            {renderDecisionToken(
+              t as TranslateLike,
+              DC_SCOPE,
+              signalAssetTierToken(detail),
+            )}
+          </li>
+          <li>
+            {t("pages.signalsDetail.dataQualityLabel")}:{" "}
+            {renderDecisionToken(
+              t as TranslateLike,
+              DC_SCOPE,
+              signalDataQualityToken(detail),
+            )}
+          </li>
+          <li>
+            {t("pages.signalsDetail.liquidityLabel")}:{" "}
+            {renderDecisionToken(
+              t as TranslateLike,
+              DC_SCOPE,
+              signalLiquidityToken(detail),
+            )}
+          </li>
+          <li>
+            {t("pages.signalsDetail.liveReleaseLabel")}:{" "}
+            {renderDecisionToken(
+              t as TranslateLike,
+              DC_SCOPE,
+              signalLiveReleaseToken(detail),
+            )}
+          </li>
         </ul>
-        <p className="muted small" style={{ marginTop: 8 }}>
-          Blockgruende:{" "}
-          {summarizeBlockReasonsDe(detail.live_execution_block_reasons_json)
-            .slice(0, 4)
+        <p className="muted small signal-detail-gov-asset-context__blocks">
+          {t("pages.signalsDetail.blockReasonsLabel")}:{" "}
+          {blockReasonTokens(detail.live_execution_block_reasons_json, 4)
+            .map((token) => renderDecisionToken(t as TranslateLike, DC_SCOPE, token))
             .join(" · ")}
         </p>
       </div>

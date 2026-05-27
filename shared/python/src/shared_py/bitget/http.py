@@ -77,12 +77,18 @@ def build_private_rest_headers(
     query_string: str = "",
     body: str = "",
     extra_headers: Mapping[str, str] | None = None,
+    api_key: str | None = None,
+    api_secret: str | None = None,
+    api_passphrase: str | None = None,
 ) -> dict[str, str]:
-    if not settings.effective_api_key:
+    eff_key = (api_key or settings.effective_api_key or "").strip()
+    eff_secret = (api_secret or settings.effective_api_secret or "").strip()
+    eff_passphrase = (api_passphrase or settings.effective_api_passphrase or "").strip()
+    if not eff_key:
         raise ValueError("Bitget API key fehlt fuer private REST-Anfrage")
-    if not settings.effective_api_secret:
+    if not eff_secret:
         raise ValueError("Bitget API secret fehlt fuer private REST-Anfrage")
-    if not settings.effective_api_passphrase:
+    if not eff_passphrase:
         raise ValueError("Bitget API passphrase fehlt fuer private REST-Anfrage")
     payload = build_signature_payload(
         timestamp_ms=timestamp_ms,
@@ -94,13 +100,13 @@ def build_private_rest_headers(
     headers = build_rest_headers(
         settings,
         {
-            "ACCESS-KEY": settings.effective_api_key,
+            "ACCESS-KEY": eff_key,
             "ACCESS-SIGN": sign_hmac_sha256_base64(
-                settings.effective_api_secret,
+                eff_secret,
                 payload,
             ),
             "ACCESS-TIMESTAMP": str(timestamp_ms),
-            "ACCESS-PASSPHRASE": settings.effective_api_passphrase,
+            "ACCESS-PASSPHRASE": eff_passphrase,
             "Content-Type": "application/json",
             "locale": settings.bitget_rest_locale,
         },

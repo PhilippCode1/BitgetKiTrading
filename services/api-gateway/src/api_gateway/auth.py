@@ -15,10 +15,10 @@ S2S-Header/Legacy-Admin: keine JWT-Claim-Pruefung.
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
-from typing import Any, cast
+from typing import Annotated, Any, cast
 
 import jwt
-from fastapi import Header, HTTPException, Request
+from fastapi import Depends, Header, HTTPException, Request
 from shared_py.portal_access_contract import (
     PORTAL_ROLE_CUSTOMER,
     PORTAL_ROLE_SUPER_ADMIN,
@@ -925,3 +925,34 @@ require_admin_read_role = require_admin_read
 require_admin_write_role = require_admin_write
 # /v1/admin: Kunden-Portal 403, JWT muss role=admin; Schreiben: require_admin_write_role
 require_admin_role = require_admin_read
+
+
+async def get_current_tenant(
+    auth: Annotated[GatewayAuthContext, Depends(require_customer_role)],
+) -> str:
+    """
+    Extrahiert die tenant_id aus dem JWT des Kunden und validiert sie.
+    Stellt sicher, dass ein Kunde nur auf seine eigene tenant_id zugreifen kann.
+    """
+    settings = get_gateway_settings()
+    default_tid = settings.commercial_default_tenant_id.strip() or "default"
+    tid = auth.effective_tenant(default_tenant_id=default_tid)
+    if not tid or tid == "default" and auth.is_customer_portal_jwt():
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "TENANT_ID_REQUIRED",
+                "message": "Fuer Kunden-Commerce ist eine gueltige tenant_id erforderlich.",
+            },
+        )
+    return tid
+
+
+async def get_operator(
+    auth: Annotated[GatewayAuthContext, Depends(require_admin_read)],
+) -> GatewayAuthContext:
+    """
+    Validiert Admin-Zugriffe und stellt sicher, dass der Actor ein Operator/Admin ist.
+    """
+    return auth
+

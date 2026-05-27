@@ -409,3 +409,39 @@ def fetch_portal_identity_security(
     ut = d.get("updated_ts")
     d["updated_ts"] = ut.isoformat() if ut is not None else None
     return d
+
+
+def upsert_portal_identity_from_oidc(
+    conn: psycopg.Connection[Any],
+    *,
+    tenant_id: str,
+    email_verified: bool,
+    mfa_totp_enabled: bool = False,
+) -> None:
+    """
+    IdP-Login: E-Mail-Verifikation darf nur gesetzt (true), nicht zurueckgenommen werden.
+    """
+    conn.execute(
+        """
+        INSERT INTO app.portal_identity_security (
+            tenant_id, email_verified_at, mfa_totp_enabled, updated_ts
+        )
+        VALUES (
+            %s,
+            CASE WHEN %s THEN now() ELSE NULL END,
+            %s,
+            now()
+        )
+        ON CONFLICT (tenant_id) DO UPDATE SET
+            email_verified_at = CASE
+                WHEN %s THEN now()
+                ELSE app.portal_identity_security.email_verified_at
+            END,
+            mfa_totp_enabled = (
+                app.portal_identity_security.mfa_totp_enabled
+                OR EXCLUDED.mfa_totp_enabled
+            ),
+            updated_ts = now()
+        """,
+        (tenant_id, email_verified, mfa_totp_enabled, email_verified),
+    )

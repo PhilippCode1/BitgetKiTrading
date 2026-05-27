@@ -106,6 +106,12 @@ _RUFF_TARGETS: tuple[str, ...] = (
     "tools/validate_env_profile.py",
     "tools/pip_audit_supply_chain_gate.py",
     "tools/check_production_env_template_security.py",
+    "tools/go_live_ops_preflight.py",
+    "tools/go_live_launch_checklist.py",
+    "tools/go_live_trade_ready.py",
+    "tools/verify_vault_tenant_credentials.py",
+    "tools/bootstrap_vault_dev_tenant.py",
+    "tools/go_live_ops_wizard.py",
     "tools/modul_mate_selfcheck.py",
     "tools/production_selfcheck.py",
     "scripts/release_gate.py",
@@ -130,6 +136,12 @@ _BLACK_TARGETS: tuple[str, ...] = (
     "tools/validate_env_profile.py",
     "tools/pip_audit_supply_chain_gate.py",
     "tools/check_production_env_template_security.py",
+    "tools/go_live_ops_preflight.py",
+    "tools/go_live_launch_checklist.py",
+    "tools/go_live_trade_ready.py",
+    "tools/verify_vault_tenant_credentials.py",
+    "tools/bootstrap_vault_dev_tenant.py",
+    "tools/go_live_ops_wizard.py",
     "tools/modul_mate_selfcheck.py",
     "tools/production_selfcheck.py",
     "scripts/release_gate.py",
@@ -239,6 +251,49 @@ def _iron_curtain_main(
     evpath = str(root / "tools" / "check_production_env_template_security.py")
     if _run([py, evpath], cwd=root) != 0:
         return _fail("safety env-template-security")
+    if (
+        _run(
+            [
+                py,
+                str(root / "tools" / "check_env_10_10_safety.py"),
+                "--env-file",
+                ".env.production.example",
+                "--profile",
+                "production",
+                "--template",
+            ],
+            cwd=root,
+        )
+        != 0
+    ):
+        return _fail("safety env-10-10-production-template")
+    if (
+        _run(
+            [
+                py,
+                str(root / "tools" / "go_live_ops_preflight.py"),
+                "--env-file",
+                ".env.production.example",
+            ],
+            cwd=root,
+        )
+        != 0
+    ):
+        return _fail("safety go-live-ops-preflight-template")
+    if (
+        _run(
+            [
+                py,
+                str(root / "tools" / "go_live_launch_checklist.py"),
+                "--env-file",
+                ".env.production.example",
+                "--skip-audit",
+            ],
+            cwd=root,
+        )
+        != 0
+    ):
+        return _fail("safety go-live-launch-checklist-template")
     if (
         _run(
             [

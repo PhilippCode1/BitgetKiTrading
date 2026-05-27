@@ -14,12 +14,35 @@ import {
   formatTsMs,
 } from "@/lib/format";
 import {
-  signalDataAgeDe,
-  signalRiskStatusDe,
-  summarizeBlockReasonsDe,
-  tradeActionLabelDe,
-} from "@/lib/signal-decision-center";
+  blockReasonTokens,
+  renderDecisionToken,
+  signalDataAgeToken,
+  signalRiskStatusToken,
+  tradeActionToken,
+  type TranslateLike,
+} from "@/lib/signal-decision-tokens";
 import type { SignalRecentItem } from "@/lib/types";
+
+const DC_SCOPE = "pages.signalsDetail.decisionCenter" as const;
+const TABLE_SCOPE = "signalsTable" as const;
+
+function renderTradeAction(t: TranslateLike, action: string | null | undefined): string {
+  return renderDecisionToken(t, DC_SCOPE, tradeActionToken(action));
+}
+
+function renderRiskStatus(t: TranslateLike, s: SignalRecentItem): string {
+  return renderDecisionToken(t, DC_SCOPE, signalRiskStatusToken(s));
+}
+
+function renderDataAge(t: TranslateLike, analysisTsMs: number): string {
+  return renderDecisionToken(t, TABLE_SCOPE, signalDataAgeToken(analysisTsMs));
+}
+
+function renderBlockReasons(t: TranslateLike, raw: unknown, maxItems = 2): string {
+  return blockReasonTokens(raw, maxItems)
+    .map((token) => renderDecisionToken(t, DC_SCOPE, token))
+    .join(" · ");
+}
 
 type Props = Readonly<{
   items: SignalRecentItem[];
@@ -209,7 +232,7 @@ export function SignalsTable({ items, isLoading = false }: Props) {
                     {t("signalsTable.thDecision")}
                   </span>
                   <span className="console-stack-card__v mono-small">
-                    {tradeActionLabelDe(s.trade_action)}
+                    {renderTradeAction(t, s.trade_action)}
                   </span>
                 </div>
                 <div>
@@ -217,7 +240,7 @@ export function SignalsTable({ items, isLoading = false }: Props) {
                     {t("signalsTable.thRiskGov")}
                   </span>
                   <span className={`console-stack-card__v ${g.cls}`}>
-                    {signalRiskStatusDe(s)}
+                    {renderRiskStatus(t, s)}
                   </span>
                 </div>
                 <div>
@@ -229,19 +252,19 @@ export function SignalsTable({ items, isLoading = false }: Props) {
                   </span>
                 </div>
                 <div>
-                  <span className="console-stack-card__k">Datenalter</span>
+                  <span className="console-stack-card__k">
+                    {t("signalsTable.dataAge")}
+                  </span>
                   <span className="console-stack-card__v mono-small">
-                    {signalDataAgeDe(s.analysis_ts_ms)}
+                    {renderDataAge(t, s.analysis_ts_ms)}
                   </span>
                 </div>
                 <div>
-                  <span className="console-stack-card__k">Blockgruende</span>
+                  <span className="console-stack-card__k">
+                    {t("signalsTable.blockReasons")}
+                  </span>
                   <span className="console-stack-card__v muted small">
-                    {summarizeBlockReasonsDe(
-                      s.live_execution_block_reasons_json,
-                    )
-                      .slice(0, 2)
-                      .join(" · ")}
+                    {renderBlockReasons(t, s.live_execution_block_reasons_json, 2)}
                   </span>
                 </div>
               </div>
@@ -332,7 +355,7 @@ export function SignalsTable({ items, isLoading = false }: Props) {
                   <td>
                     <div className="stacked-cell">
                       <span className="mono-small">
-                        {tradeActionLabelDe(s.trade_action)}
+                        {renderTradeAction(t, s.trade_action)}
                       </span>
                       <span
                         className="stacked-muted"
@@ -356,7 +379,7 @@ export function SignalsTable({ items, isLoading = false }: Props) {
                         {formatPct01(s.decision_confidence_0_1 ?? null)}
                       </span>
                       <span className="stacked-muted">
-                        Datenalter: {signalDataAgeDe(s.analysis_ts_ms)}
+                        {t("signalsTable.dataAge")}: {renderDataAge(t, s.analysis_ts_ms)}
                       </span>
                     </div>
                   </td>
@@ -422,9 +445,7 @@ export function SignalsTable({ items, isLoading = false }: Props) {
                   <td>
                     <div className="stacked-cell">
                       <span className={g.cls}>{g.text}</span>
-                      <span className="stacked-muted">
-                        {signalRiskStatusDe(s)}
-                      </span>
+                      <span className="stacked-muted">{renderRiskStatus(t, s)}</span>
                       <span className="stacked-muted">
                         {t("signalsTable.universal")} {uniN} /{" "}
                         {t("signalsTable.cash")}{" "}
@@ -449,11 +470,7 @@ export function SignalsTable({ items, isLoading = false }: Props) {
                           : `${formatNum(s.expected_return_bps, 1)} ${t("signalsTable.bpsSuffix")}`}
                       </span>
                       <span className="stacked-muted">
-                        {summarizeBlockReasonsDe(
-                          s.live_execution_block_reasons_json,
-                        )
-                          .slice(0, 2)
-                          .join(" · ")}
+                        {renderBlockReasons(t, s.live_execution_block_reasons_json, 2)}
                       </span>
                     </div>
                   </td>

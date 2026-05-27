@@ -6,7 +6,7 @@ import time
 from dataclasses import asdict
 from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Mapping
 from uuid import UUID, uuid4
 
 import psycopg
@@ -90,6 +90,8 @@ from live_broker.private_rest import (
     BitgetRestError,
     BitgetRestResponse,
 )
+from live_broker.tenant_gate import gate_tenant_from_intent
+from live_broker.tenant_credentials import tenant_credentials_scope
 
 if TYPE_CHECKING:
     from live_broker.exchange_client import BitgetExchangeClient
@@ -165,7 +167,10 @@ class LiveBrokerOrderService:
         dsn = (self._settings.database_url or "").strip()
         if not dsn:
             return
-        tid = (self._settings.billing_prepaid_tenant_id or "default").strip()
+        tid = gate_tenant_from_intent(
+            config_tenant_id=self._settings.modul_mate_gate_tenant_id,
+            trace=request.trace,
+        )
         min_act = Decimal(
             str(self._settings.billing_min_balance_new_trade_usd.strip() or "50")
         )
@@ -183,13 +188,17 @@ class LiveBrokerOrderService:
         self,
         *,
         allow_safety_bypass: bool,
+        order_trace: dict[str, Any] | None = None,
     ) -> None:
         if allow_safety_bypass:
             return
         if not self._settings.commercial_gates_enforced_for_exchange_submit:
             return
         dsn = (self._settings.database_url or "").strip()
-        tid = (self._settings.modul_mate_gate_tenant_id or "default").strip()
+        tid = gate_tenant_from_intent(
+            config_tenant_id=self._settings.modul_mate_gate_tenant_id,
+            trace=order_trace,
+        )
         if not dsn:
             raise BitgetRestError(
                 classification="service_misconfigured",
@@ -230,6 +239,12 @@ class LiveBrokerOrderService:
                 raise BitgetRestError(
                     classification="policy_blocked",
                     message="modul_mate_demo_trading_not_permitted",
+                    retryable=False,
+                ) from pe
+            if pe.reason == "live_go_live_cooldown_active":
+                raise BitgetRestError(
+                    classification="policy_blocked",
+                    message="live_go_live_cooldown_active",
                     retryable=False,
                 ) from pe
             raise BitgetRestError(
@@ -400,6 +415,7 @@ class LiveBrokerOrderService:
             ),
             client_oid=identity.get("client_oid"),
             exchange_order_id=identity.get("exchange_order_id"),
+            trace=self._order_trace_from_identity(identity),
         )
         stored = self._repo.upsert_order(
             {
@@ -469,10 +485,12 @@ class LiveBrokerOrderService:
                 message="LIVE_TRADE_ENABLE=false",
                 retryable=False,
             )
-        self._assert_submit_runtime_gates(
-            allow_safety_bypass=False, operation="replace"
-        )
         existing = self._require_local_order(str(request.internal_order_id))
+        self._assert_submit_runtime_gates(
+            allow_safety_bypass=False,
+            operation="replace",
+            order_trace=dict(existing.get("trace_json") or {}),
+        )
         if request.new_price is not None:
             tj = dict(existing.get("trace_json") or {})
             pm = tj.get("predatory_passive_maker")
@@ -571,6 +589,7 @@ class LiveBrokerOrderService:
                 ),
                 retryable=False,
             )
+        order_trace = self._order_trace_from_identity(existing)
         response = self._call_private(
             internal_order_id=str(new_internal_order_id),
             action="replace",
@@ -581,6 +600,7 @@ class LiveBrokerOrderService:
             ),
             client_oid=new_client_oid,
             exchange_order_id=existing.get("exchange_order_id"),
+            trace=order_trace,
         )
         detail = self._query_remote_detail(
             symbol=existing["symbol"],
@@ -588,6 +608,7 @@ class LiveBrokerOrderService:
             client_oid=new_client_oid,
             market_family=fam,
             margin_account_mode=str(ma_mode).lower() if ma_mode else None,
+            trace=order_trace,
         )
         self._repo.upsert_order(
             {
@@ -716,6 +737,7 @@ class LiveBrokerOrderService:
             client_oid=identity.get("client_oid"),
             exchange_order_id=identity.get("exchange_order_id"),
             exchange_mutation=False,
+            trace=self._order_trace_from_identity(identity),
         )
         data = (
             response.payload.get("data") if isinstance(response.payload, dict) else {}
@@ -822,6 +844,7 @@ class LiveBrokerOrderService:
             ),
             client_oid=None,
             exchange_order_id=None,
+            trace=self._config_tenant_trace(),
         )
         local = self._cancel_matching_local_orders(
             scope="service",
@@ -1144,6 +1167,7 @@ class LiveBrokerOrderService:
                 product_type=product_type,
                 margin_coin=margin_coin,
                 internal_order_id=internal_order_id,
+                trace=request.trace,
             )
         if resolved_order is None:
             completed = self._repo.record_kill_switch_event(
@@ -1730,6 +1754,7 @@ class LiveBrokerOrderService:
                 ),
                 client_oid=None,
                 exchange_order_id=None,
+                trace=self._config_tenant_trace(),
             )
             exchange_part = self._response_to_dict(response)
         else:
@@ -2064,6 +2089,7 @@ class LiveBrokerOrderService:
         product_type: str,
         margin_coin: str,
         internal_order_id: str | None,
+        trace: Mapping[str, Any] | None = None,
     ) -> dict[str, Any]:
         if scope == "trade":
             return self._cancel_matching_local_orders(
@@ -2085,6 +2111,7 @@ class LiveBrokerOrderService:
                 call=lambda: self._private.cancel_all_orders(body, priority=True),
                 client_oid=None,
                 exchange_order_id=None,
+                trace=trace,
             )
             local = self._cancel_matching_local_orders(
                 scope=scope,
@@ -2305,14 +2332,19 @@ class LiveBrokerOrderService:
             )
 
     def _assert_submit_runtime_gates(
-        self, *, allow_safety_bypass: bool, operation: str
+        self,
+        *,
+        allow_safety_bypass: bool,
+        operation: str,
+        order_trace: dict[str, Any] | None = None,
     ) -> None:
         if allow_safety_bypass:
             return
         if not self._settings.live_order_submission_enabled:
             return
         self._assert_modul_mate_policy_allows_exchange_submit(
-            allow_safety_bypass=allow_safety_bypass
+            allow_safety_bypass=allow_safety_bypass,
+            order_trace=order_trace,
         )
         self._assert_reconcile_snapshot_allows_submit(operation=operation)
         self._assert_public_exchange_probe(operation=operation)
@@ -2799,6 +2831,7 @@ class LiveBrokerOrderService:
         self._assert_submit_runtime_gates(
             allow_safety_bypass=allow_safety_bypass,
             operation=action,
+            order_trace=request.trace,
         )
         self._assert_prepaid_allows_opening_order(
             request, allow_safety_bypass=allow_safety_bypass
@@ -3118,6 +3151,7 @@ class LiveBrokerOrderService:
                 ),
                 client_oid=client_oid,
                 exchange_order_id=None,
+                trace=trace_merged,
             )
         except BitgetRestError as exc:
             if exc.classification == "duplicate":
@@ -3130,6 +3164,7 @@ class LiveBrokerOrderService:
                     client_oid=client_oid,
                     market_family=effective_family,
                     margin_account_mode=margin_mode_for_profile,
+                    trace=trace_merged,
                 )
                 if detail is not None:
                     stored = self._repo.upsert_order(
@@ -3244,6 +3279,7 @@ class LiveBrokerOrderService:
                 client_oid=client_oid,
                 market_family=effective_family,
                 margin_account_mode=margin_mode_for_profile,
+                trace=trace_merged,
             )
             exchange_order_id = self._extract_exchange_order_id(
                 response.payload, detail
@@ -3372,6 +3408,16 @@ class LiveBrokerOrderService:
             )
         return existing
 
+    def _order_trace_from_identity(
+        self, identity: Mapping[str, Any]
+    ) -> dict[str, Any] | None:
+        trace = identity.get("trace_json")
+        return trace if isinstance(trace, dict) else None
+
+    def _config_tenant_trace(self) -> dict[str, Any] | None:
+        tid = (self._settings.modul_mate_gate_tenant_id or "").strip()
+        return {"tenant_id": tid} if tid else None
+
     def _call_private(
         self,
         *,
@@ -3383,50 +3429,52 @@ class LiveBrokerOrderService:
         client_oid: str | None,
         exchange_order_id: str | None,
         exchange_mutation: bool = True,
+        trace: Mapping[str, Any] | None = None,
     ) -> BitgetRestResponse:
         if exchange_mutation and self._global_halt is not None:
             self._global_halt.assert_not_halted()
-        try:
-            response = call()
-        except BitgetRestError as exc:
-            self._repo.record_order_action(
-                {
-                    "internal_order_id": internal_order_id,
-                    "action": action,
-                    "request_path": request_path,
-                    "client_oid": client_oid,
-                    "exchange_order_id": exchange_order_id,
-                    "http_status": exc.http_status,
-                    "exchange_code": exc.exchange_code,
-                    "exchange_msg": exc.exchange_msg or str(exc),
-                    "retry_count": 0,
-                    "request_json": request_json,
-                    "response_json": exc.to_dict(),
-                }
-            )
-            if exc.classification in _DEAD_LETTER_CLASSIFICATIONS:
-                try:
-                    self._repo.record_audit_trail(
-                        {
-                            "category": "exchange_write_dead_letter",
-                            "action": action,
-                            "severity": "critical",
-                            "scope": "trade",
-                            "scope_key": internal_order_id,
-                            "source": "live-broker",
-                            "internal_order_id": internal_order_id,
-                            "symbol": request_json.get("symbol"),
-                            "details_json": {
-                                "request_path": request_path,
-                                "request_json": request_json,
-                                "client_oid": client_oid,
-                                "error": exc.to_dict(),
-                            },
-                        }
-                    )
-                except Exception as audit_exc:
-                    logger.warning("dead_letter audit failed: %s", audit_exc)
-            raise
+        with tenant_credentials_scope(self._settings, trace):
+            try:
+                response = call()
+            except BitgetRestError as exc:
+                self._repo.record_order_action(
+                    {
+                        "internal_order_id": internal_order_id,
+                        "action": action,
+                        "request_path": request_path,
+                        "client_oid": client_oid,
+                        "exchange_order_id": exchange_order_id,
+                        "http_status": exc.http_status,
+                        "exchange_code": exc.exchange_code,
+                        "exchange_msg": exc.exchange_msg or str(exc),
+                        "retry_count": 0,
+                        "request_json": request_json,
+                        "response_json": exc.to_dict(),
+                    }
+                )
+                if exc.classification in _DEAD_LETTER_CLASSIFICATIONS:
+                    try:
+                        self._repo.record_audit_trail(
+                            {
+                                "category": "exchange_write_dead_letter",
+                                "action": action,
+                                "severity": "critical",
+                                "scope": "trade",
+                                "scope_key": internal_order_id,
+                                "source": "live-broker",
+                                "internal_order_id": internal_order_id,
+                                "symbol": request_json.get("symbol"),
+                                "details_json": {
+                                    "request_path": request_path,
+                                    "request_json": request_json,
+                                    "client_oid": client_oid,
+                                    "error": exc.to_dict(),
+                                },
+                            }
+                        )
+                    except Exception as audit_exc:
+                        logger.warning("dead_letter audit failed: %s", audit_exc)
+                raise
         self._repo.record_order_action(
             {
                 "internal_order_id": internal_order_id,
@@ -3453,6 +3501,7 @@ class LiveBrokerOrderService:
         client_oid: str,
         market_family: str | None = None,
         margin_account_mode: str | None = None,
+        trace: Mapping[str, Any] | None = None,
     ) -> BitgetRestResponse | None:
         fam = str(market_family or self._settings.market_family).lower()
         profile = self._order_endpoint_profile(fam, margin_account_mode)
@@ -3462,16 +3511,17 @@ class LiveBrokerOrderService:
         if not detail_path:
             return None
         try:
-            return self._private.get_order_detail(
-                params={
-                    **self._build_query_params(
-                        symbol=symbol, product_type=product_type, market_family=fam
-                    ),
-                    "clientOid": client_oid,
-                },
-                request_path=detail_path,
-                market_family=fam,
-            )
+            with tenant_credentials_scope(self._settings, trace):
+                return self._private.get_order_detail(
+                    params={
+                        **self._build_query_params(
+                            symbol=symbol, product_type=product_type, market_family=fam
+                        ),
+                        "clientOid": client_oid,
+                    },
+                    request_path=detail_path,
+                    market_family=fam,
+                )
         except BitgetRestError as exc:
             if exc.classification == "not_found":
                 return None

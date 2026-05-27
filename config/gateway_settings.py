@@ -303,6 +303,26 @@ class GatewaySettings(BaseServiceSettings):
         alias="BILLING_MIN_BALANCE_NEW_TRADE_USD",
         description="Mindest-Prepaid fuer neue Trades (Aktivierung).",
     )
+    go_live_require_step_up: bool = Field(
+        default=False,
+        alias="GO_LIVE_REQUIRE_STEP_UP",
+        description="Go-Live Self-Service erfordert Step-Up (TOTP/PIN).",
+    )
+    go_live_step_up_totp_secret: str = Field(
+        default="",
+        alias="GO_LIVE_STEP_UP_TOTP_SECRET",
+        description="Base32/Plain TOTP-Geheimnis fuer Go-Live Step-Up (Production).",
+    )
+    go_live_step_up_pin: str = Field(
+        default="",
+        alias="GO_LIVE_STEP_UP_PIN",
+        description="Statischer Step-Up-PIN (nur Dev/Staging, nicht Production).",
+    )
+    go_live_require_email_verified: bool = Field(
+        default=True,
+        alias="GO_LIVE_REQUIRE_EMAIL_VERIFIED",
+        description="Go-Live erfordert portal_identity_security.email_verified_at.",
+    )
     billing_warning_balance_usd: str = Field(
         default="100",
         alias="BILLING_WARNING_BALANCE_USD",
@@ -672,6 +692,27 @@ class GatewaySettings(BaseServiceSettings):
                 raise ValueError(
                     "COMMERCIAL_CONTRACT_ENFORCE_SIGNING_WORKFLOW in Production erfordert "
                     f"COMMERCIAL_CONTRACT_WEBHOOK_SECRET (min {MIN_PRODUCTION_SECRET_LEN} Zeichen)"
+                )
+
+        if self.go_live_require_step_up and self.production:
+            totp = self.go_live_step_up_totp_secret.strip()
+            pin = self.go_live_step_up_pin.strip()
+            if not totp and not pin:
+                raise ValueError(
+                    "GO_LIVE_REQUIRE_STEP_UP in Production erfordert "
+                    "GO_LIVE_STEP_UP_TOTP_SECRET (empfohlen) oder GO_LIVE_STEP_UP_PIN"
+                )
+            if pin and len(pin) < 6:
+                raise ValueError("GO_LIVE_STEP_UP_PIN muss mindestens 6 Zeichen haben")
+            if totp and len(totp) < MIN_PRODUCTION_SECRET_LEN:
+                raise ValueError(
+                    f"GO_LIVE_STEP_UP_TOTP_SECRET muss mindestens "
+                    f"{MIN_PRODUCTION_SECRET_LEN} Zeichen haben"
+                )
+            if pin and self.production:
+                raise ValueError(
+                    "GO_LIVE_STEP_UP_PIN ist in Production unzulaessig — "
+                    "nutze GO_LIVE_STEP_UP_TOTP_SECRET"
                 )
 
         if self.payment_wise_webhook_enabled and self.production:

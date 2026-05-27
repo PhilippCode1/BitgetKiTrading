@@ -75,6 +75,8 @@ const nextConfig = {
   // Next 16: envDir entfaellt; Repo-Root-`.env*`: Symlink in apps/dashboard/ nutzen
   // oder ENV bei Build setzen (Docker-ARG, CI-Variablen). Siehe CONFIGURATION.md.
   reactStrictMode: true,
+  // Playwright E2E nutzt oft 127.0.0.1 statt localhost — HMR/Cookies sonst blockiert.
+  allowedDevOrigins: ["127.0.0.1", "localhost"],
   async redirects() {
     const legacy = [
       "/ops",
@@ -132,15 +134,19 @@ const nextConfig = {
       { key: "Content-Security-Policy", value: csp },
     ];
     return [
-      {
-        source: "/_next/static/:path*",
-        headers: [
-          {
-            key: "Cache-Control",
-            value: "public, max-age=31536000, immutable",
-          },
-        ],
-      },
+      ...(isProdBuild
+        ? [
+            {
+              source: "/_next/static/:path*",
+              headers: [
+                {
+                  key: "Cache-Control",
+                  value: "public, max-age=31536000, immutable",
+                },
+              ],
+            },
+          ]
+        : []),
       {
         source: "/:path*",
         headers: security,

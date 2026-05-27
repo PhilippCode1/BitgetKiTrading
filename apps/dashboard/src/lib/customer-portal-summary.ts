@@ -3,6 +3,7 @@ import {
   fetchGatewayUpstream,
   GATEWAY_UPSTREAM_TIMEOUT_COMMERCE_MS,
 } from "@/lib/gateway-upstream-fetch";
+import { readPortalAuthorizationFromCookies } from "@/lib/portal-jwt-server";
 import { serverEnv } from "@/lib/server-env";
 
 /** BFF-Abdeckung: `/v1/commerce/customer` → dieses Zusammenfassungsmodell. */
@@ -268,22 +269,27 @@ export async function getCustomerPortalSummary(): Promise<CustomerPortalSummary>
     };
   }
 
-  const auth = requireOperatorGatewayAuth();
-  if (!auth.ok) {
-    return {
-      fetchedAt,
-      dataState: "not_configured",
-      notConfiguredReason: "gateway_bff_auth_missing",
-      commerceCustomerMe: null,
-      commerceLifecycle: null,
-      commerceIntegrations: null,
-      tradingReadonly: noTradeStub,
-      errorHint:
-        "DASHBOARD_GATEWAY_AUTHORIZATION fehlt; serverseitiger BFF-Proxy zum API-Gateway ist nicht konfiguriert.",
-    };
+  // Reihenfolge: Portal-JWT aus Cookie > BFF-ENV-Fallback.
+  let authorization: string | null = await readPortalAuthorizationFromCookies();
+  if (!authorization) {
+    const fallback = requireOperatorGatewayAuth(null);
+    if (!fallback.ok) {
+      return {
+        fetchedAt,
+        dataState: "not_configured",
+        notConfiguredReason: "gateway_bff_auth_missing",
+        commerceCustomerMe: null,
+        commerceLifecycle: null,
+        commerceIntegrations: null,
+        tradingReadonly: noTradeStub,
+        errorHint:
+          "Kein Portal-JWT im Cookie und kein DASHBOARD_GATEWAY_AUTHORIZATION als Fallback verfuegbar.",
+      };
+    }
+    authorization = fallback.authorization;
   }
 
-  const a = auth.authorization;
+  const a = authorization;
   const timeout = GATEWAY_UPSTREAM_TIMEOUT_COMMERCE_MS;
   const paths = [
     { key: "me" as const, p: "/v1/commerce/customer/me" },

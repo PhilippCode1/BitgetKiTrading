@@ -755,3 +755,26 @@ groups:
           summary: "Shadow/Live divergence"
           description: "Mismatch im Shadow-/Live-Vergleich."
           runbook: "docs/monitoring_runbook.md#replay-shadow-divergenz"
+
+      - alert: ExchangeRateLimitHit
+        expr: bitget_api_rate_limit_hits_total > 0
+        for: 1m
+        labels:
+          severity: warning
+          category: exchange
+        annotations:
+          summary: "Bitget API Rate Limit Hit"
+          description: "Die Boersen-API meldet Überschreitung des Ratenlimits."
+          runbook: "docs/monitoring_runbook.md#auth-anomalies"
+
+      - alert: LLMTimeout
+        expr: llm_request_timeouts_total > 0
+        for: 1m
+        labels:
+          severity: warning
+          category: inference
+        annotations:
+          summary: "LLM Request Timeout"
+          description: "Anfragen an den LLM-Provider laufen ins Timeout."
+          runbook: "docs/monitoring_runbook.md#llm-structured-failures"
+

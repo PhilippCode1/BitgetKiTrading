@@ -373,7 +373,6 @@ def validate_env(
         safety_keys = (
             "LIVE_SAFETY_LATCH_ON_DUPLICATE_RECOVERY_FAIL",
             "GATEWAY_MANUAL_ACTION_REQUIRED",
-            "GATEWAY_REQUIRE_MANUAL_ACTION_TOKEN",
         )
         if not any(truthy(env, key) for key in safety_keys if key in env):
             _issue(

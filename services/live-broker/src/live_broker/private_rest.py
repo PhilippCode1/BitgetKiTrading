@@ -25,6 +25,7 @@ from live_broker.bitget_exchange_handling import (
     ExchangeHandling,
     exchange_handling_for_classification,
 )
+from live_broker.tenant_credentials import get_active_tenant_credentials
 
 if TYPE_CHECKING:
     from live_broker.config import LiveBrokerSettings
@@ -750,11 +751,16 @@ class BitgetPrivateRestClient:
                 message="LIVE_BROKER_ENABLED=false",
                 retryable=False,
             )
-        if (
-            not self._settings.effective_api_key
-            or not self._settings.effective_api_secret
-            or not self._settings.effective_api_passphrase
-        ):
+        bundle = get_active_tenant_credentials()
+        if bundle is not None:
+            api_key = bundle.api_key
+            api_secret = bundle.api_secret
+            api_passphrase = bundle.api_passphrase
+        else:
+            api_key = self._settings.effective_api_key
+            api_secret = self._settings.effective_api_secret
+            api_passphrase = self._settings.effective_api_passphrase
+        if not api_key or not api_secret or not api_passphrase:
             raise BitgetRestError(
                 classification="auth",
                 message="Bitget private API credentials missing",
@@ -787,6 +793,9 @@ class BitgetPrivateRestClient:
                     request_path=request_path,
                     query_string=query_string,
                     body=body_text,
+                    api_key=api_key,
+                    api_secret=api_secret,
+                    api_passphrase=api_passphrase,
                 )
                 url = f"{self._settings.effective_rest_base_url}{request_path}"
                 if query_string:

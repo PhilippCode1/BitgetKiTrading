@@ -140,6 +140,13 @@ if [[ -f tools/validate_env_profile.py ]]; then
   "$PYTHON_BIN" tools/validate_env_profile.py --env-file "$ENV_FILE" --profile "$PY_PROF" || exit 1
 fi
 
+if [[ "$PROFILE" == "production" && -f scripts/go_live_check.sh ]]; then
+  echo "==> Go-Live ENV/Preflight (Production)"
+  if ! bash scripts/go_live_check.sh "$ENV_FILE"; then
+    echo "WARN: Go-Live-Check meldet Fehler — LIVE-Trading blockiert bis behoben." >&2
+  fi
+fi
+
 if [[ "$PROFILE" == "local" && -f scripts/mint_dashboard_gateway_jwt.py ]]; then
   echo "==> JWT fuer Dashboard->Gateway (DASHBOARD_GATEWAY_AUTHORIZATION)"
   if ! "$PYTHON_BIN" scripts/mint_dashboard_gateway_jwt.py --env-file "$ENV_FILE" --update-env-file; then

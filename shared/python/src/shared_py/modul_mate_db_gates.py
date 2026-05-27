@@ -7,7 +7,9 @@ Bezug: infra/migrations/postgres/604_modul_mate_execution_gates.sql
 
 from __future__ import annotations
 
+import os
 from collections.abc import Mapping
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import psycopg
@@ -38,7 +40,8 @@ def fetch_tenant_modul_mate_gates(
     row = conn.execute(
         """
         SELECT trial_active, contract_accepted, admin_live_trading_granted,
-               subscription_active, account_paused, account_suspended
+               subscription_active, account_paused, account_suspended,
+               live_go_live_at
         FROM app.tenant_modul_mate_gates
         WHERE tenant_id = %s
         """,
@@ -50,6 +53,8 @@ def fetch_tenant_modul_mate_gates(
         raise TypeError(
             "fetch_tenant_modul_mate_gates: psycopg Connection braucht row_factory=dict_row"
         )
+    live_at = row.get("live_go_live_at")
+    live_go_live_at = live_at if isinstance(live_at, datetime) else None
     return CustomerCommercialGates(
         trial_active=bool(row["trial_active"]),
         contract_accepted=bool(row["contract_accepted"]),
@@ -57,6 +62,7 @@ def fetch_tenant_modul_mate_gates(
         subscription_active=bool(row["subscription_active"]),
         account_paused=bool(row["account_paused"]),
         account_suspended=bool(row["account_suspended"]),
+        live_go_live_at=live_go_live_at,
     )
 
 
@@ -85,6 +91,37 @@ _M604_DEFAULT_TENANT_SEED: dict[str, bool] = {
     "account_suspended": False,
 }
 M604_GATES_TABLE_FQN = "app.tenant_modul_mate_gates"
+
+
+def go_live_cooldown_sec() -> int:
+    """Sekunden Shadow-Phase nach Go-Live (0 = deaktiviert). ENV: GO_LIVE_COOLDOWN_SEC."""
+    raw = (os.environ.get("GO_LIVE_COOLDOWN_SEC") or "3600").strip()
+    try:
+        return max(0, int(raw))
+    except ValueError:
+        return 3600
+
+
+def _assert_live_go_live_cooldown_elapsed(
+    *,
+    live_go_live_at: datetime | None,
+) -> None:
+    cooldown = go_live_cooldown_sec()
+    if cooldown <= 0 or live_go_live_at is None:
+        return
+    started = live_go_live_at
+    if started.tzinfo is None:
+        started = started.replace(tzinfo=UTC)
+    allowed_after = started + timedelta(seconds=cooldown)
+    now = datetime.now(tz=UTC)
+    if now < allowed_after:
+        raise ExecutionPolicyViolationError(
+            (
+                "Go-Live Cooldown aktiv: LIVE-Exchange-Orders erst nach "
+                f"{allowed_after.isoformat()} (Shadow-Phase {cooldown}s)."
+            ),
+            reason="live_go_live_cooldown_active",
+        )
 
 
 def assert_m604_table_and_policies(
@@ -192,6 +229,7 @@ def assert_execution_allowed(
                 "Live-Handel laut product_policy/tenant_gates nicht erlaubt",
                 reason="live_trading_not_permitted",
             )
+        _assert_live_go_live_cooldown_elapsed(live_go_live_at=gates.live_go_live_at)
         return True
     if m == "DEMO":
         if gates is None:
@@ -206,3 +244,21 @@ def assert_execution_allowed(
             )
         return True
     return True
+
+
+async def assert_execution_allowed_async(
+    tenant_id: str,
+    mode: str,
+    db_session: psycopg.Connection[Any],
+) -> bool:
+    """
+    Asynchrone Variante von assert_execution_allowed zur Integration in asynchrone Kontexte.
+    """
+    import asyncio
+    return await asyncio.to_thread(
+        assert_execution_allowed,
+        db_session,
+        tenant_id=tenant_id,
+        mode=mode,
+    )
+

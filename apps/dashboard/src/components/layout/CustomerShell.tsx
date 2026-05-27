@@ -6,6 +6,9 @@ import { CustomerPortalProvider } from "@/components/layout/CustomerPortalContex
 import { CustomerSidebarNav } from "@/components/layout/CustomerSidebarNav";
 import { LocaleSwitcher } from "@/components/i18n/LocaleSwitcher";
 import type { DashboardPersona } from "@/lib/operator-jwt";
+import { getCustomerPortalSummary } from "@/lib/customer-portal-summary";
+import { readE2eLiveRibbonFixture } from "@/lib/e2e-fixtures";
+import { getServerTranslator } from "@/lib/i18n/server-translate";
 
 type Props = Readonly<{
   children: ReactNode;
@@ -16,7 +19,15 @@ type Props = Readonly<{
 /**
  * Kunden-Portal: keine Operator-Steuerung (UiMode, Admin, Heartbeat) — nur Navigation + Sprache.
  */
-export function CustomerShell({ children, persona }: Props) {
+export async function CustomerShell({ children, persona }: Props) {
+  const summary = await getCustomerPortalSummary();
+  const t = await getServerTranslator();
+  const e2eLiveRibbon = await readE2eLiveRibbonFixture();
+  const isLive =
+    e2eLiveRibbon ||
+    summary.commerceLifecycle?.body?.gatesPreview?.admin_live_trading_granted ===
+      true;
+
   return (
     <CustomerPortalProvider persona={persona}>
       <div
@@ -26,6 +37,16 @@ export function CustomerShell({ children, persona }: Props) {
       >
         <CustomerSidebarNav />
         <div className="dash-main-wrap">
+          {isLive ? (
+            <div
+              className="live-ribbon"
+              role="status"
+              data-e2e="live-ribbon"
+              aria-live="polite"
+            >
+              {t("customerPortal.tradingPage.ribbonLive")}
+            </div>
+          ) : null}
           <CustomerGatewayIncidentBanner />
           <div className="dash-locale-bar">
             <div className="dash-bar-group" />

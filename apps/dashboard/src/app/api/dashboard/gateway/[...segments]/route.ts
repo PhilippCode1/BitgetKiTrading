@@ -30,7 +30,7 @@ export async function GET(
   req: Request,
   ctx: { params: Promise<{ segments: string[] }> },
 ) {
-  const auth = requireOperatorGatewayAuth();
+  const auth = requireOperatorGatewayAuth(req.headers);
   if (!auth.ok) return auth.response;
 
   const { segments } = await ctx.params;
@@ -82,7 +82,7 @@ export async function POST(
   req: Request,
   ctx: { params: Promise<{ segments: string[] }> },
 ) {
-  const auth = requireOperatorGatewayAuth();
+  const auth = requireOperatorGatewayAuth(req.headers);
   if (!auth.ok) return auth.response;
 
   const { segments } = await ctx.params;
