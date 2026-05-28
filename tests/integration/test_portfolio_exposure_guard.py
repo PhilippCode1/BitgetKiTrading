@@ -7,10 +7,10 @@ und der Volatilitäts-Hebel-Dämpfung (volatility leverage clamp).
 from __future__ import annotations
 
 import sys
+from decimal import Decimal
 from pathlib import Path
 from unittest.mock import patch
 from uuid import uuid4
-from decimal import Decimal
 
 import pytest
 
@@ -23,10 +23,10 @@ for candidate in (REPO_ROOT, LIVE_BROKER_SRC, SHARED_SRC):
         sys.path.insert(0, s)
 
 from live_broker.config import LiveBrokerSettings
+from live_broker.exceptions import SecurityException
 from live_broker.execution.models import ExecutionIntentRequest
 from live_broker.execution.risk_adapter import PORTFOLIO_EXPOSURE_EXCEEDED
 from live_broker.execution.service import LiveExecutionService
-from live_broker.exceptions import SecurityException
 from paper_broker.config import PaperBrokerSettings
 
 pytestmark = pytest.mark.live_mock

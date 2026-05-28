@@ -3,7 +3,10 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from shared_py.eventbus.payload_schemas import ensure_payload_matches_schema, SchemaValidationError
+from shared_py.eventbus.payload_schemas import (
+    SchemaValidationError,
+    ensure_payload_matches_schema,
+)
 from shared_py.signal_contracts import (
     BotParams,
     ExecutionMode,

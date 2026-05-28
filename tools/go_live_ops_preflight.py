@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -81,7 +80,9 @@ def _issue(
     message: str,
     key: str | None = None,
 ) -> None:
-    issues.append(PreflightIssue(severity=severity, code=code, key=key, message=message))
+    issues.append(
+        PreflightIssue(severity=severity, code=code, key=key, message=message)
+    )
 
 
 def _require_present(
@@ -131,7 +132,9 @@ def evaluate_go_live_preflight(
     strict_runtime: bool = False,
 ) -> list[PreflightIssue]:
     issues: list[PreflightIssue] = []
-    production = truthy(env, "PRODUCTION") or env.get("APP_ENV", "").lower() == "production"
+    production = (
+        truthy(env, "PRODUCTION") or env.get("APP_ENV", "").lower() == "production"
+    )
     live_trade = truthy(env, "LIVE_TRADE_ENABLE")
     vault_tenant = truthy(env, "TENANT_EXCHANGE_CREDENTIALS_FROM_VAULT")
     oidc = env.get("PORTAL_AUTH_PROVIDER", "mock").strip().lower() == "oidc"
@@ -142,7 +145,10 @@ def evaluate_go_live_preflight(
             severity="error",
             code="production_mock_login_forbidden",
             key="PORTAL_AUTH_PROVIDER",
-            message="Production erfordert PORTAL_AUTH_PROVIDER=oidc (Mock ist Dev-only).",
+            message=(
+                "Production erfordert PORTAL_AUTH_PROVIDER=oidc "
+                "(Mock ist Dev-only)."
+            ),
         )
 
     if oidc:
@@ -169,7 +175,8 @@ def evaluate_go_live_preflight(
                 code="oidc_redirect_frontend_mismatch",
                 key="OIDC_REDIRECT_URI",
                 message=(
-                    "OIDC_REDIRECT_URI muss {FRONTEND_URL}/api/auth/callback entsprechen."
+                    "OIDC_REDIRECT_URI muss {FRONTEND_URL}/api/auth/callback "
+                    "entsprechen."
                 ),
             )
 
@@ -268,7 +275,8 @@ def evaluate_go_live_preflight(
                 code="live_trade_safety_support_missing",
                 key="GATEWAY_MANUAL_ACTION_REQUIRED",
                 message=(
-                    "LIVE_TRADE_ENABLE=true erfordert Safety-Latch oder Manual-Action-Gate."
+                    "LIVE_TRADE_ENABLE=true erfordert Safety-Latch oder "
+                    "Manual-Action-Gate."
                 ),
             )
 
@@ -281,7 +289,10 @@ def evaluate_go_live_preflight(
                     severity="warning",
                     code="go_live_cooldown_short",
                     key="GO_LIVE_COOLDOWN_SEC",
-                    message="GO_LIVE_COOLDOWN_SEC < 300s ist fuer Production sehr kurz.",
+                    message=(
+                        "GO_LIVE_COOLDOWN_SEC < 300s ist fuer Production "
+                        "sehr kurz."
+                    ),
                 )
         except ValueError:
             _issue(
@@ -321,7 +332,10 @@ def evaluate_go_live_preflight(
             severity="warning",
             code="oidc_tenant_mismatch",
             key="OIDC_DEFAULT_TENANT_ID",
-            message="OIDC_DEFAULT_TENANT_ID sollte COMMERCIAL_DEFAULT_TENANT_ID entsprechen.",
+            message=(
+                "OIDC_DEFAULT_TENANT_ID sollte COMMERCIAL_DEFAULT_TENANT_ID "
+                "entsprechen."
+            ),
         )
 
     return issues

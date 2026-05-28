@@ -17,7 +17,10 @@ import {
   sanitizeLlmChartAnnotationsDetailed,
   type ChartSurfaceId,
 } from "@/lib/chart/chart-intelligence";
-import { fetchLiveState, fetchMarketUniverseCandles } from "@/lib/api";
+import {
+  fetchLiveState,
+  fetchMarketUniverseCandles,
+} from "@/lib/api-client";
 import {
   liveCandleFromPayload,
   parsePayloadCandleClose,

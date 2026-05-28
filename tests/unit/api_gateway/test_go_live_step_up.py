@@ -17,9 +17,9 @@ for p in (REPO_ROOT, GATEWAY_SRC):
         sys.path.insert(0, s)
 
 from api_gateway.go_live_step_up import (  # noqa: E402
+    _totp_at,
     assert_go_live_step_up_verified,
     verify_totp_code,
-    _totp_at,
 )
 
 

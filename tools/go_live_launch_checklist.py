@@ -175,7 +175,10 @@ def run_launch_checklist(
 
     external: list[str] = [
         "IdP: PORTAL_AUTH_PROVIDER=oidc, Smoke-Login /api/auth/callback",
-        "Vault: python tools/verify_vault_tenant_credentials.py --env-file .env.production --tenant-id <TENANT>",
+        (
+            "Vault: python tools/verify_vault_tenant_credentials.py "
+            "--env-file .env.production --tenant-id <TENANT>"
+        ),
         "Bitget: python tools/verify_bitget_rest.py live-readonly --tenant-id <TENANT>",
         "Portal Go-Live: POST /v1/commerce/customer/live-execution/enable",
         "Shadow-Burn-in: python scripts/verify_shadow_burn_in.py --hours 72 --strict",
@@ -259,7 +262,8 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"  - {step.id}: {step.detail}", file=sys.stderr)
             if args.strict_runtime:
                 print(
-                    "  - VAULT_TOKEN: echten Token aus Vault setzen (nicht YOUR_*_HERE)",
+                    "  - VAULT_TOKEN: echten Token aus Vault setzen "
+                    "(nicht YOUR_*_HERE)",
                     file=sys.stderr,
                 )
                 print(
@@ -268,7 +272,8 @@ def main(argv: list[str] | None = None) -> int:
                     file=sys.stderr,
                 )
                 print(
-                    "  - OIDC_* / GATEWAY_*: alle Platzhalter in .env.production ersetzen",
+                    "  - OIDC_* / GATEWAY_*: alle Platzhalter in "
+                    ".env.production ersetzen",
                     file=sys.stderr,
                 )
         return 1

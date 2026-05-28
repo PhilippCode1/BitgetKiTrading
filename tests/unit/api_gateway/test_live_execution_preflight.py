@@ -5,8 +5,6 @@ from decimal import Decimal
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 REPO_ROOT = Path(__file__).resolve().parents[3]
 GATEWAY_SRC = REPO_ROOT / "services" / "api-gateway" / "src"
 SHARED_SRC = REPO_ROOT / "shared" / "python" / "src"

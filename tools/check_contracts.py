@@ -230,7 +230,10 @@ def _ts_ok_for_json_type(ts_type: str, jtags: list[str]) -> bool:
     for jt in jset - {"any"}:
         if jt in ("integer", "number") and re.search(r"number", ts_l, re.IGNORECASE):
             return True
-        if jt == "string" and (re.search(r"string", ts_l, re.IGNORECASE) or ts_l in ("ExecutionMode", "SignalDirection")):
+        if jt == "string" and (
+            re.search(r"string", ts_l, re.IGNORECASE)
+            or ts_l in ("ExecutionMode", "SignalDirection")
+        ):
             return True
         if jt == "boolean" and re.search(r"boolean", ts_l, re.IGNORECASE):
             return True

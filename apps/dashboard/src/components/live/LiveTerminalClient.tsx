@@ -22,7 +22,7 @@ import { PaperPanel } from "@/components/live/PaperPanel";
 import { SignalPanel } from "@/components/live/SignalPanel";
 import { TerminalSafetyHaltOverlay } from "@/components/live/TerminalSafetyHaltOverlay";
 import { StatusPillLink } from "@/components/ui/StatusPillLink";
-import { fetchLiveState } from "@/lib/api";
+import { fetchLiveState } from "@/lib/api-client";
 import type { ExecutionPathViewModel } from "@/lib/execution-path-view-model";
 import { buildLiveDataSurfaceModelFromLiveState } from "@/lib/live-data-surface-model";
 import {

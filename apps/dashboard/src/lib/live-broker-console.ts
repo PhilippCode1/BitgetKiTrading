@@ -9,7 +9,7 @@ import {
   fetchLiveBrokerOrders,
   fetchLiveState,
   fetchPaperOpen,
-} from "@/lib/api";
+} from "@/lib/api-client";
 import type {
   LiveBrokerOrderActionItem,
   LiveBrokerOrderItem,

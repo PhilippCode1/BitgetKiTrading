@@ -40,9 +40,10 @@ except ImportError:  # pragma: no cover
     sql = None  # type: ignore[assignment]
 
 # Docker-Container-Name fuer den Compose-Stack (siehe docker-compose.yml).
-_DOCKER_PG_CONTAINER = os.environ.get(
-    "DR_POSTGRES_CONTAINER", "bitget_ai_postgres"
-).strip() or "bitget_ai_postgres"
+_DOCKER_PG_CONTAINER = (
+    os.environ.get("DR_POSTGRES_CONTAINER", "bitget_ai_postgres").strip()
+    or "bitget_ai_postgres"
+)
 _DOCKER_PG_USER = os.environ.get("DR_POSTGRES_USER", "postgres").strip() or "postgres"
 _DOCKER_PG_DB = os.environ.get("DR_POSTGRES_DB", "bitget_ai").strip() or "bitget_ai"
 
@@ -198,10 +199,20 @@ def _row_checksum(conn: Any, sc: str) -> str:
 
 
 def _run_sub(
-    args: list[str], *, input_text: str | None = None, env: dict[str, str] | None = None, cwd: Path | None = None
+    args: list[str],
+    *,
+    input_text: str | None = None,
+    env: dict[str, str] | None = None,
+    cwd: Path | None = None,
 ) -> tuple[int, str, str]:
     p = subprocess.run(  # noqa: S603
-        args, input=input_text, capture_output=True, text=True, env=env or None, timeout=600, cwd=cwd
+        args,
+        input=input_text,
+        capture_output=True,
+        text=True,
+        env=env or None,
+        timeout=600,
+        cwd=cwd,
     )
     o = (p.stdout or "") + (p.stderr or "")
     return p.returncode, o, o[:8000]
@@ -299,17 +310,44 @@ def run_drill(
     if use_docker:
         t_insert_start = time.perf_counter()
         try:
-            # We create a specific test table with a dummy tenant and dummy trade as required
-            _run_sub([
-                "docker", "exec", "-i", "bitget_ai_postgres", "psql", "-U", "postgres", "-d", "bitget_ai", "-c",
+            # Drill-Schema + Tabelle fuer Restore-Checksumme
+            create_sql = (
                 f"DROP SCHEMA IF EXISTS {sc} CASCADE; CREATE SCHEMA {sc}; "
-                f"CREATE TABLE {sc}.drill_t (id serial primary key, payload text not null, inserted_at timestamptz not null default now());"
-            ])
+                f"CREATE TABLE {sc}.drill_t ("
+                "id serial primary key, payload text not null, "
+                "inserted_at timestamptz not null default now());"
+            )
+            _run_sub(
+                [
+                    "docker",
+                    "exec",
+                    "-i",
+                    "bitget_ai_postgres",
+                    "psql",
+                    "-U",
+                    "postgres",
+                    "-d",
+                    "bitget_ai",
+                    "-c",
+                    create_sql,
+                ]
+            )
             secret = f"dummy_tenant_row_{uuid.uuid4().hex}"
-            _run_sub([
-                "docker", "exec", "-i", "bitget_ai_postgres", "psql", "-U", "postgres", "-d", "bitget_ai", "-c",
-                f"INSERT INTO {sc}.drill_t (payload) VALUES ('{secret}')"
-            ])
+            _run_sub(
+                [
+                    "docker",
+                    "exec",
+                    "-i",
+                    "bitget_ai_postgres",
+                    "psql",
+                    "-U",
+                    "postgres",
+                    "-d",
+                    "bitget_ai",
+                    "-c",
+                    f"INSERT INTO {sc}.drill_t (payload) VALUES ('{secret}')",
+                ]
+            )
             csum0 = _row_checksum_docker(sc)
         except Exception as e:
             return DrillResult(
@@ -378,11 +416,22 @@ def run_drill(
             )
 
         # Drop schema to simulate disaster / failure
-        _run_sub([
-            "docker", "exec", "-i", "bitget_ai_postgres", "psql", "-U", "postgres", "-d", "bitget_ai", "-c",
-            f"DROP SCHEMA {sc} CASCADE"
-        ])
-        
+        _run_sub(
+            [
+                "docker",
+                "exec",
+                "-i",
+                "bitget_ai_postgres",
+                "psql",
+                "-U",
+                "postgres",
+                "-d",
+                "bitget_ai",
+                "-c",
+                f"DROP SCHEMA {sc} CASCADE",
+            ]
+        )
+
         tr = time.perf_counter()
         rc2, o2, _ = _run_sub(
             [
@@ -425,7 +474,9 @@ def run_drill(
             "rto_sec_measured": rto_use,
             "rpo_sec_model": rpo3,
         }
-        logf.write_text(json.dumps(d_out, ensure_ascii=False, indent=2), encoding="utf-8")
+        logf.write_text(
+            json.dumps(d_out, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
         hsum = hashlib.sha256()
         hsum.update(dump.read_bytes())
         sha_line = f"{hsum.hexdigest()}  {dump.name}\n"
@@ -438,10 +489,21 @@ def run_drill(
 
         if st == "PASS":
             try:
-                _run_sub([
-                    "docker", "exec", "-i", "bitget_ai_postgres", "psql", "-U", "postgres", "-d", "bitget_ai", "-c",
-                    f"DROP SCHEMA IF EXISTS {sc} CASCADE"
-                ])
+                _run_sub(
+                    [
+                        "docker",
+                        "exec",
+                        "-i",
+                        "bitget_ai_postgres",
+                        "psql",
+                        "-U",
+                        "postgres",
+                        "-d",
+                        "bitget_ai",
+                        "-c",
+                        f"DROP SCHEMA IF EXISTS {sc} CASCADE",
+                    ]
+                )
             except Exception:
                 pass
 

@@ -6,7 +6,7 @@ import {
   DashboardBffErrorCode,
   jsonDashboardBffError,
 } from "@/lib/gateway-bff-errors";
-import { gatewayBaseUrl } from "@/lib/gateway-upstream";
+import { gatewayAbsoluteUrl, gatewayBaseUrl } from "@/lib/gateway-upstream";
 import { readPortalAuthorizationFromHeaders } from "@/lib/portal-jwt-server";
 import { serverEnv } from "@/lib/server-env";
 
@@ -74,9 +74,4 @@ export function requirePortalGatewayAuth(
   return { ok: true, authorization: fromCookie, source: "portal_jwt" };
 }
 
-/** Vollstaendige URL zum Gateway (path mit oder ohne fuehrendes /). */
-export function gatewayAbsoluteUrl(path: string): string {
-  const base = gatewayBaseUrl().replace(/\/$/, "");
-  const p = path.startsWith("/") ? path : `/${path}`;
-  return `${base}${p}`;
-}
+export { gatewayAbsoluteUrl, gatewayBaseUrl };

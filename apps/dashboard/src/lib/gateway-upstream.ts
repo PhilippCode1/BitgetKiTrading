@@ -10,6 +10,13 @@ export function gatewayBaseUrl(): string {
   return serverEnv.apiGatewayUrl.replace(/\/$/, "");
 }
 
+/** Vollstaendige URL zum Gateway (path mit oder ohne fuehrendes /). */
+export function gatewayAbsoluteUrl(path: string): string {
+  const base = gatewayBaseUrl().replace(/\/$/, "");
+  const p = path.startsWith("/") ? path : `/${path}`;
+  return `${base}${p}`;
+}
+
 /**
  * Wenn `fetch()` zum API-Gateway fehlschlaegt (ECONNREFUSED, Timeout, DNS): strukturierte Antwort.
  * Kein 503 bei fehlendem JWT — das liefert nur `requireOperatorGatewayAuth` (praezise Diagnose).
