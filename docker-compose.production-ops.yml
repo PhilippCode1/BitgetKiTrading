@@ -1,0 +1,27 @@
+# Production-Ops-Overlay (Single-Host, z. B. GCE Ubuntu + Docker Compose)
+#
+# Zweck: Postgres und Redis nur auf dem Host-Loopback veröffentlichen — für
+#   - Host-Backups (scripts/backup_postgres.sh)
+#   - optionale Host-Migrationen (infra/migrate.py mit DATABASE_URL auf 127.0.0.1)
+#   - Ops-Tools (psql, redis-cli) vom VM-Host
+#
+# NICHT für öffentlichen Zugriff gedacht:
+#   - Bind ist fest 127.0.0.1 (kein 0.0.0.0, kein LAN ohne Firewall-Review)
+#   - Edge-Traffic läuft über Reverse Proxy → api-gateway:8000 / dashboard:3000
+#
+# Verwendung (mit Production-ENV):
+#   export COMPOSE_ENV_FILE=.env.production
+#   docker compose -f docker-compose.yml -f docker-compose.production-ops.yml \
+#     --env-file .env.production up -d
+#
+# bootstrap_stack.sh production merged diese Datei automatisch.
+# Siehe docs/deployment/GCE_UBUNTU_COMPOSE.md
+
+services:
+  postgres:
+    ports:
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-5432}:5432"
+
+  redis:
+    ports:
+      - "127.0.0.1:${REDIS_HOST_PORT:-6379}:6379"

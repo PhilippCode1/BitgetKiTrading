@@ -64,6 +64,9 @@ artifacts/release-evidence/*
 artifacts/llm_eval/*
 !artifacts/llm_eval/.gitkeep
 
+# DR restore drill output (tools/dr_postgres_restore_drill.py)
+artifacts/dr_restore_drill_*/
+
 # Rust (Maturin / Cargo)
 shared_rs/**/target/
 
