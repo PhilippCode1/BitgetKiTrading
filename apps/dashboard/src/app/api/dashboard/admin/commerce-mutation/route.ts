@@ -10,7 +10,7 @@ import { upstreamFetchFailedResponse } from "@/lib/gateway-upstream";
  * JWT/Key bleiben serverseitig; der Browser sendet nur Zielpfad + JSON-Body.
  */
 export async function POST(req: Request) {
-  const auth = requireOperatorGatewayAuth();
+  const auth = requireOperatorGatewayAuth(req.headers);
   if (!auth.ok) return auth.response;
 
   let body: unknown;

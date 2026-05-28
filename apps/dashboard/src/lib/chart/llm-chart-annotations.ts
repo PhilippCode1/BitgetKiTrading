@@ -29,13 +29,6 @@ export type SanitizedLlmChartAnnotations = Readonly<{
     label?: string;
     lineStyle: 0 | 1 | 2 | 3;
   }>;
-  /** @deprecated Im Apply-Pfad durch {@link filledZones} ersetzt; bleibt leer bei Schema 1.0. */
-  priceBands: ReadonlyArray<{
-    priceHigh: number;
-    priceLow: number;
-    label?: string;
-    lineStyle: 0 | 1 | 2 | 3;
-  }>;
   /**
    * Gefuellte Rechtecke (Zeit x Preis) — `price_bands` (volle Chartbreite) + `uncertainty_regions`.
    * Rendering: Baseline-Series (lightweight-charts).
@@ -78,7 +71,6 @@ export type SanitizeLlmChartAnnotationsDetailedResult = Readonly<{
 
 const EMPTY: SanitizedLlmChartAnnotations = {
   horizontalLines: [],
-  priceBands: [],
   filledZones: [],
   markers: [],
   lineSegments: [],
@@ -368,12 +360,6 @@ export function sanitizeLlmChartAnnotationsDetailed(
       }
     }
 
-    const priceBands: Array<{
-      priceHigh: number;
-      priceLow: number;
-      label?: string;
-      lineStyle: 0 | 1 | 2 | 3;
-    }> = [];
     const filledZones: LlmFilledPriceZone[] = [];
     if (Array.isArray(raw.price_bands)) {
       const slice = raw.price_bands.slice(0, 8);
@@ -564,7 +550,6 @@ export function sanitizeLlmChartAnnotationsDetailed(
     return {
       model: {
         horizontalLines,
-        priceBands,
         filledZones,
         markers,
         lineSegments,

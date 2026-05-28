@@ -222,7 +222,7 @@ export default async function LiveBrokerForensicPage(props: {
       </div>
 
       <div className="grid-2">
-        {renderJsonPanel("Risk Snapshot", risk)}
+        {renderJsonPanel(t("pages.forensic.panelRiskSnapshot"), risk)}
         {renderJsonPanel(t("pages.forensic.panelShadow"), shadow)}
       </div>
 
@@ -232,13 +232,16 @@ export default async function LiveBrokerForensicPage(props: {
       </div>
 
       <div className="grid-2">
-        {renderJsonPanel("Orders", data.orders)}
-        {renderJsonPanel("Fills", data.fills)}
+        {renderJsonPanel(t("pages.forensic.panelOrders"), data.orders)}
+        {renderJsonPanel(t("pages.forensic.panelFills"), data.fills)}
       </div>
 
       <div className="grid-2">
-        {renderJsonPanel("Exit Plans", data.exit_plans)}
-        {renderJsonPanel("Trade Reviews", data.trade_reviews)}
+        {renderJsonPanel(t("pages.forensic.panelExitPlans"), data.exit_plans)}
+        {renderJsonPanel(
+          t("pages.forensic.panelTradeReviews"),
+          data.trade_reviews,
+        )}
       </div>
 
       <div className="grid-2">
@@ -246,21 +249,36 @@ export default async function LiveBrokerForensicPage(props: {
           t("pages.forensic.panelTelegram"),
           data.telegram_operator_actions,
         )}
-        {renderJsonPanel("Telegram Outbox", data.telegram_alert_outbox)}
+        {renderJsonPanel(
+          t("pages.forensic.panelTelegramOutbox"),
+          data.telegram_alert_outbox,
+        )}
       </div>
 
       <div className="grid-2">
-        {renderJsonPanel("Gateway Audit", data.gateway_audit_trails)}
-        {renderJsonPanel("Audit Trails", data.audit_trails)}
+        {renderJsonPanel(
+          t("pages.forensic.panelGatewayAudit"),
+          data.gateway_audit_trails,
+        )}
+        {renderJsonPanel(
+          t("pages.forensic.panelAuditTrails"),
+          data.audit_trails,
+        )}
       </div>
 
       <div className="grid-2">
-        {renderJsonPanel("Journal", data.journal)}
-        {renderJsonPanel("Order Actions", data.order_actions)}
+        {renderJsonPanel(t("pages.forensic.panelJournal"), data.journal)}
+        {renderJsonPanel(
+          t("pages.forensic.panelOrderActions"),
+          data.order_actions,
+        )}
       </div>
 
       <div className="grid-2">
-        {renderJsonPanel("Paper Positions", data.paper_positions)}
+        {renderJsonPanel(
+          t("pages.forensic.panelPaperPositions"),
+          data.paper_positions,
+        )}
         {renderJsonPanel(t("pages.forensic.panelDecision"), data.decision)}
       </div>
     </>

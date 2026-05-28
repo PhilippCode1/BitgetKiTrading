@@ -20,6 +20,9 @@ export default async function PublicMarketingLayout({ children }: Props) {
 
   return (
     <div className="public-shell">
+      <a href="#dash-main-content" className="skip-to-main">
+        {t("ui.skipToMain")}
+      </a>
       <header className="public-header">
         <Link href="/" className="public-brand">
           {t("public.shellBrand")}
@@ -58,7 +61,7 @@ export default async function PublicMarketingLayout({ children }: Props) {
           </Link>
         </nav>
       </header>
-      {children}
+      <div id="dash-main-content">{children}</div>
       <footer className="public-footer">
         <nav
           className="public-footer-nav"

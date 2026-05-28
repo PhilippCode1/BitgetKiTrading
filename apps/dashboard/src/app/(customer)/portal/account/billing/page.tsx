@@ -1,3 +1,4 @@
+import { CustomerPortalBillingClient } from "@/components/portal/CustomerPortalBillingClient";
 import { getCustomerPortalSummary } from "@/lib/customer-portal-summary";
 import { getServerTranslator } from "@/lib/i18n/server-translate";
 
@@ -33,17 +34,7 @@ export default async function CustomerAccountBillingPage() {
           </p>
         )}
       </section>
-      <section style={{ marginTop: "1.5rem" }}>
-        <h2
-          className="muted"
-          style={{ fontSize: "1.1rem", marginBottom: "0.5rem" }}
-        >
-          {t("customerPortal.accountBilling.billingHeading")}
-        </h2>
-        <p className="muted">
-          {t("customerPortal.accountBilling.billingStub")}
-        </p>
-      </section>
+      <CustomerPortalBillingClient />
     </div>
   );
 }

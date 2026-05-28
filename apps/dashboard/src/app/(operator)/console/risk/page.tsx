@@ -91,7 +91,7 @@ export default async function RiskCenterPage({
     <>
       <Header
         title={t("console.nav.risk_portfolio")}
-        subtitle="Multi-Asset-Risikozentrum mit harten Live-Blockern"
+        subtitle={t("console.riskPage.subtitle")}
         helpBriefKey="help.risk.brief"
         helpDetailKey="help.risk.detail"
       />
@@ -105,84 +105,90 @@ export default async function RiskCenterPage({
       ) : null}
 
       <div className="panel">
-        <h2>Risk-Uebersicht</h2>
+        <h2>{t("console.riskPage.overviewTitle")}</h2>
         <div className="signal-grid">
           <div>
-            <span className="label">Gesamtstatus</span>
+            <span className="label">{t("console.riskPage.overallStatus")}</span>
             <strong>
               {overall === "ok"
-                ? "OK"
+                ? t("console.riskPage.statusOk")
                 : overall === "warnung"
-                  ? "Warnung"
-                  : "Blockiert"}
+                  ? t("console.riskPage.statusWarn")
+                  : t("console.riskPage.statusBlocked")}
             </strong>
           </div>
           <div>
-            <span className="label">Betriebsmodus</span>
+            <span className="label">
+              {t("console.riskPage.labelExecutionMode")}
+            </span>
             <strong>
               {healthPack.health?.execution.execution_mode ?? "—"}
             </strong>
           </div>
           <div>
-            <span className="label">Daily Loss</span>
+            <span className="label">{t("console.riskPage.labelDailyLoss")}</span>
             <strong>{overview.dailyLoss}</strong>
           </div>
           <div>
-            <span className="label">Weekly Loss</span>
+            <span className="label">{t("console.riskPage.labelWeeklyLoss")}</span>
             <strong>{overview.weeklyLoss}</strong>
           </div>
           <div>
-            <span className="label">Drawdown</span>
+            <span className="label">{t("console.riskPage.labelDrawdown")}</span>
             <strong>{overview.drawdown}</strong>
           </div>
           <div>
-            <span className="label">Margin Usage</span>
+            <span className="label">{t("console.riskPage.labelMarginUsage")}</span>
             <strong>{overview.marginUsage}</strong>
           </div>
           <div>
-            <span className="label">Offene Positionen / Kandidaten</span>
+            <span className="label">
+              {t("console.riskPage.labelOpenPositions")}
+            </span>
             <strong>
               {orders.length} / {decisions.length}
             </strong>
           </div>
           <div>
-            <span className="label">Portfolio Exposure</span>
+            <span className="label">
+              {t("console.riskPage.labelPortfolioExposure")}
+            </span>
             <strong>{overview.portfolioExposure}</strong>
           </div>
         </div>
         <p className="muted small" style={{ marginTop: 8 }}>
-          Groesste Einzelrisiken:{" "}
+          {t("console.riskPage.topRisksLead")}{" "}
           {overview.topRisks.length
             ? overview.topRisks.join(" · ")
-            : "keine Daten"}
+            : t("console.riskPage.topRisksEmpty")}
         </p>
       </div>
 
       <div className="panel">
-        <h2>Harte Live-Blocker</h2>
+        <h2>{t("console.riskPage.hardBlockersTitle")}</h2>
         <ul className="news-list">
           {blockers.length > 0 ? (
             blockers.map((b) => <li key={b}>{b}</li>)
           ) : (
-            <li>Keine harten Live-Blocker erkannt.</li>
+            <li>{t("console.riskPage.hardBlockersEmpty")}</li>
           )}
         </ul>
       </div>
 
       <div className="panel">
-        <h2>Asset-Risk-Tabelle</h2>
+        <h2>{t("console.riskPage.assetTableTitle")}</h2>
         <div className="table-wrap">
           <table className="data-table data-table--dense">
             <thead>
               <tr>
-                <th>Symbol</th>
-                <th>Risk Tier</th>
-                <th>Volatilitaet/ATR</th>
-                <th>Spread/Liquidity</th>
-                <th>Funding/OI</th>
-                <th>Datenqualitaet</th>
-                <th>Max Modus</th>
-                <th>Blockgruende</th>
+                <th>{t("console.riskPage.colSymbol")}</th>
+                <th>{t("console.riskPage.colRiskTier")}</th>
+                <th>{t("console.riskPage.colVolatility")}</th>
+                <th>{t("console.riskPage.colSpread")}</th>
+                <th>{t("console.riskPage.colFunding")}</th>
+                <th>{t("console.riskPage.colDataQuality")}</th>
+                <th>{t("console.riskPage.colMaxMode")}</th>
+                <th>{t("console.riskPage.colBlockReasons")}</th>
               </tr>
             </thead>
             <tbody>
@@ -201,9 +207,7 @@ export default async function RiskCenterPage({
                 ))
               ) : (
                 <tr>
-                  <td colSpan={8}>
-                    Keine Asset-Risk-Daten verfuegbar, Live bleibt blockiert.
-                  </td>
+                  <td colSpan={8}>{t("console.riskPage.assetTableEmpty")}</td>
                 </tr>
               )}
             </tbody>
@@ -212,14 +216,18 @@ export default async function RiskCenterPage({
       </div>
 
       <div className="panel">
-        <h2>Portfolio-Risk</h2>
+        <h2>{t("console.riskPage.portfolioTitle")}</h2>
         <div className="signal-grid">
           <div>
-            <span className="label">Family Exposure</span>
+            <span className="label">
+              {t("console.riskPage.labelFamilyExposure")}
+            </span>
             <strong>{Object.keys(portfolio.familyExposure).length}</strong>
           </div>
           <div>
-            <span className="label">Direction Exposure</span>
+            <span className="label">
+              {t("console.riskPage.labelDirectionExposure")}
+            </span>
             <strong>
               {portfolio.directionExposure == null
                 ? "—"
@@ -227,7 +235,7 @@ export default async function RiskCenterPage({
             </strong>
           </div>
           <div>
-            <span className="label">Cluster/Korrelation</span>
+            <span className="label">{t("console.riskPage.labelCluster")}</span>
             <strong>
               {portfolio.cluster == null
                 ? "—"
@@ -235,11 +243,15 @@ export default async function RiskCenterPage({
             </strong>
           </div>
           <div>
-            <span className="label">Pending mirror trades</span>
+            <span className="label">
+              {t("console.riskPage.labelPendingMirror")}
+            </span>
             <strong>{portfolio.pendingMirrorTrades}</strong>
           </div>
           <div>
-            <span className="label">Open orders notional</span>
+            <span className="label">
+              {t("console.riskPage.labelOpenNotional")}
+            </span>
             <strong>
               {portfolio.openOrdersNotional == null
                 ? "—"
@@ -247,12 +259,13 @@ export default async function RiskCenterPage({
             </strong>
           </div>
           <div>
-            <span className="label">Open orders count</span>
+            <span className="label">{t("console.riskPage.labelOpenCount")}</span>
             <strong>{portfolio.openOrdersCount}</strong>
           </div>
         </div>
         <p className="muted small" style={{ marginTop: 8 }}>
-          Live block reasons: {portfolio.liveBlockReasons.join(" · ")}
+          {t("console.riskPage.liveBlockReasonsLead")}{" "}
+          {portfolio.liveBlockReasons.join(" · ")}
         </p>
       </div>
     </>

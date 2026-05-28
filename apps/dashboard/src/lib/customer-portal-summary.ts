@@ -1,9 +1,11 @@
-import { requireOperatorGatewayAuth } from "@/lib/gateway-bff";
 import {
   fetchGatewayUpstream,
   GATEWAY_UPSTREAM_TIMEOUT_COMMERCE_MS,
 } from "@/lib/gateway-upstream-fetch";
-import { readPortalAuthorizationFromCookies } from "@/lib/portal-jwt-server";
+import {
+  readPortalAuthorizationFromCookies,
+  readPortalAuthorizationFromHeaders,
+} from "@/lib/portal-jwt-server";
 import { serverEnv } from "@/lib/server-env";
 
 /** BFF-Abdeckung: `/v1/commerce/customer` → dieses Zusammenfassungsmodell. */
@@ -63,10 +65,10 @@ export type CustomerPortalSummary = {
   readonly fetchedAt: string;
   /** Aggregat fuer Oberflächen, ohne Erfolg vorzutäuschen. */
   readonly dataState: CustomerPortalBffDataState;
-  /** Kein BFF, kein Gateway, oder fehlendes DASHBOARD_GATEWAY_AUTHORIZATION. */
+  /** Kein BFF, kein Gateway, oder fehlende Portal-Session. */
   readonly notConfiguredReason:
     | "api_gateway_url_missing"
-    | "gateway_bff_auth_missing"
+    | "portal_session_required"
     | null;
   readonly commerceCustomerMe: {
     httpStatus: number;
@@ -243,12 +245,21 @@ async function parseJsonBody(res: Response): Promise<unknown> {
   }
 }
 
+async function resolvePortalAuthorization(
+  headers?: Headers | null,
+): Promise<string | null> {
+  const fromHeaders = readPortalAuthorizationFromHeaders(headers ?? null);
+  if (fromHeaders) return fromHeaders;
+  return readPortalAuthorizationFromCookies();
+}
+
 /**
  * Server-only: Sichere, redigierte Sicht; keine Browser-Secrets.
- * BFF-Auth ist serverseitig; Tenant/Claims kommen aus dem Gateway-JWT, nicht aus dem Endnutzer-Cookie
- * in diesem Schritt (Produktluecke, siehe Doku).
+ * Auth ausschliesslich ueber Portal-JWT (Cookie oder Request-Header) — kein Operator-BFF-Fallback.
  */
-export async function getCustomerPortalSummary(): Promise<CustomerPortalSummary> {
+export async function getCustomerPortalSummary(
+  headers?: Headers | null,
+): Promise<CustomerPortalSummary> {
   const fetchedAt = new Date().toISOString();
   const noTradeStub = {
     dataState: "not_configured" as const,
@@ -264,29 +275,22 @@ export async function getCustomerPortalSummary(): Promise<CustomerPortalSummary>
       commerceLifecycle: null,
       commerceIntegrations: null,
       tradingReadonly: noTradeStub,
-      errorHint:
-        "API_GATEWAY_URL fehlt auf dem Server — Kunden-BFF kann nicht wählen, welcher Tenant sichtbar ist.",
+      errorHint: null,
     };
   }
 
-  // Reihenfolge: Portal-JWT aus Cookie > BFF-ENV-Fallback.
-  let authorization: string | null = await readPortalAuthorizationFromCookies();
+  const authorization = await resolvePortalAuthorization(headers);
   if (!authorization) {
-    const fallback = requireOperatorGatewayAuth(null);
-    if (!fallback.ok) {
-      return {
-        fetchedAt,
-        dataState: "not_configured",
-        notConfiguredReason: "gateway_bff_auth_missing",
-        commerceCustomerMe: null,
-        commerceLifecycle: null,
-        commerceIntegrations: null,
-        tradingReadonly: noTradeStub,
-        errorHint:
-          "Kein Portal-JWT im Cookie und kein DASHBOARD_GATEWAY_AUTHORIZATION als Fallback verfuegbar.",
-      };
-    }
-    authorization = fallback.authorization;
+    return {
+      fetchedAt,
+      dataState: "not_configured",
+      notConfiguredReason: "portal_session_required",
+      commerceCustomerMe: null,
+      commerceLifecycle: null,
+      commerceIntegrations: null,
+      tradingReadonly: noTradeStub,
+      errorHint: null,
+    };
   }
 
   const a = authorization;

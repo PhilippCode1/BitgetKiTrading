@@ -20,7 +20,7 @@ import { PORTAL_JWT_COOKIE_NAME } from "@/lib/portal-persona";
 
 type LoginActionResult =
   | { success: true; redirect: string }
-  | { success: false; error: string; errorCode: string };
+  | { success: false; errorCode: string };
 
 export async function startOidcLoginAction(
   returnTo: string,
@@ -29,15 +29,13 @@ export async function startOidcLoginAction(
     return {
       success: false,
       errorCode: "oidc_not_configured",
-      error: "OIDC ist nicht konfiguriert.",
     };
   }
   const start = buildOidcLoginStart(returnTo);
   if (!start) {
     return {
       success: false,
-      errorCode: "oidc_not_configured",
-      error: "OIDC-Start-URL konnte nicht erzeugt werden.",
+      errorCode: "oidc_start_failed",
     };
   }
   const jar = await cookies();
@@ -68,7 +66,6 @@ export async function loginAction(formData: FormData): Promise<LoginActionResult
     return {
       success: false,
       errorCode: guard.reason ?? "mock_login_disabled",
-      error: "Mock-Login ist in dieser Umgebung nicht verfügbar.",
     };
   }
 
@@ -79,8 +76,6 @@ export async function loginAction(formData: FormData): Promise<LoginActionResult
     return {
       success: false,
       errorCode: "invalid_tenant_id",
-      error:
-        "Bitte gib eine gültige Tenant-ID an (Buchstaben, Ziffern, _ oder -, 3–64 Zeichen).",
     };
   }
 
@@ -99,15 +94,12 @@ export async function loginAction(formData: FormData): Promise<LoginActionResult
       return {
         success: false,
         errorCode: "missing_gateway_jwt_secret",
-        error:
-          "GATEWAY_JWT_SECRET fehlt oder ist zu kurz (min. 16 Zeichen). Mock-Login ohne Secret abgelehnt.",
       };
     }
     console.error("[mock-login] sign_failed", err);
     return {
       success: false,
       errorCode: "sign_failed",
-      error: "Fehler beim Generieren der Sitzung.",
     };
   }
 }

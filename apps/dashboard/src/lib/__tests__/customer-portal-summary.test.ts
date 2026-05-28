@@ -1,9 +1,22 @@
 import {
+  getCustomerPortalSummary,
   redactCustomerMeJson,
   redactIntegrationsJson,
   type CustomerMeRedacted,
   type CustomerIntegrationsRedacted,
 } from "@/lib/customer-portal-summary";
+
+jest.mock("@/lib/portal-jwt-server", () => ({
+  readPortalAuthorizationFromCookies: jest.fn(async () => null),
+  readPortalAuthorizationFromHeaders: jest.fn(() => null),
+}));
+
+jest.mock("@/lib/server-env", () => ({
+  serverEnv: {
+    apiGatewayUrl: "http://gateway.test",
+    gatewayAuthorizationHeader: "Bearer operator-fallback-should-not-use",
+  },
+}));
 
 describe("customer-portal-summary redaction", () => {
   it("parst customer/me in ein redigiertes Modell", () => {
@@ -67,5 +80,12 @@ describe("customer-portal-summary redaction", () => {
 
   it("liefert null bei unvollstaendigem customer/me payload", () => {
     expect(redactCustomerMeJson({ schema_version: "v1" })).toBeNull();
+  });
+
+  it("verweigert Operator-BFF-Fallback ohne Portal-JWT", async () => {
+    const summary = await getCustomerPortalSummary();
+    expect(summary.dataState).toBe("not_configured");
+    expect(summary.notConfiguredReason).toBe("portal_session_required");
+    expect(summary.commerceCustomerMe).toBeNull();
   });
 });

@@ -8,8 +8,8 @@ import { upstreamFetchFailedResponse } from "@/lib/gateway-upstream";
  * Proxied PDF: GET /v1/system/health/operator-report.pdf (Gateway, Operator-JWT).
  * Ermoeglicht Download aus dem Browser ohne Client-Secret.
  */
-export async function GET() {
-  const auth = requireOperatorGatewayAuth();
+export async function GET(req: Request) {
+  const auth = requireOperatorGatewayAuth(req.headers);
   if (!auth.ok) return auth.response;
   let res: Response;
   try {

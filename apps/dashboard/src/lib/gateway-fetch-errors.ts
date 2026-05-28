@@ -43,11 +43,3 @@ export function getGatewayFetchErrorInfo(
     technical: technicalLine(reason).slice(0, 8_000),
   };
 }
-
-/**
- * @deprecated Für UI: {@link getGatewayFetchErrorInfo} + `t(…)` oder
- *   {@link userFacingBodyForFetchFailure}. Rückgabe = technische Zeile (kein Freitext-Lead).
- */
-export function gatewayFetchErrorMessage(reason: unknown): string {
-  return getGatewayFetchErrorInfo(reason).technical;
-}

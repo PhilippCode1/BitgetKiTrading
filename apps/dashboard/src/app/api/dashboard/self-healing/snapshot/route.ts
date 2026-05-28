@@ -79,8 +79,8 @@ async function collectRaw(): Promise<SelfHealingRawInputs> {
   };
 }
 
-export async function GET() {
-  const auth = requireOperatorGatewayAuth();
+export async function GET(req: Request) {
+  const auth = requireOperatorGatewayAuth(req.headers);
   if (!auth.ok) return auth.response;
 
   const t = await getServerTranslator();

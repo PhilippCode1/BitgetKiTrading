@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 
-import { requireOperatorGatewayAuth } from "@/lib/gateway-bff";
+import { requirePortalGatewayAuth } from "@/lib/gateway-bff";
 import { fetchGatewayUpstream } from "@/lib/gateway-upstream-fetch";
 import { upstreamFetchFailedResponse } from "@/lib/gateway-upstream";
 
 export async function POST(req: Request) {
-  const auth = requireOperatorGatewayAuth();
+  const auth = requirePortalGatewayAuth(req.headers);
   if (!auth.ok) return auth.response;
   const idem =
     req.headers.get("idempotency-key")?.trim() ??

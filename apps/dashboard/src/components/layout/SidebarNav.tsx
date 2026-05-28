@@ -124,6 +124,7 @@ export function SidebarNav({ showAdminNav, uiMode = "pro" }: Props) {
                   key={href}
                   href={href}
                   className={active ? "dash-nav-link active" : "dash-nav-link"}
+                  aria-current={active ? "page" : undefined}
                 >
                   {t(messageKey)}
                 </Link>

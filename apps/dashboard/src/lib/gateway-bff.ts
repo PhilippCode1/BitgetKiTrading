@@ -49,6 +49,31 @@ export function requireOperatorGatewayAuth(
   return { ok: true, authorization: fallback, source: "bff_env" };
 }
 
+/**
+ * Kunden-BFF: nur Portal-Session (Cookie `bitget_portal_jwt`).
+ * Kein DASHBOARD_GATEWAY_AUTHORIZATION-Fallback — tenant-spezifische Reads/Mutations.
+ */
+export function requirePortalGatewayAuth(
+  headersSource?: Headers | null,
+): OperatorGatewayAuth {
+  const fromCookie = readPortalAuthorizationFromHeaders(headersSource ?? null);
+  if (!fromCookie) {
+    return {
+      ok: false,
+      response: NextResponse.json(
+        {
+          detail:
+            "PORTAL_SESSION_REQUIRED — sign in to the customer portal (bitget_portal_jwt cookie).",
+          code: "PORTAL_SESSION_REQUIRED",
+          layer: "dashboard-bff",
+        },
+        { status: 401 },
+      ),
+    };
+  }
+  return { ok: true, authorization: fromCookie, source: "portal_jwt" };
+}
+
 /** Vollstaendige URL zum Gateway (path mit oder ohne fuehrendes /). */
 export function gatewayAbsoluteUrl(path: string): string {
   const base = gatewayBaseUrl().replace(/\/$/, "");

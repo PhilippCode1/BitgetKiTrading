@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { HelpHint } from "@/components/help/HelpHint";
+import { SkipToMainLink } from "@/components/layout/SkipToMainLink";
 import { LocaleSwitcher } from "@/components/i18n/LocaleSwitcher";
 import { ConsoleBreadcrumbs } from "@/components/layout/ConsoleBreadcrumbs";
 import { SidebarNav } from "@/components/layout/SidebarNav";
@@ -23,6 +24,7 @@ export function DashboardShell({
 }: Props) {
   return (
     <div className="dash-shell">
+      <SkipToMainLink />
       <SidebarNav showAdminNav={showAdminNav} uiMode={uiMode} />
       <div className="dash-main-wrap">
         <div className="dash-locale-bar">
@@ -43,7 +45,7 @@ export function DashboardShell({
             </div>
           ) : null}
         </div>
-        <main className="dash-main">
+        <main id="dash-main-content" className="dash-main" tabIndex={-1}>
           <ConsoleBreadcrumbs />
           {children}
         </main>

@@ -63,12 +63,17 @@ export async function middleware(request: NextRequest) {
   }
 
   // 3. Zonen-Isolation (Least Privilege)
-  // a) /portal/* (Kunden-Zone)
+  // a) /portal/* (Kunden-Zone — nur Endkunden-Session, kein Operator-BFF-Fallback)
   if (pathname.startsWith("/portal")) {
-    if (persona !== "customer" && persona !== "operator") {
+    if (persona !== "customer") {
       const url = request.nextUrl.clone();
-      url.pathname = "/login";
-      url.searchParams.set("returnTo", `${pathname}${search}`);
+      if (persona === "operator") {
+        url.pathname = CONSOLE_BASE;
+        url.search = "";
+      } else {
+        url.pathname = "/login";
+        url.searchParams.set("returnTo", `${pathname}${search}`);
+      }
       return NextResponse.redirect(url);
     }
   }

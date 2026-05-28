@@ -4,8 +4,8 @@ import { requireOperatorGatewayAuth } from "@/lib/gateway-bff";
 import { fetchGatewayUpstream } from "@/lib/gateway-upstream-fetch";
 import { upstreamFetchFailedResponse } from "@/lib/gateway-upstream";
 
-export async function GET() {
-  const auth = requireOperatorGatewayAuth();
+export async function GET(req: Request) {
+  const auth = requireOperatorGatewayAuth(req.headers);
   if (!auth.ok) return auth.response;
   let res: Response;
   try {

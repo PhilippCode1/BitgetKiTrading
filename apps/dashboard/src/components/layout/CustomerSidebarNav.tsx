@@ -54,6 +54,7 @@ export function CustomerSidebarNav() {
                 key={href}
                 href={href}
                 className={active ? "dash-nav-link active" : "dash-nav-link"}
+                aria-current={active ? "page" : undefined}
               >
                 {t(messageKey)}
               </Link>

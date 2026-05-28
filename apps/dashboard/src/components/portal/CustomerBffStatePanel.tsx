@@ -1,5 +1,8 @@
+import Link from "next/link";
+
 import { getServerTranslator } from "@/lib/i18n/server-translate";
 import type { CustomerPortalSummary } from "@/lib/customer-portal-summary";
+import { portalPath } from "@/lib/console-paths";
 
 type Props = Readonly<{
   summary: CustomerPortalSummary;
@@ -44,10 +47,10 @@ export async function CustomerBffStatePanel({ summary }: Props) {
           {t("customerPortal.bffState.reasons.apiGatewayUrlMissing")}
         </p>
       )}
-      {summary.notConfiguredReason === "gateway_bff_auth_missing" && (
+      {summary.notConfiguredReason === "portal_session_required" && (
         <p>
           <strong>{t("customerPortal.bffState.reason")}</strong>{" "}
-          {t("customerPortal.bffState.reasons.gatewayBffAuthMissing")}
+          {t("customerPortal.bffState.reasons.portalSessionRequired")}
         </p>
       )}
       {summary.commerceCustomerMe && (
@@ -69,7 +72,10 @@ export async function CustomerBffStatePanel({ summary }: Props) {
         </p>
       )}
       <p className="small" style={{ marginTop: 12, opacity: 0.85 }}>
-        {t("customerPortal.bffState.tradingStub")}
+        {t("customerPortal.bffState.tradingHint")}{" "}
+        <Link href={portalPath("trading")} className="dash-inline-link">
+          {t("customerPortal.nav.trading")}
+        </Link>
       </p>
     </div>
   );

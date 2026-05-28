@@ -3,7 +3,9 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { useI18n } from "@/components/i18n/I18nProvider";
 import { mockLoginAvailable, portalAuthProvider } from "@/lib/auth/portal-auth-adapter";
+import { loginErrorMessage } from "@/lib/login-error-message";
 import { sanitizeReturnTo } from "@/lib/return-to-safety";
 
 import { loginAction, startOidcLoginAction } from "./actions";
@@ -13,6 +15,7 @@ type LoginRole = "customer" | "admin";
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { t } = useI18n();
   const returnTo = sanitizeReturnTo(searchParams.get("returnTo"), "");
   const oauthError = searchParams.get("error");
 
@@ -22,7 +25,9 @@ export default function LoginPage() {
   const [role, setRole] = useState<LoginRole>("customer");
   const [tenantId, setTenantId] = useState("tenant_demo_123");
   const [error, setError] = useState<string | null>(
-    oauthError ? `Anmeldung fehlgeschlagen (${oauthError}).` : null,
+    oauthError
+      ? t("public.login.oauthFailed", { code: oauthError })
+      : null,
   );
   const [busy, setBusy] = useState(false);
 
@@ -37,7 +42,7 @@ export default function LoginPage() {
         window.location.href = result.redirect;
         return;
       }
-      setError(result.error);
+      setError(loginErrorMessage(t, result.errorCode));
       setBusy(false);
     })();
     return () => {
@@ -60,9 +65,11 @@ export default function LoginPage() {
         router.refresh();
         return;
       }
-      setError(result.error);
+      setError(loginErrorMessage(t, result.errorCode));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unbekannter Fehler.");
+      setError(
+        err instanceof Error ? err.message : t("public.login.unknownError"),
+      );
     } finally {
       setBusy(false);
     }
@@ -70,13 +77,16 @@ export default function LoginPage() {
 
   if (provider === "oidc" && !mockAllowed) {
     return (
-      <main className="welcome-gate">
-        <div className="welcome-card panel mock-login-card">
-          <h1>Anmeldung</h1>
+    <main className="welcome-gate" id="dash-main-content">
+      <a href="#dash-main-content" className="skip-to-main">
+        {t("ui.skipToMain")}
+      </a>
+      <div className="welcome-card panel mock-login-card">
+        <h1>{t("public.login.title")}</h1>
           <p className="welcome-lead">
             {busy
-              ? "Weiterleitung zum Identity Provider…"
-              : "OIDC-Anmeldung wird vorbereitet."}
+              ? t("public.login.oidcRedirecting")
+              : t("public.login.oidcPreparing")}
           </p>
           {error ? (
             <p className="msg-err mock-login-error" role="alert">
@@ -89,15 +99,22 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="welcome-gate">
+    <main className="welcome-gate" id="dash-main-content">
+      <a href="#dash-main-content" className="skip-to-main">
+        {t("ui.skipToMain")}
+      </a>
       <div className="welcome-card panel mock-login-card">
         <div className="welcome-title-row">
-          <h1>{mockAllowed ? "Mock-Login (Entwicklung)" : "Anmeldung"}</h1>
+          <h1>
+            {mockAllowed
+              ? t("public.login.titleMock")
+              : t("public.login.title")}
+          </h1>
         </div>
         <p className="welcome-lead">
           {mockAllowed
-            ? "Wähle eine Rolle und melde dich für eine Test-Session an."
-            : "Melde dich über den Identity Provider an."}
+            ? t("public.login.leadMock")
+            : t("public.login.leadOidc")}
         </p>
 
         {error ? (
@@ -119,18 +136,22 @@ export default function LoginPage() {
                 window.location.href = result.redirect;
                 return;
               }
-              setError(result.error);
+              setError(loginErrorMessage(t, result.errorCode));
               setBusy(false);
             }}
           >
-            {busy ? "Weiterleitung…" : "Mit Identity Provider anmelden"}
+            {busy
+              ? t("public.login.redirectBusy")
+              : t("public.login.oidcButton")}
           </button>
         ) : null}
 
         {mockAllowed ? (
           <form onSubmit={handleSubmit} className="mock-login-form" noValidate>
             <fieldset className="mock-login-roles" disabled={busy}>
-              <legend className="mock-login-roles__legend">Rolle</legend>
+              <legend className="mock-login-roles__legend">
+                {t("public.login.roleLegend")}
+              </legend>
               <div className="mock-login-roles__row" role="radiogroup">
                 <button
                   type="button"
@@ -139,7 +160,7 @@ export default function LoginPage() {
                   className={`public-btn ${role === "customer" ? "primary" : "secondary"} mock-login-role-btn`}
                   onClick={() => setRole("customer")}
                 >
-                  Kunde
+                  {t("public.login.roleCustomer")}
                 </button>
                 <button
                   type="button"
@@ -148,21 +169,23 @@ export default function LoginPage() {
                   className={`public-btn ${role === "admin" ? "primary" : "secondary"} mock-login-role-btn`}
                   onClick={() => setRole("admin")}
                 >
-                  Admin
+                  {t("public.login.roleAdmin")}
                 </button>
               </div>
             </fieldset>
 
             {role === "customer" ? (
               <label className="mock-login-field" htmlFor="tenantId">
-                <span className="mock-login-field__label">Mandanten-ID</span>
+                <span className="mock-login-field__label">
+                  {t("public.login.tenantLabel")}
+                </span>
                 <input
                   id="tenantId"
                   name="tenantId"
                   type="text"
                   value={tenantId}
                   onChange={(e) => setTenantId(e.target.value)}
-                  placeholder="tenant_demo_123"
+                  placeholder={t("public.login.tenantPlaceholder")}
                   disabled={busy}
                   required
                   autoComplete="off"
@@ -173,7 +196,7 @@ export default function LoginPage() {
               </label>
             ) : (
               <p className="mock-login-admin-note" role="note">
-                Als Admin erhältst du vollen Systemzugriff. Nur für lokale Diagnose.
+                {t("public.login.adminNote")}
               </p>
             )}
 
@@ -182,7 +205,9 @@ export default function LoginPage() {
               className="public-btn primary mock-login-submit"
               disabled={busy}
             >
-              {busy ? "Anmeldung läuft…" : "Anmelden"}
+              {busy
+                ? t("public.login.submitBusy")
+                : t("public.login.submit")}
             </button>
           </form>
         ) : null}

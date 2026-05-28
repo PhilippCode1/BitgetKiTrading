@@ -7,10 +7,12 @@ import {
   readOwnerPrivateLiveReleaseGate,
   resolveDashboardRepoRoot,
 } from "@/lib/evidence-console";
+import { getServerTranslator } from "@/lib/i18n/server-translate";
 
 export const dynamic = "force-dynamic";
 
 export default async function ReportsPage() {
+  const t = await getServerTranslator();
   const repoRoot = resolveDashboardRepoRoot();
   const cards = buildEvidenceCards({ rootDir: repoRoot });
   const ownerGate = readOwnerPrivateLiveReleaseGate(repoRoot);
@@ -19,47 +21,52 @@ export default async function ReportsPage() {
   return (
     <>
       <Header
-        title="Reports, Evidence & Go/No-Go"
-        subtitle="Shadow-Burn-in, Backtest, Restore und Readiness mit ehrlichem Status statt Behauptungen."
+        title={t("console.reportsPage.title")}
+        subtitle={t("console.reportsPage.subtitle")}
       />
       <div className="panel">
-        <h2>Go/No-Go Gesamtbild</h2>
+        <h2>{t("console.reportsPage.goNoGoTitle")}</h2>
         <p>
-          Karten gesamt: <strong>{cards.length}</strong>
+          {t("console.reportsPage.cardsTotal")}: <strong>{cards.length}</strong>
         </p>
         <p>
-          Live-blockierende Nachweise: <strong>{liveBlockers.length}</strong>
+          {t("console.reportsPage.liveBlockers")}:{" "}
+          <strong>{liveBlockers.length}</strong>
         </p>
-        <p className="muted small">
-          Kein 10/10 ohne verifizierten Nachweis. Fehlende Reports bleiben
-          fail-closed.
-        </p>
+        <p className="muted small">{t("console.reportsPage.failClosedNote")}</p>
       </div>
 
       <div className="panel">
-        <h2>Maschinelle Owner-Freigabe (Private Live)</h2>
+        <h2>{t("console.reportsPage.ownerTitle")}</h2>
         <p>
-          Datei: <span className="mono-small">{ownerGate.fileRelative}</span>{" "}
-          (gitignored, nicht committen)
+          {t("console.reportsPage.ownerFile")}:{" "}
+          <span className="mono-small">{ownerGate.fileRelative}</span> (
+          {t("console.reportsPage.ownerNotCommitted")})
         </p>
         <p>
-          Status:{" "}
+          {t("console.reportsPage.ownerStatus")}:{" "}
           <strong>
             {ownerGate.payloadValid
-              ? "Gültige lokale Freigabe"
+              ? t("console.reportsPage.ownerValid")
               : ownerGate.filePresent
-                ? "Datei ungültig"
-                : "Datei fehlt"}
+                ? t("console.reportsPage.ownerInvalid")
+                : t("console.reportsPage.ownerMissing")}
           </strong>
           {ownerGate.scorecardBlocksPrivateLive
-            ? " — blockiert private_live_allowed"
+            ? t("console.reportsPage.ownerBlocksPrivate")
             : ""}
         </p>
-        <p className="muted small">{ownerGate.summaryDe}</p>
         <p className="muted small">
-          Template:{" "}
-          <span className="mono-small">{ownerGate.templateRelative}</span> —
-          Ausführung:{" "}
+          {ownerGate.payloadValid
+            ? t("console.reportsPage.ownerSummaryValid")
+            : ownerGate.filePresent
+              ? t("console.reportsPage.ownerSummaryInvalid")
+              : t("console.reportsPage.ownerSummaryMissing")}
+        </p>
+        <p className="muted small">
+          {t("console.reportsPage.template")}:{" "}
+          <span className="mono-small">{ownerGate.templateRelative}</span> —{" "}
+          {t("console.reportsPage.execution")}:{" "}
           <span className="mono-small">
             scripts/production_readiness_scorecard.py
           </span>
@@ -70,13 +77,13 @@ export default async function ReportsPage() {
         <table className="data-table">
           <thead>
             <tr>
-              <th>Evidence-Karte</th>
-              <th>Status</th>
-              <th>Letzter Report</th>
-              <th>Datum</th>
-              <th>Git SHA</th>
-              <th>Live-Auswirkung</th>
-              <th>Nächster Schritt</th>
+              <th>{t("console.reportsPage.colEvidence")}</th>
+              <th>{t("console.reportsPage.colStatus")}</th>
+              <th>{t("console.reportsPage.colLastReport")}</th>
+              <th>{t("console.reportsPage.colDate")}</th>
+              <th>{t("console.reportsPage.colGitSha")}</th>
+              <th>{t("console.reportsPage.colLiveImpact")}</th>
+              <th>{t("console.reportsPage.colNextStep")}</th>
             </tr>
           </thead>
           <tbody>
@@ -98,7 +105,9 @@ export default async function ReportsPage() {
                   {card.lastReportPath ? (
                     <span className="mono-small">{card.lastReportPath}</span>
                   ) : (
-                    <span className="muted">Nachweis fehlt</span>
+                    <span className="muted">
+                      {t("console.reportsPage.evidenceMissing")}
+                    </span>
                   )}
                 </td>
                 <td>{card.lastReportDate ?? "—"}</td>
@@ -112,11 +121,11 @@ export default async function ReportsPage() {
       </div>
 
       <div className="panel">
-        <h2>Evidence-Dokumentation und Skripte</h2>
+        <h2>{t("console.reportsPage.docsTitle")}</h2>
         <ul className="news-list">
           <li>
             <Link href={consolePath("system-health-map")}>
-              Systemstatus prüfen
+              {t("console.reportsPage.linkHealth")}
             </Link>
           </li>
           <li>
@@ -128,10 +137,7 @@ export default async function ReportsPage() {
             </span>
           </li>
         </ul>
-        <p className="muted small">
-          Diese Seite startet keine Scripts aus der UI. Ausführung erfolgt nur
-          explizit im kontrollierten Operator-Workflow.
-        </p>
+        <p className="muted small">{t("console.reportsPage.noUiScripts")}</p>
       </div>
     </>
   );

@@ -194,7 +194,7 @@ export default async function AccountPerformancePage() {
                       <th>{t("account.performance.thSide")}</th>
                       <th>{t("account.performance.thQty")}</th>
                       <th>{t("account.performance.thEntry")}</th>
-                      <th>uPnL</th>
+                      <th>{t("account.performance.thUpnl")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -233,7 +233,7 @@ export default async function AccountPerformancePage() {
                       <th>{t("account.performance.thSymbol")}</th>
                       <th>{t("account.performance.thSide")}</th>
                       <th>{t("account.performance.thClosed")}</th>
-                      <th>PnL</th>
+                      <th>{t("account.performance.thPnl")}</th>
                       <th>{t("account.performance.thFees")}</th>
                     </tr>
                   </thead>

@@ -1,6 +1,11 @@
-import { CONSOLE_BASE } from "@/lib/console-paths";
+import { CONSOLE_BASE, PORTAL_BASE } from "@/lib/console-paths";
 
-const SAFE_PREFIXES = ["/console", "/onboarding", "/welcome"] as const;
+const SAFE_PREFIXES = [
+  CONSOLE_BASE,
+  PORTAL_BASE,
+  "/onboarding",
+  "/welcome",
+] as const;
 const OPS_LEGACY_PREFIX = "/ops";
 
 function looksExternal(target: string): boolean {

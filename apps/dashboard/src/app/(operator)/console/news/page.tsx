@@ -96,6 +96,12 @@ export default async function NewsPage({
         items={data.items}
         emptyMessage={t("pages.news.tableEmpty")}
         detailLinkLabel={t("pages.news.detailLink")}
+        thScore={t("pages.news.thScore")}
+        thSentiment={t("pages.news.thSentiment")}
+        thImpact={t("pages.news.thImpact")}
+        thTitle={t("pages.news.thTitle")}
+        thSource={t("pages.news.thSource")}
+        thTime={t("pages.news.thTime")}
       />
     </>
   );

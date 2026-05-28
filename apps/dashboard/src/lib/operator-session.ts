@@ -22,10 +22,8 @@ export async function getOperatorSession(): Promise<OperatorSession | null> {
   );
 }
 
-/**
- * @deprecated zugunsten getOperatorSession() / role === "admin" — Bezeichnung bleibt fuer bestehende Server-Components.
- */
-export async function canAccessAdminViaServer(): Promise<boolean> {
+/** Server-Components: Admin-Bereich nur bei enableAdmin + role admin. */
+export async function hasOperatorAdminAccess(): Promise<boolean> {
   if (!publicEnv.enableAdmin) {
     return false;
   }
@@ -35,18 +33,10 @@ export async function canAccessAdminViaServer(): Promise<boolean> {
 
 /** Admin-Navigation: nur bei gueltigem Admin-Claim in DASHBOARD_GATEWAY_AUTHORIZATION. */
 export async function resolveShowAdminNav(): Promise<boolean> {
-  if (!publicEnv.enableAdmin) {
-    return false;
-  }
-  const s = await getOperatorSession();
-  return s?.role === "admin";
+  return hasOperatorAdminAccess();
 }
 
 /** Strategie-Lifecycle-Mutationen: gleiche Schwelle wie Admin-Nav. */
 export async function resolveStrategyMutationsVisible(): Promise<boolean> {
-  if (!publicEnv.enableAdmin) {
-    return false;
-  }
-  const s = await getOperatorSession();
-  return s?.role === "admin";
+  return hasOperatorAdminAccess();
 }

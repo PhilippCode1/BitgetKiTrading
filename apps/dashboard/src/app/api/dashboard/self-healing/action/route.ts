@@ -30,7 +30,7 @@ type ActionBody = Readonly<{
  * Gezielte Worker-Neustarts gehören ins Gateway/Orchestrierung — hier nur sichere BFF-Schritte.
  */
 export async function POST(req: Request) {
-  const auth = requireOperatorGatewayAuth();
+  const auth = requireOperatorGatewayAuth(req.headers);
   if (!auth.ok) return auth.response;
 
   let body: ActionBody = {};

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireOperatorGatewayAuth } from "@/lib/gateway-bff";
+import { requirePortalGatewayAuth } from "@/lib/gateway-bff";
 import {
   fetchGatewayUpstream,
   GATEWAY_UPSTREAM_TIMEOUT_COMMERCE_MS,
@@ -9,8 +9,8 @@ import { upstreamFetchFailedResponse } from "@/lib/gateway-upstream";
 
 type Params = Readonly<{ params: Promise<{ intentId: string }> }>;
 
-export async function GET(_req: Request, { params }: Params) {
-  const auth = requireOperatorGatewayAuth();
+export async function GET(req: Request, { params }: Params) {
+  const auth = requirePortalGatewayAuth(req.headers);
   if (!auth.ok) return auth.response;
   const { intentId } = await params;
   const enc = encodeURIComponent(intentId);

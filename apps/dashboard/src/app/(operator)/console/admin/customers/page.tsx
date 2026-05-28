@@ -8,7 +8,7 @@ import {
 } from "@/lib/api";
 import { CONSOLE_BASE } from "@/lib/console-paths";
 import { getServerTranslator } from "@/lib/i18n/server-translate";
-import { canAccessAdminViaServer } from "@/lib/operator-session";
+import { hasOperatorAdminAccess } from "@/lib/operator-session";
 import type { AdminConsoleOverviewResponse } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +19,7 @@ type LifecycleRecent = NonNullable<
 
 export default async function AdminCustomersPage() {
   const t = await getServerTranslator();
-  const ok = await canAccessAdminViaServer();
+  const ok = await hasOperatorAdminAccess();
   if (!ok) {
     return (
       <>

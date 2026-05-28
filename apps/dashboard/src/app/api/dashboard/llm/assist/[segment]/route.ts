@@ -17,7 +17,7 @@ export async function POST(
   req: Request,
   ctx: { params: Promise<{ segment: string }> },
 ) {
-  const auth = requireOperatorGatewayAuth();
+  const auth = requireOperatorGatewayAuth(req.headers);
   if (!auth.ok) return auth.response;
 
   const { segment } = await ctx.params;

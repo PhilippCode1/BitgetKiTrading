@@ -894,29 +894,25 @@ export default async function OperatorCockpitPage({
 
       <div className="grid-2">
         <div className="panel">
-          <h2>Mirror-Freigabe (Approval Queue)</h2>
-          <p className="muted small">
-            Nur `operator_release_pending`-Kandidaten für die enge
-            Echtgeld-Mirror-Stufe. Telegram dient hier nur als bestaetigender
-            Kanal, nie als Strategiekonfiguration.
-          </p>
+          <h2>{t("pages.ops.mirrorApprovalTitle")}</h2>
+          <p className="muted small">{t("pages.ops.mirrorApprovalLead")}</p>
           {approvalQueue.length === 0 ? (
             <p className="muted degradation-inline">
-              Keine offenen Live-Kandidaten im Fenster.
+              {t("pages.ops.mirrorApprovalEmpty")}
             </p>
           ) : (
             <div className="table-wrap">
               <table className="data-table data-table--dense">
                 <thead>
                   <tr>
-                    <th>Symbol</th>
-                    <th>Familie</th>
-                    <th>Lane</th>
-                    <th>Action</th>
-                    <th>Mirror</th>
-                    <th>Telegram</th>
-                    <th>execution_id</th>
-                    <th>Forensik</th>
+                    <th>{t("pages.ops.thSymbol")}</th>
+                    <th>{t("pages.ops.thFamily")}</th>
+                    <th>{t("pages.ops.thLane")}</th>
+                    <th>{t("pages.ops.thAction")}</th>
+                    <th>{t("pages.ops.thMirror")}</th>
+                    <th>{t("pages.ops.thTelegram")}</th>
+                    <th>{t("pages.ops.thExecutionId")}</th>
+                    <th>{t("pages.ops.thForensic")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -947,7 +943,7 @@ export default async function OperatorCockpitPage({
                             `live-broker/forensic/${decision.execution_id}`,
                           )}
                         >
-                          Timeline
+                          {t("pages.ops.forensicTimelineLink")}
                         </Link>
                       </td>
                     </tr>
@@ -958,26 +954,23 @@ export default async function OperatorCockpitPage({
           )}
         </div>
         <div className="panel">
-          <h2>Live Mirrors &amp; Divergenz</h2>
-          <p className="muted small">
-            Spiegelbare Execution-Kandidaten und erkannte
-            Shadow-vs-Live-Abweichungen aus dem Live-Broker-Journal.
-          </p>
+          <h2>{t("pages.ops.liveMirrorsTitle")}</h2>
+          <p className="muted small">{t("pages.ops.liveMirrorsLead")}</p>
           {liveMirrors.length === 0 && divergenceRows.length === 0 ? (
             <p className="muted degradation-inline">
-              Keine Mirror-/Divergenz-Faelle im Fenster.
+              {t("pages.ops.liveMirrorsEmpty")}
             </p>
           ) : (
             <div className="table-wrap">
               <table className="data-table data-table--dense">
                 <thead>
                   <tr>
-                    <th>Symbol</th>
-                    <th>Action</th>
-                    <th>Mirror</th>
-                    <th>Shadow≈Live</th>
-                    <th>Risk</th>
-                    <th>Release</th>
+                    <th>{t("pages.ops.thSymbol")}</th>
+                    <th>{t("pages.ops.thAction")}</th>
+                    <th>{t("pages.ops.thMirror")}</th>
+                    <th>{t("pages.ops.thShadowLive")}</th>
+                    <th>{t("pages.ops.thRisk")}</th>
+                    <th>{t("pages.ops.thRelease")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1011,8 +1004,8 @@ export default async function OperatorCockpitPage({
                         </td>
                         <td>
                           {decision.operator_release_exists
-                            ? "released"
-                            : "pending"}
+                            ? t("pages.broker.releaseReleased")
+                            : t("pages.broker.releasePending")}
                         </td>
                       </tr>
                     ))}
@@ -1025,34 +1018,30 @@ export default async function OperatorCockpitPage({
 
       <div className="grid-2">
         <div className="panel">
-          <h2>Plan- / Decision-Queue (Live-Broker)</h2>
+          <h2>{t("pages.ops.decisionQueueTitle")}</h2>
           {panelIssue(lbDecisionsErr, "liveDecisions")}
-          <p className="muted small">
-            Deterministische Queue aus <code>live.execution_decisions</code>.
-            Approval-Status, Mirror-Eignung, Governor-Hinweise und Telegram-Link
-            werden aus Journal/Outbox zusammengezogen, nicht aus Client-Secrets.
-          </p>
+          <p className="muted small">{t("pages.ops.decisionQueueLead")}</p>
           {lbDecisions.length === 0 && !lbDecisionsErr ? (
             <p className="muted degradation-inline">
-              Keine Decision-Zeilen im Fenster.
+              {t("pages.ops.decisionQueueEmpty")}
             </p>
           ) : (
             <div className="table-wrap">
               <table className="data-table data-table--dense">
                 <thead>
                   <tr>
-                    <th>Zeit</th>
-                    <th>Symbol</th>
-                    <th>Familie</th>
-                    <th>Lane</th>
-                    <th>Action</th>
-                    <th>Runtime</th>
-                    <th>Shadow≈Live</th>
-                    <th>Mirror?</th>
-                    <th>Release</th>
-                    <th>Risk</th>
-                    <th>Forensik</th>
-                    <th>execution_id</th>
+                    <th>{t("pages.ops.thTime")}</th>
+                    <th>{t("pages.ops.thSymbol")}</th>
+                    <th>{t("pages.ops.thFamily")}</th>
+                    <th>{t("pages.ops.thLane")}</th>
+                    <th>{t("pages.ops.thAction")}</th>
+                    <th>{t("pages.ops.thRuntime")}</th>
+                    <th>{t("pages.ops.thShadowLive")}</th>
+                    <th>{t("pages.ops.thMirrorEligible")}</th>
+                    <th>{t("pages.ops.thRelease")}</th>
+                    <th>{t("pages.ops.thRisk")}</th>
+                    <th>{t("pages.ops.thForensic")}</th>
+                    <th>{t("pages.ops.thExecutionId")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1079,7 +1068,9 @@ export default async function OperatorCockpitPage({
                           : String(d.live_mirror_eligible)}
                       </td>
                       <td>
-                        {d.operator_release_exists ? "released" : "pending"}
+                        {d.operator_release_exists
+                          ? t("pages.broker.releaseReleased")
+                          : t("pages.broker.releasePending")}
                       </td>
                       <td className="mono-small">
                         {d.risk_primary_reason ?? "—"}
@@ -1090,7 +1081,7 @@ export default async function OperatorCockpitPage({
                             `live-broker/forensic/${d.execution_id}`,
                           )}
                         >
-                          Timeline
+                          {t("pages.ops.forensicTimelineLink")}
                         </Link>
                       </td>
                       <td className="mono-small">
@@ -1110,30 +1101,33 @@ export default async function OperatorCockpitPage({
             </div>
           )}
           <p className="muted">
-            Queue-Fenster: {buckets.planQueue.length} / {lbDecisions.length} —
-            offene Approvals: {approvalQueue.length} — released live:{" "}
-            {buckets.releasedLive.length}
+            {t("pages.ops.decisionQueueFooter", {
+              plan: String(buckets.planQueue.length),
+              total: String(lbDecisions.length),
+              approvals: String(approvalQueue.length),
+              released: String(buckets.releasedLive.length),
+            })}
           </p>
         </div>
         <div className="panel">
-          <h2>Alert-Outbox / Telegram-Anbindung</h2>
+          <h2>{t("pages.ops.alertOutboxTitle")}</h2>
           {panelIssue(alertOutboxErr, "alertOutbox")}
           {alertOutbox.length === 0 && !alertOutboxErr ? (
             <p className="muted degradation-inline">
-              Keine Outbox-Eintraege im Fenster.
+              {t("pages.ops.alertOutboxEmpty")}
             </p>
           ) : (
             <div className="table-wrap">
               <table className="data-table data-table--dense">
                 <thead>
                   <tr>
-                    <th>State</th>
-                    <th>Typ</th>
-                    <th>Symbol</th>
-                    <th>Signal / Exec</th>
-                    <th>telegram_message_id</th>
-                    <th>Versuche</th>
-                    <th>Zeit</th>
+                    <th>{t("pages.ops.thState")}</th>
+                    <th>{t("pages.ops.thType")}</th>
+                    <th>{t("pages.ops.thSymbol")}</th>
+                    <th>{t("pages.ops.thSignalExec")}</th>
+                    <th>{t("pages.ops.thTelegramMessageId")}</th>
+                    <th>{t("pages.ops.thAttempts")}</th>
+                    <th>{t("pages.ops.thTime")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1166,21 +1160,23 @@ export default async function OperatorCockpitPage({
       </div>
 
       <div className="panel">
-        <h2>Model-Slots (Registry v2, alle Rollen)</h2>
+        <h2>{t("pages.ops.modelSlotsTitle")}</h2>
         {panelIssue(modelsErr, "models")}
         {models.length === 0 && !modelsErr ? (
-          <p className="muted degradation-inline">Keine Registry-Zeilen.</p>
+          <p className="muted degradation-inline">
+            {t("pages.ops.modelSlotsEmpty")}
+          </p>
         ) : (
           <div className="table-wrap">
             <table className="data-table data-table--dense">
               <thead>
                 <tr>
-                  <th>Modell</th>
-                  <th>Rolle</th>
-                  <th>Scope</th>
-                  <th>Run</th>
-                  <th>Status</th>
-                  <th>promoted</th>
+                  <th>{t("pages.ops.thModel")}</th>
+                  <th>{t("pages.ops.thRole")}</th>
+                  <th>{t("pages.ops.thScope")}</th>
+                  <th>{t("pages.ops.thRun")}</th>
+                  <th>{t("pages.ops.thStatus")}</th>
+                  <th>{t("pages.ops.thPromoted")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -1205,42 +1201,46 @@ export default async function OperatorCockpitPage({
 
       <div className="grid-2">
         <div className="panel">
-          <h2>Paper — letzte Trades (Outcome-Fenster)</h2>
+          <h2>{t("pages.ops.paperTradesTitle")}</h2>
           {panelIssue(paperTradesErr, "paperTrades")}
           <p className="muted small">
-            Vergleich mit Live nur operativ — keine implizite 1:1-Spiegelung.
-            Detail: <Link href={consolePath("paper")}>Paper-Seite</Link>.
+            {t("pages.ops.paperTradesLead")}{" "}
+            <Link href={consolePath("paper")}>
+              {t("pages.ops.paperTradesLink")}
+            </Link>
+            .
           </p>
           <ul className="news-list operator-metric-list">
             <li>
-              Live-Kandidaten / released:{" "}
+              {t("pages.ops.paperOutcomeLiveCandidates")}{" "}
               <strong>{outcomeSummary.liveCandidates}</strong> /{" "}
               <strong>{outcomeSummary.releasedLive}</strong>
             </li>
             <li>
-              Paper geschlossen W/L: <strong>{outcomeSummary.paperWins}</strong>{" "}
-              / <strong>{outcomeSummary.paperLosses}</strong>
+              {t("pages.ops.paperOutcomeWL")}{" "}
+              <strong>{outcomeSummary.paperWins}</strong> /{" "}
+              <strong>{outcomeSummary.paperLosses}</strong>
             </li>
             <li>
-              Live-Fills / Mirror-eligible:{" "}
+              {t("pages.ops.paperOutcomeFills")}{" "}
               <strong>{outcomeSummary.liveFills}</strong> /{" "}
               <strong>{outcomeSummary.mirrorEligible}</strong>
             </li>
           </ul>
           {paperTradesRecent.length === 0 && !paperTradesErr ? (
             <p className="muted degradation-inline">
-              Keine geschlossenen Paper-Trades im Fenster.
+              {t("pages.ops.paperTradesEmpty")}
             </p>
           ) : (
             <div className="table-wrap">
               <table className="data-table data-table--dense">
                 <thead>
                   <tr>
-                    <th>Symbol</th>
-                    <th>Seite</th>
-                    <th>State</th>
-                    <th>PnL net</th>
-                    <th>Closed</th>
+                    <th>{t("pages.ops.thSymbol")}</th>
+                    <th>{t("pages.ops.thSide")}</th>
+                    <th>{t("pages.ops.thState")}</th>
+                    <th>{t("pages.ops.thPnlNet")}</th>
+                    <th>{t("pages.ops.thClosed")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1267,32 +1267,33 @@ export default async function OperatorCockpitPage({
           )}
         </div>
         <div className="panel">
-          <h2>Drift &amp; Pfad-Gates</h2>
-          <p className="muted small">
-            Materialisierte Online-Drift (Learning) + Reconcile-Kennzahlen —
-            steuern Degradation, nicht Einzelorders.
-          </p>
+          <h2>{t("pages.ops.driftGatesTitle")}</h2>
+          <p className="muted small">{t("pages.ops.driftGatesLead")}</p>
           <ul className="news-list operator-metric-list">
             <li>
-              Online-Drift Aktion:{" "}
+              {t("pages.ops.driftOnlineAction")}{" "}
               <strong>{onlineDriftState.item?.effective_action ?? "—"}</strong>
               {onlineDriftState.item?.computed_at
                 ? ` (${onlineDriftState.item.computed_at})`
                 : ""}
             </li>
             <li>
-              Letzte Drift-Events (Learning):{" "}
-              <strong>{learnDriftItems.length}</strong> sichtbar (
-              <Link href={consolePath("learning")}>Learning</Link>)
+              {t("pages.ops.driftLearningEvents")}{" "}
+              <strong>{learnDriftItems.length}</strong>{" "}
+              {t("pages.ops.driftLearningVisible")} (
+              <Link href={consolePath("learning")}>
+                {t("console.operatorStrip.learningLink")}
+              </Link>
+              )
             </li>
             <li>
-              Live-Fills im Cockpit-Fenster: <strong>{fills.length}</strong>{" "}
-              (siehe unten)
+              {t("pages.ops.driftLiveFills")} <strong>{fills.length}</strong>
             </li>
             <li>
-              Divergenz-Faelle:{" "}
-              <strong>{outcomeSummary.divergenceCount}</strong> / blockierte
-              Live-Entscheide: <strong>{outcomeSummary.blockedLive}</strong>
+              {t("pages.ops.driftDivergence")}{" "}
+              <strong>{outcomeSummary.divergenceCount}</strong> /{" "}
+              {t("pages.ops.driftBlockedLive")}{" "}
+              <strong>{outcomeSummary.blockedLive}</strong>
             </li>
           </ul>
         </div>
@@ -1300,10 +1301,10 @@ export default async function OperatorCockpitPage({
 
       <div className="grid-2">
         <div className="panel">
-          <h2>Champion-Modelle (Registry, Kurzliste)</h2>
+          <h2>{t("pages.ops.championModelsTitle")}</h2>
           {champions.length === 0 && !modelsErr ? (
             <p className="muted degradation-inline">
-              Keine promoted Slots — Learning/Registry prüfen.
+              {t("pages.ops.championModelsEmpty")}
             </p>
           ) : (
             <ul className="news-list">
@@ -1318,7 +1319,7 @@ export default async function OperatorCockpitPage({
           )}
         </div>
         <div className="panel">
-          <h2>Signal &amp; Risiko (letztes Bundle)</h2>
+          <h2>{t("pages.ops.signalRiskTitle")}</h2>
           {panelIssue(liveErr, "liveState")}
           <LiveSignalRiskStrip signal={live?.latest_signal ?? null} t={t} />
           {currentSignal ? (
@@ -1327,23 +1328,23 @@ export default async function OperatorCockpitPage({
               style={{ marginTop: 10 }}
             >
               <li>
-                Echtgeld frei:{" "}
+                {t("pages.ops.signalLiveClear")}{" "}
                 <strong>
                   {currentSignal.live_execution_clear_for_real_money === true
-                    ? "ja"
+                    ? t("pages.ops.valueYes")
                     : currentSignal.live_execution_clear_for_real_money ===
                         false
-                      ? "nein"
+                      ? t("pages.ops.valueNo")
                       : "—"}
                 </strong>
               </li>
               <li>
-                Governor universal / live:{" "}
+                {t("pages.ops.signalGovernor")}{" "}
                 <strong>{currentSignalUniversalBlocks.length}</strong> /{" "}
                 <strong>{currentSignalWarnings.length}</strong>
               </li>
               <li>
-                Stop-Fragil / Exec:{" "}
+                {t("pages.ops.signalStopFragility")}{" "}
                 <strong>
                   {typeof currentSignal.stop_fragility_0_1 === "number"
                     ? currentSignal.stop_fragility_0_1.toFixed(2)
@@ -1363,7 +1364,7 @@ export default async function OperatorCockpitPage({
 
       <div className="grid-2">
         <div className="panel">
-          <h2>Kill-Switch</h2>
+          <h2>{t("pages.ops.killSwitchTitle")}</h2>
           {panelIssue(killErr, "killSwitch")}
           {killActive.length > 0 ? (
             <ul className="news-list operator-warn">
@@ -1375,12 +1376,11 @@ export default async function OperatorCockpitPage({
               ))}
             </ul>
           ) : (
-            <p className="muted">Keine aktiven Kill-Switches.</p>
+            <p className="muted">{t("pages.ops.killSwitchEmpty")}</p>
           )}
           {health?.ops.live_broker.safety_latch_active ? (
             <p className="operator-warn" role="status">
-              <strong>Safety-Latch aktiv</strong> — signalgetriebener Live-Pfad
-              blockiert bis operatorisches Release (
+              <strong>{t("pages.ops.killSwitchSafetyLatch")}</strong> (
               <code>POST /v1/live-broker/safety/safety-latch/release</code>
               ). Audit:{" "}
               <code>
@@ -1391,23 +1391,26 @@ export default async function OperatorCockpitPage({
           ) : null}
         </div>
         <div className="panel">
-          <h2>Shadow vs. Live (Reconcile-Drift)</h2>
+          <h2>{t("pages.ops.shadowLiveDriftTitle")}</h2>
           {panelIssue(lbErr, "liveBrokerRuntime")}
           {runtime && drift ? (
             <ul className="news-list">
               <li>
-                Drift gesamt: <strong>{drift.totalCount ?? "—"}</strong>
+                {t("pages.ops.shadowDriftTotal")}{" "}
+                <strong>{drift.totalCount ?? "—"}</strong>
               </li>
               <li>
-                Positions-Abweichungen:{" "}
+                {t("pages.ops.shadowDriftPositions")}{" "}
                 <strong>{drift.positionMismatchCount ?? "—"}</strong>
               </li>
               <li>
-                Orders nur lokal: <strong>{drift.orderLocalOnly ?? "—"}</strong>{" "}
-                / nur Boerse: <strong>{drift.orderExchangeOnly ?? "—"}</strong>
+                {t("pages.ops.shadowDriftOrdersLocal")}{" "}
+                <strong>{drift.orderLocalOnly ?? "—"}</strong> /{" "}
+                {t("pages.ops.shadowDriftOrdersExchange")}{" "}
+                <strong>{drift.orderExchangeOnly ?? "—"}</strong>
               </li>
               <li>
-                Shadow-Match-Pflicht:{" "}
+                {t("pages.ops.shadowDriftMatch")}{" "}
                 <strong>
                   {String(runtime.require_shadow_match_before_live ?? false)}
                 </strong>
@@ -1415,12 +1418,12 @@ export default async function OperatorCockpitPage({
             </ul>
           ) : !lbErr ? (
             <p className="muted degradation-inline">
-              Keine Runtime-Snapshot-Daten.
+              {t("pages.ops.shadowLiveDriftEmpty")}
             </p>
           ) : null}
           <p className="muted">
             <Link href={consolePath("live-broker")}>
-              Vollstaendiges Live-Broker-Journal
+              {t("pages.ops.shadowLiveJournalLink")}
             </Link>
           </p>
         </div>
@@ -1428,11 +1431,10 @@ export default async function OperatorCockpitPage({
 
       <div className="grid-2">
         <div className="panel">
-          <h2>Margin / Kontext (Exchange-Snapshot)</h2>
+          <h2>{t("pages.ops.marginContextTitle")}</h2>
           {accountRows.length === 0 ? (
             <p className="muted degradation-inline">
-              Keine Account-Rohfelder im letzten Reconcile — bei Live-Betrieb
-              Live-Broker/Exchange prüfen.
+              {t("pages.ops.marginContextEmpty")}
             </p>
           ) : (
             <ul className="news-list">
@@ -1445,7 +1447,7 @@ export default async function OperatorCockpitPage({
           )}
         </div>
         <div className="panel">
-          <h2>Paper: Liquidationspuffer / Margin-Felder</h2>
+          <h2>{t("pages.ops.paperLiquidationTitle")}</h2>
           {panelIssue(paperErr, "paperPositions")}
           {panelIssue(paperMetricsErr, "paperMetrics")}
           {paperMetrics?.account ? (
@@ -1463,7 +1465,7 @@ export default async function OperatorCockpitPage({
               </li>
             </ul>
           ) : !paperMetricsErr ? (
-            <p className="muted">Kein Paper-Konto materialisiert.</p>
+            <p className="muted">{t("pages.ops.paperAccountEmpty")}</p>
           ) : null}
           {paperRiskRows.length > 0 ? (
             <ul className="news-list">
@@ -1474,29 +1476,28 @@ export default async function OperatorCockpitPage({
               ))}
             </ul>
           ) : paperPos.length > 0 ? (
-            <p className="muted">
-              Keine Liquidations-Meta-Felder in offenen Positionen (normal wenn
-              Engine keine annotiert).
-            </p>
+            <p className="muted">{t("pages.ops.paperLiquidationMetaEmpty")}</p>
           ) : null}
           <OpenPositionsTable positions={paperPos} />
         </div>
       </div>
 
       <div className="panel">
-        <h2>Live-Orders (kurz)</h2>
+        <h2>{t("pages.ops.liveOrdersTitle")}</h2>
         {panelIssue(ordersErr, "orders")}
         {orders.length === 0 && !ordersErr ? (
-          <p className="muted degradation-inline">Keine Orders im Fenster.</p>
+          <p className="muted degradation-inline">
+            {t("pages.ops.liveOrdersEmpty")}
+          </p>
         ) : (
           <div className="table-wrap">
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Symbol</th>
-                  <th>Status</th>
-                  <th>Seite</th>
-                  <th>Aktualisiert</th>
+                  <th>{t("pages.ops.thSymbol")}</th>
+                  <th>{t("pages.ops.thStatus")}</th>
+                  <th>{t("pages.ops.thSide")}</th>
+                  <th>{t("pages.ops.thUpdated")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -1515,20 +1516,22 @@ export default async function OperatorCockpitPage({
       </div>
 
       <div className="panel">
-        <h2>Letzte Fills</h2>
+        <h2>{t("pages.ops.recentFillsTitle")}</h2>
         {panelIssue(fillsErr, "fills")}
         {fills.length === 0 && !fillsErr ? (
-          <p className="muted degradation-inline">Keine Fills im Fenster.</p>
+          <p className="muted degradation-inline">
+            {t("pages.ops.recentFillsEmpty")}
+          </p>
         ) : (
           <div className="table-wrap">
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Symbol</th>
-                  <th>Seite</th>
-                  <th>Preis</th>
-                  <th>Menge</th>
-                  <th>Zeit</th>
+                  <th>{t("pages.ops.thSymbol")}</th>
+                  <th>{t("pages.ops.thSide")}</th>
+                  <th>{t("pages.ops.thPrice")}</th>
+                  <th>{t("pages.ops.thQty")}</th>
+                  <th>{t("pages.ops.thTime")}</th>
                 </tr>
               </thead>
               <tbody>

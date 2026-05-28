@@ -13,7 +13,7 @@ const FOCUS_MAX_LEN = 8000;
 const SIGNAL_CONTEXT_JSON_MAX_CHARS = 96_000;
 
 export async function POST(req: Request) {
-  const auth = requireOperatorGatewayAuth();
+  const auth = requireOperatorGatewayAuth(req.headers);
   if (!auth.ok) return auth.response;
 
   let body: unknown;

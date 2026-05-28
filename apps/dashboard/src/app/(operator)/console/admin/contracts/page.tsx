@@ -5,13 +5,13 @@ import { PanelDataIssue } from "@/components/console/ConsoleFetchNotice";
 import { fetchCommerceAdminContractReviewQueue } from "@/lib/api";
 import { CONSOLE_BASE } from "@/lib/console-paths";
 import { getServerTranslator } from "@/lib/i18n/server-translate";
-import { canAccessAdminViaServer } from "@/lib/operator-session";
+import { hasOperatorAdminAccess } from "@/lib/operator-session";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminContractsPage() {
   const t = await getServerTranslator();
-  const ok = await canAccessAdminViaServer();
+  const ok = await hasOperatorAdminAccess();
   if (!ok) {
     return (
       <>

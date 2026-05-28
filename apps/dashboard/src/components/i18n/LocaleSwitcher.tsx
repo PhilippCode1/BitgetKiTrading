@@ -29,7 +29,11 @@ export function LocaleSwitcher({ className }: Props) {
   }
 
   return (
-    <div className={className ?? "dash-locale-switcher"}>
+    <div
+      className={className ?? "dash-locale-switcher"}
+      role="group"
+      aria-label={t("console.localeSwitcher")}
+    >
       <span className="muted small" style={{ marginRight: 6 }}>
         {t("console.localeSwitcher")}:
       </span>

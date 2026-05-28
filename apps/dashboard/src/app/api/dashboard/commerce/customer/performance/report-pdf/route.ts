@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireOperatorGatewayAuth } from "@/lib/gateway-bff";
+import { requirePortalGatewayAuth } from "@/lib/gateway-bff";
 import {
   fetchGatewayUpstream,
   GATEWAY_UPSTREAM_TIMEOUT_COMMERCE_MS,
@@ -10,7 +10,7 @@ import { upstreamFetchFailedResponse } from "@/lib/gateway-upstream";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
-  const auth = requireOperatorGatewayAuth();
+  const auth = requirePortalGatewayAuth(req.headers);
   if (!auth.ok) return auth.response;
   const incoming = new URL(req.url);
   const sp = new URLSearchParams();

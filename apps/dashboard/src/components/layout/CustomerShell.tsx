@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { HelpHint } from "@/components/help/HelpHint";
+import { SkipToMainLink } from "@/components/layout/SkipToMainLink";
 import { CustomerGatewayIncidentBanner } from "@/components/layout/CustomerGatewayIncidentBanner";
 import { CustomerPortalProvider } from "@/components/layout/CustomerPortalContext";
 import { CustomerSidebarNav } from "@/components/layout/CustomerSidebarNav";
@@ -35,6 +36,7 @@ export async function CustomerShell({ children, persona }: Props) {
         data-app-region="customer-portal"
         data-persona={persona}
       >
+        <SkipToMainLink />
         <CustomerSidebarNav />
         <div className="dash-main-wrap">
           {isLive ? (
@@ -58,7 +60,9 @@ export async function CustomerShell({ children, persona }: Props) {
               />
             </div>
           </div>
-          <main className="dash-main">{children}</main>
+          <main id="dash-main-content" className="dash-main" tabIndex={-1}>
+            {children}
+          </main>
         </div>
       </div>
     </CustomerPortalProvider>
