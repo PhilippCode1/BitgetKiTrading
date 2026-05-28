@@ -51,7 +51,9 @@ def test_recompute_execution_cap_below_recommended() -> None:
         execution_mode="STANDARD_FUTURES",
     )
     assert out["version"] == UNIFIED_LEVERAGE_ALLOCATOR_VERSION
-    assert out["mirror_leverage"] == 11  # Capped at 11 since recommended (25) > hard cap (11)
+    assert (
+        out["mirror_leverage"] == 11
+    )  # Capped at 11 since recommended (25) > hard cap (11)
     assert out["execution_leverage_cap"] is not None
     assert out["execution_leverage_cap"] <= 11
 
@@ -140,7 +142,7 @@ def test_refresh_writes_snapshot() -> None:
 
 def test_execution_mode_leverage_caps() -> None:
     st = _settings(risk_allowed_leverage_max=75)
-    
+
     # Test for standard futures (should cap at 11x)
     out_futures = recompute_unified_leverage_allocation(
         allowed_leverage=40,

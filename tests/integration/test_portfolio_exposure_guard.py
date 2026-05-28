@@ -71,7 +71,7 @@ class _Repo:
                             {
                                 "marginCoin": "USDT",
                                 "equity": "10000",
-                                "available": "9500", # Macht used_margin = 500 (5%), weit unter 35% Limit
+                                "available": "9500",  # Macht used_margin = 500 (5%), weit unter 35% Limit
                             }
                         ],
                     },
@@ -265,15 +265,25 @@ def test_adversarial_standard_leverage_injection_fails(
     repo = _Repo([])
 
     halt_called = []
+
     def mock_publish_global_halt_state(redis_url: str, active: bool) -> None:
         halt_called.append(active)
 
     # Patch global_halt_latch so we can capture the trigger, und exit_preview um Validierungs-Block zu umgehen
-    with patch("live_broker.global_halt_latch.publish_global_halt_state", mock_publish_global_halt_state), \
-         patch.object(LiveExecutionService, "_exit_preview", lambda *args, **kwargs: {"valid": True}):
-         
+    with (
+        patch(
+            "live_broker.global_halt_latch.publish_global_halt_state",
+            mock_publish_global_halt_state,
+        ),
+        patch.object(
+            LiveExecutionService,
+            "_exit_preview",
+            lambda *args, **kwargs: {"valid": True},
+        ),
+    ):
+
         service = LiveExecutionService(settings, _FakeEx(), repo)  # type: ignore[arg-type]
-        
+
         # STANDARD_FUTURES mit Hebel 15x (erlaubtes Maximum ist 11x)
         intent = ExecutionIntentRequest(
             source_service="signal-engine",
@@ -287,7 +297,14 @@ def test_adversarial_standard_leverage_injection_fails(
             entry_price="100",
             stop_loss="90",
             take_profit="120",
-            payload={"signal_payload": {**_strong_signal(), "execution_mode": "STANDARD_FUTURES", "allowed_leverage": 15, "recommended_leverage": 15}},
+            payload={
+                "signal_payload": {
+                    **_strong_signal(),
+                    "execution_mode": "STANDARD_FUTURES",
+                    "allowed_leverage": 15,
+                    "recommended_leverage": 15,
+                }
+            },
         )
 
         with pytest.raises(SecurityException) as exc_info:
@@ -344,10 +361,13 @@ def test_adversarial_bot_leverage_injection_fails(
     repo = _Repo([])
 
     from live_broker.execution import liquidity_guard
+
     initial_violations = liquidity_guard.leverage_violation_counter
 
     # Patch exit_preview um Validierungs-Block zu umgehen
-    with patch.object(LiveExecutionService, "_exit_preview", lambda *args, **kwargs: {"valid": True}):
+    with patch.object(
+        LiveExecutionService, "_exit_preview", lambda *args, **kwargs: {"valid": True}
+    ):
         service = LiveExecutionService(settings, _FakeEx(), repo)  # type: ignore[arg-type]
 
         # BOT_GRID mit Hebel 25x (erlaubtes Maximum ist 22x)
@@ -363,7 +383,14 @@ def test_adversarial_bot_leverage_injection_fails(
             entry_price="100",
             stop_loss="90",
             take_profit="120",
-            payload={"signal_payload": {**_strong_signal(), "execution_mode": "BOT_GRID", "allowed_leverage": 25, "recommended_leverage": 25}},
+            payload={
+                "signal_payload": {
+                    **_strong_signal(),
+                    "execution_mode": "BOT_GRID",
+                    "allowed_leverage": 25,
+                    "recommended_leverage": 25,
+                }
+            },
         )
 
         with pytest.raises(SecurityException) as exc_info:
@@ -387,7 +414,7 @@ def test_volatility_leverage_clamp_integration(
     # CI-stabile Drawdown- und Margin-Limits, unabhängig von externer Env.
     monkeypatch.setenv("RISK_MAX_ACCOUNT_DRAWDOWN_PCT", "0.18")
     monkeypatch.setenv("RISK_MAX_ACCOUNT_MARGIN_USAGE", "0.35")
-    
+
     settings = PaperBrokerSettings()
 
     # Extreme Volatilität => Großer ATR-basierter Stop-Abstand (z. B. Einstieg 100000, Stop bei 60000)
