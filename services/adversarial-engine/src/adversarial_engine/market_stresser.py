@@ -13,7 +13,6 @@ from typing import Any
 import numpy as np
 import pyarrow as pa
 import torch
-
 from shared_py.resilience.survival_kernel import (
     SurvivalKernelParams,
     SurvivalMetrics,

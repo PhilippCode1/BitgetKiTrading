@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any, TypedDict
 
 import psycopg
@@ -29,7 +29,7 @@ def create_pending_link(
 ) -> tuple[str, datetime]:
     """Gibt (klartext_token, expires_at_utc) zurueck."""
     token = secrets.token_urlsafe(24)
-    exp = datetime.now(timezone.utc) + timedelta(hours=max(1, min(ttl_hours, 168)))
+    exp = datetime.now(UTC) + timedelta(hours=max(1, min(ttl_hours, 168)))
     h = sha256_token(token)
     conn.execute(
         """
@@ -119,8 +119,8 @@ def try_complete_customer_start_link(
         return LinkStartResult(ok=False, error="token_used")
     exp = d["expires_ts"]
     if exp.tzinfo is None:
-        exp = exp.replace(tzinfo=timezone.utc)
-    if datetime.now(timezone.utc) > exp:
+        exp = exp.replace(tzinfo=UTC)
+    if datetime.now(UTC) > exp:
         return LinkStartResult(ok=False, error="expired")
 
     tenant_id = str(d["tenant_id"])
@@ -185,7 +185,9 @@ def try_complete_customer_start_link(
     return LinkStartResult(ok=True, tenant_id=tenant_id)
 
 
-def ensure_alert_chat_allowed(conn: psycopg.Connection[Any], *, telegram_chat_id: int) -> None:
+def ensure_alert_chat_allowed(
+    conn: psycopg.Connection[Any], *, telegram_chat_id: int
+) -> None:
     conn.execute(
         """
         INSERT INTO alert.chat_subscriptions (chat_id, status)

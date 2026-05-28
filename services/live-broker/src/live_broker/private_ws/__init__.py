@@ -1,7 +1,7 @@
 """Private WebSocket client for Bitget."""
 
 from .client import BitgetPrivateWsClient, PrivateWsClientStats
-from .models import NormalizedPrivateEvent, EventType
+from .models import EventType, NormalizedPrivateEvent
 from .sync import ExchangeStateSyncService
 
 __all__ = [

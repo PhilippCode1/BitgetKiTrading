@@ -59,11 +59,7 @@ export type SituationAiExplainPanelProps = Readonly<
     }
 >;
 
-function sectionBlock(
-  label: string,
-  body: string,
-  key: string,
-): ReactNode {
+function sectionBlock(label: string, body: string, key: string): ReactNode {
   const b = body.trim();
   if (!b) return null;
   return (
@@ -103,10 +99,7 @@ export function SituationAiExplainPanel(props: SituationAiExplainPanelProps) {
 
   const deterministic: SituationExplainSections = useMemo(() => {
     if (props.variant === "snapshot") {
-      return buildDeterministicSituationExplainFromSnapshot(
-        props.snapshot,
-        t,
-      );
+      return buildDeterministicSituationExplainFromSnapshot(props.snapshot, t);
     }
     if (props.variant === "product_message") {
       return buildDeterministicSituationExplainFromProductMessage(
@@ -211,7 +204,10 @@ export function SituationAiExplainPanel(props: SituationAiExplainPanelProps) {
       const res = await fetch("/api/dashboard/llm/operator-explain", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ question_de, readonly_context_json: readonlyContextJson }),
+        body: JSON.stringify({
+          question_de,
+          readonly_context_json: readonlyContextJson,
+        }),
         cache: "no-store",
         signal: ac.signal,
       });
@@ -280,9 +276,9 @@ export function SituationAiExplainPanel(props: SituationAiExplainPanelProps) {
   const result = envelope?.result;
   const showLlmResult = Boolean(
     result &&
-      envelope &&
-      envelope.ok !== false &&
-      isOperatorExplainSuccessPayload(envelope),
+    envelope &&
+    envelope.ok !== false &&
+    isOperatorExplainSuccessPayload(envelope),
   );
 
   const isFake =
@@ -410,7 +406,9 @@ export function SituationAiExplainPanel(props: SituationAiExplainPanelProps) {
           ) : null}
         </details>
       ) : (
-        <p className="muted small">{t("situationAiExplain.llmSkippedLowSeverity")}</p>
+        <p className="muted small">
+          {t("situationAiExplain.llmSkippedLowSeverity")}
+        </p>
       )}
     </section>
   );

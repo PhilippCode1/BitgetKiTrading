@@ -52,19 +52,30 @@ def _request(**overrides: object) -> InstrumentOrderRequest:
 
 
 def test_futures_without_product_type_blocks() -> None:
-    out = validate_instrument_order_contract(context=_context(product_type=None), request=_request(product_type=None))
+    out = validate_instrument_order_contract(
+        context=_context(product_type=None), request=_request(product_type=None)
+    )
     assert "futures_product_type_fehlt" in out.block_reasons
 
 
 def test_futures_without_margin_coin_blocks() -> None:
-    out = validate_instrument_order_contract(context=_context(margin_coin=None), request=_request(margin_coin=None))
+    out = validate_instrument_order_contract(
+        context=_context(margin_coin=None), request=_request(margin_coin=None)
+    )
     assert "futures_margin_coin_fehlt" in out.block_reasons
 
 
 def test_spot_with_futures_leverage_context_blocks() -> None:
     out = validate_instrument_order_contract(
-        context=_context(market_family="spot", max_leverage=None, product_type=None, margin_coin=None),
-        request=_request(market_family="spot", requested_leverage=10, product_type=None, margin_coin=None),
+        context=_context(
+            market_family="spot", max_leverage=None, product_type=None, margin_coin=None
+        ),
+        request=_request(
+            market_family="spot",
+            requested_leverage=10,
+            product_type=None,
+            margin_coin=None,
+        ),
     )
     assert "spot_mit_futures_leverage_kontext" in out.block_reasons
 
@@ -78,12 +89,16 @@ def test_qty_rounds_to_lot() -> None:
 
 
 def test_rounding_up_that_increases_risk_is_prevented() -> None:
-    out = validate_instrument_order_contract(context=_context(tick_size="0.5"), request=_request(price="10.49"))
+    out = validate_instrument_order_contract(
+        context=_context(tick_size="0.5"), request=_request(price="10.49")
+    )
     assert out.rounded_price == "10.0"
 
 
 def test_min_qty_below_threshold_blocks() -> None:
-    out = validate_instrument_order_contract(context=_context(min_qty="1"), request=_request(qty="0.5"))
+    out = validate_instrument_order_contract(
+        context=_context(min_qty="1"), request=_request(qty="0.5")
+    )
     assert "min_qty_unterschritten" in out.block_reasons
 
 
@@ -96,17 +111,24 @@ def test_min_notional_below_threshold_blocks() -> None:
 
 
 def test_stale_metadata_blocks() -> None:
-    out = validate_instrument_order_contract(context=_context(source_freshness_status="stale"), request=_request())
+    out = validate_instrument_order_contract(
+        context=_context(source_freshness_status="stale"), request=_request()
+    )
     assert "instrument_metadaten_stale" in out.block_reasons
 
 
 def test_product_type_mismatch_blocks() -> None:
-    out = validate_instrument_order_contract(context=_context(product_type="USDT-FUTURES"), request=_request(product_type="COIN-FUTURES"))
+    out = validate_instrument_order_contract(
+        context=_context(product_type="USDT-FUTURES"),
+        request=_request(product_type="COIN-FUTURES"),
+    )
     assert "product_type_mismatch" in out.block_reasons
 
 
 def test_margin_coin_mismatch_blocks() -> None:
-    out = validate_instrument_order_contract(context=_context(margin_coin="USDT"), request=_request(margin_coin="USDC"))
+    out = validate_instrument_order_contract(
+        context=_context(margin_coin="USDT"), request=_request(margin_coin="USDC")
+    )
     assert "margin_coin_mismatch" in out.block_reasons
 
 
@@ -116,6 +138,8 @@ def test_valid_context_preflight_passes_but_not_auto_live_trading() -> None:
 
 
 def test_german_block_reasons_generated() -> None:
-    text = build_instrument_contract_block_reason_de(["futures_product_type_fehlt", "min_qty_unterschritten"])
+    text = build_instrument_contract_block_reason_de(
+        ["futures_product_type_fehlt", "min_qty_unterschritten"]
+    )
     assert any("Futures-Produkt" in item for item in text)
     assert any("Mindestmenge" in item for item in text)

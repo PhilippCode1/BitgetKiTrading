@@ -115,8 +115,14 @@ def test_gateway_ready_false_when_dsns_missing() -> None:
 
         importlib.reload(app_module)
         with (
-            patch("api_gateway.gateway_readiness_core.effective_database_dsn", return_value=""),
-            patch("api_gateway.gateway_readiness_core.effective_redis_url", return_value=""),
+            patch(
+                "api_gateway.gateway_readiness_core.effective_database_dsn",
+                return_value="",
+            ),
+            patch(
+                "api_gateway.gateway_readiness_core.effective_redis_url",
+                return_value="",
+            ),
             patch.object(
                 app_module,
                 "append_peer_readiness_checks",

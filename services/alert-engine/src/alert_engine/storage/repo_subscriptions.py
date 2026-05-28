@@ -45,7 +45,8 @@ class RepoSubscriptions:
         desired = "allowed" if force_allowed else "pending"
         with psycopg.connect(self._dsn) as conn:
             row = conn.execute(
-                "SELECT status FROM alert.chat_subscriptions WHERE chat_id = %s", (chat_id,)
+                "SELECT status FROM alert.chat_subscriptions WHERE chat_id = %s",
+                (chat_id,),
             ).fetchone()
             if row is None:
                 conn.execute(
@@ -76,7 +77,8 @@ class RepoSubscriptions:
                     (new_status, user_id, username, title, chat_id),
                 )
             row2 = conn.execute(
-                "SELECT status FROM alert.chat_subscriptions WHERE chat_id = %s", (chat_id,)
+                "SELECT status FROM alert.chat_subscriptions WHERE chat_id = %s",
+                (chat_id,),
             ).fetchone()
             conn.commit()
         return str(row2[0]) if row2 else desired
@@ -84,7 +86,8 @@ class RepoSubscriptions:
     def get_status(self, chat_id: int) -> str | None:
         with psycopg.connect(self._dsn) as conn:
             row = conn.execute(
-                "SELECT status FROM alert.chat_subscriptions WHERE chat_id = %s", (chat_id,)
+                "SELECT status FROM alert.chat_subscriptions WHERE chat_id = %s",
+                (chat_id,),
             ).fetchone()
         if row is None:
             return None

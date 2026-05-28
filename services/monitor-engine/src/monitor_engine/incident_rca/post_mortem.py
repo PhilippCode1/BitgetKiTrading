@@ -9,7 +9,10 @@ from typing import Any
 
 import httpx
 from shared_py.eventbus import RedisStreamBus, sample_event_streams_union_recent
-from shared_py.observability.request_context import clear_incident_context, set_incident_context
+from shared_py.observability.request_context import (
+    clear_incident_context,
+    set_incident_context,
+)
 from shared_py.service_auth import INTERNAL_SERVICE_HEADER
 
 from monitor_engine.config import MonitorEngineSettings
@@ -141,9 +144,7 @@ async def run_incident_post_mortem_once(
     try:
 
         def _load_streams() -> list[dict[str, Any]]:
-            return sample_event_streams_union_recent(
-                bus.redis, total_limit=100
-            )
+            return sample_event_streams_union_recent(bus.redis, total_limit=100)
 
         def _rem(s: float) -> float:
             return max(0.5, s - (time.perf_counter() - t0))
@@ -195,12 +196,12 @@ async def run_incident_post_mortem_once(
         logger.exception("insert_post_mortem failed: %s", exc)
     tgram_b = _rem(3.0)
     if tgram_b > 0.1:
-        if await _enqueue_telegram(
-            settings, pm_id=pm_id, summary_hint=summary_hint
-        ):
+        if await _enqueue_telegram(settings, pm_id=pm_id, summary_hint=summary_hint):
             with contextlib.suppress(OSError, TypeError, ValueError):
                 update_telegram_enqueued(
                     settings.database_url, post_mortem_id=pm_id, enqueued=True
                 )
-    logger.info("incident post_mortem done id=%s ms=%s llm=%s", pm_id, duration_ms, llm_st)
+    logger.info(
+        "incident post_mortem done id=%s ms=%s llm=%s", pm_id, duration_ms, llm_st
+    )
     return pm_id

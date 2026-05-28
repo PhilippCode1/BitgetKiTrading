@@ -53,7 +53,9 @@ def test_audit_event_without_timestamp_invalid() -> None:
 
 
 def test_live_decision_without_asset_symbol_invalid() -> None:
-    result = validate_private_audit_event(_valid_event(decision_type="live_decision", asset_symbol=""))
+    result = validate_private_audit_event(
+        _valid_event(decision_type="live_decision", asset_symbol="")
+    )
     assert result.valid is False
     assert "missing_asset_symbol" in result.errors
     assert "live_decision_missing_asset_symbol" in result.errors

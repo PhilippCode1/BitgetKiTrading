@@ -33,7 +33,9 @@ def baseline_pred_take_always_no_trade(_row: dict[str, Any]) -> int:
     return 0
 
 
-def baseline_pred_take_momentum_follow(row: dict[str, Any], *, ret_threshold: float = 0.0003) -> int:
+def baseline_pred_take_momentum_follow(
+    row: dict[str, Any], *, ret_threshold: float = 0.0003
+) -> int:
     p = _primary(row)
     ret5 = _f(p, "ret_5")
     mom = _f(p, "momentum_score")

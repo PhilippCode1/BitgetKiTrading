@@ -87,7 +87,9 @@ def _last_process_cpu(text: str) -> float | None:
 
 
 def _get_metrics(url: str) -> str:
-    req = urllib.request.Request(url, headers={"User-Agent": "hf_universe_stress/1"})  # noqa: S310
+    req = urllib.request.Request(
+        url, headers={"User-Agent": "hf_universe_stress/1"}
+    )  # noqa: S310
     with urllib.request.urlopen(req, timeout=5.0) as resp:  # noqa: S310
         return resp.read().decode("utf-8", errors="replace")
 
@@ -285,7 +287,9 @@ def _run(args: argparse.Namespace) -> int:
 
 def main() -> int:
     p = argparse.ArgumentParser()
-    p.add_argument("--redis-url", default=None, help="Default: env REDIS_URL / redis://…")
+    p.add_argument(
+        "--redis-url", default=None, help="Default: env REDIS_URL / redis://…"
+    )
     p.add_argument("--symbols", type=int, default=500)
     p.add_argument("--ticks-per-symbol", type=float, default=10.0)
     p.add_argument(
@@ -308,7 +312,9 @@ def main() -> int:
     )
     args = p.parse_args()
     if not args.redis_url:
-        args.redis_url = (os.environ.get("REDIS_URL") or "redis://127.0.0.1:6379/0").strip()
+        args.redis_url = (
+            os.environ.get("REDIS_URL") or "redis://127.0.0.1:6379/0"
+        ).strip()
     return _run(args)
 
 

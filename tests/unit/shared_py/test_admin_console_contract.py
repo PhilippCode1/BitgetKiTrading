@@ -3,15 +3,15 @@
 from __future__ import annotations
 
 from shared_py.admin_console_contract import (
-    ADMIN_CONSOLE_BASE_PATH,
     ACTION_CONFIRMATION_TIER,
     ACTION_LABELS_DE,
     ACTION_WARNING_LEVEL,
+    ADMIN_CONSOLE_BASE_PATH,
+    EXPLAIN_PLACEHOLDER_TITLE_DE,
+    KPI_LABELS_DE,
     AdminActionId,
     ConfirmationTier,
     CustomerDetailTabId,
-    EXPLAIN_PLACEHOLDER_TITLE_DE,
-    KPI_LABELS_DE,
     UiWarningLevel,
     admin_console_descriptor,
     admin_path,
@@ -66,15 +66,24 @@ def test_global_kill_switch_type_confirm() -> None:
         ACTION_CONFIRMATION_TIER[AdminActionId.GLOBAL_PAUSE_LIVE_TRADING]
         == ConfirmationTier.TYPE_TO_CONFIRM
     )
-    assert ACTION_WARNING_LEVEL[AdminActionId.GLOBAL_PAUSE_LIVE_TRADING] == UiWarningLevel.CRITICAL
+    assert (
+        ACTION_WARNING_LEVEL[AdminActionId.GLOBAL_PAUSE_LIVE_TRADING]
+        == UiWarningLevel.CRITICAL
+    )
 
 
 def test_recheck_exchange_no_dialog_tier() -> None:
-    assert ACTION_CONFIRMATION_TIER[AdminActionId.RECHECK_EXCHANGE_CONNECTION] == ConfirmationTier.NONE
+    assert (
+        ACTION_CONFIRMATION_TIER[AdminActionId.RECHECK_EXCHANGE_CONNECTION]
+        == ConfirmationTier.NONE
+    )
 
 
 def test_grant_live_double_confirm() -> None:
-    assert ACTION_CONFIRMATION_TIER[AdminActionId.GRANT_LIVE_TRADING] == ConfirmationTier.DOUBLE_CONFIRM
+    assert (
+        ACTION_CONFIRMATION_TIER[AdminActionId.GRANT_LIVE_TRADING]
+        == ConfirmationTier.DOUBLE_CONFIRM
+    )
 
 
 def test_requires_reason_for_critical() -> None:

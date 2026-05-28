@@ -54,10 +54,7 @@ export function LiveDataSituationBar({ model }: Props) {
   }, []);
 
   const nowMsForAge =
-    clientNowMs ??
-    model.serverTsMs ??
-    model.lastMarketIngestTsMs ??
-    null;
+    clientNowMs ?? model.serverTsMs ?? model.lastMarketIngestTsMs ?? null;
 
   const completenessPct = useMemo(() => {
     if (model.lineageTotal <= 0) return null;
@@ -113,10 +110,7 @@ export function LiveDataSituationBar({ model }: Props) {
       }`
     : null;
 
-  const commsPhase = useMemo(
-    () => liveDataSurfaceToCommsPhase(model),
-    [model],
-  );
+  const commsPhase = useMemo(() => liveDataSurfaceToCommsPhase(model), [model]);
   const expectation = useMemo(
     () => liveDataSurfaceToExpectation(model),
     [model],
@@ -206,7 +200,9 @@ export function LiveDataSituationBar({ model }: Props) {
       {model.missingSegmentIds.length > 0 ? (
         <div className="live-data-situation__gap" role="alert">
           <strong>{t("live.dataSituation.missingStreams")}:</strong>{" "}
-          <span className="mono-small">{model.missingSegmentIds.join(", ")}</span>
+          <span className="mono-small">
+            {model.missingSegmentIds.join(", ")}
+          </span>
         </div>
       ) : null}
       {model.affectedAreaKeys.length > 0 ? (
@@ -224,7 +220,10 @@ export function LiveDataSituationBar({ model }: Props) {
           ))}
         </ul>
       ) : null}
-      <footer className="live-data-situation__comms" aria-label={t("systemComms.expectation.sectionTitle")}>
+      <footer
+        className="live-data-situation__comms"
+        aria-label={t("systemComms.expectation.sectionTitle")}
+      >
         <div className="live-data-situation__comms-row">
           <span
             className={`system-comms-mini-pill system-comms-mini-pill--${commsPhase}`}

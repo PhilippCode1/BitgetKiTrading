@@ -17,7 +17,7 @@ from shared_py.observability.execution_forensic import redact_nested_mapping
 
 def content_sha256_hex(obj: Any) -> str:
     """SHA-256-Hex ueber sortierten JSON, fuer fachliche Beweiskette (nicht HMAC)."""
-    if isinstance(obj, (dict, list)):
+    if isinstance(obj, dict | list):
         b = canonical_json_bytes(obj)
     else:
         b = canonical_json_bytes({"_v": str(obj)[:8_000]})
@@ -41,10 +41,14 @@ def build_ledger_decision_package(
     signal_block: dict[str, Any] = {
         "symbol": me.get("symbol") or (me.get("market_event") or {}).get("symbol"),
         "timeframe": me.get("timeframe"),
-        "signal_id": str(me.get("signal_id") or me.get("signal", {}).get("signal_id") or "")
+        "signal_id": str(
+            me.get("signal_id") or me.get("signal", {}).get("signal_id") or ""
+        )
         or None,
         "direction_hint": str(me.get("direction") or "")[:32] or None,
-        "market_context_keys": sorted([str(x) for x in me.keys() if isinstance(x, str)][:32]),
+        "market_context_keys": sorted(
+            [str(x) for x in me.keys() if isinstance(x, str)][:32]
+        ),
     }
     wr_op = wr.get("operator_explain")
     if not isinstance(wr_op, dict):
@@ -63,7 +67,9 @@ def build_ledger_decision_package(
         "signal_generation_aborted": wr.get("signal_generation_aborted"),
         "final_signal_action": wr.get("final_signal_action"),
         "foundation_model_audit": (
-            (wr.get("foundation_model_audit") or {}) if isinstance(wr.get("foundation_model_audit"), dict) else {}
+            (wr.get("foundation_model_audit") or {})
+            if isinstance(wr.get("foundation_model_audit"), dict)
+            else {}
         )
         or {},
     }

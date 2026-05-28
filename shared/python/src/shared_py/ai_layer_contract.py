@@ -226,7 +226,9 @@ def suggest_fallback_strategy(
     return FallbackStrategy.FULL
 
 
-def trading_execution_requires_prior_policy(receipt: ExecutionReceipt, policy: TradingDecisionEnvelope) -> bool:
+def trading_execution_requires_prior_policy(
+    receipt: ExecutionReceipt, policy: TradingDecisionEnvelope
+) -> bool:
     """
     Prueft konsistente trace_id und dass Ausfuehrung nicht ohne erlaubte Policy erfolgt.
 

@@ -1,12 +1,19 @@
-import { requireOperatorGatewayAuth } from "@/lib/gateway-bff";
 import {
   fetchGatewayUpstream,
   GATEWAY_UPSTREAM_TIMEOUT_COMMERCE_MS,
 } from "@/lib/gateway-upstream-fetch";
+import {
+  readPortalAuthorizationFromCookies,
+  readPortalAuthorizationFromHeaders,
+} from "@/lib/portal-jwt-server";
 import { serverEnv } from "@/lib/server-env";
 
 /** BFF-Abdeckung: `/v1/commerce/customer` → dieses Zusammenfassungsmodell. */
-export type CustomerPortalBffDataState = "ok" | "degraded" | "not_configured" | "backend_unavailable";
+export type CustomerPortalBffDataState =
+  | "ok"
+  | "degraded"
+  | "not_configured"
+  | "backend_unavailable";
 
 export type CustomerMeRedacted = {
   readonly schemaVersion: string;
@@ -58,8 +65,11 @@ export type CustomerPortalSummary = {
   readonly fetchedAt: string;
   /** Aggregat fuer Oberflächen, ohne Erfolg vorzutäuschen. */
   readonly dataState: CustomerPortalBffDataState;
-  /** Kein BFF, kein Gateway, oder fehlendes DASHBOARD_GATEWAY_AUTHORIZATION. */
-  readonly notConfiguredReason: "api_gateway_url_missing" | "gateway_bff_auth_missing" | null;
+  /** Kein BFF, kein Gateway, oder fehlende Portal-Session. */
+  readonly notConfiguredReason:
+    | "api_gateway_url_missing"
+    | "portal_session_required"
+    | null;
   readonly commerceCustomerMe: {
     httpStatus: number;
     body: CustomerMeRedacted | null;
@@ -95,9 +105,7 @@ function toStr(x: unknown): string | null {
 }
 
 /** Liefert geparste Antworten oder null, nie Roh-Secret-Felder. */
-export function redactCustomerMeJson(
-  raw: unknown,
-): CustomerMeRedacted | null {
+export function redactCustomerMeJson(raw: unknown): CustomerMeRedacted | null {
   if (!isRecord(raw)) return null;
   const schemaVersion = toStr(raw["schema_version"]) ?? "unknown";
   const tenant = isRecord(raw["tenant"]) ? raw["tenant"] : null;
@@ -105,7 +113,9 @@ export function redactCustomerMeJson(
   if (!tenantIdMasked) return null;
   const profileObj = isRecord(raw["profile"]) ? raw["profile"] : null;
   const planObj = isRecord(raw["plan"]) ? raw["plan"] : null;
-  const tenantState = isRecord(raw["tenant_state"]) ? raw["tenant_state"] : null;
+  const tenantState = isRecord(raw["tenant_state"])
+    ? raw["tenant_state"]
+    : null;
   const access = isRecord(raw["access"]) ? raw["access"] : null;
   const accessMatrix: Record<string, boolean> = {};
   if (access) {
@@ -119,21 +129,24 @@ export function redactCustomerMeJson(
     tenantIdMasked,
     profile: {
       displayName: profileObj
-        ? (toStr(profileObj["display_name"] ?? profileObj["displayName"]) as string | null)
+        ? (toStr(profileObj["display_name"] ?? profileObj["displayName"]) as
+            | string
+            | null)
         : null,
     },
     plan: {
       planId: planObj ? toStr(planObj["plan_id"] ?? planObj["planId"]) : null,
-      displayName: planObj ? toStr(planObj["display_name"] ?? planObj["displayName"]) : null,
+      displayName: planObj
+        ? toStr(planObj["display_name"] ?? planObj["displayName"])
+        : null,
       transparencyNote: planObj
-        ? toStr(
-            planObj["transparency_note"] ?? planObj["transparencyNote"],
-          )
+        ? toStr(planObj["transparency_note"] ?? planObj["transparencyNote"])
         : null,
     },
     tenantBudgetCapUsdMonth: tenantState
       ? toStr(
-          tenantState["budget_cap_usd_month"] ?? tenantState["budgetCapUsdMonth"],
+          tenantState["budget_cap_usd_month"] ??
+            tenantState["budgetCapUsdMonth"],
         )
       : null,
     accessMatrix,
@@ -156,12 +169,8 @@ export function redactLifecycleJson(
   if (!isRecord(raw)) return null;
   if (toStr(raw["status"]) == null) return null;
   const trial = isRecord(raw["trial"]) ? raw["trial"] : null;
-  const caps = isRecord(raw["capabilities"])
-    ? raw["capabilities"]
-    : {};
-  const gates = isRecord(raw["gates_preview"])
-    ? raw["gates_preview"]
-    : {};
+  const caps = isRecord(raw["capabilities"]) ? raw["capabilities"] : {};
+  const gates = isRecord(raw["gates_preview"]) ? raw["gates_preview"] : {};
   const outCaps: Record<string, boolean> = {};
   for (const [k, v] of Object.entries(caps)) {
     if (typeof v === "boolean") outCaps[k] = v;
@@ -171,23 +180,20 @@ export function redactLifecycleJson(
     if (typeof v === "boolean") outGates[k] = v;
   }
   return {
-    schemaVersion:
-      toStr(raw["schema_version"]) ?? "tenant-lifecycle-v1",
+    schemaVersion: toStr(raw["schema_version"]) ?? "tenant-lifecycle-v1",
     status: toStr(raw["status"]) ?? "unknown",
     titleDe: toStr(raw["title_de"] ?? raw["titleDe"]) ?? "",
-    emailVerified: Boolean(
-      raw["email_verified"] ?? raw["emailVerified"],
-    ),
+    emailVerified: Boolean(raw["email_verified"] ?? raw["emailVerified"]),
     trial: {
       durationDays:
         typeof trial?.["duration_days"] === "number"
           ? trial["duration_days"]
           : 0,
-      startedAt: trial ? toStr(trial["started_at"] ?? trial["startedAt"]) : null,
+      startedAt: trial
+        ? toStr(trial["started_at"] ?? trial["startedAt"])
+        : null,
       endsAt: trial ? toStr(trial["ends_at"] ?? trial["endsAt"]) : null,
-      clockActive: Boolean(
-        trial?.["clock_active"] ?? trial?.["clockActive"],
-      ),
+      clockActive: Boolean(trial?.["clock_active"] ?? trial?.["clockActive"]),
     },
     capabilities: outCaps,
     gatesPreview: outGates,
@@ -199,9 +205,7 @@ export function redactIntegrationsJson(
 ): CustomerIntegrationsRedacted | null {
   if (!isRecord(raw)) return null;
   const integ = isRecord(raw["integration"]) ? raw["integration"] : null;
-  const b = isRecord(raw["bitget_env"])
-    ? raw["bitget_env"]
-    : null;
+  const b = isRecord(raw["bitget_env"]) ? raw["bitget_env"] : null;
   if (!integ) return null;
   const bitgetEnv: Record<string, unknown> = {};
   if (b) {
@@ -213,15 +217,13 @@ export function redactIntegrationsJson(
   }
   return {
     tenantIdMasked: toStr(raw["tenant_id_masked"]) ?? "—",
-    brokerState: toStr(
-      integ["broker_state"] ?? integ["brokerState"],
-    ) ?? "unknown",
+    brokerState:
+      toStr(integ["broker_state"] ?? integ["brokerState"]) ?? "unknown",
     brokerHintPublic: toStr(
       integ["broker_hint_public"] ?? integ["brokerHintPublic"],
     ),
-    telegramState: toStr(
-      integ["telegram_state"] ?? integ["telegramState"],
-    ) ?? "unknown",
+    telegramState:
+      toStr(integ["telegram_state"] ?? integ["telegramState"]) ?? "unknown",
     telegramHintPublic: toStr(
       integ["telegram_hint_public"] ?? integ["telegramHintPublic"],
     ),
@@ -243,12 +245,21 @@ async function parseJsonBody(res: Response): Promise<unknown> {
   }
 }
 
+async function resolvePortalAuthorization(
+  headers?: Headers | null,
+): Promise<string | null> {
+  const fromHeaders = readPortalAuthorizationFromHeaders(headers ?? null);
+  if (fromHeaders) return fromHeaders;
+  return readPortalAuthorizationFromCookies();
+}
+
 /**
  * Server-only: Sichere, redigierte Sicht; keine Browser-Secrets.
- * BFF-Auth ist serverseitig; Tenant/Claims kommen aus dem Gateway-JWT, nicht aus dem Endnutzer-Cookie
- * in diesem Schritt (Produktluecke, siehe Doku).
+ * Auth ausschliesslich ueber Portal-JWT (Cookie oder Request-Header) — kein Operator-BFF-Fallback.
  */
-export async function getCustomerPortalSummary(): Promise<CustomerPortalSummary> {
+export async function getCustomerPortalSummary(
+  headers?: Headers | null,
+): Promise<CustomerPortalSummary> {
   const fetchedAt = new Date().toISOString();
   const noTradeStub = {
     dataState: "not_configured" as const,
@@ -264,38 +275,37 @@ export async function getCustomerPortalSummary(): Promise<CustomerPortalSummary>
       commerceLifecycle: null,
       commerceIntegrations: null,
       tradingReadonly: noTradeStub,
-      errorHint:
-        "API_GATEWAY_URL fehlt auf dem Server — Kunden-BFF kann nicht wählen, welcher Tenant sichtbar ist.",
+      errorHint: null,
     };
   }
 
-  const auth = requireOperatorGatewayAuth();
-  if (!auth.ok) {
+  const authorization = await resolvePortalAuthorization(headers);
+  if (!authorization) {
     return {
       fetchedAt,
       dataState: "not_configured",
-      notConfiguredReason: "gateway_bff_auth_missing",
+      notConfiguredReason: "portal_session_required",
       commerceCustomerMe: null,
       commerceLifecycle: null,
       commerceIntegrations: null,
       tradingReadonly: noTradeStub,
-      errorHint:
-        "DASHBOARD_GATEWAY_AUTHORIZATION fehlt; serverseitiger BFF-Proxy zum API-Gateway ist nicht konfiguriert.",
+      errorHint: null,
     };
   }
 
-  const a = auth.authorization;
+  const a = authorization;
   const timeout = GATEWAY_UPSTREAM_TIMEOUT_COMMERCE_MS;
   const paths = [
     { key: "me" as const, p: "/v1/commerce/customer/me" },
     { key: "lifecycle" as const, p: "/v1/commerce/customer/lifecycle/me" },
     { key: "integrations" as const, p: "/v1/commerce/customer/integrations" },
   ];
-  const results: Record<string, { res: Response | null; err: string | null }> = {
-    me: { res: null, err: null },
-    lifecycle: { res: null, err: null },
-    integrations: { res: null, err: null },
-  };
+  const results: Record<string, { res: Response | null; err: string | null }> =
+    {
+      me: { res: null, err: null },
+      lifecycle: { res: null, err: null },
+      integrations: { res: null, err: null },
+    };
 
   await Promise.all(
     paths.map(async ({ key, p }) => {
@@ -351,9 +361,7 @@ export async function getCustomerPortalSummary(): Promise<CustomerPortalSummary>
       ? rL.res.ok
         ? {
             httpStatus: rL.res.status,
-            body: redactLifecycleJson(
-              (await parseJsonBody(rL.res)) ?? null,
-            ),
+            body: redactLifecycleJson((await parseJsonBody(rL.res)) ?? null),
           }
         : { httpStatus: rL.res.status, body: null }
       : { httpStatus: 0, body: null };
@@ -363,9 +371,7 @@ export async function getCustomerPortalSummary(): Promise<CustomerPortalSummary>
       ? rI.res.ok
         ? {
             httpStatus: rI.res.status,
-            body: redactIntegrationsJson(
-              (await parseJsonBody(rI.res)) ?? null,
-            ),
+            body: redactIntegrationsJson((await parseJsonBody(rI.res)) ?? null),
           }
         : { httpStatus: rI.res.status, body: null }
       : { httpStatus: 0, body: null };

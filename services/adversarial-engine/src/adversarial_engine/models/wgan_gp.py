@@ -95,7 +95,9 @@ def _cholesky_correlated_noise(
     return z @ l.T
 
 
-def _analytic_stress_envelope(seq_len: int, toxicity: torch.Tensor, device: torch.device) -> torch.Tensor:
+def _analytic_stress_envelope(
+    seq_len: int, toxicity: torch.Tensor, device: torch.device
+) -> torch.Tensor:
     """
     Deterministische Crash-/Austrocknungs-Huelle (B, T, 2).
     toxicity: (B,1) skaliert Amplitude.
@@ -130,8 +132,12 @@ class AdversarialMarketSimulator:
         self.latent_dim = int(latent_dim)
         self.seq_len = int(seq_len)
         self.rho = float(rho)
-        self.device = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
-        self.generator = WGANGenerator(latent_dim=self.latent_dim, seq_len=self.seq_len).to(self.device)
+        self.device = torch.device(
+            device or ("cuda" if torch.cuda.is_available() else "cpu")
+        )
+        self.generator = WGANGenerator(
+            latent_dim=self.latent_dim, seq_len=self.seq_len
+        ).to(self.device)
         self.critic = WGANCritic(seq_len=self.seq_len).to(self.device)
         self.generator.train(False)
         self.critic.train(False)
@@ -170,7 +176,11 @@ class AdversarialMarketSimulator:
         g_res = torch.tanh(self.generator(z, toxicity))
         env = _analytic_stress_envelope(self.seq_len, toxicity, self.device)
         # Mische korreliertes Rauschen, GAN-Residual und analytische Extremform
-        mix = (0.35 + 0.65 * tox) * base + tox * (0.55 * g_res) + (0.45 + 0.55 * tox) * env
+        mix = (
+            (0.35 + 0.65 * tox) * base
+            + tox * (0.55 * g_res)
+            + (0.45 + 0.55 * tox) * env
+        )
         meta = {
             "latent_dim": self.latent_dim,
             "seq_len": self.seq_len,
@@ -203,8 +213,7 @@ def wgan_gp_training_step(
     tox = torch.rand(b, 1, device=device)
     fake = (
         _cholesky_correlated_noise(b, generator.seq_len, 0.7, device, real_data.dtype)
-        + 0.4
-        * torch.tanh(generator(z, tox))
+        + 0.4 * torch.tanh(generator(z, tox))
         + 0.35 * _analytic_stress_envelope(generator.seq_len, tox, device)
     )
 
@@ -228,7 +237,10 @@ def wgan_gp_training_step(
     loss_g.backward()
     opt_g.step()
 
-    return {"loss_c": float(loss_c.detach().cpu()), "loss_g": float(loss_g.detach().cpu())}
+    return {
+        "loss_c": float(loss_c.detach().cpu()),
+        "loss_g": float(loss_g.detach().cpu()),
+    }
 
 
 def boost_log_return_kurtosis(
@@ -248,11 +260,15 @@ def boost_log_return_kurtosis(
     b = paths.size(0)
     t_ = paths.size(1)
     # schwere Tails: gemischt-Gauss / symmetrische grosse Spikes
-    heavy = torch.randn(b, t_, device=paths.device, dtype=paths.dtype) * (1.6 + 1.2 * torch.rand(1, device=paths.device, dtype=paths.dtype))
+    heavy = torch.randn(b, t_, device=paths.device, dtype=paths.dtype) * (
+        1.6 + 1.2 * torch.rand(1, device=paths.device, dtype=paths.dtype)
+    )
     spike = torch.zeros_like(heavy)
     n_spike = max(1, t_ // 18)
     idx = torch.randperm(t_, device=paths.device)[:n_spike]
-    spike[:, idx] = 3.5 * (torch.sign(torch.randn(b, n_spike, device=paths.device, dtype=paths.dtype)))
+    spike[:, idx] = 3.5 * (
+        torch.sign(torch.randn(b, n_spike, device=paths.device, dtype=paths.dtype))
+    )
     h = 0.65 * heavy + 0.35 * spike
     out = paths.clone()
     ch0 = out[:, :, 0] + a * h

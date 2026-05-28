@@ -48,9 +48,7 @@ def compute_live_app_schema_sha256_from_conn(conn: object) -> str:
             """
         )
         for row in cur.fetchall() or ():
-            lines.append(
-                "C:" + _line([row[i] for i in range(len(row))])
-            )
+            lines.append("C:" + _line([row[i] for i in range(len(row))]))
         cur.execute(
             """
             SELECT indexname, tablename, indexdef

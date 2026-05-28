@@ -11,7 +11,6 @@ describe("sanitizeLlmChartAnnotations", () => {
   it("returns empty for non-object", () => {
     expect(sanitizeLlmChartAnnotations(null, stats)).toEqual({
       horizontalLines: [],
-      priceBands: [],
       filledZones: [],
       markers: [],
       lineSegments: [],
@@ -138,7 +137,8 @@ describe("sanitizeLlmChartAnnotations", () => {
       },
       stats,
       {
-        rationaleHint: "Short-Signal: Widerstand bei 190-195, Verkauf nahe oben.",
+        rationaleHint:
+          "Short-Signal: Widerstand bei 190-195, Verkauf nahe oben.",
       },
     );
     expect(r.filledZones).toHaveLength(1);
@@ -148,7 +148,6 @@ describe("sanitizeLlmChartAnnotations", () => {
     expect(z.priceLow).toBe(190);
     expect(z.time0).toBe(tLo);
     expect(z.time1).toBe(tHi);
-    expect(r.priceBands).toHaveLength(0);
   });
 });
 

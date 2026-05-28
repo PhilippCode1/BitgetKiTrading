@@ -96,7 +96,7 @@ def _contexts(d: dict[str, Any]) -> list[str]:
         for x in ctx:
             if isinstance(x, str) and x:
                 out.append(x)
-    for c in (rsc.get("checks") or ()):
+    for c in rsc.get("checks") or ():
         if isinstance(c, dict) and isinstance(c.get("context"), str):
             out.append(c["context"])
     seen: set[str] = set()
@@ -180,7 +180,12 @@ def evaluate(data: dict[str, Any], *, ci_yml: Path | None = None) -> EvalResult:
     suffixes = _mandatory_check_suffixes(ci_yml)
     rsc = data.get("required_status_checks")
     ctx = _contexts(data)
-    if (rsc is None or (isinstance(rsc, dict) and not (rsc.get("contexts") or rsc.get("checks")))) and len(ctx) == 0:  # noqa: E501
+    if (
+        rsc is None
+        or (isinstance(rsc, dict) and not (rsc.get("contexts") or rsc.get("checks")))
+    ) and len(
+        ctx
+    ) == 0:  # noqa: E501
         return EvalResult(
             status="UNKNOWN",
             pr_required=None,
@@ -208,9 +213,14 @@ def evaluate(data: dict[str, Any], *, ci_yml: Path | None = None) -> EvalResult:
     afp = _boolf(data, "allow_force_pushes")
     adel = _boolf(data, "allow_deletions")
     enf = _boolf(data, "enforce_admins")
-    bhint = "merge_typischerweise_nur_mit_pr" if prq is True else (
-        "direkter_push_moeglich_laut_prr" if prq is False
-        else "unbekannt_ohne_prr_feld"
+    bhint = (
+        "merge_typischerweise_nur_mit_pr"
+        if prq is True
+        else (
+            "direkter_push_moeglich_laut_prr"
+            if prq is False
+            else "unbekannt_ohne_prr_feld"
+        )
     )
     if isinstance(enf, bool):
         badmin = f"enforce_admins={enf!r}"
@@ -258,9 +268,7 @@ def eval_noauth() -> EvalResult:
     )
 
 
-def _fetch(
-    o: str, n: str, b: str, t: str
-) -> tuple[dict[str, Any] | None, int, str]:
+def _fetch(o: str, n: str, b: str, t: str) -> tuple[dict[str, Any] | None, int, str]:
     u = f"https://api.github.com/repos/{o}/{n}/branches/{quote(b, safe='')}/protection"
     req = urllib.request.Request(  # noqa: S310
         u,
@@ -281,6 +289,7 @@ def _fetch(
         return None, int(e.code), s[:2000]
     except OSError as e:  # noqa: PERF203
         return None, 0, str(e)[:2000]
+
 
 def _offline(path: Path) -> dict[str, Any]:
     p = json.loads(path.read_text(encoding="utf-8"))
@@ -306,23 +315,24 @@ def run(
     data, code, em = _fetch(o, n_, branch, t)
     if data is not None and code == 200:
         return evaluate(data), "api_200"
-    e = (
-        f"api_http={code!r} body={em[:1200]!r}" if em else f"api_code={code!r}"
+    e = f"api_http={code!r} body={em[:1200]!r}" if em else f"api_code={code!r}"
+    return (
+        EvalResult(
+            status="UNKNOWN",
+            pr_required=None,
+            has_required_status_checks=False,
+            required_contexts=[],
+            missing_for_ci_yml=[],
+            release_approval_check_present=False,
+            allow_force_pushes=None,
+            allow_deletions=None,
+            enforce_admins=None,
+            block_direct_push_hint="nur_200_lesen_wertet_aus",
+            admin_bypass_note=e[:2000],
+            details=e[:2000],
+        ),
+        e,
     )
-    return EvalResult(
-        status="UNKNOWN",
-        pr_required=None,
-        has_required_status_checks=False,
-        required_contexts=[],
-        missing_for_ci_yml=[],
-        release_approval_check_present=False,
-        allow_force_pushes=None,
-        allow_deletions=None,
-        enforce_admins=None,
-        block_direct_push_hint="nur_200_lesen_wertet_aus",
-        admin_bypass_note=e[:2000],
-        details=e[:2000],
-    ), e
 
 
 def _to_md(
@@ -353,6 +363,7 @@ def _to_md(
         ]
     )
 
+
 def _exit(strict: bool, s: str) -> int:
     if not strict:
         return 0
@@ -378,12 +389,8 @@ def main() -> int:
     ap.add_argument(
         "--json", type=Path, default=None, dest="jsonp", help="Voll-JSON-Report-Datei"
     )
-    ap.add_argument(
-        "--token", default=None, help="sonst GITHUB_TOKEN / GH_TOKEN / gh"
-    )
-    ap.add_argument(
-        "--strict", action="store_true", help="exit 1 wenn status != PASS"
-    )
+    ap.add_argument("--token", default=None, help="sonst GITHUB_TOKEN / GH_TOKEN / gh")
+    ap.add_argument("--strict", action="store_true", help="exit 1 wenn status != PASS")
     a = ap.parse_args()
     e, m = run(a.repo, a.branch, a.off, a.token)
     b = {

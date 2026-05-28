@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 from shared_py.eventbus import EventEnvelope, RedisStreamBus
-from shared_py.eventbus.envelope import STREAM_CANDLE_CLOSE, STREAM_DLQ, STREAM_MARKET_TICK
+from shared_py.eventbus.envelope import (
+    STREAM_CANDLE_CLOSE,
+    STREAM_DLQ,
+    STREAM_MARKET_TICK,
+)
 
 
 class StubRedis:
@@ -18,7 +22,9 @@ class StubRedis:
     def ping(self) -> bool:
         return True
 
-    def set(self, key: str, value: str, nx: bool = False, ex: int | None = None) -> bool | None:
+    def set(
+        self, key: str, value: str, nx: bool = False, ex: int | None = None
+    ) -> bool | None:
         del value, ex
         if nx and key in self._dedupe_keys:
             return None
@@ -31,7 +37,9 @@ class StubRedis:
         self._streams.setdefault(stream, []).append((message_id, fields))
         return message_id
 
-    def xgroup_create(self, stream: str, group: str, id: str = "0", mkstream: bool = True) -> bool:
+    def xgroup_create(
+        self, stream: str, group: str, id: str = "0", mkstream: bool = True
+    ) -> bool:
         del id
         if (stream, group) in self._groups:
             raise RuntimeError("BUSYGROUP Consumer Group name already exists")
@@ -108,8 +116,8 @@ def test_publish_dlq_wraps_original_event() -> None:
     assert message_id != "deduped"
     assert redis.xlen(STREAM_DLQ) == 1
     dlq_payload = redis.xrevrange(STREAM_DLQ, count=1)[0][1]["data"]
-    assert "\"event_type\":\"dlq\"" in dlq_payload
-    assert "\"original_event_type\":\"market_tick\"" in dlq_payload
+    assert '"event_type":"dlq"' in dlq_payload
+    assert '"original_event_type":"market_tick"' in dlq_payload
 
 
 def test_consume_parses_envelopes_and_acks_invalid_entries() -> None:
@@ -122,7 +130,7 @@ def test_consume_parses_envelopes_and_acks_invalid_entries() -> None:
         payload={"last_pr": "68123.4"},
     )
     redis.xadd(STREAM_MARKET_TICK, {"data": valid.model_dump_json()})
-    redis.xadd(STREAM_MARKET_TICK, {"data": "{\"bad\":true}"})
+    redis.xadd(STREAM_MARKET_TICK, {"data": '{"bad":true}'})
 
     consumed = bus.consume(
         STREAM_MARKET_TICK,

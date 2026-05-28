@@ -29,16 +29,20 @@ grpc = ["grpcio>=1.71,<2", "protobuf>=5.26,<6"]
 packages = ["src/shared_py"]
 
 [tool.black]
-line-length = 88
+line-length = 120
 target-version = ["py311"]
 
 [tool.ruff]
-line-length = 88
+line-length = 120
 target-version = "py311"
 src = ["src"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+
+# Generierte protobuf-Dateien: eine extrem lange Konstante (kein manueller Wrap sinnvoll).
+[tool.ruff.lint.per-file-ignores]
+"src/shared_py/rpc/**/timesfm_inference_pb2.py" = ["E501"]
 
 [tool.mypy]
 python_version = "3.11"

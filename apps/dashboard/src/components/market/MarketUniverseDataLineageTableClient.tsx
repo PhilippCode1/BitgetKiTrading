@@ -107,7 +107,9 @@ export function MarketUniverseDataLineageTableClient({
       >
         <span className="market-pulse__strip-label">
           {i18n.pulseStreamLabel}{" "}
-          <span className="mono-small">{(feedSymbol || streamSymbol || "—").toUpperCase()}</span>
+          <span className="mono-small">
+            {(feedSymbol || streamSymbol || "—").toUpperCase()}
+          </span>
         </span>
         {sseGaveUp ? (
           <span className="market-pulse__cell-muted mono-small">
@@ -182,10 +184,7 @@ export function MarketUniverseDataLineageTableClient({
                   </td>
                   <td>
                     {match ? (
-                      <VpinSparkline
-                        values={vpinHist}
-                        lastVpin={vpinLast}
-                      />
+                      <VpinSparkline values={vpinHist} lastVpin={vpinLast} />
                     ) : (
                       <span className="market-pulse__cell-muted">
                         {i18n.notApplicableRow}

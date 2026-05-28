@@ -1,4 +1,8 @@
-import type { LiveFeatureSnapshot, LiveMarketFreshness, LiveStateResponse } from "@/lib/types";
+import type {
+  LiveFeatureSnapshot,
+  LiveMarketFreshness,
+  LiveStateResponse,
+} from "@/lib/types";
 
 export type ChartWorkspaceAlert =
   | "none"
@@ -16,10 +20,15 @@ const SECRET_MARKERS = [
   "password",
 ];
 
-export function redactChartErrorDetail(raw: string | null | undefined): string | null {
+export function redactChartErrorDetail(
+  raw: string | null | undefined,
+): string | null {
   if (!raw) return null;
   let text = raw.slice(0, 240);
-  text = text.replace(/authorization\s*[:=]\s*bearer\s+\S+/gi, "authorization=***");
+  text = text.replace(
+    /authorization\s*[:=]\s*bearer\s+\S+/gi,
+    "authorization=***",
+  );
   text = text.replace(/bearer\s+\S+/gi, "bearer ***");
   for (const marker of SECRET_MARKERS) {
     const re = new RegExp(`${marker}\\s*[:=]\\s*\\S+`, "gi");
@@ -29,7 +38,10 @@ export function redactChartErrorDetail(raw: string | null | undefined): string |
 }
 
 function isQuarantined(state: LiveStateResponse): boolean {
-  const sigMeta = (state.latest_signal?.instrument_metadata || {}) as Record<string, unknown>;
+  const sigMeta = (state.latest_signal?.instrument_metadata || {}) as Record<
+    string,
+    unknown
+  >;
   const status = String(sigMeta.trading_status || "").toLowerCase();
   return (
     status.includes("quarant") ||
@@ -61,7 +73,9 @@ export function resolveChartWorkspaceAlert(
   return "none";
 }
 
-export function chartWorkspaceAlertText(alert: ChartWorkspaceAlert): string | null {
+export function chartWorkspaceAlertText(
+  alert: ChartWorkspaceAlert,
+): string | null {
   if (alert === "no_candles_live_blocked") {
     return "Keine Marktdaten verfuegbar, Live blockiert.";
   }
@@ -85,7 +99,9 @@ export function buildRiskStatusLabel(state: LiveStateResponse): string {
   return "Risikostatus: unbekannt";
 }
 
-export function buildDataQualityHint(feature: LiveFeatureSnapshot | null | undefined): string {
+export function buildDataQualityHint(
+  feature: LiveFeatureSnapshot | null | undefined,
+): string {
   if (!feature) return "Datenqualitaet unbekannt";
   const status = (feature.feature_quality_status || "").toLowerCase();
   if (!status || status.includes("unknown")) return "Datenqualitaet unbekannt";
@@ -99,7 +115,8 @@ export function buildLiquiditySpreadHint(
   if (!feature) return "Liquiditaet/Spread unbekannt";
   const spread = feature.spread_bps;
   const depth = feature.depth_to_bar_volume_ratio;
-  const spreadLabel = typeof spread === "number" ? `${spread.toFixed(1)} bps` : "—";
+  const spreadLabel =
+    typeof spread === "number" ? `${spread.toFixed(1)} bps` : "—";
   const depthLabel = typeof depth === "number" ? depth.toFixed(2) : "—";
   return `Spread ${spreadLabel} · Liquiditaet ${depthLabel}`;
 }

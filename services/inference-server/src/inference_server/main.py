@@ -11,8 +11,8 @@ import uvicorn
 from shared_py.rpc.apex_timesfm.v1 import timesfm_inference_pb2_grpc as pb2_grpc
 
 from inference_server.config import InferenceServerSettings
-from inference_server.grpc_servicer import TimesFmInferenceServicer
 from inference_server.embed_routes import build_embedding_router
+from inference_server.grpc_servicer import TimesFmInferenceServicer
 from inference_server.health_app import create_app
 from inference_server.timesfm_model import TimesFmModelEngine
 
@@ -55,7 +55,9 @@ async def _serve() -> None:
     grpc_addr = f"0.0.0.0:{settings.inference_grpc_port}"
     server.add_insecure_port(grpc_addr)
     await server.start()
-    logger.info("gRPC TimesFmInference auf %s (Modell=%s)", grpc_addr, settings.timesfm_model_id)
+    logger.info(
+        "gRPC TimesFmInference auf %s (Modell=%s)", grpc_addr, settings.timesfm_model_id
+    )
 
     app = create_app(servicer=servicer)
     if settings.embedding_enabled:

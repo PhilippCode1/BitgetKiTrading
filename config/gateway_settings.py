@@ -114,7 +114,9 @@ class GatewaySettings(BaseServiceSettings):
     health_url_live_broker: str = Field(default="", alias="HEALTH_URL_LIVE_BROKER")
 
     dashboard_default_symbol: str = Field(default="", alias="DASHBOARD_DEFAULT_SYMBOL")
-    next_public_default_symbol: str = Field(default="", alias="NEXT_PUBLIC_DEFAULT_SYMBOL")
+    next_public_default_symbol: str = Field(
+        default="", alias="NEXT_PUBLIC_DEFAULT_SYMBOL"
+    )
     dashboard_default_market_family: str = Field(
         default="",
         alias="DASHBOARD_DEFAULT_MARKET_FAMILY",
@@ -146,12 +148,20 @@ class GatewaySettings(BaseServiceSettings):
     live_sse_enabled: bool = Field(default=True, alias="LIVE_SSE_ENABLED")
     live_sse_ping_sec: int = Field(default=15, alias="LIVE_SSE_PING_SEC")
 
-    gateway_sse_cookie_name: str = Field(default="gateway_sse_v1", alias="GATEWAY_SSE_COOKIE_NAME")
-    gateway_sse_cookie_ttl_sec: int = Field(default=900, alias="GATEWAY_SSE_COOKIE_TTL_SEC")
-    gateway_sse_signing_secret: str = Field(default="", alias="GATEWAY_SSE_SIGNING_SECRET")
+    gateway_sse_cookie_name: str = Field(
+        default="gateway_sse_v1", alias="GATEWAY_SSE_COOKIE_NAME"
+    )
+    gateway_sse_cookie_ttl_sec: int = Field(
+        default=900, alias="GATEWAY_SSE_COOKIE_TTL_SEC"
+    )
+    gateway_sse_signing_secret: str = Field(
+        default="", alias="GATEWAY_SSE_SIGNING_SECRET"
+    )
 
     gateway_jwt_secret: str = Field(default="", alias="GATEWAY_JWT_SECRET")
-    gateway_jwt_audience: str = Field(default="api-gateway", alias="GATEWAY_JWT_AUDIENCE")
+    gateway_jwt_audience: str = Field(
+        default="api-gateway", alias="GATEWAY_JWT_AUDIENCE"
+    )
     gateway_jwt_issuer: str = Field(
         default="bitget-btc-ai-gateway", alias="GATEWAY_JWT_ISSUER"
     )
@@ -293,6 +303,26 @@ class GatewaySettings(BaseServiceSettings):
         alias="BILLING_MIN_BALANCE_NEW_TRADE_USD",
         description="Mindest-Prepaid fuer neue Trades (Aktivierung).",
     )
+    go_live_require_step_up: bool = Field(
+        default=False,
+        alias="GO_LIVE_REQUIRE_STEP_UP",
+        description="Go-Live Self-Service erfordert Step-Up (TOTP/PIN).",
+    )
+    go_live_step_up_totp_secret: str = Field(
+        default="",
+        alias="GO_LIVE_STEP_UP_TOTP_SECRET",
+        description="Base32/Plain TOTP-Geheimnis fuer Go-Live Step-Up (Production).",
+    )
+    go_live_step_up_pin: str = Field(
+        default="",
+        alias="GO_LIVE_STEP_UP_PIN",
+        description="Statischer Step-Up-PIN (nur Dev/Staging, nicht Production).",
+    )
+    go_live_require_email_verified: bool = Field(
+        default=True,
+        alias="GO_LIVE_REQUIRE_EMAIL_VERIFIED",
+        description="Go-Live erfordert portal_identity_security.email_verified_at.",
+    )
     billing_warning_balance_usd: str = Field(
         default="100",
         alias="BILLING_WARNING_BALANCE_USD",
@@ -365,7 +395,9 @@ class GatewaySettings(BaseServiceSettings):
         description="sandbox oder live (Stripe-Keys, Webhook-Pflicht).",
     )
     payment_stripe_enabled: bool = Field(default=False, alias="PAYMENT_STRIPE_ENABLED")
-    payment_stripe_secret_key: str = Field(default="", alias="PAYMENT_STRIPE_SECRET_KEY")
+    payment_stripe_secret_key: str = Field(
+        default="", alias="PAYMENT_STRIPE_SECRET_KEY"
+    )
     payment_stripe_webhook_secret: str = Field(
         default="",
         alias="PAYMENT_STRIPE_WEBHOOK_SECRET",
@@ -502,10 +534,18 @@ class GatewaySettings(BaseServiceSettings):
         )
 
     def dashboard_watchlist_symbols_list(self) -> list[str]:
-        explicit = [item.strip().upper() for item in self.dashboard_watchlist_symbols.split(",") if item.strip()]
+        explicit = [
+            item.strip().upper()
+            for item in self.dashboard_watchlist_symbols.split(",")
+            if item.strip()
+        ]
         if explicit:
             return explicit
-        fallback = [item.strip().upper() for item in self.next_public_watchlist_symbols.split(",") if item.strip()]
+        fallback = [
+            item.strip().upper()
+            for item in self.next_public_watchlist_symbols.split(",")
+            if item.strip()
+        ]
         if fallback:
             return fallback
         return self.bitget_watchlist_symbols_list()
@@ -610,7 +650,10 @@ class GatewaySettings(BaseServiceSettings):
                 self.next_public_default_market_family.strip().lower(),
             )
         families = self.bitget_universe_market_families_list()
-        if self.dashboard_default_market_family and self.dashboard_default_market_family not in families:
+        if (
+            self.dashboard_default_market_family
+            and self.dashboard_default_market_family not in families
+        ):
             raise ValueError(
                 "DASHBOARD_DEFAULT_MARKET_FAMILY muss Teil von BITGET_UNIVERSE_MARKET_FAMILIES sein"
             )
@@ -651,6 +694,27 @@ class GatewaySettings(BaseServiceSettings):
                     f"COMMERCIAL_CONTRACT_WEBHOOK_SECRET (min {MIN_PRODUCTION_SECRET_LEN} Zeichen)"
                 )
 
+        if self.go_live_require_step_up and self.production:
+            totp = self.go_live_step_up_totp_secret.strip()
+            pin = self.go_live_step_up_pin.strip()
+            if not totp and not pin:
+                raise ValueError(
+                    "GO_LIVE_REQUIRE_STEP_UP in Production erfordert "
+                    "GO_LIVE_STEP_UP_TOTP_SECRET (empfohlen) oder GO_LIVE_STEP_UP_PIN"
+                )
+            if pin and len(pin) < 6:
+                raise ValueError("GO_LIVE_STEP_UP_PIN muss mindestens 6 Zeichen haben")
+            if totp and len(totp) < MIN_PRODUCTION_SECRET_LEN:
+                raise ValueError(
+                    f"GO_LIVE_STEP_UP_TOTP_SECRET muss mindestens "
+                    f"{MIN_PRODUCTION_SECRET_LEN} Zeichen haben"
+                )
+            if pin and self.production:
+                raise ValueError(
+                    "GO_LIVE_STEP_UP_PIN ist in Production unzulaessig — "
+                    "nutze GO_LIVE_STEP_UP_TOTP_SECRET"
+                )
+
         if self.payment_wise_webhook_enabled and self.production:
             ws = self.payment_wise_webhook_secret.strip()
             if not ws or len(ws) < MIN_PRODUCTION_SECRET_LEN:
@@ -667,7 +731,10 @@ class GatewaySettings(BaseServiceSettings):
                 )
 
         if self.payment_checkout_enabled and self.production:
-            if self.payment_mode.strip().lower() == "live" and self.payment_stripe_enabled:
+            if (
+                self.payment_mode.strip().lower() == "live"
+                and self.payment_stripe_enabled
+            ):
                 sk = self.payment_stripe_secret_key.strip()
                 wh = self.payment_stripe_webhook_secret.strip()
                 if not sk or len(sk) < MIN_PRODUCTION_SECRET_LEN:
@@ -805,7 +872,9 @@ class GatewaySettings(BaseServiceSettings):
         direct = str(self.llm_orchestrator_base_url or "").strip().rstrip("/")
         if direct:
             return direct
-        return http_base_from_health_or_ready_url(str(self.health_url_llm_orchestrator or ""))
+        return http_base_from_health_or_ready_url(
+            str(self.health_url_llm_orchestrator or "")
+        )
 
     def live_broker_http_base(self) -> str:
         """
@@ -817,7 +886,9 @@ class GatewaySettings(BaseServiceSettings):
         direct = str(self.live_broker_base_url or "").strip().rstrip("/")
         if direct:
             return direct
-        return http_base_from_health_or_ready_url(str(self.health_url_live_broker or ""))
+        return http_base_from_health_or_ready_url(
+            str(self.health_url_live_broker or "")
+        )
 
 
 @lru_cache

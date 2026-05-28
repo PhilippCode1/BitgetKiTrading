@@ -44,12 +44,25 @@ def test_gross_preview_daily_has_19_vat() -> None:
 
 
 def test_contract_required_after_trial_ended() -> None:
-    assert requires_contract_acceptance_to_proceed_to_paid_live(LifecyclePhase.TRIAL_ENDED) is True
-    assert requires_contract_acceptance_to_proceed_to_paid_live(LifecyclePhase.CONTRACT_PENDING) is True
+    assert (
+        requires_contract_acceptance_to_proceed_to_paid_live(LifecyclePhase.TRIAL_ENDED)
+        is True
+    )
+    assert (
+        requires_contract_acceptance_to_proceed_to_paid_live(
+            LifecyclePhase.CONTRACT_PENDING
+        )
+        is True
+    )
 
 
 def test_no_contract_required_during_trial() -> None:
-    assert requires_contract_acceptance_to_proceed_to_paid_live(LifecyclePhase.TRIAL_ACTIVE) is False
+    assert (
+        requires_contract_acceptance_to_proceed_to_paid_live(
+            LifecyclePhase.TRIAL_ACTIVE
+        )
+        is False
+    )
 
 
 def test_contract_accepted_phases() -> None:
@@ -58,7 +71,12 @@ def test_contract_accepted_phases() -> None:
 
 
 def test_requires_contract_false_when_contract_active() -> None:
-    assert requires_contract_acceptance_to_proceed_to_paid_live(LifecyclePhase.CONTRACT_ACTIVE) is False
+    assert (
+        requires_contract_acceptance_to_proceed_to_paid_live(
+            LifecyclePhase.CONTRACT_ACTIVE
+        )
+        is False
+    )
 
 
 def test_descriptor() -> None:

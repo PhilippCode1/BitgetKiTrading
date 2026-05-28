@@ -7,7 +7,6 @@ from pathlib import Path
 
 from tools.check_main_console_routes import analyze_routes
 
-
 ROOT = Path(__file__).resolve().parents[2]
 TOOL = ROOT / "tools" / "check_main_console_routes.py"
 
@@ -19,14 +18,28 @@ def _write(path: Path, content: str) -> None:
 
 def _mk_app(tmp_path: Path) -> Path:
     app = tmp_path / "apps" / "dashboard" / "src" / "app"
-    _write(app / "(operator)" / "console" / "page.tsx", "export default function Page(){return null}\n")
-    _write(app / "(operator)" / "console" / "ops" / "page.tsx", "export default function Page(){return null}\n")
-    _write(app / "api" / "dashboard" / "edge-status" / "route.ts", "export async function GET(){return Response.json({ok:true})}\n")
+    _write(
+        app / "(operator)" / "console" / "page.tsx",
+        "export default function Page(){return null}\n",
+    )
+    _write(
+        app / "(operator)" / "console" / "ops" / "page.tsx",
+        "export default function Page(){return null}\n",
+    )
+    _write(
+        app / "api" / "dashboard" / "edge-status" / "route.ts",
+        "export async function GET(){return Response.json({ok:true})}\n",
+    )
     return app
 
 
 def _mk_ia(tmp_path: Path, *, include_labels: bool = True) -> Path:
-    doc = tmp_path / "docs" / "production_10_10" / "main_console_information_architecture.md"
+    doc = (
+        tmp_path
+        / "docs"
+        / "production_10_10"
+        / "main_console_information_architecture.md"
+    )
     labels = "\n".join(
         [
             "- Übersicht -> `/console`",
@@ -73,7 +86,12 @@ def test_tool_detects_routes(tmp_path: Path) -> None:
 
 def test_tool_detects_missing_main_console_doc(tmp_path: Path) -> None:
     app = _mk_app(tmp_path)
-    missing_doc = tmp_path / "docs" / "production_10_10" / "main_console_information_architecture.md"
+    missing_doc = (
+        tmp_path
+        / "docs"
+        / "production_10_10"
+        / "main_console_information_architecture.md"
+    )
     summary = analyze_routes(app, missing_doc)
     codes = {issue["code"] for issue in summary["issues"]}
     assert "ia_doc_missing" in codes
@@ -81,7 +99,10 @@ def test_tool_detects_missing_main_console_doc(tmp_path: Path) -> None:
 
 def test_tool_detects_irrelevant_billing_customer_terms(tmp_path: Path) -> None:
     app = _mk_app(tmp_path)
-    _write(app / "(customer)" / "portal" / "billing" / "page.tsx", "export default function Page(){return null}\n")
+    _write(
+        app / "(customer)" / "portal" / "billing" / "page.tsx",
+        "export default function Page(){return null}\n",
+    )
     ia = _mk_ia(tmp_path)
     summary = analyze_routes(app, ia)
     codes = [issue["code"] for issue in summary["issues"]]
@@ -111,7 +132,12 @@ def test_json_output_is_parseable() -> None:
 
 def test_strict_fails_when_central_structure_missing(tmp_path: Path) -> None:
     app = _mk_app(tmp_path)
-    ia = tmp_path / "docs" / "production_10_10" / "main_console_information_architecture.md"
+    ia = (
+        tmp_path
+        / "docs"
+        / "production_10_10"
+        / "main_console_information_architecture.md"
+    )
     _write(
         ia,
         "# IA\n\n## Zentrale Navigation\n- `/console`\n",

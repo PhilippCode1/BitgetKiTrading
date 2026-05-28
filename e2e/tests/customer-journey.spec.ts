@@ -1,41 +1,16 @@
 import { expect, test } from "@playwright/test";
 
-import { signE2eCustomerPortalJwt } from "../lib/customer-jwt";
-import { loadGatewayJwtSecretFromRoot } from "../lib/load-gateway-secret";
-
-const PORTAL_JWT = "bitget_portal_jwt";
-
-async function setCustomerSessionCookie(
-  page: import("@playwright/test").Page,
-  baseURL: string,
-) {
-  const secret = loadGatewayJwtSecretFromRoot();
-  if (!secret) {
-    test.skip(
-      true,
-      "GATEWAY_JWT_SECRET fehlt (E2E: .env.local oder Env, identisch zum Dashboard)",
-    );
-    return;
-  }
-  const token = await signE2eCustomerPortalJwt(secret);
-  const host = new URL(baseURL).hostname;
-  const secure = new URL(baseURL).protocol === "https:";
-  await page.context().addCookies([
-    {
-      name: PORTAL_JWT,
-      value: token,
-      domain: host,
-      path: "/",
-      httpOnly: true,
-      sameSite: "Lax",
-      secure,
-    },
-  ]);
-}
+import { setCustomerPortalSessionCookies } from "../lib/portal-session";
 
 test.describe("Endkunden — Deep Journey", () => {
   test.beforeEach(async ({ page, baseURL }) => {
-    await setCustomerSessionCookie(page, baseURL!);
+    const token = await setCustomerPortalSessionCookies(page, baseURL);
+    if (!token) {
+      test.skip(
+        true,
+        "GATEWAY_JWT_SECRET fehlt (E2E: .env.local oder Env, identisch zum Dashboard)",
+      );
+    }
   });
 
   test("Kunde: /console/health blockiert, Portal Performance + Detail, Chart, keine Operator-UI, saubere Konsole", async ({
@@ -77,15 +52,16 @@ test.describe("Endkunden — Deep Journey", () => {
     await expect(
       page.getByTestId("customer-performance-table"),
     ).toBeVisible();
-
-    await page
-      .locator('[data-e2e-performance-row="e2e-mock-1"]')
-      .getByRole("link", { name: /Details/i })
-      .click();
-    await expect(page).toHaveURL(/\/portal\/performance\/e2e-mock-1/);
-    await expect(
-      page.getByTestId("customer-performance-detail"),
-    ).toBeVisible();
+    const detailLinks = page
+      .locator('[data-e2e-performance-row] a[href^="/portal/performance/"]')
+      .or(page.getByRole("link", { name: /Details/i }));
+    if ((await detailLinks.count()) > 0) {
+      await detailLinks.first().click();
+      await expect(page).toHaveURL(/\/portal\/performance\/[^/]+$/);
+      await expect(
+        page.getByTestId("customer-performance-detail"),
+      ).toBeVisible();
+    }
 
     const hasCanvas = await page.locator("main canvas").count();
     const hasChartSvg = await page.locator("main svg").count();

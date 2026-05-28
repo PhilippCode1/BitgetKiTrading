@@ -14,9 +14,8 @@ for p in (SIG_SRC, SHARED_SRC):
     if p.is_dir() and s not in sys.path:
         sys.path.insert(0, s)
 
-from signal_engine.storage.repo import SignalRepository
-
 from shared_py.take_trade_model import TAKE_TRADE_MODEL_NAME
+from signal_engine.storage.repo import SignalRepository
 
 
 @pytest.fixture

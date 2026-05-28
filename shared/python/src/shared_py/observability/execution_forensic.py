@@ -127,7 +127,9 @@ def _proposal_summary(block: dict[str, Any] | None) -> dict[str, Any]:
     }
 
 
-def _stop_budget_summary(payload: dict[str, Any], reasons_json: dict[str, Any]) -> dict[str, Any]:
+def _stop_budget_summary(
+    payload: dict[str, Any], reasons_json: dict[str, Any]
+) -> dict[str, Any]:
     sba = reasons_json.get("stop_budget_assessment")
     sba = sba if isinstance(sba, dict) else {}
     return {
@@ -153,19 +155,25 @@ def _instrument_metadata_min(payload: dict[str, Any]) -> dict[str, Any]:
     meta = meta if isinstance(meta, dict) else {}
     return {
         "canonical_instrument_id": payload.get("canonical_instrument_id"),
-        "market_family": payload.get("market_family") or inst.get("market_family") or meta.get("market_family"),
+        "market_family": payload.get("market_family")
+        or inst.get("market_family")
+        or meta.get("market_family"),
         "symbol": payload.get("symbol") or inst.get("symbol"),
         "product_type": meta.get("product_type") or inst.get("product_type"),
-        "margin_account_mode": meta.get("margin_account_mode") or inst.get("margin_account_mode"),
+        "margin_account_mode": meta.get("margin_account_mode")
+        or inst.get("margin_account_mode"),
         "metadata_source": meta.get("metadata_source"),
         "metadata_verified": meta.get("metadata_verified"),
-        "inventory_visible": meta.get("inventory_visible") or inst.get("inventory_visible"),
-        "analytics_eligible": meta.get("analytics_eligible") or inst.get("analytics_eligible"),
+        "inventory_visible": meta.get("inventory_visible")
+        or inst.get("inventory_visible"),
+        "analytics_eligible": meta.get("analytics_eligible")
+        or inst.get("analytics_eligible"),
         "paper_shadow_eligible": meta.get("paper_shadow_eligible")
         or inst.get("paper_shadow_eligible"),
         "live_execution_enabled": meta.get("live_execution_enabled")
         or inst.get("live_execution_enabled"),
-        "execution_disabled": meta.get("execution_disabled") or inst.get("execution_disabled"),
+        "execution_disabled": meta.get("execution_disabled")
+        or inst.get("execution_disabled"),
         "supports_long_short": meta.get("supports_long_short"),
         "supports_shorting": meta.get("supports_shorting"),
         "supports_reduce_only": meta.get("supports_reduce_only"),
@@ -198,7 +206,9 @@ def _risk_engine_summary(risk: dict[str, Any] | None) -> dict[str, Any]:
     m = metrics if isinstance(metrics, dict) else {}
     return {
         "trade_action": risk.get("trade_action"),
-        "decision_reason": str(risk.get("decision_reason") or risk.get("primary_reason") or "")[:240],
+        "decision_reason": str(
+            risk.get("decision_reason") or risk.get("primary_reason") or ""
+        )[:240],
         "allowed_leverage": m.get("allowed_leverage"),
         "recommended_leverage": m.get("recommended_leverage"),
     }
@@ -207,15 +217,23 @@ def _risk_engine_summary(risk: dict[str, Any] | None) -> dict[str, Any]:
 def _shadow_summary(shadow: dict[str, Any] | None) -> dict[str, Any]:
     if not isinstance(shadow, dict):
         return {}
-    div = shadow.get("shadow_live_divergence") if isinstance(shadow.get("shadow_live_divergence"), dict) else shadow
+    div = (
+        shadow.get("shadow_live_divergence")
+        if isinstance(shadow.get("shadow_live_divergence"), dict)
+        else shadow
+    )
     return {
-        "match_ok": div.get("match_ok"),
-        "hard_violation_count": len(div.get("hard_violations") or [])
-        if isinstance(div.get("hard_violations"), list)
-        else None,
-        "soft_violation_count": len(div.get("soft_violations") or [])
-        if isinstance(div.get("soft_violations"), list)
-        else None,
+        "match_ok": div.get("match_ok"),  # type: ignore
+        "hard_violation_count": (
+            len(div.get("hard_violations") or [])  # type: ignore
+            if isinstance(div.get("hard_violations"), list)  # type: ignore
+            else None
+        ),
+        "soft_violation_count": (
+            len(div.get("soft_violations") or [])  # type: ignore
+            if isinstance(div.get("soft_violations"), list)  # type: ignore
+            else None
+        ),
     }
 
 
@@ -236,14 +254,28 @@ def build_live_broker_forensic_snapshot(
 
     reasons_json = p.get("reasons_json")
     rj = reasons_json if isinstance(reasons_json, dict) else {}
-    specialists = rj.get("specialists") if isinstance(rj.get("specialists"), dict) else {}
-    router = specialists.get("router_arbitration") if isinstance(specialists.get("router_arbitration"), dict) else {}
-    dcf = rj.get("decision_control_flow") if isinstance(rj.get("decision_control_flow"), dict) else {}
-    edb = dcf.get("end_decision_binding") if isinstance(dcf.get("end_decision_binding"), dict) else {}
+    specialists = (
+        rj.get("specialists") if isinstance(rj.get("specialists"), dict) else {}
+    )
+    router = (
+        specialists.get("router_arbitration")  # type: ignore
+        if isinstance(specialists.get("router_arbitration"), dict)  # type: ignore
+        else {}
+    )
+    dcf = (
+        rj.get("decision_control_flow")
+        if isinstance(rj.get("decision_control_flow"), dict)
+        else {}
+    )
+    edb = (
+        dcf.get("end_decision_binding")  # type: ignore
+        if isinstance(dcf.get("end_decision_binding"), dict)  # type: ignore
+        else {}
+    )
 
     abst = _trunc_list(p.get("abstention_reasons_json"))
     lev_caps = _trunc_list(p.get("leverage_cap_reasons_json"))
-    router_reasons = _trunc_list(router.get("reasons"))
+    router_reasons = _trunc_list(router.get("reasons"))  # type: ignore
     rejection_head = _trunc_list(p.get("rejection_reasons_json"))
     live_blocks = _trunc_list(p.get("live_execution_block_reasons_json"))
     universal_blocks = _trunc_list(p.get("governor_universal_hard_block_reasons_json"))
@@ -285,105 +317,123 @@ def build_live_broker_forensic_snapshot(
         "instrument_metadata_min": _instrument_metadata_min(p),
         "specialists": {
             "base_model": _proposal_summary(
-                specialists.get("base_model") if isinstance(specialists.get("base_model"), dict) else None
+                specialists.get("base_model")  # type: ignore
+                if isinstance(specialists.get("base_model"), dict)  # type: ignore
+                else None
             ),
             "family_specialist": _proposal_summary(
-                specialists.get("family_specialist")
-                if isinstance(specialists.get("family_specialist"), dict)
+                specialists.get("family_specialist")  # type: ignore
+                if isinstance(specialists.get("family_specialist"), dict)  # type: ignore
                 else None
             ),
             "regime_specialist": _proposal_summary(
-                specialists.get("regime_specialist")
-                if isinstance(specialists.get("regime_specialist"), dict)
+                specialists.get("regime_specialist")  # type: ignore
+                if isinstance(specialists.get("regime_specialist"), dict)  # type: ignore
                 else None
             ),
             "playbook_specialist": _proposal_summary(
-                specialists.get("playbook_specialist")
-                if isinstance(specialists.get("playbook_specialist"), dict)
+                specialists.get("playbook_specialist")  # type: ignore
+                if isinstance(specialists.get("playbook_specialist"), dict)  # type: ignore
                 else None
             ),
             "product_margin_specialist": _proposal_summary(
-                specialists.get("product_margin_specialist")
-                if isinstance(specialists.get("product_margin_specialist"), dict)
+                specialists.get("product_margin_specialist")  # type: ignore
+                if isinstance(specialists.get("product_margin_specialist"), dict)  # type: ignore
                 else None
             ),
             "liquidity_vol_cluster_specialist": _proposal_summary(
-                specialists.get("liquidity_vol_cluster_specialist")
-                if isinstance(specialists.get("liquidity_vol_cluster_specialist"), dict)
+                specialists.get("liquidity_vol_cluster_specialist")  # type: ignore
+                if isinstance(specialists.get("liquidity_vol_cluster_specialist"), dict)  # type: ignore
                 else None
             ),
             "symbol_specialist": _proposal_summary(
-                specialists.get("symbol_specialist")
-                if isinstance(specialists.get("symbol_specialist"), dict)
+                specialists.get("symbol_specialist")  # type: ignore
+                if isinstance(specialists.get("symbol_specialist"), dict)  # type: ignore
                 else None
             ),
             "ensemble_hierarchy_head": _trunc_list(
                 [
                     str(x.get("role")) + ":" + str(x.get("specialist_id"))
-                    for x in (specialists.get("ensemble_hierarchy") or [])
+                    for x in (specialists.get("ensemble_hierarchy") or [])  # type: ignore
                     if isinstance(x, dict)
                 ][:10]
             ),
             "adversary_check": {
                 "dissent_score_0_1": (
-                    (specialists.get("adversary_check") or {}).get("dissent_score_0_1")
-                    if isinstance(specialists.get("adversary_check"), dict)
+                    (specialists.get("adversary_check") or {}).get("dissent_score_0_1")  # type: ignore
+                    if isinstance(specialists.get("adversary_check"), dict)  # type: ignore
                     else None
                 ),
                 "hard_veto_recommended": (
-                    (specialists.get("adversary_check") or {}).get("hard_veto_recommended")
-                    if isinstance(specialists.get("adversary_check"), dict)
+                    (specialists.get("adversary_check") or {}).get(  # type: ignore
+                        "hard_veto_recommended"
+                    )
+                    if isinstance(specialists.get("adversary_check"), dict)  # type: ignore
                     else None
                 ),
                 "directional_veto_recommended": (
-                    (specialists.get("adversary_check") or {}).get("directional_veto_recommended")
-                    if isinstance(specialists.get("adversary_check"), dict)
+                    (specialists.get("adversary_check") or {}).get(  # type: ignore
+                        "directional_veto_recommended"
+                    )
+                    if isinstance(specialists.get("adversary_check"), dict)  # type: ignore
                     else None
                 ),
                 "tri_way_veto_recommended": (
-                    (specialists.get("adversary_check") or {}).get("tri_way_veto_recommended")
-                    if isinstance(specialists.get("adversary_check"), dict)
+                    (specialists.get("adversary_check") or {}).get(  # type: ignore
+                        "tri_way_veto_recommended"
+                    )
+                    if isinstance(specialists.get("adversary_check"), dict)  # type: ignore
                     else None
                 ),
                 "edge_dispersion_veto_recommended": (
-                    (specialists.get("adversary_check") or {}).get("edge_dispersion_veto_recommended")
-                    if isinstance(specialists.get("adversary_check"), dict)
+                    (specialists.get("adversary_check") or {}).get(  # type: ignore
+                        "edge_dispersion_veto_recommended"
+                    )
+                    if isinstance(specialists.get("adversary_check"), dict)  # type: ignore
                     else None
                 ),
                 "regime_mismatch_veto_recommended": (
-                    (specialists.get("adversary_check") or {}).get("regime_mismatch_veto_recommended")
-                    if isinstance(specialists.get("adversary_check"), dict)
+                    (specialists.get("adversary_check") or {}).get(  # type: ignore
+                        "regime_mismatch_veto_recommended"
+                    )
+                    if isinstance(specialists.get("adversary_check"), dict)  # type: ignore
                     else None
                 ),
                 "regime_bias_conflict_veto_recommended": (
-                    (specialists.get("adversary_check") or {}).get("regime_bias_conflict_veto_recommended")
-                    if isinstance(specialists.get("adversary_check"), dict)
+                    (specialists.get("adversary_check") or {}).get(  # type: ignore
+                        "regime_bias_conflict_veto_recommended"
+                    )
+                    if isinstance(specialists.get("adversary_check"), dict)  # type: ignore
                     else None
                 ),
                 "reasons_head": _trunc_list(
-                    (specialists.get("adversary_check") or {}).get("reasons")
-                    if isinstance(specialists.get("adversary_check"), dict)
+                    (specialists.get("adversary_check") or {}).get("reasons")  # type: ignore
+                    if isinstance(specialists.get("adversary_check"), dict)  # type: ignore
                     else []
                 ),
             },
         },
         "router": {
-            "router_id": router.get("router_id"),
-            "pre_adversary_trade_action": router.get("pre_adversary_trade_action"),
-            "selected_trade_action": router.get("selected_trade_action"),
-            "selected_playbook_id": router.get("selected_playbook_id"),
-            "selected_meta_trade_lane": router.get("selected_meta_trade_lane"),
-            "ensemble_confidence_multiplier_0_1": router.get("ensemble_confidence_multiplier_0_1"),
-            "operator_gate_required": router.get("operator_gate_required"),
+            "router_id": router.get("router_id"),  # type: ignore
+            "pre_adversary_trade_action": router.get("pre_adversary_trade_action"),  # type: ignore
+            "selected_trade_action": router.get("selected_trade_action"),  # type: ignore
+            "selected_playbook_id": router.get("selected_playbook_id"),  # type: ignore
+            "selected_meta_trade_lane": router.get("selected_meta_trade_lane"),  # type: ignore
+            "ensemble_confidence_multiplier_0_1": router.get(  # type: ignore
+                "ensemble_confidence_multiplier_0_1"
+            ),
+            "operator_gate_required": router.get("operator_gate_required"),  # type: ignore
             "reasons_head": router_reasons,
         },
         "exit_binding": {
-            "exit_family_primary": edb.get("exit_family_primary"),
-            "exit_family_effective_primary": edb.get("exit_family_effective_primary"),
+            "exit_family_primary": edb.get("exit_family_primary"),  # type: ignore
+            "exit_family_effective_primary": edb.get("exit_family_effective_primary"),  # type: ignore
         },
         "stop_budget": _stop_budget_summary(p, rj),
         "decision_control_flow": _decision_control_flow_summary(rj),
-        "risk_engine": _risk_engine_summary(risk_decision if isinstance(risk_decision, dict) else None),
+        "risk_engine": _risk_engine_summary(
+            risk_decision if isinstance(risk_decision, dict) else None
+        ),
         "shadow_live": _shadow_summary(
             shadow_live_report if isinstance(shadow_live_report, dict) else None
         ),
@@ -449,4 +499,4 @@ def redact_operator_journal_details(details: dict[str, Any] | None) -> dict[str,
     """Operator-Release-Details: keine freien Textbloecke mit Tokens."""
     if not isinstance(details, dict):
         return {}
-    return redact_nested_mapping(details, max_depth=4)
+    return redact_nested_mapping(details, max_depth=4)  # type: ignore

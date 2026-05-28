@@ -3,13 +3,13 @@ from __future__ import annotations
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Header, HTTPException
+from shared_py.service_auth import assert_internal_service_auth
 
 from learning_engine.config import LearningEngineSettings
 from learning_engine.stress_test.adversarial_stress_pipeline import (
     resilience_to_dashboard_dict,
     run_adversarial_stress_suite,
 )
-from shared_py.service_auth import assert_internal_service_auth
 
 
 def build_resilience_router(settings: LearningEngineSettings) -> APIRouter:
@@ -18,7 +18,9 @@ def build_resilience_router(settings: LearningEngineSettings) -> APIRouter:
     @r.get("/learning/metrics/resilience-score")
     def resilience_score(
         attacks: int | None = None,
-        x_internal_service_key: Annotated[str | None, Header(alias="X-Internal-Service-Key")] = None,
+        x_internal_service_key: Annotated[
+            str | None, Header(alias="X-Internal-Service-Key")
+        ] = None,
     ) -> dict[str, Any]:
         """
         Fuehrt (Teil-)Stress gegen AMS aus und liefert Dashboard-JSON

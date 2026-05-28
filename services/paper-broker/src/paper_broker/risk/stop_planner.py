@@ -4,17 +4,17 @@ from decimal import Decimal
 from typing import Any
 
 import psycopg
+from shared_py.exit_engine import EXIT_POLICY_VERSION, build_execution_context
 
 from paper_broker.config import PaperBrokerSettings
 from paper_broker.risk.liquidity import escape_stop_from_liquidity
 from paper_broker.risk.market_data import (
     fetch_last_candle_hl,
-    fetch_latest_atr,
     fetch_last_swing,
+    fetch_latest_atr,
     fetch_orderbook_top_raw,
     fetch_stop_zone_drawing,
 )
-from shared_py.exit_engine import EXIT_POLICY_VERSION, build_execution_context
 
 
 def _atr_mult_for_tf(settings: PaperBrokerSettings, tf: str) -> Decimal:
@@ -36,7 +36,11 @@ def resolve_atr(
     settings: PaperBrokerSettings,
 ) -> tuple[Decimal, dict[str, Any]]:
     atr, _atrp = fetch_latest_atr(conn, symbol, timeframe)
-    basis: dict[str, Any] = {"atr_window": 14, "atr_value": None, "atr_mult": str(_atr_mult_for_tf(settings, timeframe))}
+    basis: dict[str, Any] = {
+        "atr_window": 14,
+        "atr_value": None,
+        "atr_mult": str(_atr_mult_for_tf(settings, timeframe)),
+    }
     if atr is not None and atr > 0:
         basis["atr_value"] = str(atr)
         return atr, basis
@@ -74,7 +78,11 @@ def build_stop_plan(
         else:
             candidates.append(entry + atr * mult)
 
-    inv_basis: dict[str, Any] = {"swing_ts_ms": None, "swing_price": None, "drawing_id": None}
+    inv_basis: dict[str, Any] = {
+        "swing_ts_ms": None,
+        "swing_price": None,
+        "drawing_id": None,
+    }
     if mix.get("invalidation", True):
         if s == "long":
             sp, stm = fetch_last_swing(conn, symbol, timeframe, "low")
@@ -99,9 +107,15 @@ def build_stop_plan(
                 mid = (lo + hi) / Decimal("2")
                 inv_basis["drawing_id"] = dz["drawing_id"]
                 if s == "long":
-                    candidates.append(lo - entry * Decimal(str(settings.stop_pad_bps)) / Decimal("10000"))
+                    candidates.append(
+                        lo
+                        - entry * Decimal(str(settings.stop_pad_bps)) / Decimal("10000")
+                    )
                 else:
-                    candidates.append(hi + entry * Decimal(str(settings.stop_pad_bps)) / Decimal("10000"))
+                    candidates.append(
+                        hi
+                        + entry * Decimal(str(settings.stop_pad_bps)) / Decimal("10000")
+                    )
                 inv_basis["zone_mid"] = str(mid)
             except Exception:
                 pass
@@ -111,7 +125,15 @@ def build_stop_plan(
         "distance_bps": None,
         "adjusted_by_bps": "0",
     }
-    cand0 = candidates[0] if candidates else (entry * (Decimal("1") - Decimal("0.01")) if s == "long" else entry * Decimal("1.01"))
+    cand0 = (
+        candidates[0]
+        if candidates
+        else (
+            entry * (Decimal("1") - Decimal("0.01"))
+            if s == "long"
+            else entry * Decimal("1.01")
+        )
+    )
     if s == "long":
         combined = max(candidates) if candidates else cand0
     else:

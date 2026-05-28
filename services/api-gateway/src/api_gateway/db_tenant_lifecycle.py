@@ -5,7 +5,7 @@ Postgres: Prompt-11-Kundenlebenszyklus, Audit und Sync nach tenant_modul_mate_ga
 from __future__ import annotations
 
 from dataclasses import asdict
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import psycopg
@@ -22,7 +22,7 @@ from shared_py.customer_lifecycle import (
 
 
 def _utc_now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def fetch_tenant_lifecycle_row(

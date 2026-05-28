@@ -23,7 +23,8 @@ class RequiredSecretsError(RuntimeError):
 
 def _load_matrix() -> dict[str, Any]:
     raw = _MATRIX_PATH.read_text(encoding="utf-8")
-    return json.loads(raw)
+    import typing
+    return typing.cast(dict[str, typing.Any], json.loads(raw))
 
 
 def _bad_value(val: str | None) -> bool:
@@ -54,7 +55,8 @@ def _service_matches(services: str | list[str], service_name: str) -> bool:
 
 def _matrix_phase_for_boot(settings: BaseServiceSettings) -> str:
     """
-    Matrix-Spalte fuer Service-Boot: local vs. staging (Pre-Prod / APP_ENV=shadow) vs. production.
+    Matrix-Spalte fuer Service-Boot:
+    local vs. staging (Pre-Prod / APP_ENV=shadow) vs. production.
     """
     production = bool(getattr(settings, "production", False))
     app_env = str(getattr(settings, "app_env", "") or "").lower()
@@ -81,7 +83,8 @@ def validate_required_secrets(
     Liest Werte aus os.environ oder aus dem Argument ``environ``.
     """
     envmap = environ if environ is not None else os.environ
-    # Entkoppelter gRPC-Worker: keine volle Gateway-/JWT-Matrix (nur Redis + Modell-ENV).
+    # Entkoppelter gRPC-Worker:
+    # keine volle Gateway-/JWT-Matrix (nur Redis + Modell-ENV).
     if service_name == "inference-server":
         return
     data = _load_matrix()
@@ -92,7 +95,7 @@ def validate_required_secrets(
     for entry in entries:
         if entry.get(phase_key) != "required":
             continue
-        svc = entry.get("services")
+        svc = entry.get("services", "")
         if not _service_matches(svc, service_name):
             continue
         name = str(entry.get("env") or "").strip()
@@ -121,8 +124,9 @@ def required_env_names_for_env_file_profile(
 
     local → Spalte ``local``; shadow/staging → ``staging``; production → ``production``.
 
-    ``with_dashboard_operator``: erzwingt zusaetzlich ``DASHBOARD_GATEWAY_AUTHORIZATION``
-    fuer **local** (nach JWT-Mint), da die Matrix-Spalte ``local`` dafuer ``optional`` ist.
+    ``with_dashboard_operator``:
+    erzwingt zusaetzlich ``DASHBOARD_GATEWAY_AUTHORIZATION`` fuer **local**
+    (nach JWT-Mint), da die Matrix-Spalte ``local`` dafuer ``optional`` ist.
     """
     data = _load_matrix()
     entries: list[dict[str, Any]] = list(data.get("entries") or [])

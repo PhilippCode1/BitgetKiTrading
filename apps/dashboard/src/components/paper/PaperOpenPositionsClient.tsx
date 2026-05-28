@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 
 import { OpenPositionsTable } from "@/components/tables/OpenPositionsTable";
-import { fetchPaperOpen } from "@/lib/api";
+import { fetchPaperOpen } from "@/lib/api-client";
 import { publicEnv } from "@/lib/env";
 import { startManagedLiveEventSource } from "@/lib/live-event-source";
 import {

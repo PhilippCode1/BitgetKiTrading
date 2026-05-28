@@ -58,4 +58,6 @@ def build_exit_block_reasons_de(reasons: list[str]) -> list[str]:
     }
     if not reasons:
         return ["Exit-Safety OK."]
-    return [mapping.get(code, f"Unbekannter Exit-Blockgrund: {code}") for code in reasons]
+    return [
+        mapping.get(code, f"Unbekannter Exit-Blockgrund: {code}") for code in reasons
+    ]

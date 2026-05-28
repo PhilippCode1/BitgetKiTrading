@@ -156,10 +156,16 @@ def build_report_payload() -> dict[str, Any]:
     main_console_cases = _main_console_safety_cases()
     flatten_cases = _emergency_flatten_cases()
 
-    missing_required_blockers = sorted(set(REQUIRED_SAFETY_BLOCKERS) - set(assessment.blockers))
-    main_console_failures = [case["id"] for case in main_console_cases if case["blocked"] is not True]
+    missing_required_blockers = sorted(
+        set(REQUIRED_SAFETY_BLOCKERS) - set(assessment.blockers)
+    )
+    main_console_failures = [
+        case["id"] for case in main_console_cases if case["blocked"] is not True
+    ]
     flatten_failures = [
-        case["id"] for case in flatten_cases if case["safe"] is not case["expected_safe"]
+        case["id"]
+        for case in flatten_cases
+        if case["safe"] is not case["expected_safe"]
     ]
 
     failures: list[str] = []
@@ -263,7 +269,9 @@ def main(argv: list[str] | None = None) -> int:
     payload = build_report_payload()
     if args.output_json:
         args.output_json.parent.mkdir(parents=True, exist_ok=True)
-        args.output_json.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+        args.output_json.write_text(
+            json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
     if args.output_md:
         args.output_md.parent.mkdir(parents=True, exist_ok=True)
         args.output_md.write_text(render_markdown(payload), encoding="utf-8")

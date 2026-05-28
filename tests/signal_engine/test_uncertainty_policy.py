@@ -18,6 +18,7 @@ from deterministic_signal_payloads import (  # noqa: E402
     take_trade_prediction_low_uncertainty,
     target_projection_complete,
 )
+
 from signal_engine.models import ScoringContext  # noqa: E402
 from signal_engine.uncertainty import assess_model_uncertainty  # noqa: E402
 
@@ -31,7 +32,9 @@ def signal_settings(monkeypatch: pytest.MonkeyPatch):
     return SignalEngineSettings()
 
 
-def test_uncertainty_hard_abstain_on_high_ood_score_without_alert(signal_settings) -> None:
+def test_uncertainty_hard_abstain_on_high_ood_score_without_alert(
+    signal_settings,
+) -> None:
     assessment = assess_model_uncertainty(
         ctx=_ctx(data_issues=[]),
         settings=signal_settings,
@@ -226,7 +229,9 @@ def test_uncertainty_shadow_lane_allows_trade_with_relaxed_thresholds(
         ctx=_ctx(data_issues=[]),
         settings=relaxed,
         signal_row=row,
-        take_trade_prediction=take_trade_prediction_low_uncertainty(take_trade_prob=0.60),
+        take_trade_prediction=take_trade_prediction_low_uncertainty(
+            take_trade_prob=0.60
+        ),
         target_projection=target_projection_complete(),
     )
     assert assessment["trade_action"] == "allow_trade"
@@ -256,7 +261,10 @@ def test_uncertainty_abstains_when_calibration_required_but_missing(
         target_projection=target_projection_complete(),
     )
     assert assessment["trade_action"] == "do_not_trade"
-    assert "take_trade_calibration_missing_when_required" in assessment["abstention_reasons_json"]
+    assert (
+        "take_trade_calibration_missing_when_required"
+        in assessment["abstention_reasons_json"]
+    )
 
 
 def test_uncertainty_policy_abstains_on_high_uncertainty_without_ood(
@@ -367,7 +375,12 @@ def test_uncertainty_monitoring_hook_false_confidence(signal_settings) -> None:
             "target_projection_diagnostics": {"max_bound_proximity_0_1": 0.08},
         },
     )
-    assert assessment["uncertainty_assessment"]["monitoring_hooks"]["false_confidence_risk"] is True
+    assert (
+        assessment["uncertainty_assessment"]["monitoring_hooks"][
+            "false_confidence_risk"
+        ]
+        is True
+    )
 
 
 def test_uncertainty_execution_shadow_lane_from_spread(signal_settings) -> None:
@@ -427,7 +440,9 @@ def test_uncertainty_execution_shadow_lane_from_spread(signal_settings) -> None:
     )
 
 
-def _ctx(*, data_issues: list[str], primary_feature: dict | None = None) -> ScoringContext:
+def _ctx(
+    *, data_issues: list[str], primary_feature: dict | None = None
+) -> ScoringContext:
     pf = primary_feature or {"computed_ts_ms": 1_700_000_000_000}
     return ScoringContext(
         symbol="BTCUSDT",

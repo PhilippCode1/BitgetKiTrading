@@ -53,7 +53,9 @@ def test_script_generates_report_with_german_blockgruende(tmp_path: Path) -> Non
     assert "version_binding_ok" in payload
 
 
-def test_script_can_generate_fail_closed_report_without_failing_cli(tmp_path: Path) -> None:
+def test_script_can_generate_fail_closed_report_without_failing_cli(
+    tmp_path: Path,
+) -> None:
     out_md = tmp_path / "report.md"
     out_json = tmp_path / "report.json"
     proc = subprocess.run(

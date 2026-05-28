@@ -31,7 +31,9 @@ logger = logging.getLogger("onchain_sniffer.eth_listener")
 
 PENDING_SEEN = Counter("onchain_eth_pending_seen_total", "Rohe Pending-Hashes")
 ROUTER_MATCH = Counter("onchain_eth_router_match_total", "Tx an DEX-Router")
-WHALE_PUBLISH = Counter("onchain_eth_whale_publish_total", "Veroeffentlichte Wal-Events")
+WHALE_PUBLISH = Counter(
+    "onchain_eth_whale_publish_total", "Veroeffentlichte Wal-Events"
+)
 LATENCY_MS = Histogram(
     "onchain_eth_publish_latency_ms",
     "Zeit Pending-Erkennung bis Redis-Publish",
@@ -67,7 +69,9 @@ def _wei_value(tx: dict) -> int:
     return int(s)
 
 
-async def _eth_get_tx(client: httpx.AsyncClient, http_url: str, tx_hash: str) -> dict | None:
+async def _eth_get_tx(
+    client: httpx.AsyncClient, http_url: str, tx_hash: str
+) -> dict | None:
     body = {
         "jsonrpc": "2.0",
         "id": 1,
@@ -81,7 +85,9 @@ async def _eth_get_tx(client: httpx.AsyncClient, http_url: str, tx_hash: str) ->
         res = data.get("result")
         return res if isinstance(res, dict) else None
     except Exception as exc:
-        logger.debug("eth_getTransactionByHash failed hash=%s err=%s", tx_hash[:12], exc)
+        logger.debug(
+            "eth_getTransactionByHash failed hash=%s err=%s", tx_hash[:12], exc
+        )
         return None
 
 
@@ -125,7 +131,11 @@ async def _process_hash(
     if vol < settings.min_notional_usd:
         return
     slip = estimate_slippage_bps(settings, vol)
-    extra = {k: v for k, v in ctx.items() if k not in ("dex", "token_pair", "estimated_volume_usd", "direction")}
+    extra = {
+        k: v
+        for k, v in ctx.items()
+        if k not in ("dex", "token_pair", "estimated_volume_usd", "direction")
+    }
     publish_onchain_whale_detection(
         bus,
         source_chain="ethereum",
@@ -145,7 +155,9 @@ async def _process_hash(
 
 async def run_eth_mempool_listener(settings: OnchainSnifferSettings, bus) -> None:
     if not settings.has_eth_stack:
-        logger.warning("ETH WS/HTTP nicht gesetzt — Ethereum-Mempool-Sniffer deaktiviert")
+        logger.warning(
+            "ETH WS/HTTP nicht gesetzt — Ethereum-Mempool-Sniffer deaktiviert"
+        )
         return
     dedupe = _Dedupe(settings.dedupe_cache_size)
     sem = asyncio.Semaphore(settings.max_pending_fetch_concurrency)
@@ -187,7 +199,9 @@ async def run_eth_mempool_listener(settings: OnchainSnifferSettings, bus) -> Non
                     sub_ack = json.loads(raw)
                     if sub_ack.get("error"):
                         raise RuntimeError(str(sub_ack["error"]))
-                    logger.info("Ethereum pending subscription ok: %s", sub_ack.get("result"))
+                    logger.info(
+                        "Ethereum pending subscription ok: %s", sub_ack.get("result")
+                    )
                     try:
                         if AsyncHTTPProvider is None:
                             raise RuntimeError("AsyncHTTPProvider nicht verfuegbar")

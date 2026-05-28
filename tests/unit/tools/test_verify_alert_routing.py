@@ -164,7 +164,12 @@ def test_delivery_secret_surface_blocks_unredacted_values() -> None:
     assert m.secret_surface_issues({"webhook_url": "https://hooks.example/secret"}) == [
         "secret_like_field_not_redacted:webhook_url"
     ]
-    assert m.secret_surface_issues({"webhook_url": "[REDACTED]", "routing_key": "not_stored_in_repo"}) == []
+    assert (
+        m.secret_surface_issues(
+            {"webhook_url": "[REDACTED]", "routing_key": "not_stored_in_repo"}
+        )
+        == []
+    )
 
 
 def test_no_secret_in_alert_payload_boolean_not_flagged_as_secret() -> None:

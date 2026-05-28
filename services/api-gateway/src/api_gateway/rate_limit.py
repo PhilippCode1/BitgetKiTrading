@@ -5,14 +5,15 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-from typing import Callable
+from collections.abc import Callable
+from typing import Any
 
 from fastapi import Request, Response
 from redis import Redis
 from redis.client import ConnectionPool
 from redis.exceptions import RedisError
-from starlette.middleware.base import BaseHTTPMiddleware
 from shared_py.redis_client import connect_sync_redis_with_init_backoff
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from api_gateway.config import get_gateway_settings
 from api_gateway.errors import http_error_envelope
@@ -41,6 +42,7 @@ def get_rate_limit_redis() -> Redis | None:
         return None
     _rl_pool, _rl_redis = result
     return _rl_redis
+
 
 SENSITIVE_PREFIXES: tuple[str, ...] = (
     "/v1/auth",

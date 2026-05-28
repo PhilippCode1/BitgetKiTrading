@@ -3,14 +3,14 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter
-
-from learning_engine.config import LearningEngineSettings
 from shared_py.observability import (
     append_peer_readiness_checks,
     check_postgres,
     check_redis_url,
     merge_ready_details,
 )
+
+from learning_engine.config import LearningEngineSettings
 
 
 def build_health_router(settings: LearningEngineSettings) -> APIRouter:

@@ -149,18 +149,18 @@ def customer_portal_path(segment: str) -> str:
 
 
 def all_customer_portal_nav_paths() -> tuple[str, ...]:
-    return tuple(customer_portal_path(item.path_segment) for item in CUSTOMER_PRIMARY_NAV)
+    return tuple(
+        customer_portal_path(item.path_segment) for item in CUSTOMER_PRIMARY_NAV
+    )
 
 
 # --- Modus-Banner (immer sichtbar wenn relevant) ---
 
-MODE_BANNER_TRIAL_DE = (
-    "Sie sind in der Probephase. Alles laeuft als Uebung — es wird kein echtes Geld bewegt."
+MODE_BANNER_TRIAL_DE = "Sie sind in der Probephase. Alles laeuft als Uebung — es wird kein echtes Geld bewegt."
+MODE_BANNER_PRACTICE_ONLY_DE = (
+    "Sie sind im Uebungsmodus. Es wird kein echtes Geld bewegt."
 )
-MODE_BANNER_PRACTICE_ONLY_DE = "Sie sind im Uebungsmodus. Es wird kein echtes Geld bewegt."
-MODE_BANNER_LIVE_DE = (
-    "Sie sind im Echtgeldmodus. Echte Marktpreise und echtes Geld — Verluste sind moeglich."
-)
+MODE_BANNER_LIVE_DE = "Sie sind im Echtgeldmodus. Echte Marktpreise und echtes Geld — Verluste sind moeglich."
 MODE_BANNER_LIVE_LOCKED_DE = (
     "Der Echtgeldmodus ist noch nicht freigegeben. Hier sehen Sie, was als Naechstes noetig ist."
 )

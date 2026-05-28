@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Mapping
+from collections.abc import Mapping
+from typing import Any
 
 HEADLINE_NEWS_HEALTHY = "news_healthy"
 HEADLINE_NEWS_STALE = "news_stale"
@@ -51,7 +52,9 @@ def build_news_health_contract(
             warnings_de.append("Postgres nicht erreichbar — News-Pipeline gestoppt.")
             warnings_en.append("Postgres unreachable — news pipeline cannot persist.")
         if not redis_ok:
-            warnings_de.append("Redis nicht erreichbar — Eventbus/Event-Publishing betroffen.")
+            warnings_de.append(
+                "Redis nicht erreichbar — Eventbus/Event-Publishing betroffen."
+            )
             warnings_en.append("Redis unreachable — event bus affected.")
     elif not pipeline_on:
         core = "disabled"
@@ -66,14 +69,18 @@ def build_news_health_contract(
             warnings_de.append(
                 "LLM-Orchestrator derzeit nicht erreichbar (nur Diagnose; Ingestion ohnehin aus)."
             )
-            warnings_en.append("Orchestrator unreachable (diagnostic; ingest already off).")
+            warnings_en.append(
+                "Orchestrator unreachable (diagnostic; ingest already off)."
+            )
     elif total == 0:
         core = "idle_empty"
         headline = HEADLINE_NEWS_STALE
         warnings_de.append(
             "Noch keine News-Zeilen in app.news_items — Ingestion liefert noch keine Treffer oder DB ist leer."
         )
-        warnings_en.append("No rows in app.news_items yet — ingest may be empty or filters strict.")
+        warnings_en.append(
+            "No rows in app.news_items yet — ingest may be empty or filters strict."
+        )
     elif max_ing_i is not None and (now_ms - max_ing_i) > stale_threshold_ms:
         core = "stale"
         headline = HEADLINE_NEWS_STALE
@@ -103,7 +110,9 @@ def build_news_health_contract(
         warnings_de.append(
             f"LLM-Orchestrator nicht erreichbar ({detail[:120]}) — Scoring fällt auf Regeln zurück."
         )
-        warnings_en.append(f"LLM orchestrator unreachable ({detail[:120]}) — rule-only scoring.")
+        warnings_en.append(
+            f"LLM orchestrator unreachable ({detail[:120]}) — rule-only scoring."
+        )
         if headline == HEADLINE_NEWS_HEALTHY:
             headline = HEADLINE_LLM_ENRICHMENT_DEGRADED
     else:
@@ -117,7 +126,9 @@ def build_news_health_contract(
             warnings_de.append(
                 "Letzte Scoring-Batches: LLM-Anreicherung schlägt wiederholt fehl (OpenAI/Circuit?)."
             )
-            warnings_en.append("Recent scoring batches: LLM enrichment failing repeatedly.")
+            warnings_en.append(
+                "Recent scoring batches: LLM enrichment failing repeatedly."
+            )
             if headline == HEADLINE_NEWS_HEALTHY:
                 headline = HEADLINE_LLM_ENRICHMENT_DEGRADED
 

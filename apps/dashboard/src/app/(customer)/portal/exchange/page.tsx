@@ -25,12 +25,19 @@ export default async function CustomerPortalExchangePage() {
             <strong>{t("customerPortal.exchangePage.brokerState")}</strong>{" "}
             {i.brokerState}
           </p>
-          {i.brokerHintPublic && <p style={{ maxWidth: 600 }}>{i.brokerHintPublic}</p>}
-          {i.bitgetEnv && isRecord(i.bitgetEnv) && "hint_public_de" in i.bitgetEnv && (
-            <p style={{ maxWidth: 600 }}>
-              {String((i.bitgetEnv as { hint_public_de?: unknown }).hint_public_de ?? "")}
-            </p>
+          {i.brokerHintPublic && (
+            <p style={{ maxWidth: 600 }}>{i.brokerHintPublic}</p>
           )}
+          {i.bitgetEnv &&
+            isRecord(i.bitgetEnv) &&
+            "hint_public_de" in i.bitgetEnv && (
+              <p style={{ maxWidth: 600 }}>
+                {String(
+                  (i.bitgetEnv as { hint_public_de?: unknown })
+                    .hint_public_de ?? "",
+                )}
+              </p>
+            )}
           <p className="small" style={{ marginTop: 16, opacity: 0.9 }}>
             {t("customerPortal.exchangePage.noKeys")}
           </p>

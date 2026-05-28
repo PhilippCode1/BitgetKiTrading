@@ -23,7 +23,7 @@ export function SignalDetailLiveAiSection({ children, t }: Props) {
         </span>
       </div>
       <p className="muted small" role="note">
-        KI-Hinweis: keine Ausfuehrungsbefugnis. Risk- und Live-Gates bleiben strikt serverseitig.
+        {t("pages.signalsDetail.aiStrategyNote")}
       </p>
       {children}
     </section>

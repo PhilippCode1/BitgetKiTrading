@@ -14,8 +14,13 @@ for candidate in (LEARNING_SRC, SHARED_SRC):
         sys.path.insert(0, s)
 
 from learning_engine.config import LearningEngineSettings
-from learning_engine.registry_v2.champion_promotion_gates import evaluate_champion_promotion_gates
-from shared_py.take_trade_model import MARKET_REGIME_CLASSIFIER_MODEL_NAME, TAKE_TRADE_MODEL_NAME
+from learning_engine.registry_v2.champion_promotion_gates import (
+    evaluate_champion_promotion_gates,
+)
+from shared_py.take_trade_model import (
+    MARKET_REGIME_CLASSIFIER_MODEL_NAME,
+    TAKE_TRADE_MODEL_NAME,
+)
 
 
 @pytest.fixture
@@ -26,7 +31,9 @@ def settings_gates_on(monkeypatch: pytest.MonkeyPatch) -> LearningEngineSettings
     return LearningEngineSettings()
 
 
-def test_take_trade_passes_with_strong_cv_and_test(settings_gates_on: LearningEngineSettings) -> None:
+def test_take_trade_passes_with_strong_cv_and_test(
+    settings_gates_on: LearningEngineSettings,
+) -> None:
     mj = {
         "cv_summary": {
             "walk_forward_mean_roc_auc": 0.75,
@@ -45,7 +52,9 @@ def test_take_trade_passes_with_strong_cv_and_test(settings_gates_on: LearningEn
     assert not r.reasons
 
 
-def test_take_trade_fails_low_walk_forward(settings_gates_on: LearningEngineSettings) -> None:
+def test_take_trade_fails_low_walk_forward(
+    settings_gates_on: LearningEngineSettings,
+) -> None:
     mj = {
         "cv_summary": {
             "walk_forward_mean_roc_auc": 0.40,
@@ -89,7 +98,10 @@ def test_shadow_evidence_required_fails_without_meta(
     monkeypatch.setenv("MODEL_PROMOTION_REQUIRE_SHADOW_EVIDENCE", "true")
     s = LearningEngineSettings()
     mj = {
-        "cv_summary": {"walk_forward_mean_roc_auc": 0.9, "purged_kfold_mean_roc_auc": 0.9},
+        "cv_summary": {
+            "walk_forward_mean_roc_auc": 0.9,
+            "purged_kfold_mean_roc_auc": 0.9,
+        },
         "roc_auc": 0.88,
         "brier_score": 0.15,
     }
@@ -110,7 +122,10 @@ def test_shadow_evidence_passes_with_flag(monkeypatch: pytest.MonkeyPatch) -> No
     monkeypatch.setenv("MODEL_PROMOTION_REQUIRE_SHADOW_EVIDENCE", "true")
     s = LearningEngineSettings()
     mj = {
-        "cv_summary": {"walk_forward_mean_roc_auc": 0.9, "purged_kfold_mean_roc_auc": 0.9},
+        "cv_summary": {
+            "walk_forward_mean_roc_auc": 0.9,
+            "purged_kfold_mean_roc_auc": 0.9,
+        },
         "roc_auc": 0.88,
         "brier_score": 0.15,
     }
@@ -157,7 +172,10 @@ def test_governance_artifacts_gate(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("MODEL_PROMOTION_REQUIRE_GOVERNANCE_ARTIFACTS", "true")
     s = LearningEngineSettings()
     mj = {
-        "cv_summary": {"walk_forward_mean_roc_auc": 0.75, "purged_kfold_mean_roc_auc": 0.74},
+        "cv_summary": {
+            "walk_forward_mean_roc_auc": 0.75,
+            "purged_kfold_mean_roc_auc": 0.74,
+        },
         "roc_auc": 0.72,
         "brier_score": 0.18,
     }
@@ -171,14 +189,19 @@ def test_governance_artifacts_gate(monkeypatch: pytest.MonkeyPatch) -> None:
     assert "governance_data_version_hash_missing" in r.reasons
 
 
-def test_online_drift_blocks_global_take_trade_promotion(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_online_drift_blocks_global_take_trade_promotion(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:5432/db")
     monkeypatch.setenv("REDIS_URL", "redis://localhost:6379")
     monkeypatch.setenv("MODEL_PROMOTION_GATES_ENABLED", "true")
     monkeypatch.setenv("MODEL_PROMOTION_APPLY_ONLINE_DRIFT_GATE", "true")
     s = LearningEngineSettings()
     mj = {
-        "cv_summary": {"walk_forward_mean_roc_auc": 0.75, "purged_kfold_mean_roc_auc": 0.74},
+        "cv_summary": {
+            "walk_forward_mean_roc_auc": 0.75,
+            "purged_kfold_mean_roc_auc": 0.74,
+        },
         "roc_auc": 0.72,
         "brier_score": 0.18,
     }
@@ -209,7 +232,10 @@ def test_symbol_scope_requires_train_rows(monkeypatch: pytest.MonkeyPatch) -> No
     monkeypatch.setenv("SPECIALIST_SYMBOL_MIN_ROWS", "100")
     s = LearningEngineSettings()
     mj = {
-        "cv_summary": {"walk_forward_mean_roc_auc": 0.75, "purged_kfold_mean_roc_auc": 0.74},
+        "cv_summary": {
+            "walk_forward_mean_roc_auc": 0.75,
+            "purged_kfold_mean_roc_auc": 0.74,
+        },
         "roc_auc": 0.72,
         "brier_score": 0.18,
     }
@@ -230,11 +256,16 @@ def test_trade_relevance_high_conf_fp_gate(monkeypatch: pytest.MonkeyPatch) -> N
     monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:5432/db")
     monkeypatch.setenv("REDIS_URL", "redis://localhost:6379")
     monkeypatch.setenv("MODEL_PROMOTION_GATES_ENABLED", "true")
-    monkeypatch.setenv("MODEL_PROMOTION_REQUIRE_TRADE_RELEVANCE_GATES_TAKE_TRADE", "true")
+    monkeypatch.setenv(
+        "MODEL_PROMOTION_REQUIRE_TRADE_RELEVANCE_GATES_TAKE_TRADE", "true"
+    )
     monkeypatch.setenv("MODEL_PROMOTION_TRADE_RELEVANCE_MAX_HIGH_CONF_FP_RATE", "0.2")
     s = LearningEngineSettings()
     mj = {
-        "cv_summary": {"walk_forward_mean_roc_auc": 0.75, "purged_kfold_mean_roc_auc": 0.74},
+        "cv_summary": {
+            "walk_forward_mean_roc_auc": 0.75,
+            "purged_kfold_mean_roc_auc": 0.74,
+        },
         "roc_auc": 0.72,
         "brier_score": 0.18,
         "trade_relevance_summary": {"high_confidence_false_positive_rate": 0.5},

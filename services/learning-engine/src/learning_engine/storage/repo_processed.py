@@ -6,7 +6,9 @@ from typing import Any
 import psycopg
 
 
-def already_processed(conn: psycopg.Connection[Any], stream: str, message_id: str) -> bool:
+def already_processed(
+    conn: psycopg.Connection[Any], stream: str, message_id: str
+) -> bool:
     row = conn.execute(
         "SELECT 1 FROM learn.processed_events WHERE stream = %s AND message_id = %s",
         (stream, message_id),

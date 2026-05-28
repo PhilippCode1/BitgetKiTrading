@@ -88,7 +88,9 @@ def test_risk_veto_aborts_signal_generation() -> None:
     assert out["signal_generation_aborted"] is True
     assert out["final_signal_action"] == "none"
     assert out["consensus_status"] == "veto_aborted"
-    validate_against_schema(load_json_schema("operator_explain.schema.json"), out["operator_explain"])
+    validate_against_schema(
+        load_json_schema("operator_explain.schema.json"), out["operator_explain"]
+    )
     assert "Hard-Veto" in out["operator_explain"]["explanation_de"]
 
 

@@ -8,6 +8,11 @@ describe("return-to-safety", () => {
     );
   });
 
+  it("erlaubt returnTo zum Kundenportal", () => {
+    expect(sanitizeReturnTo("/portal")).toBe("/portal");
+    expect(sanitizeReturnTo("/portal/trading")).toBe("/portal/trading");
+  });
+
   it("mappt legacy /ops auf interne Konsolenroute", () => {
     expect(sanitizeReturnTo("/ops")).toBe("/console/ops");
     expect(sanitizeReturnTo("/ops/live")).toBe("/console/ops/live");

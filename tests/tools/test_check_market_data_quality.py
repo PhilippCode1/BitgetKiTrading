@@ -6,7 +6,6 @@ from pathlib import Path
 
 from tools.check_market_data_quality import analyze_market_data_quality
 
-
 ROOT = Path(__file__).resolve().parents[2]
 TOOL = ROOT / "tools" / "check_market_data_quality.py"
 

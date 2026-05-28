@@ -4,7 +4,6 @@ import json
 from typing import Any
 
 import psycopg
-
 from shared_py.bitget.instruments import (
     MARKET_UNIVERSE_SCHEMA_VERSION,
     BitgetInstrumentCatalogEntry,
@@ -15,7 +14,7 @@ from shared_py.bitget.instruments import (
 
 
 def _j(value: Any) -> Any:
-    if isinstance(value, (dict, list)):
+    if isinstance(value, dict | list):
         return value
     if value in (None, ""):
         return None
@@ -32,7 +31,9 @@ def _entry_from_row(row: dict[str, Any]) -> BitgetInstrumentCatalogEntry:
         {
             **row,
             "symbol_aliases": list(row.get("symbol_aliases_json") or []),
-            "supported_margin_coins": list(row.get("supported_margin_coins_json") or []),
+            "supported_margin_coins": list(
+                row.get("supported_margin_coins_json") or []
+            ),
             "session_metadata": dict(row.get("session_metadata_json") or {}),
             "raw_metadata": dict(row.get("raw_metadata_json") or {}),
         }
@@ -48,9 +49,11 @@ def _snapshot_payload(row: dict[str, Any] | None) -> dict[str, Any] | None:
         "source_service": str(row["source_service"]),
         "refresh_reason": str(row["refresh_reason"]),
         "fetch_started_ts_ms": int(row["fetch_started_ts_ms"]),
-        "fetch_completed_ts_ms": int(row["fetch_completed_ts_ms"])
-        if row.get("fetch_completed_ts_ms") is not None
-        else None,
+        "fetch_completed_ts_ms": (
+            int(row["fetch_completed_ts_ms"])
+            if row.get("fetch_completed_ts_ms") is not None
+            else None
+        ),
         "refreshed_families": list(row.get("refreshed_families_json") or []),
         "counts_by_family": dict(row.get("counts_json") or {}),
         "warnings": list(row.get("warnings_json") or []),
@@ -83,16 +86,24 @@ def _summary(
     return {
         "category_count": len(categories),
         "instrument_count": len(instruments),
-        "inventory_visible_category_count": sum(1 for item in categories if item.inventory_visible),
-        "analytics_eligible_category_count": sum(1 for item in categories if item.analytics_eligible),
+        "inventory_visible_category_count": sum(
+            1 for item in categories if item.inventory_visible
+        ),
+        "analytics_eligible_category_count": sum(
+            1 for item in categories if item.analytics_eligible
+        ),
         "paper_shadow_eligible_category_count": sum(
             1 for item in categories if item.paper_shadow_eligible
         ),
         "live_execution_enabled_category_count": sum(
             1 for item in categories if item.live_execution_enabled
         ),
-        "execution_disabled_category_count": sum(1 for item in categories if item.execution_disabled),
-        "inventory_visible_instrument_count": sum(1 for item in instruments if item.inventory_visible),
+        "execution_disabled_category_count": sum(
+            1 for item in categories if item.execution_disabled
+        ),
+        "inventory_visible_instrument_count": sum(
+            1 for item in instruments if item.inventory_visible
+        ),
         "analytics_eligible_instrument_count": sum(
             1 for item in instruments if item.analytics_eligible
         ),
@@ -141,7 +152,10 @@ def fetch_market_universe_status(
             if isinstance(item, dict)
         ]
     categories = (
-        [BitgetMarketCapabilityMatrixRow.model_validate(item) for item in categories_payload]
+        [
+            BitgetMarketCapabilityMatrixRow.model_validate(item)
+            for item in categories_payload
+        ]
         if categories_payload
         else build_capability_matrix(instruments)
     )

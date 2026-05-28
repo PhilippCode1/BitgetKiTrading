@@ -6,7 +6,9 @@ Vor `docker compose up` / Bootstrap: Compose-Konfiguration validieren und typisc
 - Heuristik: POSTGRES_PASSWORD leer in .env bei internem Postgres (Compose) → harter Fehler.
 
 Aufruf: python tools/compose_start_preflight.py --env-file .env.local --profile local
-Profile: local → + docker-compose.local-publish.yml; shadow|production → nur docker-compose.yml.
+Profile: local → + docker-compose.local-publish.yml;
+         production → + docker-compose.production-ops.yml;
+         shadow → nur docker-compose.yml.
 """
 
 from __future__ import annotations
@@ -43,7 +45,9 @@ def main() -> int:
         required=True,
     )
     args = p.parse_args()
-    env_path = args.env_file if args.env_file.is_absolute() else _REPO_ROOT / args.env_file
+    env_path = (
+        args.env_file if args.env_file.is_absolute() else _REPO_ROOT / args.env_file
+    )
     if not env_path.is_file():
         print(f"compose_start_preflight: Datei fehlt: {env_path}", file=sys.stderr)
         return 1
@@ -51,6 +55,8 @@ def main() -> int:
     compose_args = ["-f", "docker-compose.yml"]
     if args.profile == "local":
         compose_args += ["-f", "docker-compose.local-publish.yml"]
+    elif args.profile == "production":
+        compose_args += ["-f", "docker-compose.production-ops.yml"]
 
     cmd = [
         "docker",

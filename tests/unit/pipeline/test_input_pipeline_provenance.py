@@ -110,7 +110,9 @@ def test_drawing_provenance_orderbook_age() -> None:
         timeframe="5m",
         structure_bar_ts_ms=1_000,
         structure_state_updated_ts_ms=2_000,
-        structure_provenance={"candle_series": {"coverage_ok": True, "max_gap_bars": 0}},
+        structure_provenance={
+            "candle_series": {"coverage_ok": True, "max_gap_bars": 0}
+        },
         orderbook_ts_ms=7_000,
         drawing_computed_ts_ms=10_000,
         orderbook_max_age_ms=5_000,

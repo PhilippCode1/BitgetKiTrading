@@ -1,5 +1,10 @@
 import { Header } from "@/components/layout/Header";
-import { fetchDemoAssets, fetchDemoReadiness, fetchDemoStatus } from "@/lib/api";
+import {
+  fetchDemoAssets,
+  fetchDemoReadiness,
+  fetchDemoStatus,
+} from "@/lib/api";
+import { getServerTranslator } from "@/lib/i18n/server-translate";
 
 export const dynamic = "force-dynamic";
 
@@ -8,6 +13,7 @@ function asBool(value: unknown): boolean {
 }
 
 export default async function BitgetDemoPage() {
+  const t = await getServerTranslator();
   const [status, readiness, assets] = await Promise.all([
     fetchDemoStatus().catch((): Record<string, unknown> => ({})),
     fetchDemoReadiness().catch((): Record<string, unknown> => ({})),
@@ -20,37 +26,50 @@ export default async function BitgetDemoPage() {
   return (
     <>
       <Header
-        title="Bitget Demo"
-        subtitle="Bitget Demo-Modus aktiv - Demogeld, kein Echtgeld."
+        title={t("console.bitgetDemoPage.title")}
+        subtitle={t("console.bitgetDemoPage.subtitle")}
       />
       <section className="panel">
-        <h2>Modusstatus</h2>
+        <h2>{t("console.bitgetDemoPage.modeTitle")}</h2>
         <p>
-          Echtes Live-Trading: <strong>{asBool(mode.live_trade_enable) ? "AN (blockiert)" : "AUS"}</strong>
+          {t("console.bitgetDemoPage.liveTrading")}:{" "}
+          <strong>
+            {asBool(mode.live_trade_enable)
+              ? t("console.bitgetDemoPage.onBlocked")
+              : t("console.bitgetDemoPage.off")}
+          </strong>
         </p>
         <p>
-          Demo-Trading: <strong>{asBool(mode.bitget_demo_enabled) ? "AKTIV" : "NICHT AKTIV"}</strong>
+          {t("console.bitgetDemoPage.demoTrading")}:{" "}
+          <strong>
+            {asBool(mode.bitget_demo_enabled)
+              ? t("console.bitgetDemoPage.active")
+              : t("console.bitgetDemoPage.notActive")}
+          </strong>
         </p>
         <p>
-          Readiness: <strong>{String(readiness.result ?? "unbekannt")}</strong>
+          {t("console.bitgetDemoPage.readiness")}:{" "}
+          <strong>
+            {String(readiness.result ?? t("console.bitgetDemoPage.unknown"))}
+          </strong>
         </p>
       </section>
       <section className="panel" style={{ marginTop: 16 }}>
-        <h2>Demo-Asset-Status</h2>
+        <h2>{t("console.bitgetDemoPage.assetsTitle")}</h2>
         {rows.length === 0 ? (
-          <p className="muted small">Keine Demo-Assets verfügbar oder Endpoint liefert noch keine Daten.</p>
+          <p className="muted small">{t("console.bitgetDemoPage.assetsEmpty")}</p>
         ) : (
           <div className="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th>Symbol</th>
-                  <th>Market Family</th>
-                  <th>Product Type</th>
-                  <th>Status</th>
-                  <th>Demo handelbar</th>
-                  <th>Live blockiert</th>
-                  <th>Block-Grund</th>
+                  <th>{t("console.bitgetDemoPage.colSymbol")}</th>
+                  <th>{t("console.bitgetDemoPage.colMarketFamily")}</th>
+                  <th>{t("console.bitgetDemoPage.colProductType")}</th>
+                  <th>{t("console.bitgetDemoPage.colStatus")}</th>
+                  <th>{t("console.bitgetDemoPage.colDemoTradable")}</th>
+                  <th>{t("console.bitgetDemoPage.colLiveBlocked")}</th>
+                  <th>{t("console.bitgetDemoPage.colBlockReason")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -62,8 +81,16 @@ export default async function BitgetDemoPage() {
                       <td>{String(item.market_family ?? "-")}</td>
                       <td>{String(item.product_type ?? "-")}</td>
                       <td>{String(item.status ?? "-")}</td>
-                      <td>{asBool(item.demo_handelbar) ? "Ja" : "Nein"}</td>
-                      <td>{asBool(item.live_blockiert) ? "Ja" : "Nein"}</td>
+                      <td>
+                        {asBool(item.demo_handelbar)
+                          ? t("console.bitgetDemoPage.yes")
+                          : t("console.bitgetDemoPage.no")}
+                      </td>
+                      <td>
+                        {asBool(item.live_blockiert)
+                          ? t("console.bitgetDemoPage.yes")
+                          : t("console.bitgetDemoPage.no")}
+                      </td>
                       <td>{String(item.block_grund_de ?? "")}</td>
                     </tr>
                   );

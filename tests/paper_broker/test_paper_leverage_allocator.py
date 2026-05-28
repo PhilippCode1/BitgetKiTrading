@@ -22,6 +22,9 @@ from paper_broker.risk import leverage_allocator as mod
 def settings(monkeypatch: pytest.MonkeyPatch) -> PaperBrokerSettings:
     monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:5432/db")
     monkeypatch.setenv("REDIS_URL", "redis://localhost:6379")
+    # CI-stabile Drawdown-/Margin-Basis, unabhaengig von externer Env.
+    monkeypatch.setenv("RISK_MAX_ACCOUNT_DRAWDOWN_PCT", "0.18")
+    monkeypatch.setenv("RISK_MAX_ACCOUNT_MARGIN_USAGE", "0.35")
     return PaperBrokerSettings()
 
 
@@ -116,7 +119,12 @@ def test_allocate_paper_execution_leverage_blocks_on_drawdown_cap(
         entry_fee_usdt=Decimal("3"),
         timeframe="5m",
     )
-    # Drawdown-Cap-Formel (_ratio_cap): bei 12 % Drawdown vs. hard_limit bleibt Hebel > Min, aber < Modellcap.
-    assert decision["allowed_leverage"] == 10
-    assert decision["recommended_leverage"] == 10
+    # Drawdown-Cap muss deterministisch aus den Settings berechnet und bindend sein.
+    expected_drawdown_cap = mod._ratio_cap(
+        ratio=0.12,
+        hard_limit=float(settings.risk_max_account_drawdown_pct),
+        risk_max=25,
+    )
+    assert decision["allowed_leverage"] == expected_drawdown_cap
+    assert decision["recommended_leverage"] == expected_drawdown_cap
     assert "drawdown_cap_binding" in decision["cap_reasons_json"]

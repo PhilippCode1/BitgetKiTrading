@@ -12,7 +12,10 @@ for import_path in (ROOT, SHARED_SRC):
     if str(import_path) not in sys.path:
         sys.path.insert(0, str(import_path))
 
-from shared_py.private_credentials import evaluate_private_credentials, snapshot_to_payload
+from shared_py.private_credentials import (
+    evaluate_private_credentials,
+    snapshot_to_payload,
+)
 
 
 def parse_env_file(path: Path) -> dict[str, str]:
@@ -28,7 +31,9 @@ def parse_env_file(path: Path) -> dict[str, str]:
     return data
 
 
-def build_snapshot(env: dict[str, str], *, dry_run: bool, strict_runtime: bool) -> dict[str, object]:
+def build_snapshot(
+    env: dict[str, str], *, dry_run: bool, strict_runtime: bool
+) -> dict[str, object]:
     # Kein Netzwerkaufruf in diesem Script: Runtime-Modus bleibt read-only/contract-basiert.
     read_only_checked = not strict_runtime or dry_run
     private_auth_ok = None if strict_runtime else True
@@ -100,7 +105,9 @@ def to_markdown(payload: dict[str, object]) -> str:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Prüft private Bitget-Credential-Sicherheit (Single-Owner).")
+    parser = argparse.ArgumentParser(
+        description="Prüft private Bitget-Credential-Sicherheit (Single-Owner)."
+    )
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--env-file", default=".env.local")
     parser.add_argument("--template", action="store_true")
@@ -110,7 +117,9 @@ def main() -> int:
 
     env_path = Path(args.env_file)
     env = parse_env_file(env_path)
-    payload = build_snapshot(env, dry_run=args.dry_run or args.template, strict_runtime=args.strict_runtime)
+    payload = build_snapshot(
+        env, dry_run=args.dry_run or args.template, strict_runtime=args.strict_runtime
+    )
 
     print(json.dumps(payload, indent=2, sort_keys=True))
     if args.output_md:

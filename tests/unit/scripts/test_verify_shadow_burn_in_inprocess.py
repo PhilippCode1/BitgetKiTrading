@@ -161,14 +161,20 @@ def test_operator_release_gates_missing_fields_strict() -> None:
 
     class R:
         def fetchone(self) -> dict[str, Any]:
-            return {"details_json": {"execution_controls": {"require_shadow_match_before_live": True}}}
+            return {
+                "details_json": {
+                    "execution_controls": {"require_shadow_match_before_live": True}
+                }
+            }
 
     class Conn:
         def execute(self, _q: str, _p: object | None = None) -> R:
             return R()
 
     with patch.object(m, "_safe_table", return_value=True):
-        ok, msg, ex = m._check_operator_release_gates_enabled(Conn(), since, until, True)
+        ok, msg, ex = m._check_operator_release_gates_enabled(
+            Conn(), since, until, True
+        )
     assert ok is False
     assert "NO_EVIDENCE" in msg
     assert ex["require_shadow_match_before_live"] is True

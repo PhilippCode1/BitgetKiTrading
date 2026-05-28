@@ -3,24 +3,24 @@
 from __future__ import annotations
 
 import hashlib
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
 import psycopg
 from psycopg.types.json import Json
-from shared_py.customer_lifecycle import CustomerLifecycleStatus, TransitionActor
 from shared_py.commercial_contract_workflow import (
     ContractDocumentKind,
     ContractReviewQueueStatus,
     TenantContractStatus,
 )
+from shared_py.customer_lifecycle import CustomerLifecycleStatus, TransitionActor
 
 from api_gateway.db_tenant_lifecycle import transition_lifecycle
 
 
 def _utc_iso() -> str:
-    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
 
 def sha256_bytes(data: bytes) -> str:
@@ -540,7 +540,11 @@ def complete_contract_signing(
         """,
         (tenant_id,),
     ).fetchone()
-    if lc is not None and str(dict(lc)["lifecycle_status"]) == CustomerLifecycleStatus.CONTRACT_PENDING.value:
+    if (
+        lc is not None
+        and str(dict(lc)["lifecycle_status"])
+        == CustomerLifecycleStatus.CONTRACT_PENDING.value
+    ):
         transition_lifecycle(
             conn,
             tenant_id=tenant_id,

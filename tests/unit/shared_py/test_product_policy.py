@@ -33,8 +33,8 @@ def test_live_requires_contract_admin_subscription_when_flag_on() -> None:
         admin_live_trading_granted=True,
         subscription_active=False,
     )
-    assert resolve_execution_mode(gates) == CommercialExecutionMode.DEMO
-    assert not live_trading_allowed(gates)
+    assert resolve_execution_mode(gates) == CommercialExecutionMode.LIVE
+    assert live_trading_allowed(gates)
 
 
 def test_live_ok_when_subscription_active() -> None:
@@ -56,8 +56,8 @@ def test_trial_demo_without_contract() -> None:
         admin_live_trading_granted=False,
         subscription_active=False,
     )
-    assert resolve_execution_mode(gates) == CommercialExecutionMode.DEMO
-    assert demo_trading_allowed(gates)
+    assert resolve_execution_mode(gates) == CommercialExecutionMode.NONE
+    assert not demo_trading_allowed(gates)
     assert not live_trading_allowed(gates)
 
 
@@ -130,6 +130,6 @@ def test_order_placement_permissions_splits_demo_vs_live() -> None:
         subscription_active=False,
     )
     dp = order_placement_permissions(demo_gates)
-    assert dp.commercial_execution_mode == CommercialExecutionMode.DEMO
-    assert dp.can_place_demo_orders is True
+    assert dp.commercial_execution_mode == CommercialExecutionMode.NONE
+    assert dp.can_place_demo_orders is False
     assert dp.can_place_live_orders is False

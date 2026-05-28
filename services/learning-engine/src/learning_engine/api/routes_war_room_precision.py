@@ -13,6 +13,7 @@ from typing import Any
 
 from fastapi import APIRouter
 
+
 def _norm_regime(s: str | None) -> str:
     t = (s or "").strip().lower()
     t = re.sub(r"[^a-z0-9_]+", "_", t)

@@ -67,7 +67,9 @@ def test_news_summary_matches_contract(client: TestClient) -> None:
 
 
 def test_analyst_hypotheses_and_operator_explain(client: TestClient) -> None:
-    r = client.post("/llm/analyst/hypotheses", json={"context_json": {"symbol": "BTCUSDT"}})
+    r = client.post(
+        "/llm/analyst/hypotheses", json={"context_json": {"symbol": "BTCUSDT"}}
+    )
     assert r.status_code == 200, r.text
     d = r.json()
     assert d["provenance"]["task_type"] == "analyst_hypotheses"

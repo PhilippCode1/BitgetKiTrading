@@ -87,7 +87,9 @@ describe("buildDeterministicSituationExplainFromSnapshot", () => {
       baseSnap({ health_load_error: "timeout" }),
       t,
     );
-    expect(ex.problemPlain).toContain("situationAiExplain.problem.healthSnapshotFailed");
+    expect(ex.problemPlain).toContain(
+      "situationAiExplain.problem.healthSnapshotFailed",
+    );
     expect(ex.hasUncertainty).toBe(true);
   });
 

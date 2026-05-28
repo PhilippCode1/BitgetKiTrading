@@ -8,7 +8,9 @@ from shared_py.readiness_scorecard import (
 )
 
 
-def _matrix(status: str = "verified", overrides: dict[str, str] | None = None) -> dict[str, object]:
+def _matrix(
+    status: str = "verified", overrides: dict[str, str] | None = None
+) -> dict[str, object]:
     overrides = overrides or {}
     return {
         "categories": [
@@ -59,7 +61,10 @@ def test_any_single_p0_not_verified_blocks_private_live_allowed() -> None:
         owner_private_live_release_confirmed=True,
     )
     assert _mode(scorecard, "private_live_allowed") == "NO_GO"
-    assert any("order_idempotency_not_verified" in item for item in scorecard.private_live_blockers)
+    assert any(
+        "order_idempotency_not_verified" in item
+        for item in scorecard.private_live_blockers
+    )
 
 
 def test_implemented_never_counts_like_verified() -> None:
@@ -69,7 +74,9 @@ def test_implemented_never_counts_like_verified() -> None:
         asset_data_quality_verified=True,
         owner_private_live_release_confirmed=True,
     )
-    category = next(item for item in scorecard.categories if item.id == "live_broker_fail_closed")
+    category = next(
+        item for item in scorecard.categories if item.id == "live_broker_fail_closed"
+    )
     assert category.decision == "NOT_ENOUGH_EVIDENCE"
     assert _mode(scorecard, "private_live_allowed") == "NO_GO"
 
@@ -81,7 +88,9 @@ def test_external_required_never_counts_like_verified() -> None:
         asset_data_quality_verified=True,
         owner_private_live_release_confirmed=True,
     )
-    category = next(item for item in scorecard.categories if item.id == "backup_restore")
+    category = next(
+        item for item in scorecard.categories if item.id == "backup_restore"
+    )
     assert category.decision == "EXTERNAL_REQUIRED"
     assert _mode(scorecard, "private_live_allowed") == "NO_GO"
 
@@ -94,7 +103,10 @@ def test_branch_protection_only_implemented_keeps_private_live_no_go() -> None:
         owner_private_live_release_confirmed=True,
     )
     assert _mode(scorecard, "private_live_allowed") == "NO_GO"
-    assert any("branch_protection_ci_not_verified" in item for item in scorecard.private_live_blockers)
+    assert any(
+        "branch_protection_ci_not_verified" in item
+        for item in scorecard.private_live_blockers
+    )
 
 
 def test_missing_shadow_burn_in_blocks_private_live_allowed() -> None:
@@ -138,13 +150,18 @@ def test_asset_preflight_fixture_evidence_clears_generic_concrete_asset_gap() ->
             }
         ],
     }
-    assert asset_preflight_fixture_evidence_ok({"asset_preflight_evidence": payload}) is True
+    assert (
+        asset_preflight_fixture_evidence_ok({"asset_preflight_evidence": payload})
+        is True
+    )
     scorecard = build_readiness_scorecard(
         _matrix(status="partial", overrides={"private_owner_scope": "verified"}),
         report_names=["asset_preflight_evidence.md"],
         report_payloads={"asset_preflight_evidence": payload},
     )
-    assert "asset_data_quality_for_concrete_assets_missing" not in scorecard.asset_blockers
+    assert (
+        "asset_data_quality_for_concrete_assets_missing" not in scorecard.asset_blockers
+    )
     assert _mode(scorecard, "private_live_allowed") == "NO_GO"
 
 
@@ -161,7 +178,10 @@ def test_asset_preflight_evidence_never_counts_live_allowed_payload() -> None:
             }
         ],
     }
-    assert asset_preflight_fixture_evidence_ok({"asset_preflight_evidence": payload}) is False
+    assert (
+        asset_preflight_fixture_evidence_ok({"asset_preflight_evidence": payload})
+        is False
+    )
 
 
 def test_full_autonomous_live_remains_no_go() -> None:
@@ -193,13 +213,20 @@ def test_perfect_matrix_with_owner_release_allows_private_live() -> None:
         owner_private_live_release_confirmed=True,
     )
     assert _mode(scorecard, "private_live_allowed") == "GO"
-    assert "owner_private_live_release:not_confirmed" not in scorecard.private_live_blockers
+    assert (
+        "owner_private_live_release:not_confirmed"
+        not in scorecard.private_live_blockers
+    )
 
 
 def test_owner_release_payload_rejects_false_go() -> None:
     assert (
         owner_private_live_release_payload_ok(
-            {"owner_private_live_go": False, "recorded_at": "2026-01-01T00:00:00Z", "signoff_reference": "x" * 8}
+            {
+                "owner_private_live_go": False,
+                "recorded_at": "2026-01-01T00:00:00Z",
+                "signoff_reference": "x" * 8,
+            }
         )
         is False
     )
@@ -208,7 +235,11 @@ def test_owner_release_payload_rejects_false_go() -> None:
 def test_owner_release_payload_requires_reference_length() -> None:
     assert (
         owner_private_live_release_payload_ok(
-            {"owner_private_live_go": True, "recorded_at": "2026-01-01T00:00:00Z", "signoff_reference": "short"}
+            {
+                "owner_private_live_go": True,
+                "recorded_at": "2026-01-01T00:00:00Z",
+                "signoff_reference": "short",
+            }
         )
         is False
     )

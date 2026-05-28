@@ -51,7 +51,9 @@ def main() -> int:
             el = time.perf_counter() - t0
             if args.tracemalloc:
                 cur, peak = tracemalloc.get_traced_memory()
-                print(f"[{i + 1}] elapsed={el:.2f}s tracemalloc_KiB={cur // 1024}/{peak // 1024}")
+                print(
+                    f"[{i + 1}] elapsed={el:.2f}s tracemalloc_KiB={cur // 1024}/{peak // 1024}"
+                )
             else:
                 print(f"[{i + 1}] elapsed={el:.2f}s")
     print("done ticks=", args.ticks, "elapsed_s=", round(time.perf_counter() - t0, 3))

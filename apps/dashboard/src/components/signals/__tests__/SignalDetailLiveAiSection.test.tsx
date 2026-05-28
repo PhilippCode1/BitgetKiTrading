@@ -13,7 +13,7 @@ describe("SignalDetailLiveAiSection", () => {
       </SignalDetailLiveAiSection>,
     );
     expect(
-      screen.getByText(/KI-Hinweis: keine Ausfuehrungsbefugnis/i),
+      screen.getByText("pages.signalsDetail.aiStrategyNote"),
     ).toBeInTheDocument();
   });
 });

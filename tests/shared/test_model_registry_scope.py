@@ -15,25 +15,35 @@ from shared_py.model_registry_scope import normalize_registry_scope
 
 def test_normalize_global() -> None:
     assert normalize_registry_scope(scope_type="global", scope_key="") == ("global", "")
-    assert normalize_registry_scope(scope_type="GLOBAL", scope_key="  ") == ("global", "")
+    assert normalize_registry_scope(scope_type="GLOBAL", scope_key="  ") == (
+        "global",
+        "",
+    )
 
 
 def test_normalize_family_lowercase_key() -> None:
-    assert normalize_registry_scope(scope_type="market_family", scope_key="Futures") == (
+    assert normalize_registry_scope(
+        scope_type="market_family", scope_key="Futures"
+    ) == (
         "market_family",
         "futures",
     )
 
 
 def test_normalize_cluster_lowercase_key() -> None:
-    assert normalize_registry_scope(scope_type="market_cluster", scope_key="Futures::Trend") == (
+    assert normalize_registry_scope(
+        scope_type="market_cluster", scope_key="Futures::Trend"
+    ) == (
         "market_cluster",
         "futures::trend",
     )
 
 
 def test_normalize_symbol_uppercase_key() -> None:
-    assert normalize_registry_scope(scope_type="symbol", scope_key="btcusdt") == ("symbol", "BTCUSDT")
+    assert normalize_registry_scope(scope_type="symbol", scope_key="btcusdt") == (
+        "symbol",
+        "BTCUSDT",
+    )
 
 
 def test_normalize_requires_key_for_non_global() -> None:

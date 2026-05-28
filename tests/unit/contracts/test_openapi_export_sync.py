@@ -9,10 +9,13 @@ import sys
 from pathlib import Path
 
 import pytest
+
 from config.required_secrets import required_env_names_for_env_file_profile
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-OPENAPI_PATH = REPO_ROOT / "shared" / "contracts" / "openapi" / "api-gateway.openapi.json"
+OPENAPI_PATH = (
+    REPO_ROOT / "shared" / "contracts" / "openapi" / "api-gateway.openapi.json"
+)
 
 
 def _openapi_test_env_value(name: str) -> str:
@@ -28,7 +31,9 @@ def _openapi_test_env_value(name: str) -> str:
     not (REPO_ROOT / "services" / "api-gateway" / "src").is_dir(),
     reason="api-gateway src fehlt",
 )
-def test_committed_openapi_matches_fastapi_export(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_committed_openapi_matches_fastapi_export(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     for key in required_env_names_for_env_file_profile(profile="local"):
         monkeypatch.setenv(key, _openapi_test_env_value(key))
     monkeypatch.setenv("PRODUCTION", "false")
@@ -57,8 +62,6 @@ def test_committed_openapi_matches_fastapi_export(monkeypatch: pytest.MonkeyPatc
     for mod in list(sys.modules):
         if mod == "prometheus_client" or mod.startswith("prometheus_client."):
             del sys.modules[mod]
-
-    import prometheus_client  # noqa: PLC0415  # frische Registry nach evtl. frueherem Gateway-Import
 
     import config.gateway_settings as gw_mod
 

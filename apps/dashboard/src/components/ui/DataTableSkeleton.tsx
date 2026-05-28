@@ -33,7 +33,12 @@ export function DataTableSkeleton({
       aria-label={label}
     >
       <ul
-        className={["console-stack-list", "data-table-skeleton--mobile", "console-mobile-only", listClassName]
+        className={[
+          "console-stack-list",
+          "data-table-skeleton--mobile",
+          "console-mobile-only",
+          listClassName,
+        ]
           .filter(Boolean)
           .join(" ")}
         aria-hidden
@@ -65,9 +70,7 @@ export function DataTableSkeleton({
               <tr>
                 {Array.from({ length: columnCount }).map((_, c) => (
                   <th key={`h-${c}`} scope="col">
-                    <span
-                      className="data-table-skeleton__shimmer data-table-skeleton__th"
-                    />
+                    <span className="data-table-skeleton__shimmer data-table-skeleton__th" />
                   </th>
                 ))}
               </tr>
@@ -79,7 +82,7 @@ export function DataTableSkeleton({
                     <td key={`c-${r}-${c}`}>
                       <span
                         className="data-table-skeleton__shimmer data-table-skeleton__td"
-                        style={{ width: `${55 + (c * 5 + r) % 35}%` }}
+                        style={{ width: `${55 + ((c * 5 + r) % 35)}%` }}
                       />
                     </td>
                   ))}

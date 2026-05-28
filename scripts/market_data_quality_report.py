@@ -8,7 +8,7 @@ import json
 import subprocess
 import sys
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -65,7 +65,7 @@ def _redact_secret_like_values(value: Any) -> Any:
 
 
 def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def evaluate_asset(asset: dict[str, Any]) -> dict[str, Any]:
@@ -84,7 +84,9 @@ def evaluate_asset(asset: dict[str, Any]) -> dict[str, Any]:
     seq_ok, seq_reasons = validate_candle_sequence(candles)
     if not seq_ok:
         block_reasons.extend(seq_reasons)
-    gap_ok, gap_reasons = detect_candle_gaps(candles, expected_interval_ms=expected_interval_ms)
+    gap_ok, gap_reasons = detect_candle_gaps(
+        candles, expected_interval_ms=expected_interval_ms
+    )
     if not gap_ok:
         block_reasons.extend(gap_reasons)
     dup_ok, dup_reasons = detect_duplicate_candles(candles)
@@ -139,7 +141,17 @@ def evaluate_asset(asset: dict[str, Any]) -> dict[str, Any]:
     warnings.extend(oi_warn)
 
     explicit_status = str(asset.get("quality_status") or "").strip().lower()
-    if explicit_status in {"data_ok", "data_warning", "data_stale", "data_incomplete", "data_invalid", "data_provider_error", "data_quarantined", "data_live_blocked", "data_unknown"}:
+    if explicit_status in {
+        "data_ok",
+        "data_warning",
+        "data_stale",
+        "data_incomplete",
+        "data_invalid",
+        "data_provider_error",
+        "data_quarantined",
+        "data_live_blocked",
+        "data_unknown",
+    }:
         quality_status = explicit_status
     elif block_reasons:
         quality_status = "data_live_blocked"
@@ -205,7 +217,8 @@ def main(argv: list[str] | None = None) -> int:
         "git_sha": _git_sha(),
         "assets_checked": len(summaries),
         "status_by_asset": {
-            summary.symbol: _status_bucket(summary.quality_status) for summary in summaries
+            summary.symbol: _status_bucket(summary.quality_status)
+            for summary in summaries
         },
         "status_counts": dict(sorted(buckets.items())),
         "top_data_errors": all_reasons.most_common(10),
@@ -221,7 +234,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.output_json:
         args.output_json.parent.mkdir(parents=True, exist_ok=True)
-        args.output_json.write_text(json.dumps(out_payload, indent=2, ensure_ascii=False), encoding="utf-8")
+        args.output_json.write_text(
+            json.dumps(out_payload, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
     if args.output_md:
         lines = [
             "# Market Data Qualitaetsreport",

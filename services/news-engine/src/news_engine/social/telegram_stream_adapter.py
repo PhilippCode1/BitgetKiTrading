@@ -20,7 +20,9 @@ except Exception as exc:  # pragma: no cover — optional Abhaengigkeit
 
 
 def telethon_available() -> bool:
-    return TelegramClient is not None and StringSession is not None and events is not None
+    return (
+        TelegramClient is not None and StringSession is not None and events is not None
+    )
 
 
 class TelegramStreamAdapter:
@@ -39,14 +41,22 @@ class TelegramStreamAdapter:
         self._session_string = session_string.strip()
         self._channels = [c.strip() for c in channel_specs if c.strip()]
 
-    async def run(self, queue: asyncio.Queue[SocialIncomingMessage], stop: asyncio.Event) -> None:
+    async def run(
+        self, queue: asyncio.Queue[SocialIncomingMessage], stop: asyncio.Event
+    ) -> None:
         if not telethon_available():
             logger.warning("Telethon nicht installiert: %s", _TELETHON_IMPORT_ERROR)
             return
         if not self._channels:
-            logger.warning("TelegramStreamAdapter: keine TELEGRAM_ALPHA_CHANNELS gesetzt")
+            logger.warning(
+                "TelegramStreamAdapter: keine TELEGRAM_ALPHA_CHANNELS gesetzt"
+            )
             return
-        assert TelegramClient is not None and StringSession is not None and events is not None
+        assert (
+            TelegramClient is not None
+            and StringSession is not None
+            and events is not None
+        )
 
         session = StringSession(self._session_string)
         client = TelegramClient(session, self._api_id, self._api_hash)

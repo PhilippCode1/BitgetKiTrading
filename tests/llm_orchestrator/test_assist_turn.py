@@ -40,7 +40,9 @@ def client(mock_redis_bus, monkeypatch: pytest.MonkeyPatch):
     return TestClient(create_app(), headers=hdrs)
 
 
-def test_assist_turn_roundtrip_and_history(client: TestClient, mock_redis_bus: dict) -> None:
+def test_assist_turn_roundtrip_and_history(
+    client: TestClient, mock_redis_bus: dict
+) -> None:
     conv = str(uuid.uuid4())
     body = {
         "assist_role": "admin_operations",
@@ -108,7 +110,9 @@ def test_assist_roles_do_not_share_redis_history(
 def test_assist_turn_accumulates_history(client: TestClient) -> None:
     conv = str(uuid.uuid4())
     part = "p2"
-    for i, msg in enumerate(("Erste Frage zum Gate", "Zweite Nachfrage", "Dritte Nachfrage")):
+    for i, msg in enumerate(
+        ("Erste Frage zum Gate", "Zweite Nachfrage", "Dritte Nachfrage")
+    ):
         r = client.post(
             "/llm/assist/turn",
             json={

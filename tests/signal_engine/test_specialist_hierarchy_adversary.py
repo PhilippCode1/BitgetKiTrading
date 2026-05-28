@@ -102,7 +102,9 @@ def test_symbol_expert_deferred_to_family_cluster_when_quality_bad() -> None:
     )
     sid = str(out["symbol_specialist"]["specialist_id"])
     assert sid.startswith("cluster:family_xs:")
-    assert out["symbol_specialist"]["symbol_expert_mode"] == "cluster_family_cross_section"
+    assert (
+        out["symbol_specialist"]["symbol_expert_mode"] == "cluster_family_cross_section"
+    )
 
 
 def test_adversary_regime_playbook_mismatch_veto() -> None:

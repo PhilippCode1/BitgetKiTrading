@@ -89,7 +89,7 @@ def format_operator_intel_message(payload: dict[str, Any]) -> str:
         v = p.get(key)
         if v in (None, "", [], {}):
             return
-        if isinstance(v, (list, tuple)):
+        if isinstance(v, list | tuple):
             v = "; ".join(str(x) for x in v[:12])
         lines.append(f"{title}: {v}")
 
@@ -191,4 +191,4 @@ def build_operator_intel_envelope_payload(
     if extra:
         pl["extra"] = redact_operator_intel_payload(extra)
     pl["text"] = format_operator_intel_message(pl)
-    return redact_operator_intel_payload(pl)
+    return redact_operator_intel_payload(pl)  # type: ignore

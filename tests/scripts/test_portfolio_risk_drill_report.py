@@ -13,7 +13,14 @@ def test_portfolio_risk_drill_report_writes_md_and_json(tmp_path: Path) -> None:
     out_md = tmp_path / "drill.md"
     out_json = tmp_path / "drill.json"
     proc = subprocess.run(
-        [sys.executable, str(SCRIPT), "--output-md", str(out_md), "--output-json", str(out_json)],
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--output-md",
+            str(out_md),
+            "--output-json",
+            str(out_json),
+        ],
         cwd=ROOT,
         capture_output=True,
         text=True,

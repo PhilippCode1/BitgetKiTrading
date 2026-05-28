@@ -91,7 +91,10 @@ def fetch_specialist_precision_block(
             "status": "disabled",
             "market_regime": market_regime,
             "schema": "war_room_specialist_precision_v1",
-            "specialists": {a: {"ai_precision_0_1": _DEFAULT_P, "source": "disabled"} for a in _AGENT_IDS},
+            "specialists": {
+                a: {"ai_precision_0_1": _DEFAULT_P, "source": "disabled"}
+                for a in _AGENT_IDS
+            },
         }
     base = (settings.learning_engine_base_url or "").rstrip("/")
     if not base:
@@ -100,12 +103,15 @@ def fetch_specialist_precision_block(
             "market_regime": market_regime,
             "schema": "war_room_specialist_precision_v1",
             "specialists": {
-                a: {"ai_precision_0_1": _DEFAULT_P, "source": "no_learning_base_url"} for a in _AGENT_IDS
+                a: {"ai_precision_0_1": _DEFAULT_P, "source": "no_learning_base_url"}
+                for a in _AGENT_IDS
             },
         }
     url = f"{base}/learning/war-room/specialist-ai-precision"
     params = {"market_regime": market_regime or "unknown"}
-    tmo = float(getattr(settings, "war_room_specialist_precision_timeout_sec", 2.0) or 2.0)
+    tmo = float(
+        getattr(settings, "war_room_specialist_precision_timeout_sec", 2.0) or 2.0
+    )
     try:
         with httpx.Client(timeout=tmo) as c:
             r = c.get(url, params=params)
@@ -119,7 +125,8 @@ def fetch_specialist_precision_block(
             "schema": "war_room_specialist_precision_v1",
             "note_de": f"HTTP-Fetch fehlgeschlagen: {type(exc).__name__}",
             "specialists": {
-                a: {"ai_precision_0_1": _DEFAULT_P, "source": "fetch_error_fallback"} for a in _AGENT_IDS
+                a: {"ai_precision_0_1": _DEFAULT_P, "source": "fetch_error_fallback"}
+                for a in _AGENT_IDS
             },
         }
     if not isinstance(data, dict):
@@ -127,7 +134,8 @@ def fetch_specialist_precision_block(
             "status": "error",
             "market_regime": market_regime,
             "specialists": {
-                a: {"ai_precision_0_1": _DEFAULT_P, "source": "invalid_json"} for a in _AGENT_IDS
+                a: {"ai_precision_0_1": _DEFAULT_P, "source": "invalid_json"}
+                for a in _AGENT_IDS
             },
         }
     return data
@@ -146,7 +154,11 @@ def apply_precision_to_weights(
             b = float(v0)
         except (TypeError, ValueError):
             b = 0.0
-        p = precision_0_1.get(k, _DEFAULT_P) if isinstance(precision_0_1, dict) else _DEFAULT_P
+        p = (
+            precision_0_1.get(k, _DEFAULT_P)
+            if isinstance(precision_0_1, dict)
+            else _DEFAULT_P
+        )
         w[k] = b * precision_stake_multiplier(p)
     return w
 
@@ -179,7 +191,9 @@ def log_weighted_stakes_pre_consensus(
                     "market_regime": market_regime,
                     "agents": {
                         aid: {
-                            "ai_precision_0_1": float(precision_0_1.get(aid) or _DEFAULT_P),
+                            "ai_precision_0_1": float(
+                                precision_0_1.get(aid) or _DEFAULT_P
+                            ),
                             "stake_multiplier": precision_stake_multiplier(
                                 float(precision_0_1.get(aid) or _DEFAULT_P)
                             ),

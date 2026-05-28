@@ -3,9 +3,8 @@ from __future__ import annotations
 import sys
 import time
 from pathlib import Path
-from uuid import uuid4
-
 from unittest.mock import patch
+from uuid import uuid4
 
 import pytest
 
@@ -18,14 +17,17 @@ for candidate in (REPO_ROOT, LIVE_BROKER_SRC, SHARED_SRC):
     if candidate.is_dir() and candidate_str not in sys.path:
         sys.path.insert(0, candidate_str)
 
+from tests.fixtures.family_runtime_matrix import FAMILY_RUNTIME_CASES
+
 from live_broker.config import LiveBrokerSettings
 from live_broker.execution.models import ExecutionIntentRequest
 from live_broker.execution.service import LiveExecutionService
-
 from shared_py.bitget import UnknownInstrumentError
-from shared_py.bitget.instruments import BitgetInstrumentCatalogEntry, BitgetInstrumentCatalogSnapshot
+from shared_py.bitget.instruments import (
+    BitgetInstrumentCatalogEntry,
+    BitgetInstrumentCatalogSnapshot,
+)
 from shared_py.eventbus import EventEnvelope
-from tests.fixtures.family_runtime_matrix import FAMILY_RUNTIME_CASES
 
 
 @pytest.fixture(autouse=True)
@@ -79,7 +81,9 @@ class _FakeRepo:
         self.records.append(out)
         return out
 
-    def record_execution_risk_snapshot(self, execution_decision_id: str, risk_decision: dict) -> None:
+    def record_execution_risk_snapshot(
+        self, execution_decision_id: str, risk_decision: dict
+    ) -> None:
         return None
 
     def record_shadow_live_assessment(self, **kwargs: object) -> None:
@@ -144,7 +148,9 @@ class _FakeCatalog:
 
     def resolve(self, *, symbol: str, market_family: str | None = None, **_: object):
         for entry in self._snapshot.entries:
-            if entry.symbol == symbol and entry.market_family == (market_family or entry.market_family):
+            if entry.symbol == symbol and entry.market_family == (
+                market_family or entry.market_family
+            ):
                 return entry
         raise UnknownInstrumentError(symbol)
 
@@ -203,8 +209,13 @@ def test_handle_signal_event_blocks_do_not_trade_and_records_leverage_context(
 
     assert result["decision_reason"] == "trade_action_do_not_trade"
     assert result["payload_json"]["signal_allowed_leverage"] == 6
-    assert result["payload_json"]["signal_leverage_cap_reasons_json"] == ["model_cap_binding"]
-    assert result["payload_json"]["risk_engine"]["decision_reason"] == "trade_action_do_not_trade"
+    assert result["payload_json"]["signal_leverage_cap_reasons_json"] == [
+        "model_cap_binding"
+    ]
+    assert (
+        result["payload_json"]["risk_engine"]["decision_reason"]
+        == "trade_action_do_not_trade"
+    )
 
 
 def test_handle_signal_event_uses_signal_recommended_leverage_in_decision_record(
@@ -306,7 +317,10 @@ def test_handle_signal_event_blocks_when_shared_risk_hits_max_positions(
     result = service.handle_signal_event(envelope)
 
     assert result["decision_reason"] == "max_concurrent_positions_exceeded"
-    assert result["payload_json"]["risk_engine"]["decision_reason"] == "max_concurrent_positions_exceeded"
+    assert (
+        result["payload_json"]["risk_engine"]["decision_reason"]
+        == "max_concurrent_positions_exceeded"
+    )
 
 
 def test_handle_signal_event_blocks_when_live_snapshots_are_stale(
@@ -357,7 +371,10 @@ def test_handle_signal_event_blocks_when_live_snapshots_are_stale(
     result = service.handle_signal_event(envelope)
 
     assert result["decision_reason"] == "live_snapshot_account_missing"
-    assert "live_snapshot_positions_stale" in result["payload_json"]["risk_engine"]["reasons_json"]
+    assert (
+        "live_snapshot_positions_stale"
+        in result["payload_json"]["risk_engine"]["reasons_json"]
+    )
 
 
 def test_handle_signal_event_blocks_when_exit_preview_conflicts_with_leverage(
@@ -368,7 +385,11 @@ def test_handle_signal_event_blocks_when_exit_preview_conflicts_with_leverage(
     repo.snapshots["account"] = [
         {
             "symbol": "USDT",
-            "raw_data": {"items": [{"marginCoin": "USDT", "equity": "10000", "available": "9500"}]},
+            "raw_data": {
+                "items": [
+                    {"marginCoin": "USDT", "equity": "10000", "available": "9500"}
+                ]
+            },
         }
     ]
     repo.reconcile_snapshot = {
@@ -408,7 +429,9 @@ def test_handle_signal_event_blocks_when_exit_preview_conflicts_with_leverage(
     assert result["payload_json"]["exit_preview"]["valid"] is False
 
 
-def test_evaluate_intent_blocks_unknown_catalog_instrument(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_evaluate_intent_blocks_unknown_catalog_instrument(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     settings = _settings(monkeypatch)
     repo = _FakeRepo()
     service = LiveExecutionService(
@@ -428,7 +451,9 @@ def test_evaluate_intent_blocks_unknown_catalog_instrument(monkeypatch: pytest.M
         entry_price="100",
         stop_loss="99",
         take_profit="102",
-        payload={"signal_payload": {"trade_action": "allow_trade", "allowed_leverage": 7}},
+        payload={
+            "signal_payload": {"trade_action": "allow_trade", "allowed_leverage": 7}
+        },
     )
     out = service.evaluate_intent(intent, probe_exchange=False)
     assert out["decision_action"] == "blocked"
@@ -441,17 +466,23 @@ def _repo_with_clean_live_snapshots() -> _FakeRepo:
         {
             "symbol": "USDT",
             "raw_data": {
-                "items": [{"marginCoin": "USDT", "equity": "10000", "available": "9500"}],
+                "items": [
+                    {"marginCoin": "USDT", "equity": "10000", "available": "9500"}
+                ],
             },
         }
     ]
     repo.reconcile_snapshot = {
-        "details_json": {"drift": {"snapshot_health": {"missing_types": [], "stale_types": []}}}
+        "details_json": {
+            "drift": {"snapshot_health": {"missing_types": [], "stale_types": []}}
+        }
     }
     return repo
 
 
-def test_evaluate_intent_blocks_on_online_drift_hard_block(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_evaluate_intent_blocks_on_online_drift_hard_block(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setenv("RISK_MAX_POSITION_RISK_PCT", "0.5")
     settings = _settings(
         monkeypatch,
@@ -497,7 +528,9 @@ def test_evaluate_intent_blocks_on_online_drift_hard_block(monkeypatch: pytest.M
     assert out["decision_reason"] == "online_drift_hard_block"
 
 
-def test_evaluate_intent_shadow_only_forces_shadow_on_live_path(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_evaluate_intent_shadow_only_forces_shadow_on_live_path(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setenv("RISK_MAX_POSITION_RISK_PCT", "0.5")
     settings = _settings(
         monkeypatch,
@@ -555,7 +588,7 @@ def test_evaluate_intent_shadow_live_gate_blocks_high_signal_divergence(
         STRATEGY_EXEC_MODE="auto",
         SHADOW_TRADE_ENABLE="false",
         REQUIRE_SHADOW_MATCH_BEFORE_LIVE="true",
-        RISK_GOVERNOR_LIVE_RAMP_MAX_LEVERAGE="12",
+        RISK_GOVERNOR_LIVE_RAMP_MAX_LEVERAGE="10",
     )
     repo = _repo_with_clean_live_snapshots()
     service = LiveExecutionService(settings, _FakeExchangeClient(), repo)  # type: ignore[arg-type]
@@ -566,7 +599,7 @@ def test_evaluate_intent_shadow_live_gate_blocks_high_signal_divergence(
         symbol="BTCUSDT",
         direction="long",
         requested_runtime_mode="live",
-        leverage=12,
+        leverage=10,
         qty_base="0.001",
         entry_price="50000",
         stop_loss="49900",
@@ -582,8 +615,8 @@ def test_evaluate_intent_shadow_live_gate_blocks_high_signal_divergence(
                 "expected_return_bps": 14.0,
                 "expected_mae_bps": 15.0,
                 "expected_mfe_bps": 28.0,
-                "allowed_leverage": 12,
-                "recommended_leverage": 12,
+                "allowed_leverage": 10,
+                "recommended_leverage": 10,
                 "shadow_divergence_0_1": 0.99,
                 "analysis_ts_ms": now_ms - 10_000,
             }
@@ -609,7 +642,7 @@ def test_evaluate_intent_shadow_live_allows_when_aligned_with_gate(
         STRATEGY_EXEC_MODE="auto",
         SHADOW_TRADE_ENABLE="false",
         REQUIRE_SHADOW_MATCH_BEFORE_LIVE="true",
-        RISK_GOVERNOR_LIVE_RAMP_MAX_LEVERAGE="12",
+        RISK_GOVERNOR_LIVE_RAMP_MAX_LEVERAGE="10",
     )
     repo = _repo_with_clean_live_snapshots()
     service = LiveExecutionService(settings, _FakeExchangeClient(), repo)  # type: ignore[arg-type]
@@ -620,7 +653,7 @@ def test_evaluate_intent_shadow_live_allows_when_aligned_with_gate(
         symbol="BTCUSDT",
         direction="long",
         requested_runtime_mode="live",
-        leverage=12,
+        leverage=10,
         qty_base="0.001",
         entry_price="50000",
         stop_loss="49900",
@@ -636,8 +669,8 @@ def test_evaluate_intent_shadow_live_allows_when_aligned_with_gate(
                 "expected_return_bps": 14.0,
                 "expected_mae_bps": 15.0,
                 "expected_mfe_bps": 28.0,
-                "allowed_leverage": 12,
-                "recommended_leverage": 12,
+                "allowed_leverage": 10,
+                "recommended_leverage": 10,
                 "shadow_divergence_0_1": 0.04,
                 "analysis_ts_ms": now_ms - 10_000,
             }
@@ -723,7 +756,7 @@ def test_evaluate_intent_shadow_live_mismatch_without_gate_still_live_candidate(
         STRATEGY_EXEC_MODE="auto",
         SHADOW_TRADE_ENABLE="false",
         REQUIRE_SHADOW_MATCH_BEFORE_LIVE="false",
-        RISK_GOVERNOR_LIVE_RAMP_MAX_LEVERAGE="12",
+        RISK_GOVERNOR_LIVE_RAMP_MAX_LEVERAGE="10",
     )
     repo = _repo_with_clean_live_snapshots()
     service = LiveExecutionService(settings, _FakeExchangeClient(), repo)  # type: ignore[arg-type]
@@ -734,7 +767,7 @@ def test_evaluate_intent_shadow_live_mismatch_without_gate_still_live_candidate(
         symbol="BTCUSDT",
         direction="long",
         requested_runtime_mode="live",
-        leverage=12,
+        leverage=10,
         qty_base="0.001",
         entry_price="50000",
         stop_loss="49900",
@@ -750,8 +783,8 @@ def test_evaluate_intent_shadow_live_mismatch_without_gate_still_live_candidate(
                 "expected_return_bps": 14.0,
                 "expected_mae_bps": 15.0,
                 "expected_mfe_bps": 28.0,
-                "allowed_leverage": 12,
-                "recommended_leverage": 12,
+                "allowed_leverage": 10,
+                "recommended_leverage": 10,
                 "shadow_divergence_0_1": 0.99,
                 "analysis_ts_ms": now_ms - 10_000,
             }
@@ -776,7 +809,9 @@ def test_evaluate_intent_blocks_spot_short_even_when_signal_allows_trade(
     )
     repo = _repo_with_clean_live_snapshots()
     service = LiveExecutionService(settings, _FakeExchangeClient(), repo)  # type: ignore[arg-type]
-    spot_case = next(case for case in FAMILY_RUNTIME_CASES if case["name"] == "spot_btcusdt")
+    spot_case = next(
+        case for case in FAMILY_RUNTIME_CASES if case["name"] == "spot_btcusdt"
+    )
     intent = ExecutionIntentRequest(
         source_service="signal-engine",
         signal_id="sig-spot-short",
@@ -789,7 +824,9 @@ def test_evaluate_intent_blocks_spot_short_even_when_signal_allows_trade(
         entry_price="50000",
         stop_loss="49900",
         take_profit="51000",
-        payload={"signal_payload": {"trade_action": "allow_trade", "allowed_leverage": 7}},
+        payload={
+            "signal_payload": {"trade_action": "allow_trade", "allowed_leverage": 7}
+        },
     )
     out = service.evaluate_intent(intent, probe_exchange=False)
     assert out["decision_action"] == "blocked"
@@ -849,7 +886,7 @@ def test_paper_broker_outage_blocks_live_no_redis_shadow_match_latch(
         STRATEGY_EXEC_MODE="auto",
         SHADOW_TRADE_ENABLE="false",
         REQUIRE_SHADOW_MATCH_BEFORE_LIVE="true",
-        RISK_GOVERNOR_LIVE_RAMP_MAX_LEVERAGE="12",
+        RISK_GOVERNOR_LIVE_RAMP_MAX_LEVERAGE="10",
     )
     repo = _repo_with_clean_live_snapshots()
     service = LiveExecutionService(settings, _FakeExchangeClient(), repo)  # type: ignore[arg-type]
@@ -860,7 +897,7 @@ def test_paper_broker_outage_blocks_live_no_redis_shadow_match_latch(
         symbol="BTCUSDT",
         direction="long",
         requested_runtime_mode="live",
-        leverage=12,
+        leverage=10,
         qty_base="0.001",
         entry_price="50000",
         stop_loss="49900",
@@ -878,8 +915,8 @@ def test_paper_broker_outage_blocks_live_no_redis_shadow_match_latch(
                 "expected_return_bps": 14.0,
                 "expected_mae_bps": 15.0,
                 "expected_mfe_bps": 28.0,
-                "allowed_leverage": 12,
-                "recommended_leverage": 12,
+                "allowed_leverage": 10,
+                "recommended_leverage": 10,
                 "shadow_divergence_0_1": 0.04,
                 "analysis_ts_ms": now_ms - 10_000,
             },

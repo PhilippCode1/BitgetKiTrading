@@ -15,7 +15,7 @@ const CONTEXT_MAX_CHARS = 96_000;
 const FOCUS_MAX = 8000;
 
 export async function GET(req: Request) {
-  const auth = requireOperatorGatewayAuth();
+  const auth = requireOperatorGatewayAuth(req.headers);
   if (!auth.ok) return auth.response;
 
   const u = new URL(req.url);
@@ -58,7 +58,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const auth = requireOperatorGatewayAuth();
+  const auth = requireOperatorGatewayAuth(req.headers);
   if (!auth.ok) return auth.response;
 
   let body: unknown;

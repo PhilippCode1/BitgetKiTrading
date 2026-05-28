@@ -42,7 +42,5 @@ def compact_schema_for_repair_prompt(
     except (TypeError, ValueError, OverflowError) as exc:
         return f"(Schema nicht serialisierbar: {exc!s})"[:max_chars]
     if len(s) > max_chars:
-        return (
-            s[:max_chars] + "\n... (gekuerzt, volles Schema liegt im Dienst)"
-        )
+        return s[:max_chars] + "\n... (gekuerzt, volles Schema liegt im Dienst)"
     return s

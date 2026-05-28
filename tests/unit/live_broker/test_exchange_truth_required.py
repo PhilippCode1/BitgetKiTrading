@@ -34,7 +34,9 @@ def _ctx() -> LivePreflightContext:
 
 
 def test_exchange_truth_missing_blocks_submit() -> None:
-    decision = evaluate_live_preflight(replace(_ctx(), reconcile_ok=False, bitget_readiness_ok=False))
+    decision = evaluate_live_preflight(
+        replace(_ctx(), reconcile_ok=False, bitget_readiness_ok=False)
+    )
     assert decision.submit_allowed is False
     assert "reconcile_not_ok" in decision.blocking_reasons
     assert "bitget_readiness_not_ok" in decision.blocking_reasons

@@ -71,9 +71,7 @@ def build_app() -> FastAPI:
     @app.post("/internal/v1/commit-war-room")
     def commit_war_room(
         body: CommitWarRoomBody,
-        _auth: InternalServiceAuthContext = Depends(  # noqa: B008
-            require_internal
-        ),
+        _auth: InternalServiceAuthContext = Depends(require_internal),  # noqa: B008
     ) -> dict[str, Any]:
         try:
             out: CommitResult = repo.commit_war_room(
@@ -103,9 +101,7 @@ def build_app() -> FastAPI:
     @app.post("/internal/v1/apex-latency/upsert")
     def upsert_apex_latency(
         body: ApexLatencyUpsertBody,
-        _auth: InternalServiceAuthContext = Depends(  # noqa: B008
-            require_internal
-        ),
+        _auth: InternalServiceAuthContext = Depends(require_internal),  # noqa: B008
     ) -> dict[str, Any]:
         try:
             repo.upsert_apex_latency(
@@ -118,7 +114,10 @@ def build_app() -> FastAPI:
             logger.exception("upsert_apex_latency failed")
             raise HTTPException(
                 status_code=500,
-                detail={"code": "APEX_LATENCY_UPSERT_FAILED", "message": str(exc)[:800]},
+                detail={
+                    "code": "APEX_LATENCY_UPSERT_FAILED",
+                    "message": str(exc)[:800],
+                },
             ) from exc
         return {
             "ok": True,
@@ -129,9 +128,7 @@ def build_app() -> FastAPI:
     @app.get("/internal/v1/apex-latency/by-signal/{signal_id}")
     def get_apex_by_signal(
         signal_id: str,
-        _auth: InternalServiceAuthContext = Depends(  # noqa: B008
-            require_internal
-        ),
+        _auth: InternalServiceAuthContext = Depends(require_internal),  # noqa: B008
     ) -> dict[str, Any]:
         try:
             row = repo.fetch_apex_by_signal_id(signal_id)
@@ -142,7 +139,10 @@ def build_app() -> FastAPI:
                 detail={"code": "APEX_LATENCY_QUERY_FAILED", "message": str(exc)[:800]},
             ) from exc
         if row is None:
-            raise HTTPException(status_code=404, detail={"code": "NOT_FOUND", "message": "unknown signal_id"})
+            raise HTTPException(
+                status_code=404,
+                detail={"code": "NOT_FOUND", "message": "unknown signal_id"},
+            )
         return {
             "ok": True,
             "signal_id": str(row.get("signal_id") or signal_id),
@@ -156,9 +156,7 @@ def build_app() -> FastAPI:
     @app.get("/internal/v1/verify-chain")
     def verify_chain(
         limit: int = 0,
-        _auth: InternalServiceAuthContext = Depends(  # noqa: B008
-            require_internal
-        ),
+        _auth: InternalServiceAuthContext = Depends(require_internal),  # noqa: B008
     ) -> dict[str, Any]:
         if limit and limit > 0:
             ok, errors, n, first_bad = repo.verify_chain_last_n(n=limit)
@@ -180,9 +178,7 @@ def build_app() -> FastAPI:
     @app.post("/internal/v1/regulatory-report.pdf")
     def regulatory_report_pdf(
         body: RegulatoryExportBody,
-        _auth: InternalServiceAuthContext = Depends(  # noqa: B008
-            require_internal
-        ),
+        _auth: InternalServiceAuthContext = Depends(require_internal),  # noqa: B008
     ) -> Response:
         rows = repo.list_entries_for_export(
             from_iso=body.period_from_iso,

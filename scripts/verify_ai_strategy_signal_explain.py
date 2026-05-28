@@ -31,7 +31,9 @@ def load_dotenv(path: Path) -> dict[str, str]:
         k, _, v = line.partition("=")
         key = k.strip()
         val = v.strip()
-        if (val.startswith('"') and val.endswith('"')) or (val.startswith("'") and val.endswith("'")):
+        if (val.startswith('"') and val.endswith('"')) or (
+            val.startswith("'") and val.endswith("'")
+        ):
             val = val[1:-1]
         out[key] = val
     return out
@@ -61,10 +63,18 @@ def http_get_json(
 
 
 def orch_base_url(env: dict[str, str]) -> str:
-    b = (env.get("LLM_ORCH_BASE_URL") or os.environ.get("LLM_ORCH_BASE_URL") or "").strip().rstrip("/")
+    b = (
+        (env.get("LLM_ORCH_BASE_URL") or os.environ.get("LLM_ORCH_BASE_URL") or "")
+        .strip()
+        .rstrip("/")
+    )
     if b:
         return b
-    h = (env.get("HEALTH_URL_LLM_ORCHESTRATOR") or os.environ.get("HEALTH_URL_LLM_ORCHESTRATOR") or "").strip()
+    h = (
+        env.get("HEALTH_URL_LLM_ORCHESTRATOR")
+        or os.environ.get("HEALTH_URL_LLM_ORCHESTRATOR")
+        or ""
+    ).strip()
     if h:
         u = h.rstrip("/")
         lu = u.lower()
@@ -104,7 +114,9 @@ def http_post_json(
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--env-file", type=Path, default=Path(".env.local"))
-    p.add_argument("--mode", choices=("orchestrator", "gateway"), default="orchestrator")
+    p.add_argument(
+        "--mode", choices=("orchestrator", "gateway"), default="orchestrator"
+    )
     p.add_argument(
         "--probe-health",
         action="store_true",
@@ -168,7 +180,10 @@ def main() -> int:
         gw = (ge("API_GATEWAY_URL") or f"http://{bind}:8000").rstrip("/")
         auth = ge("DASHBOARD_GATEWAY_AUTHORIZATION")
         if not auth:
-            print("FEHLT: DASHBOARD_GATEWAY_AUTHORIZATION fuer --mode gateway", file=sys.stderr)
+            print(
+                "FEHLT: DASHBOARD_GATEWAY_AUTHORIZATION fuer --mode gateway",
+                file=sys.stderr,
+            )
             return 1
         url = f"{gw}/v1/llm/operator/strategy-signal-explain"
         hdrs = {"Authorization": auth}
@@ -200,12 +215,18 @@ def main() -> int:
 
     prov = payload.get("provider")
     mod = payload.get("model")
-    tt = payload.get("provenance", {}).get("task_type") if isinstance(payload.get("provenance"), dict) else "n/a"
+    tt = (
+        payload.get("provenance", {}).get("task_type")
+        if isinstance(payload.get("provenance"), dict)
+        else "n/a"
+    )
     print(f"OK provider={prov} model={mod} task_type={tt}")
     print("strategy_explanation_de (first 240 chars):")
     print(expl[:240] + ("…" if len(expl) > 240 else ""))
     if prov == "fake" and "[TEST-PROVIDER" not in expl:
-        print("WARN: fake provider but text lacks [TEST-PROVIDER] marker", file=sys.stderr)
+        print(
+            "WARN: fake provider but text lacks [TEST-PROVIDER] marker", file=sys.stderr
+        )
     return 0
 
 

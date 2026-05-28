@@ -31,12 +31,18 @@ def _onchain_whale_pressure(context: dict[str, Any]) -> float:
     p = float(oc.get("onchain_whale_pressure_0_1") or 0.0)
     recent = oc.get("recent_onchain_whale_events_json") or []
     if isinstance(recent, list) and recent:
-        vol = sum(float(x.get("estimated_volume_usd") or 0) for x in recent if isinstance(x, dict))
+        vol = sum(
+            float(x.get("estimated_volume_usd") or 0)
+            for x in recent
+            if isinstance(x, dict)
+        )
         p = max(p, min(1.0, vol / 5_000_000.0))
     return max(0.0, min(1.0, p))
 
 
-def _merge_social_sentiment_context(raw: dict[str, Any], context: dict[str, Any]) -> None:
+def _merge_social_sentiment_context(
+    raw: dict[str, Any], context: dict[str, Any]
+) -> None:
     sc = context.get("social_context") or {}
     if not isinstance(sc, dict) or not sc:
         return
@@ -44,8 +50,7 @@ def _merge_social_sentiment_context(raw: dict[str, Any], context: dict[str, Any]
         roll = float(
             sc.get("rolling_sentiment_score")
             if sc.get("rolling_sentiment_score") is not None
-            else sc.get("sentiment_score")
-            or 0.0
+            else sc.get("sentiment_score") or 0.0
         )
     except (TypeError, ValueError):
         return
@@ -95,7 +100,12 @@ def _merge_news_shock_flag(raw: dict[str, Any], context: dict[str, Any]) -> None
     shock = bool(news_obj.get("news_shock"))
     if not shock:
         try:
-            shock = float(news_obj.get("sentiment_score") or news_obj.get("sentiment") or 0.0) <= -0.85
+            shock = (
+                float(
+                    news_obj.get("sentiment_score") or news_obj.get("sentiment") or 0.0
+                )
+                <= -0.85
+            )
         except (TypeError, ValueError):
             shock = False
     sp = raw.get("signal_proposal")
@@ -126,10 +136,12 @@ class MacroAnalystAgent(BaseTradingAgent):
 
     async def analyze(self, context: dict[str, Any]) -> dict[str, Any]:
         news = context.get("news_context") or context.get("news") or {}
-        news_json = json.dumps(news, ensure_ascii=False, default=str)[: self._settings.llm_max_prompt_chars]
-        social_json = json.dumps(context.get("social_context") or {}, ensure_ascii=False, default=str)[
-            : self._settings.llm_max_prompt_chars // 6
+        news_json = json.dumps(news, ensure_ascii=False, default=str)[
+            : self._settings.llm_max_prompt_chars
         ]
+        social_json = json.dumps(
+            context.get("social_context") or {}, ensure_ascii=False, default=str
+        )[: self._settings.llm_max_prompt_chars // 6]
         prompt = (
             "Du bist der Macro-Analyst der MARL-Flotte.\n"
             "Nutze die folgende Instruktionsschicht (Governance), den NEWS_KONTEXT und optional ONCHAIN_KONTEXT.\n"
@@ -188,7 +200,9 @@ class MacroAnalystAgent(BaseTradingAgent):
             _merge_onchain_whale_context(msg, context)
             return self._finalize(msg)
 
-    def _offline_payload(self, news_excerpt: str, note: str | None = None) -> dict[str, Any]:
+    def _offline_payload(
+        self, news_excerpt: str, note: str | None = None
+    ) -> dict[str, Any]:
         rationale = (
             "Kein OpenAI-Aufruf (fehlender Key oder Fehler). "
             "News-Kontext wurde nicht LLM-bewertet; nur Platzhalter-Signal."
@@ -197,11 +211,16 @@ class MacroAnalystAgent(BaseTradingAgent):
             rationale = f"{rationale} Technisch: {note[:500]}"
         shock = False
         try:
-            news_obj = json.loads(news_excerpt) if news_excerpt.strip().startswith("{") else {}
+            news_obj = (
+                json.loads(news_excerpt) if news_excerpt.strip().startswith("{") else {}
+            )
         except json.JSONDecodeError:
             news_obj = {}
         if isinstance(news_obj, dict):
-            shock = bool(news_obj.get("news_shock")) or float(news_obj.get("sentiment_score") or 0.0) <= -0.85
+            shock = (
+                bool(news_obj.get("news_shock"))
+                or float(news_obj.get("sentiment_score") or 0.0) <= -0.85
+            )
         return {
             "schema_version": "agent-comm-v1",
             "agent_id": self.agent_id,
@@ -216,7 +235,10 @@ class MacroAnalystAgent(BaseTradingAgent):
                     "news_digest_chars": len(news_excerpt),
                     "news_shock": shock,
                     "governance_ref": str(
-                        Path("shared") / "prompts" / "tasks" / "admin_operations_assist.instruction_de.txt"
+                        Path("shared")
+                        / "prompts"
+                        / "tasks"
+                        / "admin_operations_assist.instruction_de.txt"
                     ),
                 },
             },

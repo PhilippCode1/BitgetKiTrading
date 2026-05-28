@@ -1,15 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+import sys
 import time
 from collections.abc import Awaitable, Callable
+from pathlib import Path
 from typing import cast
 from unittest.mock import MagicMock, patch
 
 import httpx
-
-import sys
-from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 ME_SRC = REPO_ROOT / "services" / "monitor-engine" / "src"
@@ -23,8 +22,7 @@ from monitor_engine.checks import services_http as m
 def test_parse_worker_heartbeat_ts() -> None:
     now = 1_700_000_000.0
     body = (
-        "# HELP h\n"
-        f'worker_heartbeat_timestamp{{service="feature_engine"}} {now}\n'
+        "# HELP h\n" f'worker_heartbeat_timestamp{{service="feature_engine"}} {now}\n'
     )
     assert m._parse_worker_heartbeat_ts(body, "feature_engine") == now
     assert m._parse_worker_heartbeat_ts(body, "other") is None
@@ -45,7 +43,9 @@ def test_metrics_probe_degraded_only_after_degrade_grace() -> None:
         if u.endswith("/metrics"):
             return httpx.Response(200, text=mtext, request=httpx.Request("GET", u))
         if u.endswith("/health"):
-            return httpx.Response(200, json={"status": "ok"}, request=httpx.Request("GET", u))
+            return httpx.Response(
+                200, json={"status": "ok"}, request=httpx.Request("GET", u)
+            )
         if u.endswith("/ready"):
             return httpx.Response(
                 200, json={"ready": True, "checks": {}}, request=httpx.Request("GET", u)
@@ -81,7 +81,9 @@ def test_metrics_probe_warn_only_in_window() -> None:
         if u.endswith("/metrics"):
             return httpx.Response(200, text=mtext, request=httpx.Request("GET", u))
         if u.endswith("/health"):
-            return httpx.Response(200, json={"status": "ok"}, request=httpx.Request("GET", u))
+            return httpx.Response(
+                200, json={"status": "ok"}, request=httpx.Request("GET", u)
+            )
         if u.endswith("/ready"):
             return httpx.Response(
                 200, json={"ready": True, "checks": {}}, request=httpx.Request("GET", u)
@@ -92,6 +94,7 @@ def test_metrics_probe_warn_only_in_window() -> None:
     client.get = cast(Callable[..., Awaitable[httpx.Response]], fake_get)
 
     with patch.object(m.logger, "warning") as wlog:
+
         async def _go() -> None:
             return await m.probe_service(
                 cast(httpx.AsyncClient, client),

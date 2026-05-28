@@ -8,7 +8,7 @@ import {
 import { upstreamFetchFailedResponse } from "@/lib/gateway-upstream";
 
 export async function GET(req: Request) {
-  const auth = requireOperatorGatewayAuth();
+  const auth = requireOperatorGatewayAuth(req.headers);
   if (!auth.ok) return auth.response;
   const incoming = new URL(req.url);
   const sp = new URLSearchParams();

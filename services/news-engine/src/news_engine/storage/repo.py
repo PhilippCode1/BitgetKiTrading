@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
@@ -17,7 +17,9 @@ logger = logging.getLogger("news_engine.repo")
 
 
 class NewsRepository:
-    def __init__(self, database_url: str, *, logger_: logging.Logger | None = None) -> None:
+    def __init__(
+        self, database_url: str, *, logger_: logging.Logger | None = None
+    ) -> None:
         self._database_url = database_url
         self._logger = logger_ or logger
 
@@ -111,7 +113,9 @@ class NewsRepository:
             out.append(d)
         return out
 
-    def fetch_pending_scoring(self, *, scoring_version: str, limit: int) -> list[dict[str, Any]]:
+    def fetch_pending_scoring(
+        self, *, scoring_version: str, limit: int
+    ) -> list[dict[str, Any]]:
         sql = """
         SELECT id, news_id::text AS news_id, title, description, content, source, url,
                published_ts_ms, raw_json
@@ -220,4 +224,4 @@ class NewsRepository:
 
 
 def utc_now_ms() -> int:
-    return int(datetime.now(tz=timezone.utc).timestamp() * 1000)
+    return int(datetime.now(tz=UTC).timestamp() * 1000)

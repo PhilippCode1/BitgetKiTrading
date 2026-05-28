@@ -30,7 +30,9 @@ def _redact_secret_like_values(value: Any) -> Any:
         out: dict[str, Any] = {}
         for key, raw in value.items():
             lowered = str(key).lower()
-            if any(token in lowered for token in ("secret", "token", "password", "key")):
+            if any(
+                token in lowered for token in ("secret", "token", "password", "key")
+            ):
                 out[key] = "***REDACTED***"
             else:
                 out[key] = _redact_secret_like_values(raw)
@@ -57,7 +59,9 @@ def build_markdown(records: list[AssetGovernanceRecord]) -> str:
         if item.state in {"delisted", "suspended"} or not item.bitget_status_clear
     ]
     live_allowed = [
-        item.symbol for item in records if item.state == "live_allowed" and not live_block_reasons(item)
+        item.symbol
+        for item in records
+        if item.state == "live_allowed" and not live_block_reasons(item)
     ]
     blocked = [item.symbol for item in records if live_block_reasons(item)]
     quarantine = [item.symbol for item in records if item.state == "quarantine"]
@@ -77,23 +81,38 @@ def build_markdown(records: list[AssetGovernanceRecord]) -> str:
             "",
             "## Live erlaubt",
             "",
-            *([f"- `{symbol}`" for symbol in live_allowed] or ["- Keine live_allowed Assets ohne Blocker."]),
+            *(
+                [f"- `{symbol}`" for symbol in live_allowed]
+                or ["- Keine live_allowed Assets ohne Blocker."]
+            ),
             "",
             "## Blockierte Assets",
             "",
-            *([f"- `{symbol}`" for symbol in blocked] or ["- Keine blockierten Assets."]),
+            *(
+                [f"- `{symbol}`" for symbol in blocked]
+                or ["- Keine blockierten Assets."]
+            ),
             "",
             "## Quarantaene-Assets",
             "",
-            *([f"- `{symbol}`" for symbol in quarantine] or ["- Keine Assets in Quarantaene."]),
+            *(
+                [f"- `{symbol}`" for symbol in quarantine]
+                or ["- Keine Assets in Quarantaene."]
+            ),
             "",
             "## Assets mit fehlender Evidence",
             "",
-            *([f"- `{symbol}`" for symbol in with_missing_evidence] or ["- Keine offenen Evidence-Luecken."]),
+            *(
+                [f"- `{symbol}`" for symbol in with_missing_evidence]
+                or ["- Keine offenen Evidence-Luecken."]
+            ),
             "",
             "## Assets mit Delisting/Suspension-Risiko",
             "",
-            *([f"- `{symbol}`" for symbol in risk_assets] or ["- Kein Delisting/Suspension-Risiko sichtbar."]),
+            *(
+                [f"- `{symbol}`" for symbol in risk_assets]
+                or ["- Kein Delisting/Suspension-Risiko sichtbar."]
+            ),
             "",
             "## Naechste Freigabeaufgaben fuer Philipp",
             "",

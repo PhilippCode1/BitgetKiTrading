@@ -20,12 +20,17 @@ for candidate in (REPO_ROOT, LIVE_BROKER_SRC, SHARED_SRC):
 
 from live_broker.config import LiveBrokerSettings
 from live_broker.execution.models import ExecutionIntentRequest
-from live_broker.execution.risk_adapter import RISK_VPIN_HALT, build_live_trade_risk_decision
+from live_broker.execution.risk_adapter import (
+    RISK_VPIN_HALT,
+    build_live_trade_risk_decision,
+)
 from live_broker.execution.service import LiveExecutionService
 
 
 class _FakeRepoVpin:
-    def list_latest_exchange_snapshots(self, snapshot_type: str, *, symbol=None, limit: int = 200):
+    def list_latest_exchange_snapshots(
+        self, snapshot_type: str, *, symbol=None, limit: int = 200
+    ):
         if snapshot_type == "account":
             return [
                 {

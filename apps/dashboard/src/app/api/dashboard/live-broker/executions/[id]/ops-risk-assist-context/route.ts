@@ -13,7 +13,7 @@ export async function GET(
   req: Request,
   ctx: { params: Promise<{ id: string }> },
 ) {
-  const auth = requireOperatorGatewayAuth();
+  const auth = requireOperatorGatewayAuth(req.headers);
   if (!auth.ok) return auth.response;
 
   const { id: executionId } = await ctx.params;
@@ -38,7 +38,10 @@ export async function GET(
     });
     const text = await res.text();
     const ct = res.headers.get("content-type") ?? "application/json";
-    return new NextResponse(text, { status: res.status, headers: { "Content-Type": ct } });
+    return new NextResponse(text, {
+      status: res.status,
+      headers: { "Content-Type": ct },
+    });
   } catch (e) {
     return upstreamFetchFailedResponse(e);
   }

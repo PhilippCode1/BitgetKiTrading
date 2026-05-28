@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from monitor_engine.checks.live_broker import build_live_broker_service_checks
 
 
 def _status_map(snapshot: dict) -> dict[str, str]:
-    now = datetime(2026, 3, 26, 12, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 3, 26, 12, 0, tzinfo=UTC)
     checks = build_live_broker_service_checks(
         snapshot,
         now_ms=int(now.timestamp() * 1000),
@@ -17,7 +17,7 @@ def _status_map(snapshot: dict) -> dict[str, str]:
 
 
 def test_live_broker_checks_flag_stale_reconcile() -> None:
-    now = datetime(2026, 3, 26, 12, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 3, 26, 12, 0, tzinfo=UTC)
     statuses = _status_map(
         {
             "latest_reconcile": {
@@ -39,7 +39,7 @@ def test_live_broker_checks_flag_stale_reconcile() -> None:
 
 
 def test_live_broker_checks_flag_active_service_kill_switch() -> None:
-    now = datetime(2026, 3, 26, 12, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 3, 26, 12, 0, tzinfo=UTC)
     statuses = _status_map(
         {
             "latest_reconcile": {
@@ -67,7 +67,7 @@ def test_live_broker_checks_flag_active_service_kill_switch() -> None:
 
 
 def test_live_broker_checks_flag_recent_critical_audit() -> None:
-    now = datetime(2026, 3, 26, 12, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 3, 26, 12, 0, tzinfo=UTC)
     statuses = _status_map(
         {
             "latest_reconcile": {
@@ -95,7 +95,7 @@ def test_live_broker_checks_flag_recent_critical_audit() -> None:
 
 
 def test_shadow_live_check_degraded_when_gate_blocks_under_require_flag() -> None:
-    now = datetime(2026, 3, 26, 12, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 3, 26, 12, 0, tzinfo=UTC)
     checks = build_live_broker_service_checks(
         {
             "latest_reconcile": {

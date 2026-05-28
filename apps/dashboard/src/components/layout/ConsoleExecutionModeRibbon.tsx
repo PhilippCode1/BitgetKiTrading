@@ -25,7 +25,9 @@ function ribbonClass(tier: ExecutionTierSnapshot | null | undefined): string {
 function ribbonHelpLinks(t: (k: string) => string) {
   return (
     <div className="console-execution-tier__links muted small">
-      <Link href={consolePath("health")}>{t("console.executionTier.linkHealth")}</Link>
+      <Link href={consolePath("health")}>
+        {t("console.executionTier.linkHealth")}
+      </Link>
       <span className="console-execution-tier__sep">·</span>
       <Link href={consolePath("diagnostics")}>
         {t("console.executionTier.linkDiagnostics")}
@@ -59,7 +61,9 @@ export async function ConsoleExecutionModeRibbon({
         </span>
         {healthLoadHint ? (
           <span className="console-execution-tier__hint muted small">
-            {t("console.executionTier.healthFailedHint", { hint: healthLoadHint })}
+            {t("console.executionTier.healthFailedHint", {
+              hint: healthLoadHint,
+            })}
           </span>
         ) : null}
         {ribbonHelpLinks(t)}

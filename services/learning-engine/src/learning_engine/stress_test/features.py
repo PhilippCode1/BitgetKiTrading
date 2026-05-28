@@ -30,6 +30,7 @@ def features_from_ams_moments(moments: dict[str, Any], toxicity: float) -> np.nd
 
 def features_from_signal_row_fallback(signal_row: dict[str, Any]) -> np.ndarray:
     """Live-Fallback (ohne AMS-Momente): skalierte Signal-Scores als Proxy."""
+
     def _n(key: str) -> float:
         try:
             return float(signal_row.get(key) or 0.0) / 100.0

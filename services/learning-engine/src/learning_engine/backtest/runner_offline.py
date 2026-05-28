@@ -8,18 +8,23 @@ from typing import Any
 from uuid import UUID, uuid4
 
 import psycopg
+from shared_py.replay_determinism import (
+    normalized_timeframes,
+    stable_offline_backtest_run_id,
+)
 
 from learning_engine.backtest import metrics as bt_metrics
+from learning_engine.backtest.determinism_manifest import (
+    build_offline_backtest_manifest,
+)
 from learning_engine.backtest.splits import (
     Range,
     purged_kfold_embargo_indices,
     range_bounds_for_indices,
     walk_forward_indices,
 )
-from learning_engine.backtest.determinism_manifest import build_offline_backtest_manifest
 from learning_engine.config import LearningEngineSettings
 from learning_engine.storage import repo_backtest
-from shared_py.replay_determinism import normalized_timeframes, stable_offline_backtest_run_id
 
 logger = logging.getLogger("learning_engine.backtest.offline")
 
@@ -139,7 +144,10 @@ def run_offline_backtest(
             conn, symbol=symbol, from_ts_ms=from_ts_ms, to_ts_ms=to_ts_ms
         )
         ranges = [
-            Range(int(e.get("decision_ts_ms") or e["opened_ts_ms"]), int(e["closed_ts_ms"]))
+            Range(
+                int(e.get("decision_ts_ms") or e["opened_ts_ms"]),
+                int(e["closed_ts_ms"]),
+            )
             for e in evals
         ]
         if cv_method == "purged_kfold_embargo":

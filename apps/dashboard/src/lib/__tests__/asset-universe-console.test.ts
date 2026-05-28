@@ -74,7 +74,10 @@ function firstRow(items: MarketUniverseInstrumentItem[]): AssetConsoleRow {
 describe("asset-universe-console", () => {
   it("asset unbekannt -> live blockiert", () => {
     const row = firstRow([
-      baseInstrument("XUNKUSDT", { trading_status: "unknown", live_execution_enabled: false }),
+      baseInstrument("XUNKUSDT", {
+        trading_status: "unknown",
+        live_execution_enabled: false,
+      }),
     ]);
     expect(row.liveReady).toBe(false);
     expect(row.modeAllowed).not.toBe("Live bereit");
@@ -82,8 +85,12 @@ describe("asset-universe-console", () => {
   });
 
   it("asset delisted/suspended -> live blockiert", () => {
-    const delisted = firstRow([baseInstrument("XDELUSDT", { trading_status: "delisted" })]);
-    const suspended = firstRow([baseInstrument("XSUSUSDT", { trading_status: "suspended" })]);
+    const delisted = firstRow([
+      baseInstrument("XDELUSDT", { trading_status: "delisted" }),
+    ]);
+    const suspended = firstRow([
+      baseInstrument("XSUSUSDT", { trading_status: "suspended" }),
+    ]);
     expect(delisted.liveReady).toBe(false);
     expect(suspended.liveReady).toBe(false);
     expect(delisted.assetTier).toBe(5);
@@ -91,7 +98,9 @@ describe("asset-universe-console", () => {
   });
 
   it("futures ohne ProductType -> live blockiert", () => {
-    const row = firstRow([baseInstrument("XNOPRODUSDT", { product_type: null })]);
+    const row = firstRow([
+      baseInstrument("XNOPRODUSDT", { product_type: null }),
+    ]);
     expect(row.liveReady).toBe(false);
     expect(row.blockReasons.join(" ")).toContain("ProductType");
   });

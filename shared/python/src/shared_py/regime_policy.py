@@ -64,17 +64,29 @@ REGIME_PLAYBOOK_POLICIES: tuple[RegimePlaybookPolicy, ...] = (
         regime_state="trend",
         allowed_playbook_families=["trend_continuation", "pullback", "breakout"],
         blocked_playbook_families=["mean_reversion", "range_rotation"],
-        specialist_bias=["family_specialists", "regime_specialists", "playbook_specialists"],
+        specialist_bias=[
+            "family_specialists",
+            "regime_specialists",
+            "playbook_specialists",
+        ],
     ),
     RegimePlaybookPolicy(
         regime_state="mean_reverting",
-        allowed_playbook_families=["mean_reversion", "range_rotation", "liquidity_sweep"],
+        allowed_playbook_families=[
+            "mean_reversion",
+            "range_rotation",
+            "liquidity_sweep",
+        ],
         blocked_playbook_families=["trend_continuation", "breakout"],
         specialist_bias=["mean_reversion_specialists", "microstructure_specialists"],
     ),
     RegimePlaybookPolicy(
         regime_state="compression",
-        allowed_playbook_families=["volatility_compression_expansion", "breakout", "time_window_effect"],
+        allowed_playbook_families=[
+            "volatility_compression_expansion",
+            "breakout",
+            "time_window_effect",
+        ],
         blocked_playbook_families=["carry_funding"],
         specialist_bias=["regime_specialists", "playbook_specialists"],
     ),
@@ -127,7 +139,11 @@ REGIME_PLAYBOOK_POLICIES: tuple[RegimePlaybookPolicy, ...] = (
     ),
     RegimePlaybookPolicy(
         regime_state="funding_skewed",
-        allowed_playbook_families=["carry_funding", "time_window_effect", "trend_continuation"],
+        allowed_playbook_families=[
+            "carry_funding",
+            "time_window_effect",
+            "trend_continuation",
+        ],
         blocked_playbook_families=["range_rotation"],
         specialist_bias=["family_specialists", "carry_specialists"],
     ),
@@ -151,7 +167,9 @@ REGIME_POLICY_HASH = hashlib.sha256(
         {
             "ontology_version": REGIME_ONTOLOGY_VERSION,
             "routing_policy_version": REGIME_ROUTING_POLICY_VERSION,
-            "policies": [item.model_dump(mode="json") for item in REGIME_PLAYBOOK_POLICIES],
+            "policies": [
+                item.model_dump(mode="json") for item in REGIME_PLAYBOOK_POLICIES
+            ],
         },
         sort_keys=True,
         separators=(",", ":"),
@@ -162,7 +180,7 @@ REGIME_POLICY_HASH = hashlib.sha256(
 def get_regime_playbook_policy(regime_state: str | None) -> RegimePlaybookPolicy | None:
     if not regime_state:
         return None
-    return _POLICY_BY_STATE.get(str(regime_state).strip())
+    return _POLICY_BY_STATE.get(str(regime_state).strip())  # type: ignore
 
 
 def regime_policy_descriptor() -> dict[str, object]:

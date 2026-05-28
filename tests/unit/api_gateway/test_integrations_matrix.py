@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from types import SimpleNamespace
-
 from datetime import UTC, datetime
+from types import SimpleNamespace
 
 from api_gateway.integrations_matrix import (
     build_integrations_matrix_payload,

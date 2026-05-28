@@ -2,6 +2,7 @@
 Prometheus-Metriken fuer LLM-Provider: Token, Latenz (SLO/p95), Fehler.
 Exponiert via /metrics (instrument_fastapi).
 """
+
 from __future__ import annotations
 
 from typing import Literal
@@ -230,14 +231,10 @@ def record_llm_error(error_code: str, provider: str) -> None:
 def record_parsing_error(
     task_type: str | None, kind: Literal["json_decode", "schema_validation"]
 ) -> None:
-    llm_parsing_errors_total.labels(
-        SERVICE, norm_task_type(task_type), kind
-    ).inc()
+    llm_parsing_errors_total.labels(SERVICE, norm_task_type(task_type), kind).inc()
 
 
 def record_structured_run_outcome(
     task_type: str | None, outcome: Literal["success", "failure"]
 ) -> None:
-    llm_structured_runs_total.labels(
-        SERVICE, norm_task_type(task_type), outcome
-    ).inc()
+    llm_structured_runs_total.labels(SERVICE, norm_task_type(task_type), outcome).inc()

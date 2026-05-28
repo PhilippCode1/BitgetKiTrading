@@ -290,7 +290,9 @@ class LLMOrchestratorSettings(BaseServiceSettings):
     def _war_room_timeout(cls, v: float) -> float:
         x = float(v)
         if not 1.0 <= x <= 120.0:
-            raise ValueError("WAR_ROOM_AGENT_TIMEOUT_SEC muss zwischen 1 und 120 liegen")
+            raise ValueError(
+                "WAR_ROOM_AGENT_TIMEOUT_SEC muss zwischen 1 und 120 liegen"
+            )
         return x
 
     @model_validator(mode="after")

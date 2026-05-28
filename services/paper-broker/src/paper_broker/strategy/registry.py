@@ -3,10 +3,14 @@ from __future__ import annotations
 from typing import Any
 
 from paper_broker.config import PaperBrokerSettings
-from paper_broker.strategy.strategies.breakout_box import BreakoutBoxStrategy
-from paper_broker.strategy.strategies.mean_reversion_micro import MeanReversionMicroStrategy
-from paper_broker.strategy.strategies.trend_continuation import TrendContinuationStrategy
 from paper_broker.strategy.strategies.base import StrategyV1
+from paper_broker.strategy.strategies.breakout_box import BreakoutBoxStrategy
+from paper_broker.strategy.strategies.mean_reversion_micro import (
+    MeanReversionMicroStrategy,
+)
+from paper_broker.strategy.strategies.trend_continuation import (
+    TrendContinuationStrategy,
+)
 
 
 def is_strategy_registry_allowlisted(

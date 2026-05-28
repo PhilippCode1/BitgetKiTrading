@@ -5,7 +5,7 @@ import { fetchGatewayUpstream } from "@/lib/gateway-upstream-fetch";
 import { upstreamFetchFailedResponse } from "@/lib/gateway-upstream";
 
 export async function POST(req: Request) {
-  const auth = requireOperatorGatewayAuth();
+  const auth = requireOperatorGatewayAuth(req.headers);
   if (!auth.ok) return auth.response;
   let body: unknown;
   try {

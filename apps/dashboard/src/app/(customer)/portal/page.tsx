@@ -1,4 +1,5 @@
 import { CustomerBffStatePanel } from "@/components/portal/CustomerBffStatePanel";
+import { CustomerPortalQuickNav } from "@/components/portal/CustomerPortalQuickNav";
 import { getCustomerPortalSummary } from "@/lib/customer-portal-summary";
 import { getServerTranslator } from "@/lib/i18n/server-translate";
 
@@ -18,6 +19,9 @@ export default async function CustomerPortalHomePage() {
         <p className="muted" style={{ marginTop: "0.75rem" }}>
           {t("customerPortal.overviewBffNote")}
         </p>
+      </div>
+      <div style={{ marginTop: 16 }}>
+        <CustomerPortalQuickNav />
       </div>
       <div style={{ marginTop: 16 }}>
         <CustomerBffStatePanel summary={summary} />

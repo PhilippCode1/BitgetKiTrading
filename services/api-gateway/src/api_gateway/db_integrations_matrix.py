@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import psycopg
@@ -30,12 +30,12 @@ def fetch_integration_connectivity_map(
         out[key] = {
             "last_status": d.get("last_status"),
             "last_error_public": d.get("last_error_public"),
-            "last_success_ts": d["last_success_ts"].isoformat()
-            if d.get("last_success_ts")
-            else None,
-            "last_failure_ts": d["last_failure_ts"].isoformat()
-            if d.get("last_failure_ts")
-            else None,
+            "last_success_ts": (
+                d["last_success_ts"].isoformat() if d.get("last_success_ts") else None
+            ),
+            "last_failure_ts": (
+                d["last_failure_ts"].isoformat() if d.get("last_failure_ts") else None
+            ),
             "probe_detail_json": d.get("probe_detail_json") or {},
             "updated_ts": d["updated_ts"].isoformat() if d.get("updated_ts") else None,
         }
@@ -53,13 +53,15 @@ def upsert_integration_connectivity_batch(
     Bei health_status=ok wird last_success_ts gesetzt und last_error_public geleert.
     Bei error/degraded/misconfigured: last_failure_ts + Fehlertext (gekuerzt).
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     for r in rows:
         key = str(r["integration_key"])
         st = str(r.get("health_status") or "unknown")
         err_raw = r.get("error_public")
         err_s = (str(err_raw).strip()[:2000] if err_raw is not None else None) or None
-        detail = r.get("probe_detail") if isinstance(r.get("probe_detail"), dict) else {}
+        detail = (
+            r.get("probe_detail") if isinstance(r.get("probe_detail"), dict) else {}
+        )
         prev_row = conn.execute(
             """
             SELECT last_success_ts, last_failure_ts, last_error_public

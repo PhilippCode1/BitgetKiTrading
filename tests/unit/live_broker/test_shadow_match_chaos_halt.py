@@ -1,4 +1,5 @@
 """Prompt 72: bei Redis-Ausfall vor Shadow-Read: Fail-Closed + in-process Halt."""
+
 from __future__ import annotations
 
 import sys
@@ -14,7 +15,10 @@ if str(LB) not in sys.path:
     sys.path.insert(0, str(LB))
 
 from live_broker.config import LiveBrokerSettings  # noqa: E402
-from live_broker.exceptions import GlobalHaltException, ShadowDivergenceError  # noqa: E402
+from live_broker.exceptions import (  # noqa: E402
+    GlobalHaltException,
+    ShadowDivergenceError,
+)
 from live_broker.global_halt_latch import GlobalHaltLatch  # noqa: E402
 from live_broker.orders.models import OrderCreateRequest  # noqa: E402
 from live_broker.orders.service import LiveBrokerOrderService  # noqa: E402
@@ -60,9 +64,7 @@ def test_get_shadow_unavailable_activates_latch_and_raises(  # noqa: D103
                 order_type="market",
                 source_execution_decision_id=eid,
             )
-            svc = LiveBrokerOrderService(
-                s2, repo, ex, bus=None, global_halt=latch
-            )
+            svc = LiveBrokerOrderService(s2, repo, ex, bus=None, global_halt=latch)
             with pytest.raises(ShadowDivergenceError) as e:
                 svc._assert_live_open_governance(  # noqa: SLF001
                     req,

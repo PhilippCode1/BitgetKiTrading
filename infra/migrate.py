@@ -53,7 +53,9 @@ def iter_migration_sql_paths(migrations_dir: Path) -> list[Path]:
     sortiert nach numerischem Praefix, dann Dateiname.
     """
     if not migrations_dir.is_dir():
-        raise RuntimeError(f"Migrationsverzeichnis fehlt oder ist kein Ordner: {migrations_dir}")
+        raise RuntimeError(
+            f"Migrationsverzeichnis fehlt oder ist kein Ordner: {migrations_dir}"
+        )
     out: list[Path] = []
     for p in migrations_dir.iterdir():
         if not p.is_file():
@@ -153,7 +155,9 @@ def run_migrations(
                     name = file_path.name
                     if name in applied:
                         skipped_count += 1
-                        _emit(emit, f"[migrate] skip file={name} reason=already_applied")
+                        _emit(
+                            emit, f"[migrate] skip file={name} reason=already_applied"
+                        )
                         continue
 
                     try:

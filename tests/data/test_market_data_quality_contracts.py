@@ -39,7 +39,14 @@ def test_good_data_quality_pass() -> None:
 def test_candle_gap_fail() -> None:
     candles = [
         {"ts_ms": 1000, "open": 10, "high": 11, "low": 9, "close": 10.5, "volume": 1},
-        {"ts_ms": 5000, "open": 10.5, "high": 11.5, "low": 10, "close": 11, "volume": 1},
+        {
+            "ts_ms": 5000,
+            "open": 10.5,
+            "high": 11.5,
+            "low": 10,
+            "close": 11,
+            "volume": 1,
+        },
     ]
     ok, reasons = detect_candle_gaps(candles, 1000)
     assert ok is False
@@ -81,7 +88,10 @@ def test_funding_stale_warning_or_block() -> None:
 
 
 def test_unknown_status_fail_closed() -> None:
-    assert asset_data_quality_blocks_live(quality_status="data_unknown", block_reasons=[]) is True
+    assert (
+        asset_data_quality_blocks_live(quality_status="data_unknown", block_reasons=[])
+        is True
+    )
 
 
 def test_runtime_evidence_required_for_live_allowed() -> None:

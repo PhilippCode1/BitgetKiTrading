@@ -25,7 +25,9 @@ class ToxicityClassifier:
                 logger.warning("Toxizitaets-Modell nicht ladbar: %s", exc)
                 self._clf = None
         elif self._path:
-            logger.debug("Toxizitaets-Modell-Pfad gesetzt aber Datei fehlt: %s", self._path)
+            logger.debug(
+                "Toxizitaets-Modell-Pfad gesetzt aber Datei fehlt: %s", self._path
+            )
 
     def predict_trap_proba(self, x: np.ndarray) -> float | None:
         if self._clf is None:

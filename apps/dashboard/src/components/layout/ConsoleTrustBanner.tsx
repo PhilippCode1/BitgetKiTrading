@@ -11,7 +11,10 @@ export function ConsoleTrustBanner() {
     <div className="console-trust-banner" role="status">
       <strong>{t("console.trustBanner.strong")}</strong>{" "}
       {t("console.trustBanner.text")}
-      <p className="muted small console-trust-banner__links" style={{ marginTop: 8 }}>
+      <p
+        className="muted small console-trust-banner__links"
+        style={{ marginTop: 8 }}
+      >
         <Link href={consolePath("diagnostics")}>
           {t("console.trustBanner.linkDiagnostics")}
         </Link>
@@ -20,7 +23,9 @@ export function ConsoleTrustBanner() {
           {t("console.trustBanner.linkSelfHealing")}
         </Link>
         {" · "}
-        <Link href={consolePath("health")}>{t("console.trustBanner.linkHealth")}</Link>
+        <Link href={consolePath("health")}>
+          {t("console.trustBanner.linkHealth")}
+        </Link>
       </p>
     </div>
   );

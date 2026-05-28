@@ -53,7 +53,9 @@ def compute_stop_quality(
     return score, warnings
 
 
-def estimate_rr(entry: Decimal, side: str, stop_price: Decimal, tp_plan: dict[str, Any]) -> Decimal | None:
+def estimate_rr(
+    entry: Decimal, side: str, stop_price: Decimal, tp_plan: dict[str, Any]
+) -> Decimal | None:
     tgs = tp_plan.get("targets") or []
     if not tgs:
         return None

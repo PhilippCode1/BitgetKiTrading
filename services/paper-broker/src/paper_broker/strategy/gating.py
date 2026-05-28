@@ -34,7 +34,9 @@ class GateConfig:
     min_projected_rr: float = 0.0
 
 
-def should_auto_trade(signal: dict[str, Any], cfg: GateConfig) -> tuple[bool, list[str]]:
+def should_auto_trade(
+    signal: dict[str, Any], cfg: GateConfig
+) -> tuple[bool, list[str]]:
     decision = evaluate_trade_risk(
         signal=signal,
         limits=TradeRiskLimits(
@@ -61,23 +63,32 @@ def should_auto_trade(signal: dict[str, Any], cfg: GateConfig) -> tuple[bool, li
         mode="paper",
         requested_tier=(
             str(signal.get("asset_risk_tier") or signal.get("asset_tier"))
-            if signal.get("asset_risk_tier") is not None or signal.get("asset_tier") is not None
+            if signal.get("asset_risk_tier") is not None
+            or signal.get("asset_tier") is not None
             else None
         ),
-        volatility_0_1=_to_float(signal.get("asset_volatility_0_1") or signal.get("volatility_0_1"), 0.0),
+        volatility_0_1=_to_float(
+            signal.get("asset_volatility_0_1") or signal.get("volatility_0_1"), 0.0
+        ),
         spread_bps=_to_float(signal.get("spread_bps"), 0.0),
-        data_quality_status=str(signal.get("asset_data_quality_status") or "data_unknown"),
+        data_quality_status=str(
+            signal.get("asset_data_quality_status") or "data_unknown"
+        ),
         liquidity_status=str(signal.get("asset_liquidity_status") or "unknown"),
         strategy_evidence_ready=bool(signal.get("strategy_evidence_ready")),
         owner_approved=bool(signal.get("owner_approved")),
         account_context_fresh=bool(signal.get("account_context_fresh")),
-        requested_leverage=_to_int(signal.get("recommended_leverage") or signal.get("allowed_leverage"), 1),
+        requested_leverage=_to_int(
+            signal.get("recommended_leverage") or signal.get("allowed_leverage"), 1
+        ),
         requested_notional_usdt=_to_float(signal.get("proposed_notional_usdt"), 0.0),
         delisted=bool(signal.get("asset_delisted")),
         suspended=bool(signal.get("asset_suspended")),
     )
     if asset_gate.get("blocked"):
-        reasons.extend(f"asset_risk:{reason}" for reason in asset_gate.get("reasons_json", []))
+        reasons.extend(
+            f"asset_risk:{reason}" for reason in asset_gate.get("reasons_json", [])
+        )
         reasons = list(dict.fromkeys(reasons))
     return (len(reasons) == 0, reasons)
 

@@ -17,7 +17,9 @@ def analyze() -> dict[str, object]:
     lb_test = ROOT / "tests" / "live_broker" / "test_reconcile_truth_contracts.py"
     tool_test = ROOT / "tests" / "tools" / "test_check_reconcile_truth.py"
     lb_doc = ROOT / "services" / "live-broker" / "README.md"
-    main_console = ROOT / "docs" / "production_10_10" / "main_console_product_direction.md"
+    main_console = (
+        ROOT / "docs" / "production_10_10" / "main_console_product_direction.md"
+    )
     no_go = ROOT / "docs" / "production_10_10" / "no_go_rules.md"
 
     for path, code, msg in (
@@ -29,29 +31,78 @@ def analyze() -> dict[str, object]:
         (tool_test, "tool_test_missing", "Tool-Test fehlt."),
     ):
         if not path.is_file():
-            issues.append({"severity": "error", "code": code, "message": msg, "path": str(path)})
+            issues.append(
+                {"severity": "error", "code": code, "message": msg, "path": str(path)}
+            )
 
     if lb_doc.is_file():
         if "reconcile" not in lb_doc.read_text(encoding="utf-8").lower():
-            issues.append({"severity": "error", "code": "live_broker_doc_reconcile_missing", "message": "Live-Broker-Doku referenziert Reconcile nicht.", "path": str(lb_doc)})
+            issues.append(
+                {
+                    "severity": "error",
+                    "code": "live_broker_doc_reconcile_missing",
+                    "message": "Live-Broker-Doku referenziert Reconcile nicht.",
+                    "path": str(lb_doc),
+                }
+            )
     else:
-        issues.append({"severity": "error", "code": "live_broker_doc_missing", "message": "Live-Broker-README fehlt.", "path": str(lb_doc)})
+        issues.append(
+            {
+                "severity": "error",
+                "code": "live_broker_doc_missing",
+                "message": "Live-Broker-README fehlt.",
+                "path": str(lb_doc),
+            }
+        )
 
     if main_console.is_file():
         if "reconcile" not in main_console.read_text(encoding="utf-8").lower():
-            issues.append({"severity": "error", "code": "main_console_reconcile_missing", "message": "Main-Console-Doku referenziert Reconcile nicht.", "path": str(main_console)})
+            issues.append(
+                {
+                    "severity": "error",
+                    "code": "main_console_reconcile_missing",
+                    "message": "Main-Console-Doku referenziert Reconcile nicht.",
+                    "path": str(main_console),
+                }
+            )
     else:
-        issues.append({"severity": "error", "code": "main_console_doc_missing", "message": "Main-Console-Doku fehlt.", "path": str(main_console)})
+        issues.append(
+            {
+                "severity": "error",
+                "code": "main_console_doc_missing",
+                "message": "Main-Console-Doku fehlt.",
+                "path": str(main_console),
+            }
+        )
 
     if no_go.is_file():
         text = no_go.read_text(encoding="utf-8").lower()
         if "reconcile-fail" not in text and "reconcile" not in text:
-            issues.append({"severity": "error", "code": "no_go_reconcile_missing", "message": "No-Go-Regeln erwaehnen Reconcile-Fail nicht.", "path": str(no_go)})
+            issues.append(
+                {
+                    "severity": "error",
+                    "code": "no_go_reconcile_missing",
+                    "message": "No-Go-Regeln erwaehnen Reconcile-Fail nicht.",
+                    "path": str(no_go),
+                }
+            )
     else:
-        issues.append({"severity": "error", "code": "no_go_doc_missing", "message": "No-Go-Doku fehlt.", "path": str(no_go)})
+        issues.append(
+            {
+                "severity": "error",
+                "code": "no_go_doc_missing",
+                "message": "No-Go-Doku fehlt.",
+                "path": str(no_go),
+            }
+        )
 
     errors = sum(1 for i in issues if i["severity"] == "error")
-    return {"ok": errors == 0, "error_count": errors, "warning_count": 0, "issues": issues}
+    return {
+        "ok": errors == 0,
+        "error_count": errors,
+        "warning_count": 0,
+        "issues": issues,
+    }
 
 
 def main() -> int:
@@ -63,9 +114,13 @@ def main() -> int:
     if args.json:
         print(json.dumps(payload, indent=2, sort_keys=True))
     else:
-        print(f"check_reconcile_truth: ok={str(payload['ok']).lower()} errors={payload['error_count']} warnings={payload['warning_count']}")
+        print(
+            f"check_reconcile_truth: ok={str(payload['ok']).lower()} errors={payload['error_count']} warnings={payload['warning_count']}"
+        )
         for item in payload["issues"]:
-            print(f"{item['severity'].upper()} {item['code']}: {item['message']} [{item['path']}]")
+            print(
+                f"{item['severity'].upper()} {item['code']}: {item['message']} [{item['path']}]"
+            )
     if payload["error_count"] > 0:
         return 1
     if args.strict and payload["warning_count"] > 0:

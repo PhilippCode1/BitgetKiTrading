@@ -83,7 +83,9 @@ def command_contract_summary() -> dict[str, Any]:
         "contract_version": TELEGRAM_CHAT_CONTRACT_VERSION,
         "allowed_readonly_commands": sorted(READONLY_TELEGRAM_COMMANDS_DOC),
         "allowed_operator_commands": sorted(OPERATOR_TELEGRAM_COMMANDS_DOC),
-        "forbidden_strategy_mutation_verbs": sorted(FORBIDDEN_CHAT_STRATEGY_MUTATION_VERBS),
+        "forbidden_strategy_mutation_verbs": sorted(
+            FORBIDDEN_CHAT_STRATEGY_MUTATION_VERBS
+        ),
         "outbound_message_types": list(CHAT_OUTBOUND_MESSAGE_TYPES),
         "real_money_rules": {
             "bind_to_execution_or_internal_order_id": True,

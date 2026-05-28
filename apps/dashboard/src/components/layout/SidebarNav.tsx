@@ -81,9 +81,13 @@ export function SidebarNav({ showAdminNav, uiMode = "pro" }: Props) {
       ? base
       : base.map((section) => ({
           ...section,
-          links: section.links.filter((link) => link.href !== `${CONSOLE_BASE}/admin`),
+          links: section.links.filter(
+            (link) => link.href !== `${CONSOLE_BASE}/admin`,
+          ),
         }))
-  ).filter((section) => section.links.length > 0) as readonly MainConsoleNavSection[];
+  ).filter(
+    (section) => section.links.length > 0,
+  ) as readonly MainConsoleNavSection[];
 
   return (
     <aside className="dash-sidebar" data-e2e="operator-sidebar">
@@ -120,6 +124,7 @@ export function SidebarNav({ showAdminNav, uiMode = "pro" }: Props) {
                   key={href}
                   href={href}
                   className={active ? "dash-nav-link active" : "dash-nav-link"}
+                  aria-current={active ? "page" : undefined}
                 >
                   {t(messageKey)}
                 </Link>

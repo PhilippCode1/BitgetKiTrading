@@ -61,7 +61,9 @@ def _time_ok() -> httpx.Response:
     )
 
 
-def test_timestamp_exchange_code_retries_then_succeeds(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_timestamp_exchange_code_retries_then_succeeds(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     settings = _settings(monkeypatch)
     sleeps: list[float] = []
     n = {"place": 0}
@@ -117,7 +119,9 @@ def test_timestamp_exchange_code_retries_then_succeeds(monkeypatch: pytest.Monke
     assert len(sleeps) == 1
 
 
-def test_validation_exchange_code_not_retryable(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_validation_exchange_code_not_retryable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     settings = _settings(monkeypatch, LIVE_BROKER_HTTP_MAX_RETRIES="2")
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -156,7 +160,9 @@ def test_validation_exchange_code_not_retryable(monkeypatch: pytest.MonkeyPatch)
     assert ei.value.retryable is False
 
 
-def test_http_503_classified_server_and_retryable(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_http_503_classified_server_and_retryable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     settings = _settings(monkeypatch, LIVE_BROKER_HTTP_MAX_RETRIES="0")
 
     def handler(request: httpx.Request) -> httpx.Response:

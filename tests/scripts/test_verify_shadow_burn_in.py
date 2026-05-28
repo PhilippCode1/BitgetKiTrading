@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
-import json
 from pathlib import Path
 
 from scripts.verify_shadow_burn_in import (
@@ -12,10 +12,11 @@ from scripts.verify_shadow_burn_in import (
     certificate_secret_surface_issues,
 )
 
-
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts" / "verify_shadow_burn_in.py"
-TEMPLATE = ROOT / "docs" / "production_10_10" / "shadow_burn_in_certificate.template.json"
+TEMPLATE = (
+    ROOT / "docs" / "production_10_10" / "shadow_burn_in_certificate.template.json"
+)
 
 
 def test_less_than_72h_fails() -> None:
@@ -25,13 +26,17 @@ def test_less_than_72h_fails() -> None:
 
 
 def test_p0_incident_fails() -> None:
-    verdict, blockers, _warnings = _fixture_verdict({"hours_observed": 72, "p0_incidents": 1})
+    verdict, blockers, _warnings = _fixture_verdict(
+        {"hours_observed": 72, "p0_incidents": 1}
+    )
     assert verdict == "FAIL"
     assert "p0_incident_present" in blockers
 
 
 def test_reconcile_fail_fails() -> None:
-    verdict, blockers, _warnings = _fixture_verdict({"hours_observed": 72, "reconcile_failures": 1})
+    verdict, blockers, _warnings = _fixture_verdict(
+        {"hours_observed": 72, "reconcile_failures": 1}
+    )
     assert verdict == "FAIL"
     assert "reconcile_failures_present" in blockers
 
@@ -113,7 +118,9 @@ def _valid_certificate() -> dict[str, object]:
 
 
 def test_shadow_certificate_template_blocks_live() -> None:
-    status, blockers, warnings = assess_shadow_certificate(build_shadow_certificate_template())
+    status, blockers, warnings = assess_shadow_certificate(
+        build_shadow_certificate_template()
+    )
     assert status == "FAIL"
     assert "duration_hours_missing" in blockers
     assert "session_clusters_less_than_3" in blockers
@@ -137,10 +144,15 @@ def test_shadow_certificate_rejects_72h_fixture_like_duration() -> None:
 
 
 def test_shadow_certificate_rejects_unredacted_secret_surface() -> None:
-    assert certificate_secret_surface_issues({"database_url": "postgresql://u:secret@host/db"}) == [
-        "secret_like_field_not_redacted:database_url"
-    ]
-    assert certificate_secret_surface_issues({"database_url": "[REDACTED]", "api_key": "not_stored_in_repo"}) == []
+    assert certificate_secret_surface_issues(
+        {"database_url": "postgresql://u:secret@host/db"}
+    ) == ["secret_like_field_not_redacted:database_url"]
+    assert (
+        certificate_secret_surface_issues(
+            {"database_url": "[REDACTED]", "api_key": "not_stored_in_repo"}
+        )
+        == []
+    )
 
 
 def test_cli_certificate_template_strict_fails(tmp_path: Path) -> None:

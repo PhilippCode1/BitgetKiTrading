@@ -30,7 +30,8 @@ _KNOWN: dict[str, dict[str, str]] = {
         title="Datenbank nicht erreichbar",
         message=(
             "Das API-Gateway kann Postgres nicht erreichen (Verbindung/DSN). "
-            "Ohne DB sind Migrationen und Kerzen/Signale nicht beurteilbar — das ist ein technischer Fehler, kein „leerer“ Stack."
+            "Ohne DB sind Migrationen und Kerzen/Signale nicht beurteilbar — "
+            "das ist ein technischer Fehler, kein „leerer“ Stack."
         ),
         next_step=(
             "Postgres-Container/DSN pruefen (DATABASE_URL), docker compose ps, Gateway-Logs. "
@@ -42,19 +43,24 @@ _KNOWN: dict[str, dict[str, str]] = {
         title="Kern-Tabellen fehlen (Migrationen)",
         message=(
             "Die Datenbank antwortet, aber erwartete Kern-Tabellen in app/tsdb fehlen. "
-            "Typisch: Migrationen wurden nicht angewendet oder eine teilweise leere DB — nicht mit „noch keine Marktdaten“ verwechseln."
+            "Typisch: Migrationen wurden nicht angewendet oder eine teilweise leere DB — "
+            "nicht mit „noch keine Marktdaten“ verwechseln."
         ),
         next_step=(
-            "`python infra/migrate.py` mit gueltigem DATABASE_URL ausfuehren; danach GET /ready und GET /v1/system/health "
-            "(`database_schema.missing_tables` pruefen). Compose: Migration vor Workern laut docs/stack_readiness.md."
+            "`python infra/migrate.py` mit gueltigem DATABASE_URL ausfuehren; "
+            "danach GET /ready und GET /v1/system/health "
+            "(`database_schema.missing_tables` pruefen). "
+            "Compose: Migration vor Workern laut docs/stack_readiness.md."
         ),
         related_services="postgres, api-gateway",
     ),
     "schema_pending_migrations": _entry(
         title="Ausstehende SQL-Migrationen",
         message=(
-            "In `app.schema_migrations` fehlen Eintraege fuer eine oder mehrere Dateien aus `infra/migrations/postgres/`. "
-            "Das Schema ist hinter dem Repo-Stand zurueck — neue API-Abfragen koennen mit SQL-Fehlern brechen."
+            "In `app.schema_migrations` fehlen Eintraege fuer eine oder mehrere Dateien "
+            "aus `infra/migrations/postgres/`. "
+            "Das Schema ist hinter dem Repo-Stand zurueck — neue API-Abfragen "
+            "koennen mit SQL-Fehlern brechen."
         ),
         next_step=(
             "`python infra/migrate.py` ausfuehren; zweiter Lauf sollte „no pending“ melden. "
@@ -110,7 +116,9 @@ _KNOWN: dict[str, dict[str, str]] = {
     ),
     "stale_candles": _entry(
         title="Kerzendaten sind veraltet",
-        message="Die letzte Kerze ist aelter als die konfigurierte Warnschwelle (Umgebungsvariable DATA_STALE_WARN_MS).",
+        message=(
+            "Die letzte Kerze ist aelter als die konfigurierte Warnschwelle (Umgebungsvariable DATA_STALE_WARN_MS)."
+        ),
         next_step=(
             "Market-Stream und Bitget-/Netzwerk-Pfad pruefen (`docker compose` Logs market-stream). "
             "Lokal: BITGET_DEMO_* und BITGET_SYMBOL setzen, ggf. `docker compose restart market-stream`. "
@@ -127,7 +135,9 @@ _KNOWN: dict[str, dict[str, str]] = {
     "stale_news": _entry(
         title="News sind veraltet",
         message="Die juengste News ist aelter als die konfigurierte Warnschwelle (global, nicht pro Symbol).",
-        next_step="News-Engine und Ingestion pruefen; optional Demo-News via postgres_demo oder Fixture-Mode (Doku 11).",
+        next_step=(
+            "News-Engine und Ingestion pruefen; optional Demo-News via postgres_demo oder Fixture-Mode (Doku 11)."
+        ),
         related_services="news-engine",
     ),
     "live_broker_kill_switch_active": _entry(
@@ -246,17 +256,33 @@ def _enrich_with_ops(
 def _ops_signals(ops_summary: dict[str, Any] | None) -> dict[str, Any]:
     if not ops_summary:
         return {}
-    mon = ops_summary.get("monitor") if isinstance(ops_summary.get("monitor"), dict) else {}
-    ae = ops_summary.get("alert_engine") if isinstance(ops_summary.get("alert_engine"), dict) else {}
-    lb = ops_summary.get("live_broker") if isinstance(ops_summary.get("live_broker"), dict) else {}
+    mon = (
+        ops_summary.get("monitor")
+        if isinstance(ops_summary.get("monitor"), dict)
+        else {}
+    )
+    ae = (
+        ops_summary.get("alert_engine")
+        if isinstance(ops_summary.get("alert_engine"), dict)
+        else {}
+    )
+    lb = (
+        ops_summary.get("live_broker")
+        if isinstance(ops_summary.get("live_broker"), dict)
+        else {}
+    )
     return {
         "open_alert_count": int(mon.get("open_alert_count") or 0) if mon else 0,
         "outbox_failed": int(ae.get("outbox_failed") or 0) if ae else 0,
         "outbox_pending": int(ae.get("outbox_pending") or 0) if ae else 0,
-        "latest_reconcile_status": lb.get("latest_reconcile_status"),
-        "active_kill_switch_count": int(lb.get("active_kill_switch_count") or 0) if lb else 0,
-        "safety_latch_active": bool(lb.get("safety_latch_active")),
-        "critical_audit_count_24h": int(lb.get("critical_audit_count_24h") or 0) if lb else 0,
+        "latest_reconcile_status": lb.get("latest_reconcile_status"),  # type: ignore
+        "active_kill_switch_count": (
+            int(lb.get("active_kill_switch_count") or 0) if lb else 0
+        ),
+        "safety_latch_active": bool(lb.get("safety_latch_active")),  # type: ignore
+        "critical_audit_count_24h": (
+            int(lb.get("critical_audit_count_24h") or 0) if lb else 0
+        ),
     }
 
 
@@ -342,7 +368,7 @@ def build_machine_remediation(
             verify=[
                 "docker compose ps monitor-engine live-broker api-gateway",
                 "curl -sS \"$API_GATEWAY_URL/v1/system/health\" | jq '.warnings,.ops.monitor,.warnings_display'",
-                "psql \"$DATABASE_URL\" -c \"select state, count(*) from ops.alerts group by 1;\"",
+                'psql "$DATABASE_URL" -c "select state, count(*) from ops.alerts group by 1;"',
             ],
         )
 
@@ -362,7 +388,10 @@ def build_machine_remediation(
                     "path": "/v1/alerts/outbox/recent",
                 },
                 {"type": "compose_logs", "services": ["alert-engine"]},
-                {"type": "env_check", "keys": ["TELEGRAM_BOT_TOKEN", "TELEGRAM_BOT_USERNAME"]},
+                {
+                    "type": "env_check",
+                    "keys": ["TELEGRAM_BOT_TOKEN", "TELEGRAM_BOT_USERNAME"],
+                },
             ],
             verify=[
                 "curl -sS \"$API_GATEWAY_URL/v1/system/health\" | jq '.ops.alert_engine'",
@@ -375,8 +404,14 @@ def build_machine_remediation(
             severity="warn" if c == "stale_candles" else "info",
             summary_en="Candle freshness for health symbol is missing or older than DATA_STALE_WARN_MS.",
             actions=[
-                {"type": "compose_logs", "services": ["market-stream", "feature-engine"]},
-                {"type": "env_check", "keys": ["BITGET_UNIVERSE_SYMBOLS", "DATA_STALE_WARN_MS"]},
+                {
+                    "type": "compose_logs",
+                    "services": ["market-stream", "feature-engine"],
+                },
+                {
+                    "type": "env_check",
+                    "keys": ["BITGET_UNIVERSE_SYMBOLS", "DATA_STALE_WARN_MS"],
+                },
             ],
             verify=[
                 "curl -sS \"$API_GATEWAY_URL/v1/system/health\" | jq '.data_freshness,.symbol'",
@@ -388,8 +423,15 @@ def build_machine_remediation(
             problem_id=f"health.{c}",
             severity="warn" if c == "stale_signals" else "info",
             summary_en="Signal freshness for health symbol is missing or stale.",
-            actions=[{"type": "compose_logs", "services": ["signal-engine", "drawing-engine", "structure-engine"]}],
-            verify=["curl -sS \"$API_GATEWAY_URL/v1/system/health\" | jq '.data_freshness'"],
+            actions=[
+                {
+                    "type": "compose_logs",
+                    "services": ["signal-engine", "drawing-engine", "structure-engine"],
+                }
+            ],
+            verify=[
+                "curl -sS \"$API_GATEWAY_URL/v1/system/health\" | jq '.data_freshness'"
+            ],
         )
 
     if c in ("no_news_timestamp", "stale_news"):
@@ -397,7 +439,12 @@ def build_machine_remediation(
             problem_id=f"health.{c}",
             severity="warn" if c == "stale_news" else "info",
             summary_en="News freshness (global max) missing or stale.",
-            actions=[{"type": "compose_logs", "services": ["news-engine", "llm-orchestrator"]}],
+            actions=[
+                {
+                    "type": "compose_logs",
+                    "services": ["news-engine", "llm-orchestrator"],
+                }
+            ],
             verify=[],
         )
 
@@ -414,7 +461,9 @@ def build_machine_remediation(
                 {"type": "http_inspect", "path": "/v1/live-broker/runtime"},
                 {"type": "compose_logs", "services": ["live-broker"]},
             ],
-            verify=["curl -sS \"$API_GATEWAY_URL/v1/system/health\" | jq '.ops.live_broker'"],
+            verify=[
+                "curl -sS \"$API_GATEWAY_URL/v1/system/health\" | jq '.ops.live_broker'"
+            ],
         )
 
     if c.startswith("live_broker_reconcile_"):
@@ -424,7 +473,9 @@ def build_machine_remediation(
             severity="warn",
             summary_en=f"Latest live reconcile snapshot status is not ok: {st!r}.",
             actions=[{"type": "compose_logs", "services": ["live-broker"]}],
-            verify=["curl -sS \"$API_GATEWAY_URL/v1/system/health\" | jq '.ops.live_broker'"],
+            verify=[
+                "curl -sS \"$API_GATEWAY_URL/v1/system/health\" | jq '.ops.live_broker'"
+            ],
             extra_facts={"reconcile_status": st},
         )
 
@@ -453,13 +504,13 @@ def describe_health_warning(
     if c in _KNOWN:
         out_enriched = _enrich_with_ops(c, dict(_KNOWN[c]), ops_summary=ops_summary)
         out_enriched["code"] = c
-        out_enriched["machine"] = build_machine_remediation(c, ops_summary=ops_summary)
+        out_enriched["machine"] = build_machine_remediation(c, ops_summary=ops_summary)  # type: ignore
         return out_enriched
     dyn = _dynamic_reconcile(c)
     if dyn is not None:
         out = dict(dyn)
         out["code"] = c
-        out["machine"] = build_machine_remediation(c, ops_summary=ops_summary)
+        out["machine"] = build_machine_remediation(c, ops_summary=ops_summary)  # type: ignore
         return out
     return {
         "code": c,

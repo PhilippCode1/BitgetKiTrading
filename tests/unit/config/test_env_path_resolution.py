@@ -14,7 +14,13 @@ def test_resolve_standard_env_files_prefers_profile(monkeypatch) -> None:
 
 
 def test_resolve_standard_env_files_prefers_explicit_env_file(monkeypatch) -> None:
-    for key in ("APP_ENV", "STACK_PROFILE", "COMPOSE_ENV_FILE", "ENV_PROFILE_FILE", "PRODUCTION"):
+    for key in (
+        "APP_ENV",
+        "STACK_PROFILE",
+        "COMPOSE_ENV_FILE",
+        "ENV_PROFILE_FILE",
+        "PRODUCTION",
+    ):
         monkeypatch.delenv(key, raising=False)
     monkeypatch.setenv("CONFIG_ENV_FILE", ".env.production")
     from config import paths as paths_module
@@ -25,7 +31,9 @@ def test_resolve_standard_env_files_prefers_explicit_env_file(monkeypatch) -> No
     assert not any(item.endswith(".env.local") for item in resolved)
 
 
-def test_resolve_standard_env_files_skips_local_for_production_profile(monkeypatch) -> None:
+def test_resolve_standard_env_files_skips_local_for_production_profile(
+    monkeypatch,
+) -> None:
     monkeypatch.delenv("COMPOSE_ENV_FILE", raising=False)
     monkeypatch.delenv("CONFIG_ENV_FILE", raising=False)
     monkeypatch.delenv("ENV_PROFILE_FILE", raising=False)
@@ -39,7 +47,9 @@ def test_resolve_standard_env_files_skips_local_for_production_profile(monkeypat
     assert not any(item.endswith(".env.local") for item in resolved)
 
 
-def test_resolve_standard_env_files_skips_local_when_compose_targets_production(monkeypatch) -> None:
+def test_resolve_standard_env_files_skips_local_when_compose_targets_production(
+    monkeypatch,
+) -> None:
     monkeypatch.delenv("APP_ENV", raising=False)
     monkeypatch.delenv("PRODUCTION", raising=False)
     monkeypatch.setenv("COMPOSE_ENV_FILE", ".env.production")
@@ -50,7 +60,9 @@ def test_resolve_standard_env_files_skips_local_when_compose_targets_production(
     assert not any(item.endswith(".env.local") for item in resolved)
 
 
-def test_resolve_standard_env_files_config_env_file_matches_compose(monkeypatch) -> None:
+def test_resolve_standard_env_files_config_env_file_matches_compose(
+    monkeypatch,
+) -> None:
     """CONFIG_ENV_FILE (wie in Compose x-app-runtime-env) hat Vorrang vor APP_ENV-Mapping."""
     monkeypatch.delenv("COMPOSE_ENV_FILE", raising=False)
     monkeypatch.delenv("PRODUCTION", raising=False)

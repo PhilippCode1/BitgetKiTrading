@@ -35,7 +35,9 @@ def load_optional_drift_seed_metadata() -> dict[str, Any] | None:
         raw = (os.environ.get(env_key) or "").strip()
         if raw:
             paths.append(Path(raw))
-    paths.append(_repo_root_guess() / "config" / "seeds" / "drift_metadata_fallback.json")
+    paths.append(
+        _repo_root_guess() / "config" / "seeds" / "drift_metadata_fallback.json"
+    )
     paths.append(Path("/app/config/seeds/drift_metadata_fallback.json"))
 
     seen: set[str] = set()
@@ -87,7 +89,9 @@ def gateway_online_drift_state_response(row: dict[str, Any] | None) -> dict[str,
     return out
 
 
-def learning_engine_online_drift_state_body(row: dict[str, Any] | None) -> dict[str, Any]:
+def learning_engine_online_drift_state_body(
+    row: dict[str, Any] | None,
+) -> dict[str, Any]:
     """
     learning-engine: flache Felder wie bisher, aber 200 statt 503 bei fehlender Zeile.
     """
@@ -97,7 +101,9 @@ def learning_engine_online_drift_state_body(row: dict[str, Any] | None) -> dict[
             "seeded": False,
             "scope": row["scope"],
             "effective_action": row["effective_action"],
-            "computed_at": row["computed_at"].isoformat() if row.get("computed_at") else None,
+            "computed_at": (
+                row["computed_at"].isoformat() if row.get("computed_at") else None
+            ),
             "lookback_minutes": row["lookback_minutes"],
             "breakdown_json": row.get("breakdown_json") or {},
         }

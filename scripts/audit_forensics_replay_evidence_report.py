@@ -19,16 +19,30 @@ for import_path in (ROOT, SHARED_SRC, API_GATEWAY_SRC):
     if str(import_path) not in sys.path:
         sys.path.insert(0, str(import_path))
 
-from scripts.admin_gateway_security_report import build_report_payload as build_admin_gateway_payload  # noqa: E402
-from scripts.main_console_safety_audit_report import build_report_payload as build_main_console_payload  # noqa: E402
+from scripts.admin_gateway_security_report import (
+    build_report_payload as build_admin_gateway_payload,  # noqa: E402
+)
+from scripts.main_console_safety_audit_report import (
+    build_report_payload as build_main_console_payload,  # noqa: E402
+)
 from shared_py.audit_contracts import validate_private_audit_event  # noqa: E402
 from shared_py.replay_summary import build_replay_summary  # noqa: E402
 
-DEFAULT_EXTERNAL_TEMPLATE = ROOT / "docs" / "production_10_10" / "audit_forensics_replay_evidence.template.json"
+DEFAULT_EXTERNAL_TEMPLATE = (
+    ROOT / "docs" / "production_10_10" / "audit_forensics_replay_evidence.template.json"
+)
 
 EXTERNAL_SCHEMA_VERSION = 1
 
-SECRET_LIKE_KEYS = ("api_key", "secret", "passphrase", "token", "password", "authorization", "private_key")
+SECRET_LIKE_KEYS = (
+    "api_key",
+    "secret",
+    "passphrase",
+    "token",
+    "password",
+    "authorization",
+    "private_key",
+)
 
 
 def _load_analyze_private_audit_forensics():
@@ -45,7 +59,9 @@ def _load_analyze_private_audit_forensics():
 
 
 def _now() -> str:
-    return datetime.now(tz=UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return (
+        datetime.now(tz=UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    )
 
 
 def _git_sha() -> str:
@@ -99,7 +115,12 @@ def build_external_evidence_template() -> dict[str, Any]:
 
 
 def _missing_or_template(value: Any) -> bool:
-    return value is None or value == "" or value == [] or str(value).startswith("CHANGE_ME")
+    return (
+        value is None
+        or value == ""
+        or value == []
+        or str(value).startswith("CHANGE_ME")
+    )
 
 
 def _secret_surface_issues(value: Any, path: str = "") -> list[str]:
@@ -108,7 +129,11 @@ def _secret_surface_issues(value: Any, path: str = "") -> list[str]:
         for key, child in value.items():
             child_path = f"{path}.{key}" if path else str(key)
             if any(marker in str(key).lower() for marker in SECRET_LIKE_KEYS):
-                if isinstance(child, str) and child not in {"", "REDACTED", "[REDACTED]"}:
+                if isinstance(child, str) and child not in {
+                    "",
+                    "REDACTED",
+                    "[REDACTED]",
+                }:
                     issues.append(f"{child_path}_not_redacted")
             issues.extend(_secret_surface_issues(child, child_path))
     elif isinstance(value, list):
@@ -137,7 +162,10 @@ def assess_external_evidence(payload: dict[str, Any]) -> dict[str, Any]:
     for key in ("window_start", "window_end", "report_uri"):
         if _missing_or_template(staging.get(key)):
             failures.append(f"staging_replay_{key}_fehlt")
-    if not isinstance(staging.get("trace_ids_sampled"), list) or len(staging.get("trace_ids_sampled") or []) == 0:
+    if (
+        not isinstance(staging.get("trace_ids_sampled"), list)
+        or len(staging.get("trace_ids_sampled") or []) == 0
+    ):
         failures.append("trace_ids_sampled_fehlt")
 
     ledger = payload.get("ledger") or {}
@@ -238,9 +266,17 @@ def build_report_payload(
     internal_issues: list[str] = []
     if not private_audit_surface.get("ok"):
         internal_issues.append("private_audit_forensics_checker_failed")
-    if main_payload.get("missing_visible_gates") or main_payload.get("blocking_failures") or not main_payload.get("secret_safe"):
+    if (
+        main_payload.get("missing_visible_gates")
+        or main_payload.get("blocking_failures")
+        or not main_payload.get("secret_safe")
+    ):
         internal_issues.append("main_console_safety_audit_incomplete")
-    if admin_payload.get("missing_required_scenarios") or admin_payload.get("failures") or not admin_payload.get("secret_safe"):
+    if (
+        admin_payload.get("missing_required_scenarios")
+        or admin_payload.get("failures")
+        or not admin_payload.get("secret_safe")
+    ):
         internal_issues.append("admin_gateway_security_incomplete")
     if not audit_validation.valid:
         internal_issues.append("minimal_audit_event_invalid")
@@ -263,7 +299,9 @@ def build_report_payload(
         },
         "admin_gateway_security_embed": {
             "private_live_decision": admin_payload.get("private_live_decision"),
-            "missing_required_scenarios": admin_payload.get("missing_required_scenarios"),
+            "missing_required_scenarios": admin_payload.get(
+                "missing_required_scenarios"
+            ),
             "failures": admin_payload.get("failures"),
             "secret_safe": admin_payload.get("secret_safe"),
         },
@@ -317,7 +355,9 @@ def render_markdown(payload: dict[str, Any]) -> str:
     ]
     for key, value in payload["replay_scenarios"].items():
         suff = value.get("replay_sufficient")
-        lines.append(f"- `{key}`: replay_sufficient=`{suff}` missing={value.get('missing_steps')}")
+        lines.append(
+            f"- `{key}`: replay_sufficient=`{suff}` missing={value.get('missing_steps')}"
+        )
     lines.extend(
         [
             "",
@@ -341,7 +381,9 @@ def render_markdown(payload: dict[str, Any]) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--external-evidence-json", type=Path, default=DEFAULT_EXTERNAL_TEMPLATE)
+    parser.add_argument(
+        "--external-evidence-json", type=Path, default=DEFAULT_EXTERNAL_TEMPLATE
+    )
     parser.add_argument("--write-template", type=Path)
     parser.add_argument("--output-md", type=Path)
     parser.add_argument("--output-json", type=Path)
@@ -360,16 +402,21 @@ def main(argv: list[str] | None = None) -> int:
     if args.write_template:
         args.write_template.parent.mkdir(parents=True, exist_ok=True)
         args.write_template.write_text(
-            json.dumps(build_external_evidence_template(), indent=2, ensure_ascii=False) + "\n",
+            json.dumps(build_external_evidence_template(), indent=2, ensure_ascii=False)
+            + "\n",
             encoding="utf-8",
         )
-        print(f"audit_forensics_replay_evidence_report: wrote template {args.write_template}")
+        print(
+            f"audit_forensics_replay_evidence_report: wrote template {args.write_template}"
+        )
         return 0
 
     payload = build_report_payload(external_evidence_json=args.external_evidence_json)
     if args.output_json:
         args.output_json.parent.mkdir(parents=True, exist_ok=True)
-        args.output_json.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+        args.output_json.write_text(
+            json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
     if args.output_md:
         args.output_md.parent.mkdir(parents=True, exist_ok=True)
         args.output_md.write_text(render_markdown(payload), encoding="utf-8")
@@ -381,7 +428,10 @@ def main(argv: list[str] | None = None) -> int:
     )
     if args.strict and payload["internal_issues"]:
         return 1
-    if args.strict_external and payload["external_evidence_assessment"]["status"] != "PASS":
+    if (
+        args.strict_external
+        and payload["external_evidence_assessment"]["status"] != "PASS"
+    ):
         return 1
     return 0
 

@@ -11,7 +11,6 @@ from tools.check_env_10_10_safety import (
     validate_env,
 )
 
-
 ROOT = Path(__file__).resolve().parents[2]
 TOOL = ROOT / "tools" / "check_env_10_10_safety.py"
 

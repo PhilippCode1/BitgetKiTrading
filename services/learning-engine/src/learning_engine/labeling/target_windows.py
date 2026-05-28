@@ -75,5 +75,7 @@ def regime_target_stratification_hints(market_regime: str | None) -> dict[str, A
             "Whipsaw-Risiko — MAE relativ zu MFE oft hoeher; Liquidationsnaehe separat beobachten."
         )
     else:
-        hints["notes"].append("Regime unbekannt oder gemischt — konservative Interpretation.")
+        hints["notes"].append(
+            "Regime unbekannt oder gemischt — konservative Interpretation."
+        )
     return hints

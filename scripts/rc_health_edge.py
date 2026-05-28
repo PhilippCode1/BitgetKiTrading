@@ -26,7 +26,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import NoReturn
 
@@ -61,7 +61,9 @@ REQUIRED_INTEGRATION_SERVICES: tuple[str, ...] = (
 # 12 + Meta-/Kernpfade in _run_once => 17+ sichtbare Checks/IDs
 
 
-def _fail(service_id: str, service_name: str, message: str, *, hint: str = "") -> NoReturn:
+def _fail(
+    service_id: str, service_name: str, message: str, *, hint: str = ""
+) -> NoReturn:
     raise RcHealthFailure(service_id, service_name, message, hint=hint)
 
 
@@ -88,7 +90,7 @@ def _get(
         req = urllib.request.Request(url, headers=merged)
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             return resp.status, resp.read()
-    except urllib.error.HTTPError as e:
+    except urllib.error.HTTPError:
         raise
     except OSError as e:
         detail = classify_connection_refused_oserror(e)
@@ -104,13 +106,16 @@ def _json(
     headers: dict[str, str] | None = None,
 ) -> dict:
     try:
-        code, raw = _get(url, service_id, service_name, timeout=timeout, headers=headers)
+        code, raw = _get(
+            url, service_id, service_name, timeout=timeout, headers=headers
+        )
     except urllib.error.HTTPError as e:
         if e.code in (401, 403):
             _fail(
                 service_id,
                 service_name,
-                f"HTTP {e.code} (setze DASHBOARD_GATEWAY_AUTHORIZATION=Bearer <jwt>)" + f" url={url}",
+                f"HTTP {e.code} (setze DASHBOARD_GATEWAY_AUTHORIZATION=Bearer <jwt>)"
+                + f" url={url}",
             )
         _fail(service_id, service_name, f"HTTP {e.code} url={url}")
     if code != 200:
@@ -130,7 +135,7 @@ def _format_gateway_ready_failures(checks: dict) -> list[str]:
         if isinstance(value, dict) and value.get("ok") is False:
             detail = str(value.get("detail", "failed"))[:200]
             failed.append(f"{key}: {detail}")
-        elif isinstance(value, (list, tuple)) and value and not bool(value[0]):
+        elif isinstance(value, list | tuple) and value and not bool(value[0]):
             detail = value[1] if len(value) > 1 else "failed"
             failed.append(f"{key}:{detail}")
     return failed
@@ -249,7 +254,11 @@ def _check_deploy_edge(url: str) -> None:
     pe = d.get("public_endpoints")
     sh = d.get("security_headers")
     if not isinstance(pe, dict) or not isinstance(sh, dict):
-        _fail("edge-readiness", "edge-readiness", "public_endpoints/security_headers fehlen")
+        _fail(
+            "edge-readiness",
+            "edge-readiness",
+            "public_endpoints/security_headers fehlen",
+        )
     print(f"OK  deploy/edge-readiness ({url})")
 
 
@@ -264,9 +273,17 @@ def _run_once(gw: str, dash: str) -> None:
 
     for check_id, label, path in (
         ("read-paper-metrics", "paper-metrics", "/v1/paper/metrics/summary"),
-        ("read-learning-strategies", "learning-metrics", "/v1/learning/metrics/strategies"),
+        (
+            "read-learning-strategies",
+            "learning-metrics",
+            "/v1/learning/metrics/strategies",
+        ),
         ("read-drift-recent", "learning-drift-recent", "/v1/learning/drift/recent"),
-        ("read-drift-online", "learning-drift-online-state", "/v1/learning/drift/online-state"),
+        (
+            "read-drift-online",
+            "learning-drift-online-state",
+            "/v1/learning/drift/online-state",
+        ),
         ("read-monitor-alerts", "monitor-alerts-open", "/v1/monitor/alerts/open"),
         ("read-live-state", "live-state", "/v1/live/state?timeframe=1m"),
     ):
@@ -326,7 +343,11 @@ def _print_markdown_summary(
         f"- **Status**: {'**OK**' if ok else '**FAIL**'}",
         f"- **Laufzeit (s)**: {dur:.1f}",
         f"- **Startup-Budget (RC_HEALTH_STARTUP_BUDGET_SEC / --startup-budget-sec)**: {budget_sec:.0f}",
-        f"- **Stable-Window (s)**: {stable_window_sec:.0f}" if stable_window_sec else "- **Stable-Window (s)**: _aus_",
+        (
+            f"- **Stable-Window (s)**: {stable_window_sec:.0f}"
+            if stable_window_sec
+            else "- **Stable-Window (s)**: _aus_"
+        ),
         f"- **Stress-Modus**: {'ja' if stress else 'nein'}",
         f"- **Anzahl vorgesehene Integrations-Services (system/health)**: {len(REQUIRED_INTEGRATION_SERVICES)} + Gateway/Dashboard/Metadaten/Lesepfade = **17+ Prüfpunkte** im Lauf",
         "",
@@ -478,7 +499,9 @@ def _run_stress(
 
 
 def _parse_args(argv: list[str] | None) -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Edge Release-Candidate Health (Quality Gate).")
+    p = argparse.ArgumentParser(
+        description="Edge Release-Candidate Health (Quality Gate)."
+    )
     p.add_argument(
         "--stress",
         action="store_true",
@@ -526,7 +549,10 @@ def main(argv: list[str] | None = None) -> int:
     stable_tok = str(args.stable_window_sec or "").strip() or env_stable
     stable_window_sec = _parse_sec_token(stable_tok) if stable_tok else 0.0
     if args.stress and stable_window_sec > 0:
-        print("FEHLER: --stress und --stable-window-sec schliessen sich aus.", file=sys.stderr)
+        print(
+            "FEHLER: --stress und --stable-window-sec schliessen sich aus.",
+            file=sys.stderr,
+        )
         return 1
 
     budget = (
@@ -539,7 +565,10 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.stress:
         rc, failure = _run_stress(
-            gw, dash, rounds=int(args.stress_rounds), interval_sec=float(args.stress_interval_sec)
+            gw,
+            dash,
+            rounds=int(args.stress_rounds),
+            interval_sec=float(args.stress_interval_sec),
         )
         _print_markdown_summary(
             ok=rc == 0,

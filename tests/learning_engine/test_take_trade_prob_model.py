@@ -17,7 +17,10 @@ for candidate in (LEARNING_SRC, SHARED_SRC):
 from learning_engine.config import LearningEngineSettings
 from learning_engine.meta_models.take_trade_prob import train_take_trade_prob_model
 from learning_engine.storage import repo_model_runs
-from shared_py.model_contracts import build_feature_snapshot, build_model_output_snapshot
+from shared_py.model_contracts import (
+    build_feature_snapshot,
+    build_model_output_snapshot,
+)
 
 
 @pytest.fixture

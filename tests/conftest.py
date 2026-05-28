@@ -25,6 +25,7 @@ def _isolate_host_live_trade_flag_for_settings(monkeypatch: pytest.MonkeyPatch) 
     # invalidieren, bevor Test-Setups greifen. Explizit LIVE setzende Tests überschreiben weiter.
     monkeypatch.setenv("LIVE_TRADE_ENABLE", "false")
 
+
 _ROOT = Path(__file__).resolve().parent.parent
 
 _rs = str(_ROOT)

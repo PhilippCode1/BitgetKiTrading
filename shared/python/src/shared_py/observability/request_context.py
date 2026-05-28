@@ -79,7 +79,7 @@ class RequestContextLoggingFilter(logging.Filter):
         rid = _ctx_request_id.get(None)
         cid = _ctx_correlation_id.get(None)
         if rid:
-            record.corr_request_id = rid  # type: ignore[attr-defined]
+            record.corr_request_id = rid[attr-defined]
         if cid:
-            record.corr_correlation_id = cid  # type: ignore[attr-defined]
+            record.corr_correlation_id = cid[attr-defined]
         return True

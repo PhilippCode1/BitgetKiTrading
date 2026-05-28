@@ -56,4 +56,9 @@ def test_portfolio_limit_breach_blocks_opening_orders() -> None:
     assert result.allows_next_gate_only is False
     assert len(result.block_reasons) > 0
     assert result.opening_orders_allowed is False
-    assert result.risk_state in {"unknown_blocked", "degraded", "reduce_only", "halt_new_entries"}
+    assert result.risk_state in {
+        "unknown_blocked",
+        "degraded",
+        "reduce_only",
+        "halt_new_entries",
+    }

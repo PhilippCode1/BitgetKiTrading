@@ -12,7 +12,11 @@ import psycopg
 from psycopg.rows import dict_row
 from shared_py.bitget import (
     BitgetInstrumentCatalog,
+    BitgetInstrumentCatalogEntry,
     BitgetInstrumentMetadataService,
+    BitgetInstrumentResolvedMetadata,
+    MarginAccountMode,
+    MarketFamily,
     UnknownInstrumentError,
 )
 from shared_py.eventbus import EventEnvelope, RedisStreamBus
@@ -57,14 +61,17 @@ from live_broker.execution.risk_adapter import (
     RISK_VPIN_HALT,
     build_live_trade_risk_decision,
 )
+from live_broker.tenant_gate import gate_tenant_from_intent
 from live_broker.persistence.repo import LiveBrokerRepository
-from live_broker.private_rest import BitgetRestError
+from live_broker.private_rest import BitgetPrivateRestClient, BitgetRestError
 
 logger = logging.getLogger("live_broker.execution")
 SECURITY = logging.getLogger("live_broker.security")
 
 
-def _intent_under_survival_mode(intent: ExecutionIntentRequest) -> ExecutionIntentRequest:
+def _intent_under_survival_mode(
+    intent: ExecutionIntentRequest,
+) -> ExecutionIntentRequest:
     from shared_py.resilience.survival_kernel import apply_survival_signal_overrides
 
     nested = intent.payload.get("signal_payload")
@@ -133,12 +140,14 @@ class LiveExecutionService:
         repo: LiveBrokerRepository,
         catalog: BitgetInstrumentCatalog | None = None,
         metadata_service: BitgetInstrumentMetadataService | None = None,
+        private_rest_client: BitgetPrivateRestClient | None = None,
     ) -> None:
         self._settings = settings
         self._exchange_client = exchange_client
         self._repo = repo
         self._catalog = catalog
         self._metadata_service = metadata_service
+        self._private_rest_client = private_rest_client or BitgetPrivateRestClient(settings)
         self._truth_state_fn: Callable[[], dict[str, Any]] | None = None
         self._event_bus: RedisStreamBus | None = None
 
@@ -200,14 +209,21 @@ class LiveExecutionService:
         except Exception as rec_err:  # noqa: BLE001 — Sicherheits-Pfad: nie Exchange
             logger.warning("audit_trail SECURITY_INCIDENT failed: %s", rec_err)
 
-    def _assert_db_live_execution_policy(self) -> None:
+    def _assert_db_live_execution_policy(
+        self,
+        intent: ExecutionIntentRequest | None = None,
+    ) -> None:
         """
         Unbedingt vor jeder Bitget-I/O in evaluate_intent (LIVE-Modus).
         Nicht deaktivierbar: MODUL_MATE-Flags gelten u. a. für Orders, nicht
         um MANUAL-Mirror-Live hier zu zirkumventieren.
         """
         dsn = (self._settings.database_url or "").strip()
-        tid = (self._settings.modul_mate_gate_tenant_id or "default").strip()
+        tid = gate_tenant_from_intent(
+            config_tenant_id=self._settings.modul_mate_gate_tenant_id,
+            trace=intent.trace if intent is not None else None,
+            payload=intent.payload if intent is not None else None,
+        )
         if not dsn:
             self._log_security_incident_attempt(
                 reason="database_url_required_for_gates", policy_exc=None, extra={}
@@ -218,9 +234,7 @@ class LiveExecutionService:
                 reason="database_url_required_for_gates",
             )
         try:
-            with psycopg.connect(
-                dsn, row_factory=dict_row, connect_timeout=5
-            ) as conn:
+            with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
                 assert_execution_allowed(conn, tenant_id=tid, mode="LIVE")
         except ExecutionPolicyViolationError as exc:
             self._log_security_incident_attempt(
@@ -228,9 +242,7 @@ class LiveExecutionService:
                 policy_exc=exc,
                 extra={"tenant_id": tid},
             )
-            raise SecurityException(
-                str(exc)[:2000], reason=exc.reason
-            ) from exc
+            raise SecurityException(str(exc)[:2000], reason=exc.reason) from exc
         except Exception as exc:  # noqa: BLE001 — z. B. Verbindung / SQL
             self._log_security_incident_attempt(
                 reason="database_error",
@@ -253,7 +265,10 @@ class LiveExecutionService:
         effective_mode: str,
         risk_decision: dict[str, Any],
     ) -> None:
-        if not self._settings.live_operator_intel_outbox_enabled or self._event_bus is None:
+        if (
+            not self._settings.live_operator_intel_outbox_enabled
+            or self._event_bus is None
+        ):
             return
         ex_id = str(saved.get("execution_id") or "").strip()
         if not ex_id:
@@ -275,13 +290,20 @@ class LiveExecutionService:
                 or risk_decision.get("trade_action")
                 or ""
             )[:220]
-        metrics = risk_decision.get("metrics") if isinstance(risk_decision, dict) else {}
-        lev_allowed = metrics.get("allowed_leverage") if isinstance(metrics, dict) else None
+        metrics = (
+            risk_decision.get("metrics") if isinstance(risk_decision, dict) else {}
+        )
+        lev_allowed = (
+            metrics.get("allowed_leverage") if isinstance(metrics, dict) else None
+        )
         leverage_band = f"intent_lev={intent.leverage} risk_allowed={lev_allowed}"
         sp = self._signal_payload(intent)
         router = _signal_router_arbitration(sp)
         dcf = _signal_decision_control_flow(sp)
-        end_binding = dcf.get("end_decision_binding") if isinstance(dcf.get("end_decision_binding"), dict) else {}
+        raw_end_binding = dcf.get("end_decision_binding")
+        end_binding: dict[str, Any] = (
+            raw_end_binding if isinstance(raw_end_binding, dict) else {}
+        )
         playbook_id = str(sp.get("playbook_id") or "").strip() or None
         regime_guess = str(sp.get("market_regime") or "").strip() or None
         specialist_route = " / ".join(
@@ -295,7 +317,10 @@ class LiveExecutionService:
         stop_fragility = sp.get("stop_fragility_0_1")
         stop_exec = sp.get("stop_executability_0_1")
         if stop_fragility is not None or stop_exec is not None:
-            leverage_band = f"{leverage_band} stop_fragility={stop_fragility} stop_exec={stop_exec}"
+            leverage_band = (
+                f"{leverage_band} stop_fragility={stop_fragility} stop_exec={stop_exec}"
+            )
+        payload_json = saved.get("payload_json")
         pl = build_operator_intel_envelope_payload(
             intel_kind=kind,
             symbol=str(intent.symbol),
@@ -306,11 +331,19 @@ class LiveExecutionService:
             regime=regime_guess,
             risk_summary=risk_summary or None,
             stop_exit_family=(
-                str(end_binding.get("exit_family_effective_primary") or end_binding.get("exit_family_primary") or "").strip()
+                str(
+                    end_binding.get("exit_family_effective_primary")
+                    or end_binding.get("exit_family_primary")
+                    or ""
+                ).strip()
                 or None
             ),
             leverage_band=leverage_band,
-            reasons=[reason, f"effective_mode={effective_mode}", f"requested={requested_mode}"][:10],
+            reasons=[
+                reason,
+                f"effective_mode={effective_mode}",
+                f"requested={requested_mode}",
+            ][:10],
             outcome=f"action={action}",
             execution_id=ex_id,
             signal_id=str(intent.signal_id) if intent.signal_id else None,
@@ -318,10 +351,13 @@ class LiveExecutionService:
             dedupe_key=f"opintel:exec:{ex_id}:{action}",
             dedupe_ttl_minutes=3,
             notes=(
-                f"Live-Submit bleibt operator-gated; Telegram aendert keine Policy. "
-                f"mirror_eligible={saved.get('payload_json', {}).get('live_mirror_eligible')}"
-                if isinstance(saved.get("payload_json"), dict)
-                else "Live-Submit bleibt operator-gated; Telegram aendert keine Policy."
+                "Live-Submit bleibt operator-gated; Telegram aendert keine "
+                "Policy. "
+                f"mirror_eligible={payload_json.get('live_mirror_eligible')}"
+                if isinstance(payload_json, dict)
+                else (
+                    "Live-Submit bleibt operator-gated; Telegram aendert keine Policy."
+                )
             ),
         )
         try:
@@ -342,7 +378,10 @@ class LiveExecutionService:
         symbol: str,
         source: str,
     ) -> None:
-        if not self._settings.live_operator_intel_outbox_enabled or self._event_bus is None:
+        if (
+            not self._settings.live_operator_intel_outbox_enabled
+            or self._event_bus is None
+        ):
             return
         sym = (symbol or "").strip() or "?"
         pl = build_operator_intel_envelope_payload(
@@ -471,9 +510,15 @@ class LiveExecutionService:
             ),
             "monitor_engine_service_name": "live-broker",
             "shadow_path_active": self._settings.shadow_path_active,
-            "live_order_submission_enabled": self._settings.live_order_submission_enabled,
-            "require_shadow_match_before_live": self._settings.require_shadow_match_before_live,
-            "shadow_match_latch_timeout_ms": self._settings.shadow_match_latch_timeout_ms,
+            "live_order_submission_enabled": (
+                self._settings.live_order_submission_enabled
+            ),
+            "require_shadow_match_before_live": (
+                self._settings.require_shadow_match_before_live
+            ),
+            "shadow_match_latch_timeout_ms": (
+                self._settings.shadow_match_latch_timeout_ms
+            ),
             "shadow_match_redis_ttl_sec": self._settings.shadow_match_redis_ttl_sec,
             "shadow_live_thresholds": asdict(self._settings.shadow_live_thresholds()),
             "instrument": self._settings.instrument_identity().model_dump(mode="json"),
@@ -493,7 +538,7 @@ class LiveExecutionService:
         requested_mode = intent_eval.requested_runtime_mode
         effective_mode = self._effective_runtime_mode(requested_mode)
         if effective_mode == "live":
-            self._assert_db_live_execution_policy()
+            self._assert_db_live_execution_policy(intent)
 
         preview = self._exchange_client.build_order_preview(intent_eval)
         probe = (
@@ -503,7 +548,9 @@ class LiveExecutionService:
                 **self._exchange_client.describe(),
                 "public_api_ok": None,
                 "public_detail": "not_requested",
-                "private_api_configured": self._exchange_client.private_api_configured()[0],
+                "private_api_configured": (
+                    self._exchange_client.private_api_configured()[0]
+                ),
                 "private_detail": self._exchange_client.private_api_configured()[1],
                 "market_snapshot": {},
             }
@@ -522,8 +569,9 @@ class LiveExecutionService:
             and vpin_f <= VPIN_HARD_HALT_THRESHOLD_0_1
             and intent_eval.qty_base is not None
         ):
+            reduced_qty = Decimal(intent_eval.qty_base) * Decimal("0.5")
             intent_eval = intent_eval.model_copy(
-                update={"qty_base": intent_eval.qty_base * Decimal("0.5")}
+                update={"qty_base": format(reduced_qty, "f")}
             )
         router_arb = _signal_router_arbitration(signal_payload)
         exit_preview = self._exit_preview(intent_eval)
@@ -544,6 +592,13 @@ class LiveExecutionService:
             payload=pload,
             trace=ttrace,
         )
+
+        # Import preflight leverage verification guard
+        from live_broker.execution.liquidity_guard import verify_preflight_leverage
+
+        exec_mode = str(signal_payload.get("execution_mode") or "STANDARD_FUTURES").strip().upper()
+        leverage_val = int(intent_eval.leverage or 1)
+
         action, reason = self._decide(
             intent_eval,
             requested_mode,
@@ -554,6 +609,21 @@ class LiveExecutionService:
             shadow_path_simulation=False,
             survival_execution_lock=survival_lock,
         )
+
+        # Millisekundengenauer Preflight Check vor jeglicher API-Absendung oder Entscheidungs-Aufzeichnung!
+        if effective_mode == "live" and action == "live_candidate_recorded":
+            if not verify_preflight_leverage(
+                leverage=leverage_val,
+                mode=exec_mode,
+                symbol=intent_eval.symbol,
+                redis_url=str(self._settings.redis_url or ""),
+            ):
+                # Sofortiger Execution Abort bei unautorisiertem Hebel-Verstoß
+                raise SecurityException(
+                    f"EXECUTION_ABORT: Preflight leverage cap violation! Leverage {leverage_val}x "
+                    f"is strictly illegal for mode {exec_mode}.",
+                    reason="leverage_cap_violation",
+                )
 
         shadow_live_report: dict[str, Any] | None = None
         if effective_mode == "live":
@@ -585,7 +655,9 @@ class LiveExecutionService:
                 action, reason = "blocked", "shadow_live_divergence_gate"
         shadow_match_latch: dict[str, Any] = {
             "skipped": True,
-            "require_shadow_match_before_live": self._settings.require_shadow_match_before_live,
+            "require_shadow_match_before_live": (
+                self._settings.require_shadow_match_before_live
+            ),
         }
         if (
             effective_mode == "live"
@@ -603,6 +675,7 @@ class LiveExecutionService:
                     }
                 )
             else:
+                assert prebound_execution_id is not None
                 wait_out = wait_for_shadow_match_latch(
                     str(self._settings.redis_url or ""),
                     prebound_execution_id,
@@ -614,11 +687,9 @@ class LiveExecutionService:
         live_mirror_eligible = bool(
             effective_mode == "live"
             and action == "live_candidate_recorded"
-            and str(signal_payload.get("trade_action") or "").strip().lower() == "allow_trade"
-            and (
-                shadow_live_report is None
-                or bool(shadow_live_report.get("match_ok"))
-            )
+            and str(signal_payload.get("trade_action") or "").strip().lower()
+            == "allow_trade"
+            and (shadow_live_report is None or bool(shadow_live_report.get("match_ok")))
             and (
                 bool(shadow_match_latch.get("skipped"))
                 or bool(shadow_match_latch.get("ok"))
@@ -629,9 +700,13 @@ class LiveExecutionService:
             **intent_eval.payload,
             "note": intent_eval.note,
             "catalog_instrument": (
-                catalog_entry.model_dump(mode="json") if catalog_entry is not None else None
+                catalog_entry.model_dump(mode="json")
+                if catalog_entry is not None
+                else None
             ),
-            "instrument_metadata": metadata.model_dump(mode="json") if metadata is not None else None,
+            "instrument_metadata": (
+                metadata.model_dump(mode="json") if metadata is not None else None
+            ),
             "exchange_preview": preview,
             "exchange_probe": {
                 "public_api_ok": probe.get("public_api_ok"),
@@ -650,7 +725,10 @@ class LiveExecutionService:
                 else {}
             ),
         }
-        if action == "blocked" and str(risk_decision.get("trade_action") or "") == "do_not_trade":
+        if (
+            action == "blocked"
+            and str(risk_decision.get("trade_action") or "") == "do_not_trade"
+        ):
             from shared_py.observability.risk_rejection_inquiry import REJECTED_BY_RISK
 
             me = risk_decision.get("metrics")
@@ -676,6 +754,48 @@ class LiveExecutionService:
                 "engine_metrics": me,
                 "engine_limits": lim,
             }
+
+        # Strikte Python match-case-Struktur basierend auf dem Feld execution_mode (SCHRITT 2)
+        match exec_mode:
+            case "BOT_GRID" | "BOT_DCA":
+                bot_params = signal_payload.get("bot_params") or {}
+                upper_bound = float(bot_params.get("upper_bound") or 0)
+                lower_bound = float(bot_params.get("lower_bound") or 0)
+                grid_count = int(bot_params.get("grid_count") or 2)
+
+                bot_body = {
+                    "symbol": intent_eval.symbol,
+                    "marginCoin": str(self._settings.effective_margin_coin or "USDT"),
+                    "strategyType": "futures_grid",
+                    "leverage": leverage_val,
+                    "upperPrice": upper_bound,
+                    "lowerPrice": lower_bound,
+                    "gridNum": grid_count,
+                }
+
+                if effective_mode == "live" and action == "live_candidate_recorded" and self._settings.strategy_execution_mode == "auto":
+                    try:
+                        logger.info("Auto-execution of Futures Grid Bot initiated for symbol %s", intent_eval.symbol)
+                        bot_resp = self._private_rest_client.create_futures_grid_bot(bot_body, priority=True)
+                        payload_base["bot_creation_response"] = bot_resp.payload
+                        payload_base["bot_created_live"] = True
+                    except Exception as exc:
+                        logger.exception("Failed to auto-create Futures Grid Bot: %s", exc)
+                        raise BitgetRestError(
+                            classification="transport",
+                            message=f"Auto-creation of Futures Grid Bot failed: {exc}",
+                            retryable=False,
+                        ) from exc
+                else:
+                    logger.info("Bot execution mode %s for symbol %s bypassed real submission. mode=%s action=%s strategy=%s", 
+                                exec_mode, intent_eval.symbol, effective_mode, action, self._settings.strategy_execution_mode)
+
+            case "STANDARD_FUTURES" | _:
+                # Für STANDARD_FUTURES wird das Signal über die bewährte manuelle Order-Executionkette (Limit-/Market-Orders) ausgeführt.
+                # Dies bedeutet, dass wir hier keine direkte Order anlegen, sondern die Standard-Aktionen im orders/service.py
+                # greifen lassen, sobald die API routes_ops /orders/create oder /operator-release aufgerufen wird.
+                pass
+
         record: dict[str, Any] = {
             "source_service": intent_eval.source_service,
             "source_signal_id": intent_eval.signal_id,
@@ -730,10 +850,14 @@ class LiveExecutionService:
                 tr = intent_eval.trace if isinstance(intent_eval.trace, dict) else {}
                 forensic = build_live_broker_forensic_snapshot(
                     signal_payload=pay,
-                    risk_decision=risk_decision if isinstance(risk_decision, dict) else None,
-                    shadow_live_report=shadow_live_report
-                    if isinstance(shadow_live_report, dict)
-                    else None,
+                    risk_decision=(
+                        risk_decision if isinstance(risk_decision, dict) else None
+                    ),
+                    shadow_live_report=(
+                        shadow_live_report
+                        if isinstance(shadow_live_report, dict)
+                        else None
+                    ),
                     trace=tr,
                 )
                 self._repo.record_execution_journal(
@@ -753,7 +877,8 @@ class LiveExecutionService:
                 )
             except Exception as exc:
                 logger.warning(
-                    "execution journal execution_decision failed execution_id=%s err=%s",
+                    "execution journal execution_decision failed "
+                    "execution_id=%s err=%s",
                     ex_id,
                     exc,
                 )
@@ -776,7 +901,8 @@ class LiveExecutionService:
                     )
                 except Exception as exc:
                     logger.warning(
-                        "execution journal RISK_VPIN_HALT failed execution_id=%s err=%s",
+                        "execution journal RISK_VPIN_HALT failed "
+                        "execution_id=%s err=%s",
                         ex_id,
                         exc,
                     )
@@ -795,7 +921,8 @@ class LiveExecutionService:
         logger.info(
             (
                 "live-broker decision action=%s reason=%s source=%s symbol=%s "
-                "requested=%s effective=%s mirror_eligible=%s router_id=%s stop_fragility=%s"
+                "requested=%s effective=%s mirror_eligible=%s router_id=%s "
+                "stop_fragility=%s"
             ),
             action,
             reason,
@@ -826,8 +953,10 @@ class LiveExecutionService:
 
     def telegram_operator_release_summary(self, execution_id: str) -> dict[str, Any]:
         """
-        Lesender Snapshot fuer Telegram-Zweistufen-Freigabe (keine Secrets, keine payload_json).
-        Nur bestehende KI-Execution-IDs; Freigabe nur fuer live-Kandidaten ohne bestehendes Release.
+        Lesender Snapshot fuer Telegram-Zweistufen-Freigabe
+        (keine Secrets, keine payload_json).
+        Nur bestehende KI-Execution-IDs; Freigabe nur fuer live-Kandidaten
+        ohne bestehendes Release.
         """
         row = self._repo.get_execution_decision(execution_id)
         if row is None:
@@ -882,7 +1011,9 @@ class LiveExecutionService:
         source: str = "internal-api",
         details: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        allowed_sources = frozenset({"internal-api", "telegram_operator", "manual", "reconcile"})
+        allowed_sources = frozenset(
+            {"internal-api", "telegram_operator", "manual", "reconcile"}
+        )
         src = str(source or "internal-api").strip() or "internal-api"
         if src not in allowed_sources:
             raise BitgetRestError(
@@ -897,6 +1028,55 @@ class LiveExecutionService:
                 message=f"execution_id nicht gefunden: {execution_id}",
                 retryable=False,
             )
+
+        existing_payload = existing.get("payload_json") or {}
+        sig_payload = existing_payload.get("signal_payload") or existing_payload
+        exec_mode = str(sig_payload.get("execution_mode") or "STANDARD_FUTURES").strip().upper()
+        
+        # Falls es sich um ein Bot-Signal handelt, erstellen wir den Bot direkt beim Release (SCHRITT 2)
+        if exec_mode in ("BOT_GRID", "BOT_DCA"):
+            bot_params = sig_payload.get("bot_params") or {}
+            upper_bound = float(bot_params.get("upper_bound") or 0)
+            lower_bound = float(bot_params.get("lower_bound") or 0)
+            grid_count = int(bot_params.get("grid_count") or 2)
+            leverage_val = int(existing.get("leverage") or 1)
+            
+            # Preflight Hebel-Check zur Absicherung beim manuellen Release!
+            from live_broker.execution.liquidity_guard import verify_preflight_leverage
+            if not verify_preflight_leverage(
+                leverage=leverage_val,
+                mode=exec_mode,
+                symbol=str(existing.get("symbol") or "BTCUSDT"),
+                redis_url=str(self._settings.redis_url or ""),
+            ):
+                raise SecurityException(
+                    f"EXECUTION_ABORT: Preflight leverage cap violation on manual release! Leverage {leverage_val}x "
+                    f"is strictly illegal for mode {exec_mode}.",
+                    reason="leverage_cap_violation",
+                )
+            
+            bot_body = {
+                "symbol": str(existing.get("symbol") or "BTCUSDT"),
+                "marginCoin": str(self._settings.effective_margin_coin or "USDT"),
+                "strategyType": "futures_grid",
+                "leverage": leverage_val,
+                "upperPrice": upper_bound,
+                "lowerPrice": lower_bound,
+                "gridNum": grid_count,
+            }
+            
+            try:
+                logger.info("Manual-release execution of Futures Grid Bot initiated for symbol %s", existing.get("symbol"))
+                bot_resp = self._private_rest_client.create_futures_grid_bot(bot_body, priority=True)
+                logger.info("Futures Grid Bot successfully created on manual release. response=%s", bot_resp.payload)
+            except Exception as exc:
+                logger.exception("Failed to create Futures Grid Bot on manual release: %s", exc)
+                raise BitgetRestError(
+                    classification="transport",
+                    message=f"Manual-release creation of Futures Grid Bot failed: {exc}",
+                    retryable=False,
+                ) from exc
+
         rel = self._repo.record_operator_release(
             execution_id=execution_id,
             source=src,
@@ -921,8 +1101,12 @@ class LiveExecutionService:
         )
         return {"ok": True, "release": rel, "execution": existing}
 
-    def list_execution_journal(self, execution_id: str, *, limit: int = 100) -> list[dict[str, Any]]:
-        return self._repo.list_execution_journal_for_execution(execution_id, limit=limit)
+    def list_execution_journal(
+        self, execution_id: str, *, limit: int = 100
+    ) -> list[dict[str, Any]]:
+        return self._repo.list_execution_journal_for_execution(
+            execution_id, limit=limit
+        )
 
     def _persist_apex_latency_telemetry(
         self,
@@ -931,7 +1115,11 @@ class LiveExecutionService:
         execution_id: str | None,
         apex_trace: dict[str, Any],
     ) -> None:
-        if not (signal_id or "").strip() or not isinstance(apex_trace, dict) or not apex_trace:
+        if (
+            not (signal_id or "").strip()
+            or not isinstance(apex_trace, dict)
+            or not apex_trace
+        ):
             return
         body = {
             "signal_id": signal_id,
@@ -939,21 +1127,28 @@ class LiveExecutionService:
             "trace_id": str(apex_trace.get("trace_id") or ""),
             "apex_trace": apex_trace,
         }
-        al = (str(getattr(self._settings, "audit_ledger_internal_url", "") or "").strip())
+        al = str(getattr(self._settings, "audit_ledger_internal_url", "") or "").strip()
         if al:
             try:
                 import urllib.request
 
                 u = f"{al.rstrip('/')}/internal/v1/apex-latency/upsert"
-                data = json.dumps(body, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+                data = json.dumps(
+                    body, ensure_ascii=False, separators=(",", ":")
+                ).encode("utf-8")
                 req = urllib.request.Request(  # noqa: S310
-                    u, data=data, method="POST", headers={"Content-Type": "application/json"}
+                    u,
+                    data=data,
+                    method="POST",
+                    headers={"Content-Type": "application/json"},
                 )
                 with urllib.request.urlopen(req, timeout=5.0) as resp:  # noqa: S310
                     resp.read(1)
                 return
             except Exception as exc:  # pragma: no cover
-                logger.debug("audit_ledger apex-latency upsert failed, fallback to repo: %s", exc)
+                logger.debug(
+                    "audit_ledger apex-latency upsert failed, fallback to repo: %s", exc
+                )
         try:
             self._repo.upsert_apex_latency_audit(
                 signal_id=signal_id,
@@ -983,7 +1178,11 @@ class LiveExecutionService:
                 "apex_trace": apx,
             }
         payload = envelope.payload if isinstance(envelope.payload, dict) else {}
-        instrument = envelope.instrument.model_dump(mode="json") if envelope.instrument is not None else {}
+        instrument = (
+            envelope.instrument.model_dump(mode="json")
+            if envelope.instrument is not None
+            else {}
+        )
         signal_leverage = _coerce_optional_int(
             payload.get("execution_leverage_cap") or payload.get("recommended_leverage")
         )
@@ -1003,8 +1202,17 @@ class LiveExecutionService:
             "signal_execution_leverage_cap": _coerce_optional_int(
                 payload.get("execution_leverage_cap")
             ),
-            "signal_mirror_leverage": _coerce_optional_int(payload.get("mirror_leverage")),
+            "signal_mirror_leverage": _coerce_optional_int(
+                payload.get("mirror_leverage")
+            ),
         }
+        gate_tid = gate_tenant_from_intent(
+            config_tenant_id=self._settings.modul_mate_gate_tenant_id,
+            trace=envelope.trace,
+            payload=payload if isinstance(payload, dict) else None,
+        )
+        if gate_tid:
+            trace_body["tenant_id"] = gate_tid
         if self._settings.live_predatory_passive_maker_default:
             pm0 = trace_body.get("predatory_passive_maker")
             pm0d = dict(pm0) if isinstance(pm0, dict) else {}
@@ -1019,30 +1227,44 @@ class LiveExecutionService:
             bd = dict(base) if isinstance(base, dict) else {}
             trace_body["predatory_passive_maker"] = {**bd, **sig_pm}
         elif sig_pm is True:
-            trace_body["predatory_passive_maker"] = {"enabled": True, "source": "signal_payload"}
-        for k in ("orderflow_imbalance_5", "orderflow_imbalance_10", "orderflow_imbalance_20"):
+            trace_body["predatory_passive_maker"] = {
+                "enabled": True,
+                "source": "signal_payload",
+            }
+        for k in (
+            "orderflow_imbalance_5",
+            "orderflow_imbalance_10",
+            "orderflow_imbalance_20",
+        ):
             if k in payload:
                 trace_body[k] = payload[k]
         intent = ExecutionIntentRequest(
             source_service="signal-engine",
             signal_id=str(payload.get("signal_id") or envelope.event_id),
-            symbol=str(payload.get("symbol") or envelope.symbol or self._settings.symbol),
-            market_family=(
+            symbol=str(
+                payload.get("symbol") or envelope.symbol or self._settings.symbol
+            ),
+            market_family=cast(
+                MarketFamily,
                 str(
                     payload.get("market_family")
                     or instrument.get("market_family")
                     or self._settings.market_family
-                )
+                ),
             ),
-            margin_account_mode=(
+            margin_account_mode=cast(
+                MarginAccountMode,
                 str(
                     payload.get("margin_account_mode")
                     or instrument.get("margin_account_mode")
                     or self._settings.margin_account_mode
-                )
+                ),
             ),
-            timeframe=str(payload.get("timeframe") or envelope.timeframe or "").strip() or None,
-            direction=cast(Any, str(payload.get("direction") or "neutral").strip().lower()),
+            timeframe=str(payload.get("timeframe") or envelope.timeframe or "").strip()
+            or None,
+            direction=cast(
+                Any, str(payload.get("direction") or "neutral").strip().lower()
+            ),
             requested_runtime_mode=(
                 "live" if self._settings.execution_mode == "live" else "shadow"
             ),
@@ -1057,9 +1279,14 @@ class LiveExecutionService:
                 "signal_payload": payload,
                 "event_id": envelope.event_id,
                 "event_type": envelope.event_type,
-                "instrument": instrument or self._settings.instrument_identity().model_dump(mode="json"),
-                "market_family": payload.get("market_family") or instrument.get("market_family") or self._settings.market_family,
-                "margin_account_mode": payload.get("margin_account_mode") or instrument.get("margin_account_mode") or self._settings.margin_account_mode,
+                "instrument": instrument
+                or self._settings.instrument_identity().model_dump(mode="json"),
+                "market_family": payload.get("market_family")
+                or instrument.get("market_family")
+                or self._settings.market_family,
+                "margin_account_mode": payload.get("margin_account_mode")
+                or instrument.get("margin_account_mode")
+                or self._settings.margin_account_mode,
                 "signal_trade_action": payload.get("trade_action"),
                 "signal_allowed_leverage": signal_allowed_leverage,
                 "signal_recommended_leverage": _coerce_optional_int(
@@ -1068,9 +1295,16 @@ class LiveExecutionService:
                 "signal_execution_leverage_cap": _coerce_optional_int(
                     payload.get("execution_leverage_cap")
                 ),
-                "signal_mirror_leverage": _coerce_optional_int(payload.get("mirror_leverage")),
-                "signal_leverage_policy_version": payload.get("leverage_policy_version"),
-                "signal_leverage_cap_reasons_json": payload.get("leverage_cap_reasons_json") or [],
+                "signal_mirror_leverage": _coerce_optional_int(
+                    payload.get("mirror_leverage")
+                ),
+                "signal_leverage_policy_version": payload.get(
+                    "leverage_policy_version"
+                ),
+                "signal_leverage_cap_reasons_json": payload.get(
+                    "leverage_cap_reasons_json"
+                )
+                or [],
             },
             trace=trace_body,
         )
@@ -1145,14 +1379,20 @@ class LiveExecutionService:
         shadow_path_simulation: bool = False,
         survival_execution_lock: bool = False,
     ) -> tuple[str, str]:
-        market_family = str(intent.market_family or self._settings.market_family).strip().lower()
+        market_family = (
+            str(intent.market_family or self._settings.market_family).strip().lower()
+        )
         catalog_entry = self._resolve_catalog_entry(intent)
         if self._catalog is not None and catalog_entry is None:
             return "blocked", "instrument_unknown"
         if self._catalog is not None and not catalog_entry.trading_enabled:
             return "blocked", "instrument_not_tradeable"
         metadata = self._resolve_metadata(intent)
-        if self._metadata_service is not None and metadata is not None and not metadata.trading_enabled_now:
+        if (
+            self._metadata_service is not None
+            and metadata is not None
+            and not metadata.trading_enabled_now
+        ):
             return "blocked", "instrument_session_not_tradeable"
         if intent.symbol not in self._settings.allowed_symbols_set:
             return "blocked", "symbol_not_allowed"
@@ -1160,7 +1400,8 @@ class LiveExecutionService:
             return "blocked", "market_family_not_allowed"
         if (
             market_family == "futures"
-            and self._settings.product_type.upper() not in self._settings.allowed_product_types_set
+            and str(self._settings.product_type or "").upper()
+            not in self._settings.allowed_product_types_set
         ):
             return "blocked", "product_type_not_allowed"
         if intent.direction not in ("long", "short"):
@@ -1170,7 +1411,9 @@ class LiveExecutionService:
         if survival_execution_lock:
             return "blocked", "survival_execution_lock"
         if risk_decision.get("trade_action") == "do_not_trade":
-            return "blocked", str(risk_decision.get("decision_reason") or "shared_risk_blocked")
+            return "blocked", str(
+                risk_decision.get("decision_reason") or "shared_risk_blocked"
+            )
         if effective_mode == "live":
             sig = self._signal_payload(intent)
             lane_raw = sig.get("meta_trade_lane")
@@ -1225,9 +1468,8 @@ class LiveExecutionService:
 
         if not self._settings.live_trade_enable:
             return "blocked", "live_trade_disabled"
-        if (
-            intent.leverage is not None
-            and int(intent.leverage) > int(self._settings.risk_governor_live_ramp_max_leverage)
+        if intent.leverage is not None and int(intent.leverage) > int(
+            self._settings.risk_governor_live_ramp_max_leverage
         ):
             return "blocked", "live_ramp_leverage_cap_exceeded"
         # Globales Halt-Bit (Redis) stoppt reale Submits in orders.service
@@ -1253,11 +1495,19 @@ class LiveExecutionService:
         return dict(intent.payload)
 
     def _exit_preview(self, intent: ExecutionIntentRequest) -> dict[str, Any] | None:
-        entry_price = Decimal(str(intent.entry_price)) if intent.entry_price else Decimal("0")
+        entry_price = (
+            Decimal(str(intent.entry_price)) if intent.entry_price else Decimal("0")
+        )
         stop_loss = Decimal(str(intent.stop_loss)) if intent.stop_loss else Decimal("0")
-        take_profit = Decimal(str(intent.take_profit)) if intent.take_profit else Decimal("0")
+        take_profit = (
+            Decimal(str(intent.take_profit)) if intent.take_profit else Decimal("0")
+        )
         qty_base = Decimal(str(intent.qty_base)) if intent.qty_base else Decimal("0")
-        if intent.direction not in ("long", "short") or entry_price <= 0 or qty_base <= 0:
+        if (
+            intent.direction not in ("long", "short")
+            or entry_price <= 0
+            or qty_base <= 0
+        ):
             return None
         if stop_loss <= 0 and take_profit <= 0:
             return None
@@ -1271,7 +1521,9 @@ class LiveExecutionService:
             ),
             runner_enabled=bool(self._settings.exit_runner_enabled),
             runner_trail_mult=Decimal(str(self._settings.runner_trail_atr_mult)),
-            break_even_after_tp_index=int(self._settings.exit_break_even_after_tp_index),
+            break_even_after_tp_index=int(
+                self._settings.exit_break_even_after_tp_index
+            ),
             hints=hints,
         )
         stop_plan, tp_plan = build_live_exit_plans(
@@ -1307,10 +1559,14 @@ class LiveExecutionService:
             entry_price=entry_price,
             stop_plan=stop_plan,
             tp_plan=tp_plan,
-            leverage=Decimal(str(intent.leverage)) if intent.leverage is not None else None,
+            leverage=(
+                Decimal(str(intent.leverage)) if intent.leverage is not None else None
+            ),
             allowed_leverage=allowed_leverage,
             max_position_risk_pct=self._settings.risk_max_position_risk_pct,
-            risk_trade_action=_opt_text_from_payload(intent.payload, "signal_trade_action"),
+            risk_trade_action=_opt_text_from_payload(
+                intent.payload, "signal_trade_action"
+            ),
             market_family=str(intent.market_family or self._settings.market_family),
             **metadata_ctx,
         )
@@ -1325,7 +1581,7 @@ class LiveExecutionService:
     def _resolve_catalog_entry(
         self,
         intent: ExecutionIntentRequest,
-    ):
+    ) -> BitgetInstrumentCatalogEntry | None:
         if self._catalog is None:
             return self._settings.instrument_identity()
         try:
@@ -1333,9 +1589,13 @@ class LiveExecutionService:
             return self._catalog.resolve(
                 symbol=intent.symbol,
                 market_family=family,
-                product_type=(self._settings.product_type if family == "futures" else None),
+                product_type=(
+                    self._settings.product_type if family == "futures" else None
+                ),
                 margin_account_mode=(
-                    str(intent.margin_account_mode or self._settings.margin_account_mode)
+                    str(
+                        intent.margin_account_mode or self._settings.margin_account_mode
+                    )
                     if family == "margin"
                     else None
                 ),
@@ -1344,7 +1604,9 @@ class LiveExecutionService:
         except UnknownInstrumentError:
             return None
 
-    def _resolve_metadata(self, intent: ExecutionIntentRequest):
+    def _resolve_metadata(
+        self, intent: ExecutionIntentRequest
+    ) -> BitgetInstrumentResolvedMetadata | None:
         if self._metadata_service is None:
             return None
         try:
@@ -1352,9 +1614,13 @@ class LiveExecutionService:
             return self._metadata_service.resolve_metadata(
                 symbol=intent.symbol,
                 market_family=family,
-                product_type=(self._settings.product_type if family == "futures" else None),
+                product_type=(
+                    self._settings.product_type if family == "futures" else None
+                ),
                 margin_account_mode=(
-                    str(intent.margin_account_mode or self._settings.margin_account_mode)
+                    str(
+                        intent.margin_account_mode or self._settings.margin_account_mode
+                    )
                     if family == "margin"
                     else None
                 ),

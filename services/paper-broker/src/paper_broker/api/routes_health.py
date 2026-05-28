@@ -3,14 +3,14 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter
-
-from paper_broker.storage.connection import paper_connect
 from shared_py.observability import (
     append_peer_readiness_checks,
     check_postgres,
     check_redis_url,
     merge_ready_details,
 )
+
+from paper_broker.storage.connection import paper_connect
 
 
 def _instrument_metadata_ready_tuple(
@@ -50,7 +50,9 @@ def build_health_router(runtime: Any) -> APIRouter:
         return {
             "status": (
                 "ok"
-                if db_ok and redis_ok and runtime.metadata_service.health_payload().get("status") == "ok"
+                if db_ok
+                and redis_ok
+                and runtime.metadata_service.health_payload().get("status") == "ok"
                 else "degraded"
             ),
             "service": "paper-broker",
@@ -83,7 +85,8 @@ def build_health_router(runtime: Any) -> APIRouter:
             "eventbus": (eb_ok, eb_detail),
             "instrument_catalog": (
                 runtime.catalog_block_reason is None,
-                runtime.catalog_block_reason or runtime.catalog.health_payload().get("status", "ok"),
+                runtime.catalog_block_reason
+                or runtime.catalog.health_payload().get("status", "ok"),
             ),
             "instrument_metadata": _instrument_metadata_ready_tuple(
                 runtime,

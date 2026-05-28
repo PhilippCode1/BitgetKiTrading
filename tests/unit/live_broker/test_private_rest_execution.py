@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+
 import httpx
 import pytest
 
@@ -32,10 +33,10 @@ def test_bitget_signature_payload_format() -> None:
 
 
 def test_clock_skew_gate_raises() -> None:
+    import os
+
     from live_broker.config import LiveBrokerSettings
     from live_broker.private_rest import BitgetPrivateRestClient, BitgetRestError
-
-    import os
 
     os.environ.setdefault("DATABASE_URL", "postgresql://x:y@127.0.0.1:1/x")
     os.environ.setdefault("REDIS_URL", "redis://127.0.0.1:6379/0")
@@ -78,7 +79,9 @@ def test_auth_exchange_error_not_retried(monkeypatch: pytest.MonkeyPatch) -> Non
     def dispatch(request: httpx.Request) -> httpx.Response:
         calls.append(str(request.url))
         if "/api/v2/public/time" in str(request.url):
-            return httpx.Response(200, json={"code": "00000", "data": {"serverTime": 1_700_000_000_000}})
+            return httpx.Response(
+                200, json={"code": "00000", "data": {"serverTime": 1_700_000_000_000}}
+            )
         return httpx.Response(200, json={"code": "40003", "msg": "invalid sign"})
 
     transport = httpx.MockTransport(dispatch)

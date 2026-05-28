@@ -10,7 +10,10 @@ def test_no_candles_timestamp_german_copy() -> None:
     d = describe_health_warning("no_candles_timestamp")
     assert d["code"] == "no_candles_timestamp"
     assert "Kerzen" in d["title"]
-    assert "market-stream" in d["related_services"].lower() or "Market" in d["related_services"]
+    assert (
+        "market-stream" in d["related_services"].lower()
+        or "Market" in d["related_services"]
+    )
     assert d["machine"]["summary_en"]
     assert d["machine"]["problem_id"] == "health.no_candles_timestamp"
 

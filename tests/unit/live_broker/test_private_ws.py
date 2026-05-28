@@ -3,9 +3,9 @@ from __future__ import annotations
 import json
 
 import pytest
+
 from live_broker.private_ws.client import BitgetPrivateWsClient, PrivateWsClientStats
 from live_broker.private_ws.models import NormalizedPrivateEvent
-
 from shared_py.bitget.config import BitgetSettings
 
 

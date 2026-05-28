@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from shared_py.strategy_asset_evidence import StrategyAssetEvidence, strategy_evidence_blocks_live
+from shared_py.strategy_asset_evidence import (
+    StrategyAssetEvidence,
+    strategy_evidence_blocks_live,
+)
 
 
 def _evidence(**overrides: object) -> StrategyAssetEvidence:

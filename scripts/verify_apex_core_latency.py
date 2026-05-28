@@ -21,7 +21,9 @@ import sys
 
 def _load_rust_core_bridge():
     root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-    path = os.path.join(root, "shared", "python", "src", "shared_py", "rust_core_bridge.py")
+    path = os.path.join(
+        root, "shared", "python", "src", "shared_py", "rust_core_bridge.py"
+    )
     spec = importlib.util.spec_from_file_location("rust_core_bridge", path)
     if spec is None or spec.loader is None:
         raise RuntimeError("Konnte rust_core_bridge nicht laden.")

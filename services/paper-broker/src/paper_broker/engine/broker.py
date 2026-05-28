@@ -10,22 +10,30 @@ from uuid import UUID
 
 import psycopg
 import psycopg.errors
-from shared_py.billing_wallet import fetch_prepaid_balance_list_usd, prepaid_allows_new_trade
-from shared_py.customer_telegram_notify import enqueue_customer_notify
+from shared_py.billing_wallet import (
+    fetch_prepaid_balance_list_usd,
+    prepaid_allows_new_trade,
+)
 from shared_py.bitget import BitgetInstrumentCatalog
 from shared_py.bitget.instruments import BitgetInstrumentCatalogEntry
+from shared_py.customer_telegram_notify import enqueue_customer_notify
 from shared_py.eventbus import EventEnvelope, RedisStreamBus
 from shared_py.exit_engine import merge_plan_override, validate_exit_plan
+from shared_py.modul_mate_db_gates import assert_execution_allowed
+from shared_py.product_policy import ExecutionPolicyViolationError
 from shared_py.risk_engine import (
     build_trade_risk_limits,
     compute_position_risk_pct,
     evaluate_trade_risk,
 )
+from shared_py.shadow_live_divergence import (
+    parse_prebound_execution_id,
+    set_shadow_match_latch,
+)
 
 from paper_broker.config import PaperBrokerSettings
 from paper_broker.engine.broker_stop_tp import run_stop_tp_for_position
 from paper_broker.engine.contract_config import ContractConfigProvider
-from paper_broker.engine.order_constraints import validate_paper_base_order_qty
 from paper_broker.engine.fees import calc_transaction_fee_usdt, order_notional_usdt
 from paper_broker.engine.funding import calc_funding_usdt
 from paper_broker.engine.instrument_context import (
@@ -33,6 +41,7 @@ from paper_broker.engine.instrument_context import (
     instrument_hints_from_signal,
 )
 from paper_broker.engine.liquidation import should_liquidate_approx
+from paper_broker.engine.order_constraints import validate_paper_base_order_qty
 from paper_broker.engine.pricing import (
     fetch_bitget_symbol_price,
     latest_ticker_prices,
@@ -67,12 +76,6 @@ from paper_broker.storage import (
     repo_strategy,
 )
 from paper_broker.storage.connection import paper_connect
-from shared_py.modul_mate_db_gates import assert_execution_allowed
-from shared_py.shadow_live_divergence import (
-    parse_prebound_execution_id,
-    set_shadow_match_latch,
-)
-from shared_py.product_policy import ExecutionPolicyViolationError
 
 logger = logging.getLogger("paper_broker.engine")
 
@@ -142,7 +145,9 @@ class PaperBrokerService:
     promoted_strategy_names: set[str] = field(default_factory=set)
 
     def __post_init__(self) -> None:
-        self.contract_provider = ContractConfigProvider(self.settings, catalog=self.catalog)
+        self.contract_provider = ContractConfigProvider(
+            self.settings, catalog=self.catalog
+        )
 
     def set_sim_market(self, st: SimMarketState) -> None:
         self.sim_market = st
@@ -151,7 +156,11 @@ class PaperBrokerService:
         self.sim_funding = st
 
     def _paper_tenant_id(self) -> str:
-        t = self.settings.paper_tenant_id or self.settings.billing_prepaid_tenant_id or "default"
+        t = (
+            self.settings.paper_tenant_id
+            or self.settings.billing_prepaid_tenant_id
+            or "default"
+        )
         t = str(t).strip() or "default"
         return t
 
@@ -163,7 +172,9 @@ class PaperBrokerService:
             return False
         lag = pl.get("pipeline_lag_ms", pl.get("ingest_lag_ms"))
         try:
-            if lag is not None and int(lag) > int(self.settings.paper_pipeline_lag_halt_ms):
+            if lag is not None and int(lag) > int(
+                self.settings.paper_pipeline_lag_halt_ms
+            ):
                 return True
         except (TypeError, ValueError):
             return False
@@ -181,9 +192,7 @@ class PaperBrokerService:
         return volatility_effective_slippage_bps(
             base,
             tick_payload=pl if isinstance(pl, dict) else None,
-            bps_per_atr_0_1=Decimal(
-                str(self.settings.paper_atrp_slippage_bps_per_0_1)
-            ),
+            bps_per_atr_0_1=Decimal(str(self.settings.paper_atrp_slippage_bps_per_0_1)),
             bps_per_vpin_0_1=Decimal(
                 str(self.settings.paper_vpin_slippage_bps_per_0_1)
             ),
@@ -250,7 +259,9 @@ class PaperBrokerService:
             return
         raw = env.payload.get("promoted_strategy_names")
         if not isinstance(raw, list):
-            logger.warning("strategy_registry payload ohne promoted_strategy_names list")
+            logger.warning(
+                "strategy_registry payload ohne promoted_strategy_names list"
+            )
             return
         self.promoted_strategy_names = {str(x) for x in raw if x is not None}
         logger.info(
@@ -266,7 +277,11 @@ class PaperBrokerService:
     def apply_envelope_funding(self, env: EventEnvelope) -> None:
         pl = env.payload
         fr = _dec(pl.get("funding_rate") or pl.get("fundingRate"))
-        nu = pl.get("funding_next_update_ms") or pl.get("nextUpdate") or pl.get("next_funding_time_ms")
+        nu = (
+            pl.get("funding_next_update_ms")
+            or pl.get("nextUpdate")
+            or pl.get("next_funding_time_ms")
+        )
         iv = pl.get("funding_rate_interval") or pl.get("fundingRateInterval")
         hours = 8
         if iv is not None:
@@ -274,7 +289,9 @@ class PaperBrokerService:
                 hours = int(Decimal(str(iv)))
             except Exception:
                 hours = 8
-        nu_int = int(nu) if nu is not None else int(time.time() * 1000) + hours * 3600_000
+        nu_int = (
+            int(nu) if nu is not None else int(time.time() * 1000) + hours * 3600_000
+        )
         if self.sim_funding is None:
             self.sim_funding = SimFundingState()
         self.sim_funding.funding_rate = fr
@@ -301,7 +318,9 @@ class PaperBrokerService:
         m = rest.get("mark_price") or rest.get("last_pr") or Decimal("0")
         return m, rest.get("bid_pr"), rest.get("ask_pr")
 
-    def get_mark_and_fill(self, conn: psycopg.Connection[Any], symbol: str) -> tuple[Decimal, Decimal]:
+    def get_mark_and_fill(
+        self, conn: psycopg.Connection[Any], symbol: str
+    ) -> tuple[Decimal, Decimal]:
         """Mark-Preis und Fill-Proxy (last / last_pr), Bitget-Semantik für Trigger."""
         mark, bid, ask = self.get_mark_and_bid_ask(conn, symbol)
         if self.settings.paper_sim_mode and self.sim_market is not None:
@@ -310,7 +329,9 @@ class PaperBrokerService:
             return mark, fill if fill > 0 else mark
         cached = self._tick_cache.get(symbol.upper())
         if cached:
-            fill = _dec(cached.get("last_pr") or cached.get("last_price") or cached.get("price"))
+            fill = _dec(
+                cached.get("last_pr") or cached.get("last_price") or cached.get("price")
+            )
             if fill <= 0:
                 fill = _dec(cached.get("mark_price")) or mark
             return mark, fill if fill > 0 else mark
@@ -369,10 +390,10 @@ class PaperBrokerService:
             if ok and filled > 0:
                 return avg, "taker"
         bps = self._vol_adjusted_slippage_bps(symbol)
-        ref = mark if mark > 0 else (ask if order_side == "buy" else bid) or Decimal("1")
-        px = apply_slippage_bps(
-            ref, bps, "buy" if order_side == "buy" else "sell"
+        ref = (
+            mark if mark > 0 else (ask if order_side == "buy" else bid) or Decimal("1")
         )
+        px = apply_slippage_bps(ref, bps, "buy" if order_side == "buy" else "sell")
         return px, "taker"
 
     def _close_qty_in_conn(
@@ -407,7 +428,11 @@ class PaperBrokerService:
         if acc is None:
             raise ValueError("account missing")
         equity = _dec(acc["equity"])
-        meta0 = json.loads(pos["meta"]) if isinstance(pos["meta"], str) else (pos["meta"] or {})
+        meta0 = (
+            json.loads(pos["meta"])
+            if isinstance(pos["meta"], str)
+            else (pos["meta"] or {})
+        )
         cfg = self.contract_provider.get(
             symbol,
             conn,
@@ -471,9 +496,7 @@ class PaperBrokerService:
             reason="partial_exit" if new_qty > 0 else "exit",
         )
         new_eq = equity + margin_release + realized - fee
-        repo_accounts.update_account_equity(
-            conn, account_id, new_eq, tenant_id=tid
-        )
+        repo_accounts.update_account_equity(conn, account_id, new_eq, tenant_id=tid)
         st = "partially_closed" if new_qty > 0 else "closed"
         meta = meta0
         repo_positions.update_position_qty_state(
@@ -567,6 +590,217 @@ class PaperBrokerService:
             )
         return aid
 
+    def initialize_paper_grid_bot(
+        self,
+        conn: psycopg.Connection[Any],
+        *,
+        account_id: UUID,
+        symbol: str,
+        side: str,
+        qty_base: Decimal,
+        leverage: Decimal,
+        margin_mode: str,
+        order_type: str,
+        now_ms: int,
+        timeframe: str | None,
+        signal_payload: dict[str, Any],
+        tenant_id: str,
+        acc: dict[str, Any],
+        cfg: Any,
+        fill_px: Decimal,
+        liq: str,
+        fee_rate: Decimal,
+    ) -> dict[str, Any]:
+        s = side.lower()
+        exec_side = "buy" if s == "long" else "sell"
+        bot_params = signal_payload.get("bot_params") or {}
+        upper_bound = _dec(bot_params.get("upper_bound") or (fill_px * Decimal("1.05")))
+        lower_bound = _dec(bot_params.get("lower_bound") or (fill_px * Decimal("0.95")))
+        grid_count = int(bot_params.get("grid_count") or 10)
+        if grid_count < 2:
+            grid_count = 2
+        
+        # Grid-Preise generieren
+        grid_prices = [lower_bound + i * (upper_bound - lower_bound) / (grid_count - 1) for i in range(grid_count)]
+        grid_prices = [p.quantize(Decimal("0.0001")) for p in grid_prices]
+        
+        # Hebel-Begrenzung für Grid Bots: maximal 22x
+        final_leverage = min(leverage, Decimal("22"))
+        
+        notional = order_notional_usdt(qty_base, fill_px)
+        fee = calc_transaction_fee_usdt(qty_base, fill_px, fee_rate)
+        margin = notional / final_leverage
+        
+        # Kontostand prüfen
+        equity = _dec(acc["equity"])
+        account_metrics = build_paper_account_risk_metrics(
+            conn,
+            account_id=account_id,
+            tenant_id=tenant_id,
+            account_row=acc,
+            now_ms=now_ms,
+            projected_margin=margin,
+            projected_fee=fee,
+        )
+        repo_account_ledger.assert_sufficient_paper_cash(
+            available_cash_usdt=account_metrics["available_equity"],
+            initial_margin_usdt=margin,
+            order_fee_usdt=fee,
+        )
+        
+        # Initialer Zustand der Gitterlinien
+        grid_lines_meta = []
+        for p in grid_prices:
+            line_side = "buy" if p < fill_px else "sell"
+            grid_lines_meta.append({
+                "price": format(p, "f"),
+                "side": line_side,
+                "state": "pending",
+                "qty": format(qty_base / Decimal(str(grid_count)), "f")
+            })
+            
+        ex_ctx = {
+            "canonical_instrument_id": f"bitget:futures:usdt-futures:{symbol}",
+            "market_family": "futures",
+            "product_type": "USDT-FUTURES",
+        }
+        
+        position_meta = {
+            "execution_mode": "BOT_GRID",
+            "bot_params": {
+                "upper_bound": format(upper_bound, "f"),
+                "lower_bound": format(lower_bound, "f"),
+                "grid_count": grid_count,
+                "trailing_enabled": bool(bot_params.get("trailing_enabled", False)),
+            },
+            "grid_bot": {
+                "upper_bound": format(upper_bound, "f"),
+                "lower_bound": format(lower_bound, "f"),
+                "grid_count": grid_count,
+                "grid_lines": grid_lines_meta,
+                "last_price": format(fill_px, "f"),
+            },
+            "instrument_catalog_entry": cfg.raw.get("instrument_catalog_entry") if cfg else None,
+            "execution_context": ex_ctx,
+            "requested_leverage": format(final_leverage, "f"),
+            "signal_id": str(signal_payload.get("signal_id")) if signal_payload.get("signal_id") else None,
+        }
+        
+        sig_uid = None
+        if signal_payload.get("signal_id"):
+            try:
+                sig_uid = UUID(str(signal_payload["signal_id"]))
+            except ValueError:
+                sig_uid = None
+                
+        pid = repo_positions.insert_position(
+            conn,
+            account_id=account_id,
+            tenant_id=tenant_id,
+            symbol=symbol,
+            side=s,
+            qty_base=qty_base,
+            entry_price_avg=fill_px,
+            leverage=final_leverage,
+            margin_mode=margin_mode,
+            isolated_margin=margin,
+            state="open",
+            opened_ts_ms=now_ms,
+            updated_ts_ms=now_ms,
+            meta=position_meta,
+            signal_id=sig_uid,
+            canonical_instrument_id=ex_ctx.get("canonical_instrument_id"),
+            market_family=ex_ctx.get("market_family"),
+            product_type=ex_ctx.get("product_type"),
+        )
+        
+        # Initialer Order- und Fill-Eintrag für den Bot-Start
+        oid = repo_orders.insert_order(
+            conn,
+            position_id=pid,
+            otype=order_type,
+            side=exec_side,
+            qty_base=qty_base,
+            limit_price=None,
+            state="filled",
+            created_ts_ms=now_ms,
+            filled_ts_ms=now_ms,
+        )
+        repo_ledgers.insert_fill(
+            conn,
+            order_id=oid,
+            position_id=pid,
+            ts_ms=now_ms,
+            price=fill_px,
+            qty_base=qty_base,
+            liquidity=liq,
+            fee_usdt=fee,
+            notional_usdt=notional,
+        )
+        repo_ledgers.insert_fee_ledger(
+            conn, position_id=pid, ts_ms=now_ms, fee_usdt=fee, reason="entry"
+        )
+        
+        new_eq = equity - margin - fee
+        repo_accounts.update_account_equity(conn, account_id, new_eq, tenant_id=tenant_id)
+        
+        # Position Event
+        repo_position_events.insert_position_event(
+            conn,
+            position_id=pid,
+            ts_ms=now_ms,
+            event_type="POSITION_OPENED",
+            details={
+                "execution_mode": "BOT_GRID",
+                "account_equity_after": str(new_eq),
+                "grid_count": str(grid_count),
+                "upper_bound": str(upper_bound),
+                "lower_bound": str(lower_bound),
+            },
+        )
+        
+        tid_open = (self.settings.billing_prepaid_tenant_id or "default").strip()
+        try:
+            enqueue_customer_notify(
+                conn,
+                tenant_id=tid_open,
+                text=(
+                    f"Demo-Grid Bot gestartet: {symbol} {s.upper()} "
+                    f"Menge={qty_base} Hebel={final_leverage}x [{lower_bound} - {upper_bound}]"
+                )[:3500],
+                category="paper_order_open",
+                severity="info",
+                dedupe_key=f"paper_order_open:{pid}",
+                audit_actor="paper_broker",
+            )
+        except Exception:
+            pass
+            
+        publish_trade_opened(
+            self.bus,
+            position_id=str(pid),
+            account_id=str(account_id),
+            symbol=symbol,
+            side=s,
+            qty_base=str(qty_base),
+            entry_price_avg=str(fill_px),
+            leverage=str(final_leverage),
+            trace={
+                "source": "paper-broker",
+                "execution_mode": "BOT_GRID",
+            },
+        )
+        
+        return {
+            "position_id": str(pid),
+            "fill_price": str(fill_px),
+            "fee_usdt": str(fee),
+            "notional_usdt": str(notional),
+            "isolated_margin": str(margin),
+            "account_equity_after": str(new_eq),
+            "recommended_leverage": int(final_leverage),
+        }
+
     def open_position(
         self,
         *,
@@ -583,7 +817,9 @@ class PaperBrokerService:
         tenant_id: str | None = None,
     ) -> dict[str, Any]:
         now_ms = ts_ms if ts_ms is not None else int(time.time() * 1000)
-        td = str(tenant_id).strip() if tenant_id is not None else self._paper_tenant_id()
+        td = (
+            str(tenant_id).strip() if tenant_id is not None else self._paper_tenant_id()
+        )
         if not td:
             td = "default"
         symbol = symbol.upper()
@@ -611,9 +847,7 @@ class PaperBrokerService:
                     tid = (self.settings.billing_prepaid_tenant_id or "default").strip()
                     min_act = _dec(self.settings.billing_min_balance_new_trade_usd)
                     bal = fetch_prepaid_balance_list_usd(conn, tenant_id=tid)
-                    ok, pmsg = prepaid_allows_new_trade(
-                        bal, min_activation_usd=min_act
-                    )
+                    ok, pmsg = prepaid_allows_new_trade(bal, min_activation_usd=min_act)
                     if not ok:
                         try:
                             enqueue_customer_notify(
@@ -633,16 +867,22 @@ class PaperBrokerService:
                         raise ValueError(pmsg)
                 equity = _dec(acc["equity"])
                 hints = instrument_hints_from_signal(signal_payload)
-                mf_d = hints.get("market_family") or str(
-                    self.settings.bitget_market_family
-                ).lower()
+                mf_d = (
+                    hints.get("market_family")
+                    or str(self.settings.bitget_market_family).lower()
+                )
                 pt_d = hints.get("product_type")
                 if pt_d is None and mf_d == "futures":
-                    pt_d = str(self.settings.bitget_product_type).strip().upper() or None
+                    pt_d = (
+                        str(self.settings.bitget_product_type).strip().upper() or None
+                    )
                 mm_d = hints.get("margin_account_mode")
                 if mm_d is None and mf_d == "margin":
                     mm_d = str(self.settings.bitget_margin_account_mode).lower()
-                if self.catalog is not None and self.settings.paper_require_catalog_tradeable:
+                if (
+                    self.catalog is not None
+                    and self.settings.paper_require_catalog_tradeable
+                ):
                     self.catalog.resolve_for_trading(
                         symbol=symbol,
                         market_family=mf_d,
@@ -660,6 +900,32 @@ class PaperBrokerService:
                 )
                 if fill_px <= 0:
                     raise ValueError("kein gueltiger Preis")
+
+                exec_mode = "STANDARD_FUTURES"
+                if isinstance(signal_payload, dict):
+                    exec_mode = str(signal_payload.get("execution_mode") or "STANDARD_FUTURES").strip().upper()
+                
+                if exec_mode == "BOT_GRID":
+                    return self.initialize_paper_grid_bot(
+                        conn,
+                        account_id=account_id,
+                        symbol=symbol,
+                        side=side,
+                        qty_base=qty_base,
+                        leverage=leverage,
+                        margin_mode=margin_mode,
+                        order_type=order_type,
+                        now_ms=now_ms,
+                        timeframe=timeframe,
+                        signal_payload=signal_payload,
+                        tenant_id=td,
+                        acc=acc,
+                        cfg=cfg,
+                        fill_px=fill_px,
+                        liq=liq,
+                        fee_rate=taker_r if order_type == "market" else maker_r,
+                    )
+
                 _ice0 = _catalog_entry_from_contract_view(cfg)
                 if _ice0 is not None:
                     validate_paper_base_order_qty(
@@ -685,9 +951,11 @@ class PaperBrokerService:
                     entry_price=fill_px,
                     entry_fee_usdt=fee,
                     timeframe=timeframe,
-                    instrument_metadata=cfg.raw.get("instrument_catalog_entry")
-                    if isinstance(cfg.raw.get("instrument_catalog_entry"), dict)
-                    else None,
+                    instrument_metadata=(
+                        cfg.raw.get("instrument_catalog_entry")
+                        if isinstance(cfg.raw.get("instrument_catalog_entry"), dict)
+                        else None
+                    ),
                     now_ms=now_ms,
                 )
                 candidate_leverage = _dec(
@@ -725,17 +993,25 @@ class PaperBrokerService:
                     open_positions_count=account_metrics["open_positions_count"] + 1,
                     position_notional_usdt=notional,
                     position_risk_pct=position_risk_pct,
-                    projected_margin_usage_pct=account_metrics["projected_margin_usage_pct"],
+                    projected_margin_usage_pct=account_metrics[
+                        "projected_margin_usage_pct"
+                    ],
                     account_drawdown_pct=account_metrics["account_drawdown_pct"],
                     daily_drawdown_pct=account_metrics["daily_drawdown_pct"],
                     weekly_drawdown_pct=account_metrics["weekly_drawdown_pct"],
                     daily_loss_usdt=account_metrics["daily_loss_usdt"],
                     signal_allowed_leverage=leverage_decision.get("allowed_leverage"),
-                    signal_recommended_leverage=leverage_decision.get("recommended_leverage"),
-                    leverage_cap_reasons_json=leverage_decision.get("cap_reasons_json") or [],
+                    signal_recommended_leverage=leverage_decision.get(
+                        "recommended_leverage"
+                    ),
+                    leverage_cap_reasons_json=leverage_decision.get("cap_reasons_json")
+                    or [],
                 )
                 final_leverage = leverage_decision["recommended_leverage"]
-                if risk_decision["trade_action"] == "do_not_trade" or final_leverage is None:
+                if (
+                    risk_decision["trade_action"] == "do_not_trade"
+                    or final_leverage is None
+                ):
                     reasons = ",".join(risk_decision.get("reasons_json") or [])
                     raise ValueError(
                         f"shared risk blocked{': ' + reasons if reasons else ''}"
@@ -846,13 +1122,21 @@ class PaperBrokerService:
                     details={
                         "account_equity_after": str(new_eq),
                         "account_total_equity_after": str(total_equity_after),
-                        "used_margin_after": str(account_metrics["used_margin"] + margin),
+                        "used_margin_after": str(
+                            account_metrics["used_margin"] + margin
+                        ),
                         "position_notional_usdt": str(notional),
-                        "projected_margin_usage_pct": risk_decision["metrics"]["projected_margin_usage_pct"],
-                        "position_risk_pct": risk_decision["metrics"]["position_risk_pct"],
+                        "projected_margin_usage_pct": risk_decision["metrics"][
+                            "projected_margin_usage_pct"
+                        ],
+                        "position_risk_pct": risk_decision["metrics"][
+                            "position_risk_pct"
+                        ],
                     },
                 )
-                tid_open = (self.settings.billing_prepaid_tenant_id or "default").strip()
+                tid_open = (
+                    self.settings.billing_prepaid_tenant_id or "default"
+                ).strip()
                 try:
                     enqueue_customer_notify(
                         conn,
@@ -928,12 +1212,18 @@ class PaperBrokerService:
         now_ms = ts_ms if ts_ms is not None else int(time.time() * 1000)
         with paper_connect(self.settings.database_url) as conn:
             with conn.transaction():
-                out = self._close_qty_in_conn(conn, position_id, qty_base, order_type, now_ms)
+                out = self._close_qty_in_conn(
+                    conn, position_id, qty_base, order_type, now_ms
+                )
         symbol = str(out["symbol"])
         new_qty = out["new_qty"]
         st = str(out["state"])
         publish_trade_updated(
-            self.bus, position_id=str(position_id), symbol=symbol, qty_base=str(new_qty), state=st
+            self.bus,
+            position_id=str(position_id),
+            symbol=symbol,
+            qty_base=str(new_qty),
+            state=st,
         )
         if new_qty == 0:
             publish_trade_closed_evt(
@@ -966,6 +1256,175 @@ class PaperBrokerService:
             for pos in positions:
                 pid = UUID(str(pos["position_id"]))
                 sym = str(pos["symbol"])
+                meta = _meta_dict(pos.get("meta"))
+                grid_bot = meta.get("grid_bot")
+                
+                if grid_bot:
+                    # Simulation fuer Grid Bot Kreuzungen
+                    last_price = _dec(grid_bot.get("last_price") or pos["entry_price_avg"])
+                    mark, fill = self.get_mark_and_fill(conn, sym)
+                    current_price = fill
+                    
+                    grid_lines = grid_bot.get("grid_lines") or []
+                    grid_count = int(grid_bot.get("grid_count") or len(grid_lines))
+                    
+                    qty_base = _dec(pos["qty_base"])
+                    entry_price_avg = _dec(pos["entry_price_avg"])
+                    isolated_margin = _dec(pos["isolated_margin"])
+                    leverage = _dec(pos["leverage"])
+                    side = str(pos["side"])
+                    account_id = UUID(str(pos["account_id"]))
+                    acc = repo_accounts.get_account(conn, account_id, tenant_id=pten)
+                    equity = _dec(acc["equity"]) if acc else Decimal("0")
+                    
+                    cfg = self.contract_provider.get(sym, conn, signal_payload=_contract_payload_from_position_meta(meta))
+                    maker_r, taker_r = self.contract_provider.effective_fees(cfg)
+                    
+                    price_changed = False
+                    grid_updated_lines = list(grid_lines)
+                    
+                    is_falling = current_price < last_price
+                    sorted_lines_with_idx = sorted(
+                        enumerate(grid_lines),
+                        key=lambda x: _dec(x[1]["price"]),
+                        reverse=is_falling
+                    )
+                    
+                    for idx, line in sorted_lines_with_idx:
+                        line_price = _dec(line["price"])
+                        qty_line = _dec(line.get("qty") or (qty_base / Decimal(str(grid_count))))
+                        line_state = str(line.get("state") or "pending")
+                        
+                        crossed = False
+                        if is_falling:
+                            if last_price > line_price >= current_price:
+                                crossed = True
+                        else:
+                            if last_price < line_price <= current_price:
+                                crossed = True
+                                
+                        if crossed:
+                            exec_side = "buy" if is_falling else "sell"
+                            if exec_side == "buy" and line_state == "buy_filled":
+                                continue
+                            if exec_side == "sell" and line_state == "sell_filled":
+                                continue
+                                
+                            fee = calc_transaction_fee_usdt(qty_line, line_price, maker_r)
+                            notional = order_notional_usdt(qty_line, line_price)
+                            
+                            realized_pnl = Decimal("0")
+                            margin_change = Decimal("0")
+                            
+                            if side == "long":
+                                if exec_side == "buy":
+                                    new_qty = qty_base + qty_line
+                                    entry_price_avg = (qty_base * entry_price_avg + qty_line * line_price) / new_qty
+                                    margin_change = (notional / leverage)
+                                    qty_base = new_qty
+                                else:
+                                    if qty_base >= qty_line:
+                                        new_qty = qty_base - qty_line
+                                        realized_pnl = (line_price - entry_price_avg) * qty_line
+                                        margin_change = -(qty_line * entry_price_avg / leverage)
+                                        qty_base = new_qty
+                            else:
+                                if exec_side == "sell":
+                                    new_qty = qty_base + qty_line
+                                    entry_price_avg = (qty_base * entry_price_avg + qty_line * line_price) / new_qty
+                                    margin_change = (notional / leverage)
+                                    qty_base = new_qty
+                                else:
+                                    if qty_base >= qty_line:
+                                        new_qty = qty_base - qty_line
+                                        realized_pnl = (entry_price_avg - line_price) * qty_line
+                                        margin_change = -(qty_line * entry_price_avg / leverage)
+                                        qty_base = new_qty
+                                        
+                            with conn.transaction():
+                                oid = repo_orders.insert_order(
+                                    conn,
+                                    position_id=pid,
+                                    otype="limit",
+                                    side=exec_side,
+                                    qty_base=qty_line,
+                                    limit_price=line_price,
+                                    state="filled",
+                                    created_ts_ms=now_ms,
+                                    filled_ts_ms=now_ms,
+                                )
+                                repo_ledgers.insert_fill(
+                                    conn,
+                                    order_id=oid,
+                                    position_id=pid,
+                                    ts_ms=now_ms,
+                                    price=line_price,
+                                    qty_base=qty_line,
+                                    liquidity="maker",
+                                    fee_usdt=fee,
+                                    notional_usdt=notional,
+                                )
+                                repo_ledgers.insert_fee_ledger(
+                                    conn, position_id=pid, ts_ms=now_ms, fee_usdt=fee, reason="grid_fill"
+                                )
+                                
+                                isolated_margin = max(Decimal("0"), isolated_margin + margin_change)
+                                equity = equity - margin_change + realized_pnl - fee
+                                repo_accounts.update_account_equity(conn, account_id, equity, tenant_id=pten)
+                                
+                                grid_updated_lines[idx]["state"] = "buy_filled" if exec_side == "buy" else "sell_filled"
+                                price_changed = True
+                                
+                                repo_position_events.insert_position_event(
+                                    conn,
+                                    position_id=pid,
+                                    ts_ms=now_ms,
+                                    event_type="GRID_CROSSED",
+                                    details={
+                                        "price": str(line_price),
+                                        "side": exec_side,
+                                        "realized_pnl": str(realized_pnl),
+                                        "fee": str(fee),
+                                        "new_qty": str(qty_base),
+                                        "new_equity": str(equity),
+                                    }
+                                )
+                                
+                    if price_changed:
+                        grid_bot["grid_lines"] = grid_updated_lines
+                        grid_bot["last_price"] = format(current_price, "f")
+                        meta["grid_bot"] = grid_bot
+                        
+                        repo_positions.update_position_qty_state(
+                            conn,
+                            pid,
+                            tenant_id=pten,
+                            qty_base=qty_base,
+                            entry_price_avg=entry_price_avg,
+                            isolated_margin=isolated_margin,
+                            state="partially_closed" if qty_base > 0 else "closed",
+                            updated_ts_ms=now_ms,
+                            closed_ts_ms=now_ms if qty_base == 0 else None,
+                            meta=meta,
+                        )
+                        
+                        publish_trade_updated(
+                            self.bus,
+                            position_id=str(pid),
+                            symbol=sym,
+                            qty_base=str(qty_base),
+                            state="partially_closed" if qty_base > 0 else "closed",
+                        )
+                        if qty_base == 0:
+                            publish_trade_closed_evt(
+                                self.bus, position_id=str(pid), symbol=sym, reason="GRID_COMPLETE"
+                            )
+
+            # Standard-Liquidationspruefung nach allfälligen Grid Updates
+            positions = repo_positions.list_open_positions(conn, tenant_id=pten)
+            for pos in positions:
+                pid = UUID(str(pos["position_id"]))
+                sym = str(pos["symbol"])
                 mark, _, _ = self.get_mark_and_bid_ask(conn, sym)
                 if mark <= 0:
                     continue
@@ -980,7 +1439,9 @@ class PaperBrokerService:
                     accrued_fees=fees,
                     net_funding_ledger=fund_net,
                     maintenance_margin_rate=Decimal(self.settings.paper_mmr_base),
-                    liq_fee_buffer_usdt=Decimal(self.settings.paper_liq_fee_buffer_usdt),
+                    liq_fee_buffer_usdt=Decimal(
+                        self.settings.paper_liq_fee_buffer_usdt
+                    ),
                 ):
                     self._liquidate_position(conn, pos, mark, now_ms)
                     liquidated.append(str(pid))
@@ -1021,8 +1482,16 @@ class PaperBrokerService:
                     method_mix=method_mix,
                 )
                 meta = _meta_dict(pos.get("meta"))
-                leverage_allocator = meta.get("leverage_allocator") if isinstance(meta.get("leverage_allocator"), dict) else {}
-                risk_engine = meta.get("risk_engine") if isinstance(meta.get("risk_engine"), dict) else {}
+                leverage_allocator = (
+                    meta.get("leverage_allocator")
+                    if isinstance(meta.get("leverage_allocator"), dict)
+                    else {}
+                )
+                risk_engine = (
+                    meta.get("risk_engine")
+                    if isinstance(meta.get("risk_engine"), dict)
+                    else {}
+                )
                 ice = meta.get("instrument_catalog_entry")
                 if not isinstance(ice, dict):
                     ice = {}
@@ -1129,7 +1598,9 @@ class PaperBrokerService:
             "stop_plan": parse_plan_json(pos.get("stop_plan_json")),
             "tp_plan": parse_plan_json(pos.get("tp_plan_json")),
             "stop_quality_score": pos.get("stop_quality_score"),
-            "rr_estimate": str(pos["rr_estimate"]) if pos.get("rr_estimate") is not None else None,
+            "rr_estimate": (
+                str(pos["rr_estimate"]) if pos.get("rr_estimate") is not None else None
+            ),
             "plan_updated_ts_ms": pos.get("plan_updated_ts_ms"),
         }
 
@@ -1156,8 +1627,16 @@ class PaperBrokerService:
                     cur_stop, cur_tp, stop_patch, tp_patch
                 )
                 meta = _meta_dict(pos.get("meta"))
-                leverage_allocator = meta.get("leverage_allocator") if isinstance(meta.get("leverage_allocator"), dict) else {}
-                risk_engine = meta.get("risk_engine") if isinstance(meta.get("risk_engine"), dict) else {}
+                leverage_allocator = (
+                    meta.get("leverage_allocator")
+                    if isinstance(meta.get("leverage_allocator"), dict)
+                    else {}
+                )
+                risk_engine = (
+                    meta.get("risk_engine")
+                    if isinstance(meta.get("risk_engine"), dict)
+                    else {}
+                )
                 exit_validation = validate_exit_plan(
                     side=str(pos["side"]),
                     entry_price=_dec(pos["entry_price_avg"]),
@@ -1172,11 +1651,28 @@ class PaperBrokerService:
                     max_position_risk_pct=self.settings.risk_max_position_risk_pct,
                     risk_trade_action=str(risk_engine.get("trade_action") or ""),
                     market_family=self.settings.bitget_market_family,
-                    price_tick_size=_dec((meta.get("instrument_catalog_entry") or {}).get("price_tick_size")),
-                    quantity_step=_dec((meta.get("instrument_catalog_entry") or {}).get("quantity_step")),
-                    quantity_min=_dec((meta.get("instrument_catalog_entry") or {}).get("quantity_min")),
-                    quantity_max=_dec((meta.get("instrument_catalog_entry") or {}).get("quantity_max")),
-                    trading_status=str((meta.get("instrument_catalog_entry") or {}).get("trading_status") or ""),
+                    price_tick_size=_dec(
+                        (meta.get("instrument_catalog_entry") or {}).get(
+                            "price_tick_size"
+                        )
+                    ),
+                    quantity_step=_dec(
+                        (meta.get("instrument_catalog_entry") or {}).get(
+                            "quantity_step"
+                        )
+                    ),
+                    quantity_min=_dec(
+                        (meta.get("instrument_catalog_entry") or {}).get("quantity_min")
+                    ),
+                    quantity_max=_dec(
+                        (meta.get("instrument_catalog_entry") or {}).get("quantity_max")
+                    ),
+                    trading_status=str(
+                        (meta.get("instrument_catalog_entry") or {}).get(
+                            "trading_status"
+                        )
+                        or ""
+                    ),
                 )
                 if not exit_validation["valid"]:
                     raise ValueError(
@@ -1192,7 +1688,11 @@ class PaperBrokerService:
                     stop_plan_json=new_stop,
                     tp_plan_json=new_tp,
                     stop_quality_score=int(pos.get("stop_quality_score") or 0),
-                    rr_estimate=str(pos["rr_estimate"]) if pos.get("rr_estimate") is not None else None,
+                    rr_estimate=(
+                        str(pos["rr_estimate"])
+                        if pos.get("rr_estimate") is not None
+                        else None
+                    ),
                     plan_updated_ts_ms=now_ms,
                 )
                 repo_position_events.insert_position_event(
@@ -1226,7 +1726,11 @@ class PaperBrokerService:
         account_id = UUID(str(pos["account_id"]))
         acc = repo_accounts.get_account(conn, account_id, tenant_id=tid)
         equity = _dec(acc["equity"]) if acc else Decimal("0")
-        liq_meta = json.loads(pos["meta"]) if isinstance(pos["meta"], str) else (pos["meta"] or {})
+        liq_meta = (
+            json.loads(pos["meta"])
+            if isinstance(pos["meta"], str)
+            else (pos["meta"] or {})
+        )
         cfg = self.contract_provider.get(
             symbol,
             conn,
@@ -1274,9 +1778,7 @@ class PaperBrokerService:
             conn, position_id=pid, ts_ms=now_ms, fee_usdt=fee, reason="exit"
         )
         new_eq = equity + margin_release + realized - fee
-        repo_accounts.update_account_equity(
-            conn, account_id, new_eq, tenant_id=tid
-        )
+        repo_accounts.update_account_equity(conn, account_id, new_eq, tenant_id=tid)
         meta = _meta_dict(pos.get("meta"))
         meta["liquidation"] = True
         meta["liquidation_stress_fill_price"] = str(liq_fill)
@@ -1293,7 +1795,10 @@ class PaperBrokerService:
             conn,
             account_id=account_id,
             tenant_id=tid,
-            account_row={"equity": str(new_eq), "initial_equity": acc.get("initial_equity") if acc else None},
+            account_row={
+                "equity": str(new_eq),
+                "initial_equity": acc.get("initial_equity") if acc else None,
+            },
             now_ms=now_ms,
         )
         repo_position_events.insert_position_event(
@@ -1311,7 +1816,11 @@ class PaperBrokerService:
         )
         logger.info("liquidated position_id=%s (approx)", pid)
         publish_trade_updated(
-            self.bus, position_id=str(pid), symbol=symbol, qty_base="0", state="liquidated"
+            self.bus,
+            position_id=str(pid),
+            symbol=symbol,
+            qty_base="0",
+            state="liquidated",
         )
         publish_trade_closed_evt(
             self.bus,

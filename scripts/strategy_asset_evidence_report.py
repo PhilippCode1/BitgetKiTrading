@@ -99,7 +99,9 @@ def _to_json(items: list[StrategyAssetEvidence]) -> dict[str, Any]:
             }
         )
     status = "NOT_ENOUGH_EVIDENCE"
-    if out and all(row["evidence_level"] in {"paper", "shadow", "runtime"} for row in out):
+    if out and all(
+        row["evidence_level"] in {"paper", "shadow", "runtime"} for row in out
+    ):
         status = "implemented"
     return {
         "generated_at": _now(),
@@ -149,9 +151,13 @@ def _to_markdown(report: dict[str, Any]) -> str:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Erzeugt Strategy-Asset-Evidence-Report.")
+    parser = argparse.ArgumentParser(
+        description="Erzeugt Strategy-Asset-Evidence-Report."
+    )
     parser.add_argument("--dry-run", action="store_true")
-    parser.add_argument("--input-json", default="tests/fixtures/strategy_asset_evidence_sample.json")
+    parser.add_argument(
+        "--input-json", default="tests/fixtures/strategy_asset_evidence_sample.json"
+    )
     parser.add_argument("--output-md", default="reports/strategy_asset_evidence.md")
     parser.add_argument("--output-json", default="reports/strategy_asset_evidence.json")
     args = parser.parse_args()
@@ -171,7 +177,9 @@ def main() -> int:
     output_md.parent.mkdir(parents=True, exist_ok=True)
     output_json.parent.mkdir(parents=True, exist_ok=True)
     output_md.write_text(_to_markdown(report), encoding="utf-8")
-    output_json.write_text(json.dumps(report, indent=2, sort_keys=True), encoding="utf-8")
+    output_json.write_text(
+        json.dumps(report, indent=2, sort_keys=True), encoding="utf-8"
+    )
     print(
         "strategy_asset_evidence_report: ok "
         f"(items={len(report['items'])}, md={output_md.as_posix()}, json={output_json.as_posix()})"

@@ -8,7 +8,6 @@ from shared_py.playbook_registry import (
     preferred_strategy_for_playbook_family,
 )
 
-
 CLASS_TO_STRATEGY_NAME: dict[str, str] = {
     "mikro": "MeanReversionMicroStrategy",
     "gross": "BreakoutBoxStrategy",
@@ -170,7 +169,9 @@ def compute_trade_metrics(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "take_trade_rate": take_trade / n if n else 0.0,
         "liquidation_risk_rate": liquidation_risk / n if n else 0.0,
         "avg_expected_return_bps": _avg_decimal(rows, "expected_return_bps"),
-        "avg_expected_return_gross_bps": _avg_decimal(rows, "expected_return_gross_bps"),
+        "avg_expected_return_gross_bps": _avg_decimal(
+            rows, "expected_return_gross_bps"
+        ),
         "avg_expected_mae_bps": _avg_decimal(rows, "expected_mae_bps"),
         "avg_expected_mfe_bps": _avg_decimal(rows, "expected_mfe_bps"),
     }

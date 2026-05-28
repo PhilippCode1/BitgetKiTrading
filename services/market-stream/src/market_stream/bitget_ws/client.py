@@ -19,8 +19,8 @@ from market_stream.bitget_ws.rate_limiter import RateLimiter
 from market_stream.bitget_ws.sequence_buffer import BitgetWsSequenceBuffer
 from market_stream.bitget_ws.subscriptions import Subscription, SubscriptionManager
 from market_stream.gapfill.rest_gapfill import BitgetRestGapFillWorker
-from market_stream.provider_diagnostics import ProviderDiagnostics
 from market_stream.normalization.models import NormalizedEvent, extract_sequence
+from market_stream.provider_diagnostics import ProviderDiagnostics
 from market_stream.sinks.postgres_raw import PostgresRawSink
 from market_stream.sinks.redis_stream import RedisStreamSink
 
@@ -166,17 +166,23 @@ class BitgetPublicWsClient:
             await self._websocket.close()
 
     async def subscribe(self, inst_type: str, channel: str, inst_id: str) -> bool:
-        subscription = Subscription(inst_type=inst_type, channel=channel, inst_id=inst_id)
+        subscription = Subscription(
+            inst_type=inst_type, channel=channel, inst_id=inst_id
+        )
         added = self._subscriptions.add(subscription)
         self._stats.active_subscriptions = self._subscriptions.count()
         if not added:
             return False
         if self._websocket is not None:
-            await self._send_json(self._subscriptions.build_subscribe_payload([subscription]))
+            await self._send_json(
+                self._subscriptions.build_subscribe_payload([subscription])
+            )
         return True
 
     async def unsubscribe(self, inst_type: str, channel: str, inst_id: str) -> bool:
-        subscription = Subscription(inst_type=inst_type, channel=channel, inst_id=inst_id)
+        subscription = Subscription(
+            inst_type=inst_type, channel=channel, inst_id=inst_id
+        )
         removed = self._subscriptions.remove(subscription)
         self._stats.active_subscriptions = self._subscriptions.count()
         if not removed:
@@ -222,7 +228,9 @@ class BitgetPublicWsClient:
                 asyncio.create_task(self._receive_loop(), name="market-stream-recv"),
                 asyncio.create_task(self._ping_loop(), name="market-stream-ping"),
                 asyncio.create_task(self._pong_watcher(), name="market-stream-pong"),
-                asyncio.create_task(self._stale_data_loop(), name="market-stream-stale"),
+                asyncio.create_task(
+                    self._stale_data_loop(), name="market-stream-stale"
+                ),
             ]
             try:
                 done, _pending = await asyncio.wait(
@@ -248,7 +256,9 @@ class BitgetPublicWsClient:
         if not subscriptions:
             return
         for subscription in subscriptions:
-            await self._send_json(self._subscriptions.build_subscribe_payload([subscription]))
+            await self._send_json(
+                self._subscriptions.build_subscribe_payload([subscription])
+            )
 
     async def _receive_loop(self) -> None:
         if self._websocket is None:
@@ -313,7 +323,9 @@ class BitgetPublicWsClient:
     async def _pong_watcher(self) -> None:
         while not self._stop_event.is_set():
             await asyncio.sleep(5)
-            last_heartbeat = max(self._last_pong_monotonic, self._last_inbound_monotonic)
+            last_heartbeat = max(
+                self._last_pong_monotonic, self._last_inbound_monotonic
+            )
             if time.monotonic() - last_heartbeat > self._pong_timeout_sec:
                 raise TimeoutError("WS pong timeout")
 
@@ -339,7 +351,8 @@ class BitgetPublicWsClient:
                 raise RuntimeError("market feed stale escalation")
             if (
                 self._last_stale_gapfill_ts_ms is not None
-                and now_ms - self._last_stale_gapfill_ts_ms < self._stale_after_sec * 1000
+                and now_ms - self._last_stale_gapfill_ts_ms
+                < self._stale_after_sec * 1000
             ):
                 continue
             self._last_stale_gapfill_ts_ms = now_ms
@@ -427,7 +440,9 @@ class BitgetPublicWsClient:
                     detail = json.dumps(message, ensure_ascii=False)[:2000]
                 except (TypeError, ValueError):
                     detail = str(message)[:2000]
-                self._provider_diagnostics.record_protocol_error("bitget_ws_error", detail)
+                self._provider_diagnostics.record_protocol_error(
+                    "bitget_ws_error", detail
+                )
 
     async def _publish_event(self, event: NormalizedEvent) -> None:
         redis_id = await self._redis_sink.publish(event)

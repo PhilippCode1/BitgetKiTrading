@@ -4,8 +4,14 @@ import pytest
 
 torch = pytest.importorskip("torch")
 
-from adversarial_engine.arrow_ipc import decode_table_ipc_stream, encode_table_ipc_stream
-from adversarial_engine.market_stresser import build_stress_tick_table, tensor_paths_to_numpy
+from adversarial_engine.arrow_ipc import (
+    decode_table_ipc_stream,
+    encode_table_ipc_stream,
+)
+from adversarial_engine.market_stresser import (
+    build_stress_tick_table,
+    tensor_paths_to_numpy,
+)
 
 
 def test_arrow_roundtrip_and_payload_shape() -> None:

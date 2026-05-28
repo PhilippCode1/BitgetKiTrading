@@ -69,10 +69,18 @@ def check_navigation_allowed_modules() -> CheckResult:
     nav = read_text(NAV_FILE)
     links = re.findall(r'href:\s*`([^`]+)`|href:\s*"([^"]+)"', nav)
     flat_links = [a or b for a, b in links]
-    unknown = [l for l in flat_links if "/console/" in l and not any(h in l for h in ALLOWED_NAV_HINTS)]
+    unknown = [
+        l
+        for l in flat_links
+        if "/console/" in l and not any(h in l for h in ALLOWED_NAV_HINTS)
+    ]
     ok = len(unknown) == 0 and any("/reports" in l for l in flat_links)
-    detail = "Navigation konsistent" if ok else f"Unklare Module in Navigation: {unknown}"
-    return CheckResult("navigation_allowed", "Navigation nur erlaubte Module", ok, detail, not ok)
+    detail = (
+        "Navigation konsistent" if ok else f"Unklare Module in Navigation: {unknown}"
+    )
+    return CheckResult(
+        "navigation_allowed", "Navigation nur erlaubte Module", ok, detail, not ok
+    )
 
 
 def check_no_commercial_language() -> CheckResult:
@@ -84,11 +92,13 @@ def check_no_commercial_language() -> CheckResult:
     except json.JSONDecodeError:
         de_obj = {}
     nav_labels = (
-        de_obj.get("console", {}).get("nav", {})
-        if isinstance(de_obj, dict)
-        else {}
+        de_obj.get("console", {}).get("nav", {}) if isinstance(de_obj, dict) else {}
     )
-    label_values = [str(v).lower() for v in nav_labels.values()] if isinstance(nav_labels, dict) else []
+    label_values = (
+        [str(v).lower() for v in nav_labels.values()]
+        if isinstance(nav_labels, dict)
+        else []
+    )
     for t in FORBIDDEN_TERMS:
         if any(t in v for v in label_values) or f"/{t}" in nav_text:
             hits.append(t)
@@ -97,7 +107,11 @@ def check_no_commercial_language() -> CheckResult:
         "no_commercial_language",
         "Keine sichtbare Billing/Customer/Sales-Sprache",
         ok,
-        "Keine verbotenen Begriffe gefunden" if ok else f"Gefundene Begriffe: {sorted(set(hits))}",
+        (
+            "Keine verbotenen Begriffe gefunden"
+            if ok
+            else f"Gefundene Begriffe: {sorted(set(hits))}"
+        ),
         not ok,
     )
 
@@ -110,12 +124,18 @@ def check_german_core_texts() -> CheckResult:
         obj = {}
     nav = obj.get("console", {}).get("nav", {}) if isinstance(obj, dict) else {}
     required_keys = ["reports_evidence", "system_alerts", "risk_portfolio"]
-    ok = isinstance(nav, dict) and all(isinstance(nav.get(k), str) and nav.get(k, "").strip() for k in required_keys)
+    ok = isinstance(nav, dict) and all(
+        isinstance(nav.get(k), str) and nav.get(k, "").strip() for k in required_keys
+    )
     return CheckResult(
         "german_core_texts",
         "Kerntexte Deutsch",
         ok,
-        "de.json enthält Main-Console-Kerntexte" if ok else "Fehlende deutsche Kerntexte in de.json",
+        (
+            "de.json enthält Main-Console-Kerntexte"
+            if ok
+            else "Fehlende deutsche Kerntexte in de.json"
+        ),
         not ok,
     )
 
@@ -141,68 +161,99 @@ def check_module_contracts() -> list[CheckResult]:
             route_exists("/console/market-universe")
             and (APP / "lib" / "asset-universe-console.ts").is_file(),
             "Route + View-Model vorhanden",
-            not (route_exists("/console/market-universe") and (APP / "lib" / "asset-universe-console.ts").is_file()),
+            not (
+                route_exists("/console/market-universe")
+                and (APP / "lib" / "asset-universe-console.ts").is_file()
+            ),
         )
     )
     checks.append(
         CheckResult(
             "chart_workspace_states",
             "Chart mit Frische/Empty/Error",
-            route_exists("/console/terminal") and (APP / "lib" / "chart-workspace-status.ts").is_file(),
+            route_exists("/console/terminal")
+            and (APP / "lib" / "chart-workspace-status.ts").is_file(),
             "Chart-Route + Statusmodell vorhanden",
-            not (route_exists("/console/terminal") and (APP / "lib" / "chart-workspace-status.ts").is_file()),
+            not (
+                route_exists("/console/terminal")
+                and (APP / "lib" / "chart-workspace-status.ts").is_file()
+            ),
         )
     )
     checks.append(
         CheckResult(
             "signals_risk_reasons",
             "Signale zeigen Risk-Gründe",
-            route_exists("/console/signals") and (APP / "lib" / "signal-decision-center.ts").is_file(),
+            route_exists("/console/signals")
+            and (APP / "lib" / "signal-decision-tokens.ts").is_file(),
             "Signals-Route + Risk-Reason-Mapper vorhanden",
-            not (route_exists("/console/signals") and (APP / "lib" / "signal-decision-center.ts").is_file()),
+            not (
+                route_exists("/console/signals")
+                and (APP / "lib" / "signal-decision-tokens.ts").is_file()
+            ),
         )
     )
     checks.append(
         CheckResult(
             "risk_module",
             "Risk-Modul zeigt Portfolio/Asset-Risiko",
-            route_exists("/console/risk") and (APP / "lib" / "risk-center-view-model.ts").is_file(),
+            route_exists("/console/risk")
+            and (APP / "lib" / "risk-center-view-model.ts").is_file(),
             "Risk-Route + View-Model vorhanden",
-            not (route_exists("/console/risk") and (APP / "lib" / "risk-center-view-model.ts").is_file()),
+            not (
+                route_exists("/console/risk")
+                and (APP / "lib" / "risk-center-view-model.ts").is_file()
+            ),
         )
     )
     checks.append(
         CheckResult(
             "broker_safety",
             "Broker zeigt Reconcile/Kill-Switch/Safety-Latch",
-            route_exists("/console/live-broker") and (APP / "components" / "safety" / "ExecutionSafetyPanel.tsx").is_file(),
+            route_exists("/console/live-broker")
+            and (APP / "components" / "safety" / "ExecutionSafetyPanel.tsx").is_file(),
             "Live-Broker-Route + Safety-Panel vorhanden",
-            not (route_exists("/console/live-broker") and (APP / "components" / "safety" / "ExecutionSafetyPanel.tsx").is_file()),
+            not (
+                route_exists("/console/live-broker")
+                and (
+                    APP / "components" / "safety" / "ExecutionSafetyPanel.tsx"
+                ).is_file()
+            ),
         )
     )
     checks.append(
         CheckResult(
             "system_status",
             "Systemstatus zeigt Services/Provider/Stale Data",
-            route_exists("/console/system-health-map") and (APP / "lib" / "system-diagnostics-view-model.ts").is_file(),
+            route_exists("/console/system-health-map")
+            and (APP / "lib" / "system-diagnostics-view-model.ts").is_file(),
             "System-Route + Diagnostics-View-Model vorhanden",
-            not (route_exists("/console/system-health-map") and (APP / "lib" / "system-diagnostics-view-model.ts").is_file()),
+            not (
+                route_exists("/console/system-health-map")
+                and (APP / "lib" / "system-diagnostics-view-model.ts").is_file()
+            ),
         )
     )
     checks.append(
         CheckResult(
             "reports_blockers",
             "Reports markieren fehlende Evidence als Blocker",
-            route_exists("/console/reports") and (APP / "lib" / "evidence-console.ts").is_file(),
+            route_exists("/console/reports")
+            and (APP / "lib" / "evidence-console.ts").is_file(),
             "Reports-Route + Evidence-View-Model vorhanden",
-            not (route_exists("/console/reports") and (APP / "lib" / "evidence-console.ts").is_file()),
+            not (
+                route_exists("/console/reports")
+                and (APP / "lib" / "evidence-console.ts").is_file()
+            ),
         )
     )
     return checks
 
 
 def check_secret_safety() -> CheckResult:
-    txt = read_text(APP / "lib" / "system-diagnostics-view-model.ts") + read_text(APP / "lib" / "live-broker-console.ts")
+    txt = read_text(APP / "lib" / "system-diagnostics-view-model.ts") + read_text(
+        APP / "lib" / "live-broker-console.ts"
+    )
     ok = "redact" in txt.lower() or "sanitize" in txt.lower()
     return CheckResult(
         "secret_safety",
@@ -215,7 +266,7 @@ def check_secret_safety() -> CheckResult:
 
 def check_dangerous_action_confirmation() -> CheckResult:
     txt = read_text(APP / "components" / "safety" / "ExecutionSafetyPanel.tsx")
-    ok = "Bestaetigung erforderlich" in txt and "role=\"dialog\"" in txt
+    ok = "Bestaetigung erforderlich" in txt and 'role="dialog"' in txt
     return CheckResult(
         "dangerous_action_confirmation",
         "Keine gefährlichen Actions ohne Bestätigung",
@@ -244,13 +295,21 @@ def discover_git_sha() -> str | None:
 
 def evidence_status_counts() -> dict[str, int]:
     txt = read_text(EVIDENCE_MATRIX)
-    counts = {"verified": 0, "missing": 0, "partial": 0, "implemented": 0, "external_required": 0}
+    counts = {
+        "verified": 0,
+        "missing": 0,
+        "partial": 0,
+        "implemented": 0,
+        "external_required": 0,
+    }
     for k in counts.keys():
         counts[k] = len(re.findall(rf"status:\s+{k}\b", txt))
     return counts
 
 
-def compute_scores(checks: list[CheckResult], evidence_counts: dict[str, int]) -> dict[str, int]:
+def compute_scores(
+    checks: list[CheckResult], evidence_counts: dict[str, int]
+) -> dict[str, int]:
     def pct(keys: list[str]) -> int:
         subset = [c for c in checks if c.key in keys]
         if not subset:
@@ -268,16 +327,34 @@ def compute_scores(checks: list[CheckResult], evidence_counts: dict[str, int]) -
     evidence_score = int(round(weighted * 100))
 
     return {
-        "ui_ux": pct(["main_console_route", "navigation_allowed", "german_core_texts", "welcome_returnto_safe"]),
-        "multi_asset": pct(["asset_universe_blockers", "chart_workspace_states", "signals_risk_reasons", "risk_module"]),
+        "ui_ux": pct(
+            [
+                "main_console_route",
+                "navigation_allowed",
+                "german_core_texts",
+                "welcome_returnto_safe",
+            ]
+        ),
+        "multi_asset": pct(
+            [
+                "asset_universe_blockers",
+                "chart_workspace_states",
+                "signals_risk_reasons",
+                "risk_module",
+            ]
+        ),
         "risk": pct(["risk_module", "signals_risk_reasons", "reports_blockers"]),
-        "broker_safety": pct(["broker_safety", "dangerous_action_confirmation", "secret_safety"]),
+        "broker_safety": pct(
+            ["broker_safety", "dangerous_action_confirmation", "secret_safety"]
+        ),
         "observability": pct(["system_status", "secret_safety"]),
         "evidence": evidence_score,
     }
 
 
-def mode_decisions(blockers: list[str], evidence_counts: dict[str, int]) -> dict[str, str]:
+def mode_decisions(
+    blockers: list[str], evidence_counts: dict[str, int]
+) -> dict[str, str]:
     hard_no_go = len(blockers) > 0
     has_external = evidence_counts.get("external_required", 0) > 0
     has_partial = evidence_counts.get("partial", 0) > 0
@@ -286,7 +363,9 @@ def mode_decisions(blockers: list[str], evidence_counts: dict[str, int]) -> dict
         "paper": "NO_GO" if hard_no_go else "GO",
         "shadow": "NO_GO" if hard_no_go else "GO",
         "staging": "NO_GO" if hard_no_go else "GO",
-        "kontrollierter_live_pilot": "NO_GO" if hard_no_go or has_external or has_partial else "GO",
+        "kontrollierter_live_pilot": (
+            "NO_GO" if hard_no_go or has_external or has_partial else "GO"
+        ),
         "vollautomatisches_live": "NO_GO",
     }
     return decisions
@@ -348,7 +427,9 @@ def to_markdown(payload: dict[str, Any]) -> str:
         "## Finale Checks",
     ]
     for c in payload["checks"]:
-        lines.append(f"- `{c['title']}`: `{'ok' if c['ok'] else 'fehlt/blockiert'}` — {c['detail']}")
+        lines.append(
+            f"- `{c['title']}`: `{'ok' if c['ok'] else 'fehlt/blockiert'}` — {c['detail']}"
+        )
     lines.extend(["", "## Fehlende Blocker"])
     if payload["blockers"]:
         lines.extend(f"- {b}" for b in payload["blockers"])
@@ -367,7 +448,9 @@ def to_markdown(payload: dict[str, Any]) -> str:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Finales Main-Console-Hardening-Audit.")
+    parser = argparse.ArgumentParser(
+        description="Finales Main-Console-Hardening-Audit."
+    )
     parser.add_argument("--output-md", required=False)
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--strict", action="store_true")

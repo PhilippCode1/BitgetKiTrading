@@ -97,7 +97,9 @@ def _valid_external_evidence() -> dict[str, object]:
 
 
 def test_external_template_blocks_live() -> None:
-    status, blockers, warnings = checker.assess_external_evidence(checker.build_external_evidence_template())
+    status, blockers, warnings = checker.assess_external_evidence(
+        checker.build_external_evidence_template()
+    )
     assert status == "FAIL"
     assert "provider_error_not_blocking" in blockers
     assert "redis_missing_not_blocking" in blockers
@@ -106,7 +108,9 @@ def test_external_template_blocks_live() -> None:
 
 
 def test_valid_external_evidence_passes_contract() -> None:
-    status, blockers, warnings = checker.assess_external_evidence(_valid_external_evidence())
+    status, blockers, warnings = checker.assess_external_evidence(
+        _valid_external_evidence()
+    )
     assert status == "PASS"
     assert blockers == []
     assert warnings == []
@@ -125,7 +129,9 @@ def test_external_evidence_blocks_live_writes_and_real_orders() -> None:
 def test_external_evidence_secret_surface_blocks_unredacted_values() -> None:
     payload = _valid_external_evidence()
     payload["database_url"] = "postgres://user:password@example/db"
-    assert checker.secret_surface_issues(payload) == ["secret_like_field_not_redacted:database_url"]
+    assert checker.secret_surface_issues(payload) == [
+        "secret_like_field_not_redacted:database_url"
+    ]
 
 
 def test_cli_external_template_strict_fails_and_writes_json(tmp_path: Path) -> None:
@@ -157,4 +163,6 @@ def test_cli_external_template_strict_fails_and_writes_json(tmp_path: Path) -> N
     result = json.loads(output_json.read_text(encoding="utf-8"))
     assert result["ok"] is False
     assert "provider_error_not_blocking" in result["blockers"]
-    assert "# Live-Broker Fail-Closed Evidence Check" in report.read_text(encoding="utf-8")
+    assert "# Live-Broker Fail-Closed Evidence Check" in report.read_text(
+        encoding="utf-8"
+    )

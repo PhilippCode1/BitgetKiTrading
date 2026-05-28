@@ -43,7 +43,10 @@ def build_explain_router(
         except psycopg.Error:
             raise HTTPException(
                 status_code=503,
-                detail={"status": "error", "message": "Datenbank voruebergehend nicht erreichbar"},
+                detail={
+                    "status": "error",
+                    "message": "Datenbank voruebergehend nicht erreichbar",
+                },
             ) from None
         if sig is None:
             raise HTTPException(
@@ -55,12 +58,18 @@ def build_explain_router(
         except psycopg.Error:
             raise HTTPException(
                 status_code=503,
-                detail={"status": "error", "message": "Datenbank voruebergehend nicht erreichbar"},
+                detail={
+                    "status": "error",
+                    "message": "Datenbank voruebergehend nicht erreichbar",
+                },
             ) from None
         if exp is None:
             raise HTTPException(
                 status_code=404,
-                detail={"status": "error", "message": "Keine Erklaerung fuer dieses Signal"},
+                detail={
+                    "status": "error",
+                    "message": "Keine Erklaerung fuer dieses Signal",
+                },
             )
         long_json = exp["explain_long_json"]
         sections = long_json.get("sections", {})

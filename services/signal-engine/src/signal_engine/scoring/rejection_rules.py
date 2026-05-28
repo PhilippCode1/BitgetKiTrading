@@ -63,11 +63,16 @@ def apply_rejections(
         if spread_bps is not None and spread_bps > settings.signal_max_spread_bps:
             reasons.append("spread_too_wide")
         execution_cost_bps = _feature_float(feat, "execution_cost_bps")
-        if execution_cost_bps is not None and execution_cost_bps > settings.signal_max_execution_cost_bps:
+        if (
+            execution_cost_bps is not None
+            and execution_cost_bps > settings.signal_max_execution_cost_bps
+        ):
             reasons.append("execution_cost_too_high")
         funding_rate_bps = _feature_float(feat, "funding_rate_bps")
         if funding_rate_bps is not None and proposed_direction in ("long", "short"):
-            adverse_funding = funding_rate_bps if proposed_direction == "long" else -funding_rate_bps
+            adverse_funding = (
+                funding_rate_bps if proposed_direction == "long" else -funding_rate_bps
+            )
             if adverse_funding > settings.signal_max_adverse_funding_bps:
                 reasons.append("adverse_funding_too_high")
         liquidity_source = str(feat.get("liquidity_source") or "").strip()
@@ -118,7 +123,10 @@ def apply_rejections(
             if r > 60 and s > 0.35 and proposed_direction == "short":
                 reasons.append("news_shock_against_short")
 
-    if "momentum_vs_structure_up" in layer_flags or "momentum_vs_structure_down" in layer_flags:
+    if (
+        "momentum_vs_structure_up" in layer_flags
+        or "momentum_vs_structure_down" in layer_flags
+    ):
         if composite > 60:
             reasons.append("momentum_structure_friction")
 

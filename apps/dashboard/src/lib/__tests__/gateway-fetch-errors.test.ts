@@ -1,4 +1,4 @@
-import { getGatewayFetchErrorInfo, gatewayFetchErrorMessage } from "@/lib/gateway-fetch-errors";
+import { getGatewayFetchErrorInfo } from "@/lib/gateway-fetch-errors";
 
 describe("gateway-fetch-errors", () => {
   it("getGatewayFetchErrorInfo liefert kind + technische Zeile", () => {
@@ -8,8 +8,9 @@ describe("gateway-fetch-errors", () => {
     expect(i.technical).toContain("HTTP 502");
   });
 
-  it("gatewayFetchErrorMessage (deprecated) liefert technische Zeile", () => {
-    expect(gatewayFetchErrorMessage(new Error("x"))).toBe("x");
-    expect(gatewayFetchErrorMessage("timeout")).toBe("timeout");
+  it("klassifiziert Timeout-Strings", () => {
+    const i = getGatewayFetchErrorInfo("request timeout");
+    expect(i.kind).toBe("timeout");
+    expect(i.technical).toBe("request timeout");
   });
 });

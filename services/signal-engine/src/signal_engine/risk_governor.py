@@ -15,6 +15,21 @@ import json
 import logging
 from typing import Any, Literal
 
+from shared_py.asset_risk_tiers import (
+    asset_live_eligibility_reasons,
+    classify_asset_risk_tier,
+    validate_multi_asset_order_sizing,
+)
+from shared_py.observability.vpin_redis import (
+    VPIN_HARD_HALT_THRESHOLD_0_1,
+    VPIN_ORDER_SIZE_REDUCE_THRESHOLD_0_1,
+)
+from shared_py.resilience.survival_kernel import (
+    RISK_VOLATILITY_CLAMP_ACTIVE,
+    adaptive_leverage_cap_from_atr_percent,
+    effective_atr_percent_for_volatility_clamp,
+)
+
 from signal_engine.portfolio_risk import (
     assess_portfolio_structural_live_blocks,
     build_portfolio_synthesis,
@@ -23,20 +38,6 @@ from signal_engine.portfolio_risk import (
 from signal_engine.product_family_risk import (
     maintenance_margin_rate_from_instrument,
     market_family_from_signal_row,
-)
-from shared_py.observability.vpin_redis import (
-    VPIN_HARD_HALT_THRESHOLD_0_1,
-    VPIN_ORDER_SIZE_REDUCE_THRESHOLD_0_1,
-)
-from shared_py.asset_risk_tiers import (
-    asset_live_eligibility_reasons,
-    classify_asset_risk_tier,
-    validate_multi_asset_order_sizing,
-)
-from shared_py.resilience.survival_kernel import (
-    RISK_VOLATILITY_CLAMP_ACTIVE,
-    adaptive_leverage_cap_from_atr_percent,
-    effective_atr_percent_for_volatility_clamp,
 )
 
 RISK_GOVERNOR_VERSION = "risk-governor-v4"
@@ -134,7 +135,9 @@ def _specialist_ensemble_disagreement(source_snapshot: dict[str, Any]) -> bool:
     return d is not None and d >= CONSERVATIVE_SPECIALIST_DISSENT_0_1
 
 
-def extract_risk_account_snapshot(source_snapshot: dict[str, Any] | None) -> dict[str, Any]:
+def extract_risk_account_snapshot(
+    source_snapshot: dict[str, Any] | None
+) -> dict[str, Any]:
     """Liest risk_account_snapshot aus source_snapshot_json; fehlende Keys = kein hartes Gate."""
     if not isinstance(source_snapshot, dict):
         return {}
@@ -233,33 +236,48 @@ def assess_risk_governor(
     if execution_mode not in {"paper", "shadow", "live"}:
         execution_mode = "paper"
 
-    asset_symbol = str(
-        signal_row.get("symbol")
-        or signal_row.get("asset")
-        or signal_row.get("instrument_symbol")
+    asset_symbol = (
+        str(
+            signal_row.get("symbol")
+            or signal_row.get("asset")
+            or signal_row.get("instrument_symbol")
+            or "UNKNOWN"
+        ).strip()
         or "UNKNOWN"
-    ).strip() or "UNKNOWN"
-    requested_asset_tier = signal_row.get("asset_risk_tier") or signal_row.get("asset_tier")
+    )
+    requested_asset_tier = signal_row.get("asset_risk_tier") or signal_row.get(
+        "asset_tier"
+    )
     volatility_0_1 = _f(signal_row.get("asset_volatility_0_1"))
     if volatility_0_1 is None:
         volatility_0_1 = _f(signal_row.get("volatility_0_1"))
     asset_tier = classify_asset_risk_tier(
-        requested_tier=str(requested_asset_tier) if requested_asset_tier is not None else None,
+        requested_tier=(
+            str(requested_asset_tier) if requested_asset_tier is not None else None
+        ),
         volatility_0_1=volatility_0_1,
         spread_bps=_f(primary_tf.get("spread_bps")),
         delisted=bool(signal_row.get("asset_delisted")),
         suspended=bool(signal_row.get("asset_suspended")),
     )
-    asset_liquidity_status = str(
-        signal_row.get("asset_liquidity_status")
-        or signal_row.get("liquidity_status")
-        or "unknown"
-    ).strip().lower()
-    asset_data_quality_status = str(
-        signal_row.get("asset_data_quality_status")
-        or signal_row.get("data_quality_status")
-        or "data_unknown"
-    ).strip().lower()
+    asset_liquidity_status = (
+        str(
+            signal_row.get("asset_liquidity_status")
+            or signal_row.get("liquidity_status")
+            or "unknown"
+        )
+        .strip()
+        .lower()
+    )
+    asset_data_quality_status = (
+        str(
+            signal_row.get("asset_data_quality_status")
+            or signal_row.get("data_quality_status")
+            or "data_unknown"
+        )
+        .strip()
+        .lower()
+    )
     strategy_evidence_ready = bool(
         signal_row.get("asset_strategy_evidence_ready")
         or signal_row.get("strategy_evidence_ready")
@@ -285,20 +303,28 @@ def assess_risk_governor(
         account_context_fresh=account_context_fresh,
         spread_bps=_f(primary_tf.get("spread_bps")),
     )
-    asset_live_block_reasons = [f"asset_risk:{reason}" for reason in asset_live_block_reasons]
+    asset_live_block_reasons = [
+        f"asset_risk:{reason}" for reason in asset_live_block_reasons
+    ]
 
-    proposed_notional_usdt = _f(
-        signal_row.get("proposed_notional_usdt")
-        or signal_row.get("position_notional_usdt")
-        or signal_row.get("notional_usdt")
+    proposed_notional_usdt = (
+        _f(
+            signal_row.get("proposed_notional_usdt")
+            or signal_row.get("position_notional_usdt")
+            or signal_row.get("notional_usdt")
+            or 0.0
+        )
         or 0.0
-    ) or 0.0
-    requested_leverage = _i(
-        signal_row.get("allowed_leverage")
-        or signal_row.get("recommended_leverage")
-        or signal_row.get("leverage")
+    )
+    requested_leverage = (
+        _i(
+            signal_row.get("allowed_leverage")
+            or signal_row.get("recommended_leverage")
+            or signal_row.get("leverage")
+            or 1
+        )
         or 1
-    ) or 1
+    )
     asset_sizing = validate_multi_asset_order_sizing(
         symbol=asset_symbol,
         tier=asset_tier,
@@ -306,7 +332,9 @@ def assess_risk_governor(
         requested_leverage=requested_leverage,
         requested_notional_usdt=proposed_notional_usdt,
     )
-    asset_sizing_reasons = [f"asset_risk:{reason}" for reason in asset_sizing.get("reasons", [])]
+    asset_sizing_reasons = [
+        f"asset_risk:{reason}" for reason in asset_sizing.get("reasons", [])
+    ]
 
     # --- Phase 1a: Konto-/Portfolio-Stress (nur Live, wenn live_only) ---
     live_stress: list[str] = []
@@ -350,7 +378,9 @@ def assess_risk_governor(
         live_stress.append("risk_governor_gross_exposure_critical")
 
     lpr = _f(acct.get("largest_position_risk_to_equity_0_1"))
-    lim_lpr = float(getattr(settings, "risk_portfolio_live_max_largest_position_risk_0_1", 0.22))
+    lim_lpr = float(
+        getattr(settings, "risk_portfolio_live_max_largest_position_risk_0_1", 0.22)
+    )
     if lpr is not None and lpr > lim_lpr:
         live_stress.append("risk_governor_largest_position_risk_exceeded")
 
@@ -373,7 +403,9 @@ def assess_risk_governor(
     if unc_phase == "blocked":
         universal.append("risk_governor_uncertainty_phase_blocked")
 
-    specialist_ensemble_disagreement = _specialist_ensemble_disagreement(source_snapshot)
+    specialist_ensemble_disagreement = _specialist_ensemble_disagreement(
+        source_snapshot
+    )
     if specialist_ensemble_disagreement:
         universal.append("risk_governor_specialist_ensemble_disagreement")
     # Ohne 1:1-Hebel in Futures (min. Konfig-Hebel 7x): statt 1x-Klemme -> Abstinenz
@@ -502,7 +534,10 @@ def assess_risk_governor(
         cap = min(cap, 14)
 
     depth = _f(primary_tf.get("depth_to_bar_volume_ratio"))
-    if depth is not None and depth < float(settings.leverage_signal_min_depth_ratio) * 0.75:
+    if (
+        depth is not None
+        and depth < float(settings.leverage_signal_min_depth_ratio) * 0.75
+    ):
         cap = min(cap, 10)
 
     # --- Resilience: Volatility Clamp (ATR vs. 24h-EMA, Prompt 73) ---
@@ -558,7 +593,9 @@ def assess_risk_governor(
         if flat and d not in flat:
             direction_permitted = False
 
-    trade_action_recommendation = "do_not_trade" if hard or not direction_permitted else "allow_trade"
+    trade_action_recommendation = (
+        "do_not_trade" if hard or not direction_permitted else "allow_trade"
+    )
 
     exit_strategies, emergency = _exit_and_emergency(
         tier=tier,
@@ -606,7 +643,9 @@ def assess_risk_governor(
         "governor_bff_risk_flags_json": governor_bff_risk_flags_json,
         "exit_strategies_allowed_json": exit_strategies,
         "emergency_rules_json": emergency,
-        "account_snapshot_echo_json": {k: acct.get(k) for k in sorted(acct.keys())} if acct else {},
+        "account_snapshot_echo_json": (
+            {k: acct.get(k) for k in sorted(acct.keys())} if acct else {}
+        ),
     }
 
 
@@ -621,20 +660,31 @@ def _exit_and_emergency(
     elif tier == "C":
         exits = ["stop_mandatory", "target_ladder", "time_stop_short"]
     else:
-        exits = ["stop_mandatory", "target_ladder", "time_stop_optional", "trail_after_be_optional"]
+        exits = [
+            "stop_mandatory",
+            "target_ladder",
+            "time_stop_optional",
+            "trail_after_be_optional",
+        ]
 
     emergency = {
         "flatten_on_margin_critical": True,
         "cancel_new_entries_on_exchange_degraded": True,
-        "force_reduce_only_on_risk_alert": bool(settings.risk_force_reduce_only_on_alert),
+        "force_reduce_only_on_risk_alert": bool(
+            settings.risk_force_reduce_only_on_alert
+        ),
         "halt_on_uncertainty_blocked_phase": True,
     }
     return exits, emergency
 
 
-def leverage_escalation_ok(signal_row: dict[str, Any], governor: dict[str, Any]) -> bool:
+def leverage_escalation_ok(
+    signal_row: dict[str, Any], governor: dict[str, Any]
+) -> bool:
     """Explizite Freigabe + messbare Stabilitaet (Snapshot), sonst Live-Ramp 7."""
-    snap = extract_risk_account_snapshot(_as_dict(signal_row.get("source_snapshot_json")))
+    snap = extract_risk_account_snapshot(
+        _as_dict(signal_row.get("source_snapshot_json"))
+    )
     approved = bool(snap.get("leverage_escalation_approved"))
     stable = bool(snap.get("measurably_stable_for_escalation"))
     return approved and stable

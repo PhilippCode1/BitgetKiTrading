@@ -42,9 +42,7 @@ function setGlobalLiveSseStatus(next: LiveSsePublicStatus): void {
   }
 }
 
-function mapToPublic(
-  s: LiveStreamConnectionState,
-): LiveSsePublicStatus {
+function mapToPublic(s: LiveStreamConnectionState): LiveSsePublicStatus {
   switch (s) {
     case "connecting":
       return "CONNECTING";
@@ -112,18 +110,12 @@ export type ManagedLiveEventSource = {
  */
 export function computeReconnectDelayMs(attempt: number): number {
   const a = Math.max(1, Math.floor(attempt));
-  const raw = Math.min(
-    LIVE_SSE_BACKOFF_MAX_MS,
-    1000 * 2 ** (a - 1),
-  );
+  const raw = Math.min(LIVE_SSE_BACKOFF_MAX_MS, 1000 * 2 ** (a - 1));
   const jitter = raw * (0.9 + Math.random() * 0.2);
   return Math.min(LIVE_SSE_BACKOFF_MAX_MS, Math.round(jitter));
 }
 
-function wrapHandlers(
-  h: LiveSseHandlers,
-  onPing: () => void,
-): LiveSseHandlers {
+function wrapHandlers(h: LiveSseHandlers, onPing: () => void): LiveSseHandlers {
   return {
     ...h,
     onPing: () => {
@@ -133,18 +125,14 @@ function wrapHandlers(
   };
 }
 
-function attachEventHandlers(
-  es: EventSource,
-  handlers: LiveSseHandlers,
-): void {
-  const wrap =
-    (fn?: (data: unknown) => void) => (ev: MessageEvent<string>) => {
-      try {
-        fn?.(JSON.parse(ev.data));
-      } catch {
-        fn?.(ev.data);
-      }
-    };
+function attachEventHandlers(es: EventSource, handlers: LiveSseHandlers): void {
+  const wrap = (fn?: (data: unknown) => void) => (ev: MessageEvent<string>) => {
+    try {
+      fn?.(JSON.parse(ev.data));
+    } catch {
+      fn?.(ev.data);
+    }
+  };
   es.addEventListener("candle", wrap(handlers.onCandle));
   es.addEventListener("signal", wrap(handlers.onSignal));
   es.addEventListener("drawing", wrap(handlers.onDrawing));

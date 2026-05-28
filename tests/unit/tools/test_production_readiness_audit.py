@@ -8,8 +8,6 @@ import sys
 import uuid
 from pathlib import Path
 
-import pytest
-
 REPO = Path(__file__).resolve().parents[3]
 SCRIPT = REPO / "tools" / "production_readiness_audit.py"
 
@@ -94,7 +92,9 @@ def test_strict_passes_synthetic_l4_l5_marks(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     (root / "docs").mkdir(exist_ok=True)
-    (root / "docs" / "migrations.md").write_text("restore and pitr backup", encoding="utf-8")
+    (root / "docs" / "migrations.md").write_text(
+        "restore and pitr backup", encoding="utf-8"
+    )
     (root / "docs" / "db-schema.md").write_text("schema", encoding="utf-8")
     (root / "docs" / "EXTERNAL_GO_LIVE_DEPENDENCIES.md").write_text(
         "x" * 201, encoding="utf-8"
@@ -107,7 +107,9 @@ def test_strict_passes_synthetic_l4_l5_marks(tmp_path: Path) -> None:
     (root / "services" / "monitor-engine" / "src").mkdir(parents=True)
     (root / "services" / "live-broker" / "src").mkdir(parents=True)
     (root / "tools").mkdir()
-    (root / "tools" / "check_release_approval_gates.py").write_text("x", encoding="utf-8")
+    (root / "tools" / "check_release_approval_gates.py").write_text(
+        "x", encoding="utf-8"
+    )
     (root / "tools" / "check_coverage_gates.py").write_text("x", encoding="utf-8")
     (root / "tools" / "validate_env_profile.py").write_text("x", encoding="utf-8")
     (root / "tools" / "check_production_env_template_security.py").write_text(
@@ -116,7 +118,9 @@ def test_strict_passes_synthetic_l4_l5_marks(tmp_path: Path) -> None:
     tdir = root / "tests" / "unit" / "alert"
     tdir.mkdir(parents=True)
     (tdir / "test_foo.py").write_text("def test_x(): pass", encoding="utf-8")
-    (root / "tests" / "live_broker_smoke.py").write_text("def t(): pass", encoding="utf-8")
+    (root / "tests" / "live_broker_smoke.py").write_text(
+        "def t(): pass", encoding="utf-8"
+    )
     (root / "apps" / "dashboard" / "src").mkdir(parents=True)
 
     dct = p.run_audit(root, strict=True)

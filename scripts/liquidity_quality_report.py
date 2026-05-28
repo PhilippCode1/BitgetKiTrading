@@ -78,16 +78,22 @@ def main(argv: list[str] | None = None) -> int:
                 "depth_status": assessment.depth_status,
                 "liquidity_tier": assessment.liquidity_tier,
                 "max_recommended_notional": assessment.max_recommended_notional,
-                "live_status": "LIVE_ALLOWED" if assessment.live_allowed else "LIVE_BLOCKED",
+                "live_status": (
+                    "LIVE_ALLOWED" if assessment.live_allowed else "LIVE_BLOCKED"
+                ),
                 "block_reasons": assessment.block_reasons,
-                "block_reasons_de": build_liquidity_block_reasons_de(assessment.block_reasons),
+                "block_reasons_de": build_liquidity_block_reasons_de(
+                    assessment.block_reasons
+                ),
             }
         )
 
     out_payload = _redact_secret_like_values({"assets": assessed})
     if args.output_json:
         args.output_json.parent.mkdir(parents=True, exist_ok=True)
-        args.output_json.write_text(json.dumps(out_payload, indent=2, ensure_ascii=False), encoding="utf-8")
+        args.output_json.write_text(
+            json.dumps(out_payload, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
     if args.output_md:
         lines = ["# Liquiditaets-Qualitaetsreport", ""]
         for row in assessed:
@@ -102,7 +108,9 @@ def main(argv: list[str] | None = None) -> int:
         args.output_md.parent.mkdir(parents=True, exist_ok=True)
         args.output_md.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
-    print(f"liquidity_quality_report: assets={len(assessed)} blocked={sum(1 for row in assessed if row['live_status']=='LIVE_BLOCKED')}")
+    print(
+        f"liquidity_quality_report: assets={len(assessed)} blocked={sum(1 for row in assessed if row['live_status']=='LIVE_BLOCKED')}"
+    )
     return 0
 
 

@@ -51,14 +51,14 @@ def apply_tenant_rls_guc(
     if not tid:
         return
     _set_config(
-        conn,
+        conn,  # type: ignore
         GUC_TENANT_ID,
         tid,
         is_local=is_local,
     )
     if is_local:
         _set_config(
-            conn,
+            conn,  # type: ignore
             GUC_INTERNAL_ALL,
             "",
             is_local=is_local,
@@ -73,7 +73,7 @@ def apply_internal_all_tenants_rls_guc(
     Löscht/überschreibt dabei bewusst die strikte Mandantengrenze.
     """
     _set_config(
-        conn,
+        conn,  # type: ignore
         GUC_INTERNAL_ALL,
         "1",
         is_local=is_local,

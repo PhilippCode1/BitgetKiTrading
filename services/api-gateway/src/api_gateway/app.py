@@ -75,7 +75,9 @@ from api_gateway.routes_db import router as db_router
 from api_gateway.routes_events import router as events_router
 from api_gateway.routes_learning_proxy import backtest_router, learning_router
 from api_gateway.routes_live import router as live_router
-from api_gateway.routes_live_broker_operator import router as live_broker_operator_router
+from api_gateway.routes_live_broker_operator import (
+    router as live_broker_operator_router,
+)
 from api_gateway.routes_live_broker_proxy import router as live_broker_proxy_router
 from api_gateway.routes_live_broker_safety import router as live_broker_safety_router
 from api_gateway.routes_demo import router as demo_router
@@ -142,12 +144,21 @@ def create_app() -> FastAPI:
         ),
         openapi_tags=[
             {"name": "system", "description": "Aggregierte Gesundheit und Ops-Sicht."},
-            {"name": "learning", "description": "Learning-Metriken, Drift, Registry, Backtests."},
+            {
+                "name": "learning",
+                "description": "Learning-Metriken, Drift, Registry, Backtests.",
+            },
             {"name": "monitor", "description": "Monitor-Alerts und Ops-Lesepfade."},
             {"name": "paper", "description": "Paper-Broker-Lesepfade."},
             {"name": "live", "description": "Live-Zustand und SSE (Auth beachten)."},
-            {"name": "commerce-customer", "description": "Kundenportal, Guthaben, Einzahlungen (BFF/JWT)."},
-            {"name": "commerce-admin-customer", "description": "Admin-Kundenpflege (billing:admin / admin:write)."},
+            {
+                "name": "commerce-customer",
+                "description": "Kundenportal, Guthaben, Einzahlungen (BFF/JWT).",
+            },
+            {
+                "name": "commerce-admin-customer",
+                "description": "Admin-Kundenpflege (billing:admin / admin:write).",
+            },
             {
                 "name": "commerce-payments",
                 "description": (
@@ -170,9 +181,18 @@ def create_app() -> FastAPI:
                 "name": "commerce-settlement",
                 "description": "Treasury-Konfiguration, manuelles Settlement (Prompt 16).",
             },
-            {"name": "commerce", "description": "Interne Commerce-/Metering-Endpunkte."},
-            {"name": "deploy", "description": "Edge-/Reverse-Proxy-Readiness ohne Secrets."},
-            {"name": "meta", "description": "Oeffentliche Laufzeit-Kontur (keine Secrets)."},
+            {
+                "name": "commerce",
+                "description": "Interne Commerce-/Metering-Endpunkte.",
+            },
+            {
+                "name": "deploy",
+                "description": "Edge-/Reverse-Proxy-Readiness ohne Secrets.",
+            },
+            {
+                "name": "meta",
+                "description": "Oeffentliche Laufzeit-Kontur (keine Secrets).",
+            },
             {
                 "name": "llm-operator",
                 "description": "Operator-KI (Erklaerungen) — JWT gateway:read, Forward zum LLM-Orchestrator.",
@@ -417,7 +437,9 @@ def create_app() -> FastAPI:
                 "checks": details,
                 "summary": {
                     "core_postgres_connect": parts.get("postgres", (False, ""))[0],
-                    "core_postgres_schema": parts.get("postgres_schema", (False, ""))[0],
+                    "core_postgres_schema": parts.get("postgres_schema", (False, ""))[
+                        0
+                    ],
                     "core_redis": parts.get("redis", (False, ""))[0],
                     "peer_checks_configured": peer_n,
                 },
@@ -425,7 +447,9 @@ def create_app() -> FastAPI:
             if not s.production:
                 out["app_env"] = s.app_env
             return out
-        except Exception as exc:  # pragma: no cover - harte Entkopplung: kein 500er bei Hiccup
+        except (
+            Exception
+        ) as exc:  # pragma: no cover - harte Entkopplung: kein 500er bei Hiccup
             logger.exception("readiness probe failed: %s", exc)
             return {
                 "ready": False,

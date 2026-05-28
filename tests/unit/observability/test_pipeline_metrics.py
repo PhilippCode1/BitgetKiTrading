@@ -3,7 +3,6 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import pytest
 from prometheus_client import REGISTRY, generate_latest
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -28,9 +27,9 @@ def _metric_sample_lines(substr: str) -> list[str]:
 def test_pipeline_backpressure_gauge_exported() -> None:
     set_pipeline_backpressure_queue_size(stream="stream:test_q", size=7)
     lines = _metric_sample_lines("pipeline_backpressure_queue_size")
-    assert any('stream="stream:test_q" 7.0' in el.replace("  ", " ") for el in lines) or any(
-        "7.0" in el and "stream:test_q" in el for el in lines
-    )
+    assert any(
+        'stream="stream:test_q" 7.0' in el.replace("  ", " ") for el in lines
+    ) or any("7.0" in el and "stream:test_q" in el for el in lines)
 
 
 def test_pipeline_event_drop_counter_exported() -> None:

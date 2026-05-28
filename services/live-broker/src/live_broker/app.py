@@ -38,7 +38,11 @@ from live_broker.global_halt_latch import GlobalHaltLatch
 from live_broker.orders.service import LiveBrokerOrderService
 from live_broker.persistence.repo import LiveBrokerRepository
 from live_broker.private_rest import BitgetPrivateRestClient, BitgetRestError
-from live_broker.private_ws import BitgetPrivateWsClient, PrivateWsClientStats, NormalizedPrivateEvent
+from live_broker.private_ws import (
+    BitgetPrivateWsClient,
+    PrivateWsClientStats,
+    NormalizedPrivateEvent,
+)
 from live_broker.private_ws.sync import ExchangeStateSyncService
 from live_broker.reconcile.service import LiveReconcileService
 from live_broker.safety_oracle_bootstrap import (
@@ -169,7 +173,9 @@ class LiveBrokerRuntime:
         if not self.settings.private_exchange_access_enabled:
             return
         try:
-            self.catchup_queue.put_nowait("ws_reconnect" if is_reconnect else "ws_connect")
+            self.catchup_queue.put_nowait(
+                "ws_reconnect" if is_reconnect else "ws_connect"
+            )
         except queue.Full:
             logger.warning("rest catchup queue full after private ws connect")
 
@@ -237,7 +243,9 @@ class LiveBrokerRuntime:
                     "snapshot_missing": 0,
                     "snapshot_stale": 0,
                     "ws_connected": ws_ok,
-                    "last_rest_catchup_age_ms": (now_ms - catchup_ms) if catchup_ms else None,
+                    "last_rest_catchup_age_ms": (
+                        (now_ms - catchup_ms) if catchup_ms else None
+                    ),
                     "safety_latch_blocks_live": safety_latch,
                 },
                 redis=self.bus.redis,
@@ -260,7 +268,11 @@ class LiveBrokerRuntime:
         truth_reason = (
             "ws_connected"
             if ws_ok
-            else ("rest_catchup_fresh" if catchup_fresh else "no_fresh_exchange_truth_channel")
+            else (
+                "rest_catchup_fresh"
+                if catchup_fresh
+                else "no_fresh_exchange_truth_channel"
+            )
         )
         try:
             safety_latch = self.repo.safety_latch_is_active()
@@ -275,7 +287,9 @@ class LiveBrokerRuntime:
                 "snapshot_missing": missing,
                 "snapshot_stale": stale,
                 "ws_connected": ws_ok,
-                "last_rest_catchup_age_ms": (now_ms - catchup_ms) if catchup_ms else None,
+                "last_rest_catchup_age_ms": (
+                    (now_ms - catchup_ms) if catchup_ms else None
+                ),
                 "safety_latch_blocks_live": safety_latch,
             },
             redis=self.bus.redis,
@@ -306,7 +320,10 @@ class LiveBrokerRuntime:
             return
         dsn = (self.settings.database_url or "").strip()
         try:
-            from live_broker.strategy_config_guard import should_verify, verify_bound_strategy_version_or_raise
+            from live_broker.strategy_config_guard import (
+                should_verify,
+                verify_bound_strategy_version_or_raise,
+            )
 
             if dsn and should_verify(self.settings):
                 verify_bound_strategy_version_or_raise(
@@ -356,7 +373,7 @@ class LiveBrokerRuntime:
                 logger.warning("Error stopping ws client: %s", exc)
             self._ws_thread.join(timeout=5.0)
             self._ws_thread = None
-            
+
         if self._worker_thread is not None:
             self._worker_thread.join(timeout=5.0)
             self._worker_thread = None
@@ -388,7 +405,9 @@ class LiveBrokerRuntime:
             "shadow_trade_enable": self.settings.shadow_trade_enable,
             "shadow_path_active": self.settings.shadow_path_active,
             "live_trade_enable": self.settings.live_trade_enable,
-            "live_order_submission_enabled": self.settings.live_order_submission_enabled,
+            "live_order_submission_enabled": (
+                self.settings.live_order_submission_enabled
+            ),
             "exchange": self.exchange_client.describe(),
             "orders": self.order_service.state_snapshot(),
             "interfaces": self.execution_service.interfaces_payload(),
@@ -423,15 +442,23 @@ class LiveBrokerRuntime:
         metadata_ok = runtime.get("instrument_metadata", {}).get("status") == "ok"
         keys_ok, keys_detail = self.exchange_client.private_api_configured()
         bitget_rest_health: dict[str, Any] = {
-            "credential_profile": "demo" if self.settings.bitget_demo_enabled else "live",
+            "credential_profile": (
+                "demo" if self.settings.bitget_demo_enabled else "live"
+            ),
             "paptrading_header_active": bool(self.settings.bitget_demo_enabled),
-            "credential_isolation_relaxed": bool(self.settings.bitget_relax_credential_isolation),
+            "credential_isolation_relaxed": bool(
+                self.settings.bitget_relax_credential_isolation
+            ),
             "private_api_configured": keys_ok,
             "private_detail": keys_detail,
             "private_rest": self.private_rest_client.state_snapshot(),
         }
         return {
-            "status": "ok" if latest_status == "ok" and persistence_ok and metadata_ok else "degraded",
+            "status": (
+                "ok"
+                if latest_status == "ok" and persistence_ok and metadata_ok
+                else "degraded"
+            ),
             "service": "live-broker",
             "execution_mode": runtime["execution_mode"],
             "runtime_mode": runtime["runtime_mode"],
@@ -467,7 +494,8 @@ class LiveBrokerRuntime:
             "persistence_schema": self.repo.schema_ready(),
             "instrument_catalog": (
                 self.catalog_block_reason is None,
-                self.catalog_block_reason or self.catalog.health_payload().get("status", "ok"),
+                self.catalog_block_reason
+                or self.catalog.health_payload().get("status", "ok"),
             ),
             "instrument_metadata": (
                 self.catalog_block_reason is None
@@ -493,11 +521,12 @@ class LiveBrokerRuntime:
             try:
                 state = self.private_rest_client.sync_server_time(force=True)
                 offset = abs(int(state["server_time_offset_ms"]))
+                budget = self.settings.live_broker_server_time_max_skew_ms
                 parts["bitget_server_time"] = (
                     bool(state["offset_within_budget"]) and offset <= 30_000,
                     (
                         f"offset_ms={offset} "
-                        f"budget_ms={self.settings.live_broker_server_time_max_skew_ms} "
+                        f"budget_ms={budget} "
                         f"rtt_ms={state['last_server_rtt_ms']}"
                     ),
                 )
@@ -516,7 +545,9 @@ class LiveBrokerRuntime:
         details["shadow_trade_enable"] = self.settings.shadow_trade_enable
         details["shadow_path_active"] = self.settings.shadow_path_active
         details["live_trade_enable"] = self.settings.live_trade_enable
-        details["live_order_submission_enabled"] = self.settings.live_order_submission_enabled
+        details["live_order_submission_enabled"] = (
+            self.settings.live_order_submission_enabled
+        )
         details["execution_runtime"] = self.settings.execution_runtime_snapshot()
         details["interfaces"] = self.execution_service.interfaces_payload()
         details["orders"] = self.order_service.state_snapshot()
@@ -539,7 +570,9 @@ def create_app(*, start_background: bool = True) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         dsn = (settings.database_url or "").strip()
-        skip = (os.environ.get("BITGET_SKIP_MIGRATION_LATCH") or "").strip().lower() in (
+        skip = (
+            os.environ.get("BITGET_SKIP_MIGRATION_LATCH") or ""
+        ).strip().lower() in (
             "1",
             "true",
             "yes",

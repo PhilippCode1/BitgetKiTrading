@@ -54,7 +54,10 @@ def production_probability_calibration_satisfied(
     artifacts = meta.get("artifact_files")
     if isinstance(artifacts, dict) and str(artifacts.get("calibration") or "").strip():
         return True
-    if str(meta.get("calibration_method") or "").strip().lower() in ("sigmoid", "isotonic"):
+    if str(meta.get("calibration_method") or "").strip().lower() in (
+        "sigmoid",
+        "isotonic",
+    ):
         return True
     return cal in ("sigmoid", "isotonic")
 

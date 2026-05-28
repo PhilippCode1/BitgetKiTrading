@@ -141,7 +141,9 @@ class DrawingWorker:
             self._stats.db_connected = True
             self._stats.processed_events += 1
             if changed:
-                await asyncio.to_thread(self._publish_drawing_updated, item.envelope, changed)
+                await asyncio.to_thread(
+                    self._publish_drawing_updated, item.envelope, changed
+                )
             await self._ack(item)
         except asyncio.CancelledError:
             raise
@@ -200,7 +202,9 @@ class DrawingWorker:
         now_ms = int(time.time() * 1000)
         orderbook_fresh = False
         if ob_ts is not None:
-            orderbook_fresh = (now_ms - ob_ts) <= self._settings.drawing_max_orderbook_age_ms
+            orderbook_fresh = (
+                now_ms - ob_ts
+            ) <= self._settings.drawing_max_orderbook_age_ms
 
         st_prov_raw = state.get("input_provenance_json") if state else None
         st_prov: dict[str, Any] | None = None
@@ -303,7 +307,9 @@ class DrawingWorker:
         merged_trace["structure_updated_event_id"] = source.event_id
         merged_trace["source_event_id"] = source.event_id
         out = EventEnvelope(
-            event_id=stable_stream_event_id(stream=STREAM_DRAWING_UPDATED, dedupe_key=dk),
+            event_id=stable_stream_event_id(
+                stream=STREAM_DRAWING_UPDATED, dedupe_key=dk
+            ),
             event_type="drawing_updated",
             symbol=source.symbol,
             timeframe=source.timeframe,

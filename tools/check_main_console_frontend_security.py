@@ -13,7 +13,15 @@ FORBIDDEN_PUBLIC_ENV = re.compile(
     r"(?mi)^\s*(NEXT_PUBLIC_[A-Z0-9_]*(TOKEN|SECRET|KEY|JWT|AUTHORIZATION|PASSWORD|PASS|REDIS|DB|OPENAI)[A-Z0-9_]*)\s*="
 )
 
-FORBIDDEN_UI_TERMS = ("billing", "customer", "customers", "subscription", "pricing", "checkout", "saas")
+FORBIDDEN_UI_TERMS = (
+    "billing",
+    "customer",
+    "customers",
+    "subscription",
+    "pricing",
+    "checkout",
+    "saas",
+)
 MAIN_CONSOLE_ACTIVE_ROOTS = (
     "app/(operator)/console/",
     "components/console/",
@@ -31,8 +39,17 @@ LEGACY_ALLOWED_PATH_PARTS = (
 )
 
 
-def _issue(issues: list[dict[str, str]], *, severity: str, code: str, message: str, path: Path | str) -> None:
-    issues.append({"severity": severity, "code": code, "message": message, "path": str(path)})
+def _issue(
+    issues: list[dict[str, str]],
+    *,
+    severity: str,
+    code: str,
+    message: str,
+    path: Path | str,
+) -> None:
+    issues.append(
+        {"severity": severity, "code": code, "message": message, "path": str(path)}
+    )
 
 
 def _scan_text_file(path: Path) -> str:
@@ -46,11 +63,34 @@ def analyze(root: Path, *, strict: bool = False) -> dict[str, Any]:
     issues: list[dict[str, str]] = []
 
     required = (
-        (root / "docs" / "production_10_10" / "main_console_frontend_bff_security.md", "doc_missing", "Frontend/BFF-Sicherheitsdoku fehlt."),
-        (root / "tools" / "check_main_console_frontend_security.py", "tool_missing", "Frontend-Security-Checker fehlt."),
-        (root / "tests" / "tools" / "test_check_main_console_frontend_security.py", "tool_test_missing", "Tool-Test für Frontend-Security fehlt."),
-        (root / "apps" / "dashboard" / "src" / "lib" / "server-env.ts", "server_env_missing", "server-env.ts fehlt."),
-        (root / "apps" / "dashboard" / "src" / "lib" / "gateway-bff.ts", "gateway_bff_missing", "gateway-bff.ts fehlt."),
+        (
+            root
+            / "docs"
+            / "production_10_10"
+            / "main_console_frontend_bff_security.md",
+            "doc_missing",
+            "Frontend/BFF-Sicherheitsdoku fehlt.",
+        ),
+        (
+            root / "tools" / "check_main_console_frontend_security.py",
+            "tool_missing",
+            "Frontend-Security-Checker fehlt.",
+        ),
+        (
+            root / "tests" / "tools" / "test_check_main_console_frontend_security.py",
+            "tool_test_missing",
+            "Tool-Test für Frontend-Security fehlt.",
+        ),
+        (
+            root / "apps" / "dashboard" / "src" / "lib" / "server-env.ts",
+            "server_env_missing",
+            "server-env.ts fehlt.",
+        ),
+        (
+            root / "apps" / "dashboard" / "src" / "lib" / "gateway-bff.ts",
+            "gateway_bff_missing",
+            "gateway-bff.ts fehlt.",
+        ),
     )
     for p, code, msg in required:
         if not p.is_file():
@@ -91,7 +131,9 @@ def analyze(root: Path, *, strict: bool = False) -> dict[str, Any]:
                     message="Link mit target=_blank ohne rel gefunden.",
                     path=tsx,
                 )
-            if "console.log(" in txt and re.search(r"(?i)(secret|token|authorization|api[_-]?key|passphrase|payload)", txt):
+            if "console.log(" in txt and re.search(
+                r"(?i)(secret|token|authorization|api[_-]?key|passphrase|payload)", txt
+            ):
                 sev = "error" if strict else "warning"
                 _issue(
                     issues,
@@ -103,8 +145,12 @@ def analyze(root: Path, *, strict: bool = False) -> dict[str, Any]:
 
             lowered = txt.lower()
             rel = str(tsx.relative_to(dashboard_src)).replace("\\", "/")
-            is_main_console_active = any(rel.startswith(p) for p in MAIN_CONSOLE_ACTIVE_ROOTS)
-            if is_main_console_active and any(term in lowered for term in FORBIDDEN_UI_TERMS):
+            is_main_console_active = any(
+                rel.startswith(p) for p in MAIN_CONSOLE_ACTIVE_ROOTS
+            )
+            if is_main_console_active and any(
+                term in lowered for term in FORBIDDEN_UI_TERMS
+            ):
                 if not any(p.strip("/") in rel for p in LEGACY_ALLOWED_PATH_PARTS):
                     _issue(
                         issues,
@@ -114,14 +160,26 @@ def analyze(root: Path, *, strict: bool = False) -> dict[str, Any]:
                         path=tsx,
                     )
     else:
-        _issue(issues, severity="error", code="dashboard_src_missing", message="apps/dashboard/src fehlt.", path=dashboard_src)
+        _issue(
+            issues,
+            severity="error",
+            code="dashboard_src_missing",
+            message="apps/dashboard/src fehlt.",
+            path=dashboard_src,
+        )
 
     # Server-only BFF guard contract.
     bff = root / "apps" / "dashboard" / "src" / "lib" / "gateway-bff.ts"
     if bff.is_file():
         txt = _scan_text_file(bff)
         if "requireOperatorGatewayAuth" not in txt:
-            _issue(issues, severity="error", code="missing_bff_auth_guard", message="requireOperatorGatewayAuth fehlt.", path=bff)
+            _issue(
+                issues,
+                severity="error",
+                code="missing_bff_auth_guard",
+                message="requireOperatorGatewayAuth fehlt.",
+                path=bff,
+            )
         if "DASHBOARD_GATEWAY_AUTHORIZATION fehlt" not in txt:
             _issue(
                 issues,
@@ -143,7 +201,9 @@ def analyze(root: Path, *, strict: bool = False) -> dict[str, Any]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Prüft Frontend/BFF-Sicherheit der Main Console.")
+    parser = argparse.ArgumentParser(
+        description="Prüft Frontend/BFF-Sicherheit der Main Console."
+    )
     parser.add_argument("--strict", action="store_true")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
@@ -157,7 +217,9 @@ def main() -> int:
             f"errors={payload['error_count']} warnings={payload['warning_count']} strict={str(args.strict).lower()}"
         )
         for item in payload["issues"]:
-            print(f"{item['severity'].upper()} {item['code']}: {item['message']} [{item['path']}]")
+            print(
+                f"{item['severity'].upper()} {item['code']}: {item['message']} [{item['path']}]"
+            )
     if payload["error_count"] > 0:
         return 1
     if args.strict and payload["warning_count"] > 0:

@@ -136,7 +136,9 @@ def test_unauthenticated_system_health_401_not_leak_secret(
     assert "unit-test-gateway" not in t
 
 
-def test_customer_portal_jwt_cannot_access_admin_route(client_sensitive: TestClient) -> None:
+def test_customer_portal_jwt_cannot_access_admin_route(
+    client_sensitive: TestClient,
+) -> None:
     secret = "unit-test-gateway-jwt-secret-32b!"
     token = _jwt_token(
         secret=secret,
@@ -154,7 +156,9 @@ def test_customer_portal_jwt_cannot_access_admin_route(client_sensitive: TestCli
     assert detail.get("code") == "GATEWAY_FORBIDDEN_CUSTOMER_SESSION"
 
 
-def test_wrong_scope_for_sensitive_mutation_is_403(client_sensitive: TestClient) -> None:
+def test_wrong_scope_for_sensitive_mutation_is_403(
+    client_sensitive: TestClient,
+) -> None:
     secret = "unit-test-gateway-jwt-secret-32b!"
     token = _jwt_token(secret=secret, roles=["billing:read"], role="admin")
     r = client_sensitive.post(

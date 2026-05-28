@@ -5,8 +5,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from jsonschema import Draft202012Validator
-from jsonschema import FormatChecker
+from jsonschema import Draft202012Validator, FormatChecker
 
 
 def _repo_root() -> Path:

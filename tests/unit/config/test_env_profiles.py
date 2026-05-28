@@ -248,7 +248,10 @@ def test_local_profile_keeps_demo_fixture_and_fake_paths_local_only() -> None:
     assert data["PAPER_MAX_LEVERAGE"] == "75"
     assert data["RISK_DEFAULT_ACTION"] == "do_not_trade"
     assert "localhost" in data["APP_BASE_URL"] or "127.0.0.1" in data["APP_BASE_URL"]
-    assert "localhost" in data["NEXT_PUBLIC_API_BASE_URL"] or "127.0.0.1" in data["NEXT_PUBLIC_API_BASE_URL"]
+    assert (
+        "localhost" in data["NEXT_PUBLIC_API_BASE_URL"]
+        or "127.0.0.1" in data["NEXT_PUBLIC_API_BASE_URL"]
+    )
     assert "@postgres:" in data["DATABASE_URL_DOCKER"]
     assert data["REDIS_URL_DOCKER"].startswith("redis://redis:")
     assert data["HEALTH_URL_LIVE_BROKER"].endswith("/ready")
@@ -262,7 +265,10 @@ def test_local_profile_keeps_demo_fixture_and_fake_paths_local_only() -> None:
     assert data["LIVE_REQUIRE_OPERATOR_RELEASE_FOR_LIVE_OPEN"] == "false"
     assert data["REQUIRE_SHADOW_MATCH_BEFORE_LIVE"] == "false"
     assert data["BITGET_UNIVERSE_MARKET_FAMILIES"] == "spot,margin,futures"
-    assert data["BITGET_FUTURES_ALLOWED_PRODUCT_TYPES"] == "USDT-FUTURES,USDC-FUTURES,COIN-FUTURES"
+    assert (
+        data["BITGET_FUTURES_ALLOWED_PRODUCT_TYPES"]
+        == "USDT-FUTURES,USDC-FUTURES,COIN-FUTURES"
+    )
     assert data["BITGET_UNIVERSE_SYMBOLS"] == "BTCUSDT,ETHUSDT"
     assert data["BITGET_WATCHLIST_SYMBOLS"] == "BTCUSDT,ETHUSDT"
     assert data["FEATURE_SCOPE_SYMBOLS"] == "BTCUSDT,ETHUSDT"
@@ -325,7 +331,10 @@ def test_shadow_profile_is_real_host_and_non_live_execution() -> None:
     assert data["LIVE_REQUIRE_OPERATOR_RELEASE_FOR_LIVE_OPEN"] == "true"
     assert data["REQUIRE_SHADOW_MATCH_BEFORE_LIVE"] == "true"
     assert data["BITGET_UNIVERSE_MARKET_FAMILIES"] == "spot,margin,futures"
-    assert data["BITGET_UNIVERSE_SYMBOLS"] == "<SET_REAL_VISIBLE_UNIVERSE_SYMBOLS_FROM_DISCOVERY>"
+    assert (
+        data["BITGET_UNIVERSE_SYMBOLS"]
+        == "<SET_REAL_VISIBLE_UNIVERSE_SYMBOLS_FROM_DISCOVERY>"
+    )
     assert data["BITGET_MARKET_FAMILY"] == ""
     assert data["BITGET_MARGIN_ACCOUNT_MODE"] == "isolated"
     assert data["BITGET_MARGIN_LOAN_TYPE"] == "normal"
@@ -343,7 +352,9 @@ def test_shadow_profile_is_real_host_and_non_live_execution() -> None:
         "REDIS_URL",
         "NEXT_PUBLIC_API_BASE_URL",
     ):
-        assert "localhost" not in data[key], f"{key} darf im shadow-Profil nicht localhost sein"
+        assert (
+            "localhost" not in data[key]
+        ), f"{key} darf im shadow-Profil nicht localhost sein"
 
 
 def test_production_profile_is_real_host_and_fake_free() -> None:
@@ -395,7 +406,10 @@ def test_production_profile_is_real_host_and_fake_free() -> None:
     assert data["LIVE_REQUIRE_OPERATOR_RELEASE_FOR_LIVE_OPEN"] == "true"
     assert data["REQUIRE_SHADOW_MATCH_BEFORE_LIVE"] == "true"
     assert data["BITGET_UNIVERSE_MARKET_FAMILIES"] == "spot,margin,futures"
-    assert data["BITGET_UNIVERSE_SYMBOLS"] == "<SET_REAL_VISIBLE_UNIVERSE_SYMBOLS_FROM_DISCOVERY>"
+    assert (
+        data["BITGET_UNIVERSE_SYMBOLS"]
+        == "<SET_REAL_VISIBLE_UNIVERSE_SYMBOLS_FROM_DISCOVERY>"
+    )
     assert data["BITGET_MARKET_FAMILY"] == "futures"
     assert data["BITGET_FUTURES_DEFAULT_PRODUCT_TYPE"] == "USDT-FUTURES"
     assert data["BITGET_PRODUCT_TYPE"] == "USDT-FUTURES"
@@ -417,7 +431,9 @@ def test_production_profile_is_real_host_and_fake_free() -> None:
         "REDIS_URL",
         "NEXT_PUBLIC_API_BASE_URL",
     ):
-        assert "localhost" not in data[key], f"{key} darf im production-Profil nicht localhost sein"
+        assert (
+            "localhost" not in data[key]
+        ), f"{key} darf im production-Profil nicht localhost sein"
 
 
 def test_test_profile_stays_deterministic_and_test_scoped() -> None:
@@ -480,7 +496,9 @@ def test_demo_example_includes_compose_required_base_values() -> None:
         "GRAFANA_ADMIN_PASSWORD": "admin",
     }
     for key, value in expected.items():
-        assert data.get(key) == value, f"{key} fehlt oder ist unerwartet in .env.demo.example"
+        assert (
+            data.get(key) == value
+        ), f"{key} fehlt oder ist unerwartet in .env.demo.example"
 
 
 def test_demo_example_keeps_live_and_submit_flags_fail_closed() -> None:

@@ -1,6 +1,11 @@
 from __future__ import annotations
 
-from shared_py.exit_safety import ReduceOnlyExitRequest, build_exit_block_reasons_de, validate_emergency_flatten_request, validate_reduce_only_exit
+from shared_py.exit_safety import (
+    ReduceOnlyExitRequest,
+    build_exit_block_reasons_de,
+    validate_emergency_flatten_request,
+    validate_reduce_only_exit,
+)
 
 
 def test_exit_qty_over_position_blocks() -> None:
@@ -19,7 +24,9 @@ def test_reduce_only_missing_blocks() -> None:
 
 def test_emergency_flatten_does_not_open_new_position() -> None:
     reasons = validate_emergency_flatten_request(
-        ReduceOnlyExitRequest("BTCUSDT", 1.2, 1.0, True, [100.0], 0.1, True, "kill_switch", True)
+        ReduceOnlyExitRequest(
+            "BTCUSDT", 1.2, 1.0, True, [100.0], 0.1, True, "kill_switch", True
+        )
     )
     assert "emergency_flatten_wuerde_position_eroeffnen" in reasons
 

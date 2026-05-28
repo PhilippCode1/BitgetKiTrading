@@ -7,7 +7,6 @@ from pathlib import Path
 
 from scripts.asset_preflight_evidence_report import build_report_payload
 
-
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts" / "asset_preflight_evidence_report.py"
 
@@ -25,20 +24,37 @@ def test_payload_blocks_fixture_assets_fail_closed() -> None:
     assert "slippage_too_high" in payload["covered_live_preflight_reasons"]
     assert "risk_tier_not_live_allowed" in payload["covered_live_preflight_reasons"]
     assert "order_sizing_not_safe" in payload["covered_live_preflight_reasons"]
-    assert "strategy_evidence_missing_or_invalid" in payload["covered_live_preflight_reasons"]
+    assert (
+        "strategy_evidence_missing_or_invalid"
+        in payload["covered_live_preflight_reasons"]
+    )
     by_symbol = {row["symbol"]: row for row in payload["assets"]}
     assert by_symbol["BTCUSDT"]["live_preflight_status"] == "LIVE_BLOCKED"
     assert by_symbol["BTCUSDT"]["decision"] in {"BLOCK_FOR_LIVE", "ALLOW_FOR_SHADOW"}
     assert by_symbol["BTCUSDT"]["submit_allowed"] is False
-    assert "state_live_candidate_nicht_live_freigegeben" in by_symbol["BTCUSDT"]["block_reasons"]
-    assert "asset_not_live_allowed" in by_symbol["BTCUSDT"]["live_preflight_blocking_reasons"]
-    assert "slippage_too_high" in by_symbol["BTCUSDT"]["live_preflight_blocking_reasons"]
+    assert (
+        "state_live_candidate_nicht_live_freigegeben"
+        in by_symbol["BTCUSDT"]["block_reasons"]
+    )
+    assert (
+        "asset_not_live_allowed"
+        in by_symbol["BTCUSDT"]["live_preflight_blocking_reasons"]
+    )
+    assert (
+        "slippage_too_high" in by_symbol["BTCUSDT"]["live_preflight_blocking_reasons"]
+    )
     assert by_symbol["ALTUSDT"]["live_preflight_status"] == "LIVE_BLOCKED"
     assert by_symbol["ALTUSDT"]["decision"] == "BLOCK_ALL"
     assert by_symbol["ALTUSDT"]["submit_allowed"] is False
     assert "asset_tier_unknown" in by_symbol["ALTUSDT"]["block_reasons"]
-    assert "data_quality_not_pass" in by_symbol["ALTUSDT"]["live_preflight_blocking_reasons"]
-    assert "risk_tier_not_live_allowed" in by_symbol["ALTUSDT"]["live_preflight_blocking_reasons"]
+    assert (
+        "data_quality_not_pass"
+        in by_symbol["ALTUSDT"]["live_preflight_blocking_reasons"]
+    )
+    assert (
+        "risk_tier_not_live_allowed"
+        in by_symbol["ALTUSDT"]["live_preflight_blocking_reasons"]
+    )
 
 
 def test_cli_writes_markdown_and_json(tmp_path: Path) -> None:

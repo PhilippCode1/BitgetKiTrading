@@ -39,7 +39,9 @@ def test_internal_service_auth_requires_matching_key_in_production() -> None:
     assert ctx.auth_method == "internal_api_key"
 
 
-def test_internal_service_auth_missing_or_empty_header_returns_401_when_key_set() -> None:
+def test_internal_service_auth_missing_or_empty_header_returns_401_when_key_set() -> (
+    None
+):
     """Gleiches Verhalten wie falscher Key: kein Header bzw. leerer Wert."""
     settings = SimpleNamespace(
         service_internal_api_key="internal-key-123456",

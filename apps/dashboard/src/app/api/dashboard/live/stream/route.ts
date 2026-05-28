@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
  * Proxied SSE: Browser verbindet same-origin zu Next; Server haengt Authorization ans Gateway.
  */
 export async function GET(req: Request) {
-  const auth = requireOperatorGatewayAuth();
+  const auth = requireOperatorGatewayAuth(req.headers);
   if (!auth.ok) return auth.response;
   const incoming = new URL(req.url);
 

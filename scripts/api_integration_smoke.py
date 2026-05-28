@@ -30,13 +30,21 @@ def load_dotenv(path: Path) -> dict[str, str]:
         k, _, v = line.partition("=")
         key = k.strip()
         val = v.strip()
-        if (val.startswith('"') and val.endswith('"')) or (val.startswith("'") and val.endswith("'")):
+        if (val.startswith('"') and val.endswith('"')) or (
+            val.startswith("'") and val.endswith("'")
+        ):
             val = val[1:-1]
         out[key] = val
     return out
 
 
-def http_json(method: str, url: str, *, headers: dict[str, str] | None = None, timeout: float = 12.0) -> tuple[int, object]:
+def http_json(
+    method: str,
+    url: str,
+    *,
+    headers: dict[str, str] | None = None,
+    timeout: float = 12.0,
+) -> tuple[int, object]:
     req = urllib.request.Request(url, method=method, headers=headers or {})
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         code = resp.status
@@ -114,7 +122,11 @@ def warn_docker_health_urls(env: dict[str, str]) -> None:
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--env-file", type=Path, default=Path(".env.local"))
-    p.add_argument("--skip-bitget-public", action="store_true", help="Keinen oeffentlichen Bitget-REST testen")
+    p.add_argument(
+        "--skip-bitget-public",
+        action="store_true",
+        help="Keinen oeffentlichen Bitget-REST testen",
+    )
     args = p.parse_args()
     root = Path(__file__).resolve().parents[1]
     os.chdir(root)
@@ -147,7 +159,12 @@ def main() -> int:
         print(f"[1] GET /health -> HTTP {code} ok={ok}")
         if not ok:
             failed = True
-    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, json.JSONDecodeError) as e:
+    except (
+        urllib.error.URLError,
+        urllib.error.HTTPError,
+        TimeoutError,
+        json.JSONDecodeError,
+    ) as e:
         print(f"[1] GET /health -> FAIL {e}", file=sys.stderr)
         failed = True
 
@@ -159,7 +176,9 @@ def main() -> int:
         if not ready:
             failed = True
             if isinstance(body, dict) and body.get("checks"):
-                print(f"    checks={json.dumps(body.get('checks'), ensure_ascii=False)[:500]}")
+                print(
+                    f"    checks={json.dumps(body.get('checks'), ensure_ascii=False)[:500]}"
+                )
         if isinstance(body, dict) and isinstance(body.get("checks"), dict):
             pgs = body["checks"].get("postgres_schema")
             if isinstance(pgs, dict):
@@ -173,7 +192,12 @@ def main() -> int:
                         "`python infra/migrate.py` (DATABASE_URL) ausfuehren.",
                         file=sys.stderr,
                     )
-    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, json.JSONDecodeError) as e:
+    except (
+        urllib.error.URLError,
+        urllib.error.HTTPError,
+        TimeoutError,
+        json.JSONDecodeError,
+    ) as e:
         print(f"[2] GET /ready -> FAIL {e}", file=sys.stderr)
         failed = True
 
@@ -206,26 +230,47 @@ def main() -> int:
             print(f"[3] GET /v1/system/health -> FAIL {e}", file=sys.stderr)
             failed = True
     else:
-        print("[3] GET /v1/system/health -> SKIP (kein DASHBOARD_GATEWAY_AUTHORIZATION)")
-        print("    Mint: python scripts/mint_dashboard_gateway_jwt.py --env-file .env.local --update-env-file", file=sys.stderr)
+        print(
+            "[3] GET /v1/system/health -> SKIP (kein DASHBOARD_GATEWAY_AUTHORIZATION)"
+        )
+        print(
+            "    Mint: python scripts/mint_dashboard_gateway_jwt.py --env-file .env.local --update-env-file",
+            file=sys.stderr,
+        )
 
     # 4) Bitget oeffentlich (Rate-Limits moeglich)
     if not args.skip_bitget_public:
-        base_rest = (env.get("BITGET_API_BASE_URL") or "https://api.bitget.com").rstrip("/")
+        base_rest = (env.get("BITGET_API_BASE_URL") or "https://api.bitget.com").rstrip(
+            "/"
+        )
         url = f"{base_rest}/api/v2/spot/market/tickers?symbol=BTCUSDT"
         try:
             code, txt = http_get_text(url, timeout=10.0)
             j = json.loads(txt) if txt.strip().startswith("{") else {}
             ok = code == 200 and str(j.get("code", "")).strip() == "00000"
-            print(f"[4] Bitget public tickers -> HTTP {code} api_code={j.get('code', 'n/a')}")
+            print(
+                f"[4] Bitget public tickers -> HTTP {code} api_code={j.get('code', 'n/a')}"
+            )
             if not ok:
-                print(f"    Hinweis: extern (Netz/Geo/Rate-Limit) — kein sicherer Repo-Defekt. Snip={txt[:200]}", file=sys.stderr)
+                print(
+                    f"    Hinweis: extern (Netz/Geo/Rate-Limit) — kein sicherer Repo-Defekt. Snip={txt[:200]}",
+                    file=sys.stderr,
+                )
         except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as e:
-            print(f"[4] Bitget public -> SKIP/FAIL {e} (Netzwerk/Firewall)", file=sys.stderr)
+            print(
+                f"[4] Bitget public -> SKIP/FAIL {e} (Netzwerk/Firewall)",
+                file=sys.stderr,
+            )
 
     if failed:
-        print("\nERGEBNIS: mindestens ein kritischer Schritt fehlgeschlagen.", file=sys.stderr)
-        print("Doku: API_INTEGRATION_STATUS.md | Stack: pnpm dev:up | Diagnose: /api/dashboard/edge-status", file=sys.stderr)
+        print(
+            "\nERGEBNIS: mindestens ein kritischer Schritt fehlgeschlagen.",
+            file=sys.stderr,
+        )
+        print(
+            "Doku: API_INTEGRATION_STATUS.md | Stack: pnpm dev:up | Diagnose: /api/dashboard/edge-status",
+            file=sys.stderr,
+        )
         return 1
     print("\nERGEBNIS: kritische Integrationen (Gateway + optional JWT) OK.")
     return 0

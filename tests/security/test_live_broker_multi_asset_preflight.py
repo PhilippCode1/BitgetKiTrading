@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from shared_py.live_preflight import LivePreflightContext, build_live_preflight_reasons_de, evaluate_live_preflight
+from shared_py.live_preflight import (
+    LivePreflightContext,
+    build_live_preflight_reasons_de,
+    evaluate_live_preflight,
+)
 
 
 def _ctx(**overrides: object) -> LivePreflightContext:

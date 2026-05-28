@@ -34,7 +34,9 @@ def _clear_settings() -> None:
 
 
 def test_patch_strategy_version_409_for_live_champion() -> None:
-    dsn = (os.environ.get("TEST_DATABASE_URL") or os.environ.get("DATABASE_URL") or "").strip()
+    dsn = (
+        os.environ.get("TEST_DATABASE_URL") or os.environ.get("DATABASE_URL") or ""
+    ).strip()
     os.environ["DATABASE_URL"] = dsn
     _clear_settings()
 
@@ -45,8 +47,8 @@ def test_patch_strategy_version_409_for_live_champion() -> None:
     _ = s  # resolve cache
 
     import psycopg
-    from psycopg.rows import dict_row
     from api_gateway.routes_registry_proxy import router
+    from psycopg.rows import dict_row
 
     name = f"immutest_{uuid4().hex[:12]}"
     definition, parameters, risk_profile = {"k": 1}, {}, {"max_leverage": 1}
@@ -104,12 +106,18 @@ def test_patch_strategy_version_409_for_live_champion() -> None:
             json={},
         )
         assert r.status_code == 409, r.text
-        d = r.json() if "application/json" in (r.headers.get("content-type") or "") else {}
+        d = (
+            r.json()
+            if "application/json" in (r.headers.get("content-type") or "")
+            else {}
+        )
         detail = d.get("detail")
         if isinstance(detail, dict):
             assert detail.get("code") == "IMMUTABLE_LIVE_CHAMPION"
     finally:
         with psycopg.connect(dsn) as c2:
             with c2.transaction():
-                c2.execute("DELETE FROM learn.strategies WHERE strategy_id = %s", (str(sid),))
+                c2.execute(
+                    "DELETE FROM learn.strategies WHERE strategy_id = %s", (str(sid),)
+                )
         _clear_settings()

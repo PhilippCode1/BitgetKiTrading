@@ -66,9 +66,7 @@ describe("signal-rationale (i18n via en.json)", () => {
       t,
     );
     expect(lines.some((l) => l.includes("allow_trade"))).toBe(true);
-    expect(lines.some((l) => l.toLowerCase().includes("playbook"))).toBe(
-      true,
-    );
+    expect(lines.some((l) => l.toLowerCase().includes("playbook"))).toBe(true);
     expect(lines.some((l) => l.includes("scale_out"))).toBe(true);
     expect(lines.some((l) => l.toLowerCase().includes("live-mirror"))).toBe(
       true,
@@ -98,9 +96,9 @@ describe("signal-rationale (i18n via en.json)", () => {
     );
     expect(lines.some((l) => l.toLowerCase().includes("distance"))).toBe(true);
     expect(lines.some((l) => l.toLowerCase().includes("spot"))).toBe(true);
-    expect(
-      lines.some((l) => l.toLowerCase().includes("live-mirror")),
-    ).toBe(true);
+    expect(lines.some((l) => l.toLowerCase().includes("live-mirror"))).toBe(
+      true,
+    );
     expect(lines.some((l) => l.toLowerCase().includes("live broker"))).toBe(
       true,
     );
@@ -130,10 +128,7 @@ describe("signal-rationale (i18n via en.json)", () => {
   });
 
   it("summarizeNoTradeReasons falls back when no explicit reasons exist", () => {
-    const lines = summarizeNoTradeReasons(
-      { trade_action: "paper_only" },
-      t,
-    );
+    const lines = summarizeNoTradeReasons({ trade_action: "paper_only" }, t);
     expect(lines).toEqual([
       t("pages.signalsDetail.rationaleNo.fallbackNoBranch"),
     ]);
@@ -170,7 +165,8 @@ describe("signal-rationale (i18n via en.json)", () => {
     expect(
       lines.some(
         (l) =>
-          l.toLowerCase().includes("governor") && l.toLowerCase().includes("no"),
+          l.toLowerCase().includes("governor") &&
+          l.toLowerCase().includes("no"),
       ),
     ).toBe(true);
   });
@@ -180,15 +176,15 @@ describe("signal-rationale (i18n via en.json)", () => {
       {
         trade_action: "allow_trade",
         decision_state: "accepted",
-        live_execution_block_reasons_json: [
-          "portfolio_live_execution_policy",
-        ],
+        live_execution_block_reasons_json: ["portfolio_live_execution_policy"],
       },
       t,
     );
     expect(
       lines.some(
-        (l) => l.toLowerCase().includes("governor") && l.toLowerCase().includes("block"),
+        (l) =>
+          l.toLowerCase().includes("governor") &&
+          l.toLowerCase().includes("block"),
       ),
     ).toBe(true);
     expect(

@@ -2,7 +2,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from feature_engine.storage.repo import FundingSnapshot, OpenInterestSnapshot, OrderBookSnapshot, TickerSnapshot
+from feature_engine.storage.repo import (
+    FundingSnapshot,
+    OpenInterestSnapshot,
+    OrderBookSnapshot,
+    TickerSnapshot,
+)
 
 SLIPPAGE_BUCKETS_USDT = (5_000, 10_000)
 
@@ -136,12 +141,28 @@ def _liquidity_features(
             "liquidity_source": orderbook.source,
         }
 
-    if ticker and ticker.bid_pr and ticker.ask_pr and ticker.bid_pr > 0 and ticker.ask_pr > 0:
-        bid_depth = ticker.bid_pr * ticker.bid_sz if ticker.bid_sz and ticker.bid_sz > 0 else None
-        ask_depth = ticker.ask_pr * ticker.ask_sz if ticker.ask_sz and ticker.ask_sz > 0 else None
+    if (
+        ticker
+        and ticker.bid_pr
+        and ticker.ask_pr
+        and ticker.bid_pr > 0
+        and ticker.ask_pr > 0
+    ):
+        bid_depth = (
+            ticker.bid_pr * ticker.bid_sz
+            if ticker.bid_sz and ticker.bid_sz > 0
+            else None
+        )
+        ask_depth = (
+            ticker.ask_pr * ticker.ask_sz
+            if ticker.ask_sz and ticker.ask_sz > 0
+            else None
+        )
         total_depth = (bid_depth or 0.0) + (ask_depth or 0.0)
         mid = (ticker.bid_pr + ticker.ask_pr) / 2.0
-        spread_bps = 0.0 if mid <= 0 else ((ticker.ask_pr - ticker.bid_pr) / mid) * 10_000.0
+        spread_bps = (
+            0.0 if mid <= 0 else ((ticker.ask_pr - ticker.bid_pr) / mid) * 10_000.0
+        )
         imbalance = None
         depth_balance_ratio = None
         if total_depth > 0 and bid_depth is not None and ask_depth is not None:
@@ -224,8 +245,16 @@ def _book_metrics(
         sell_fill = _price_to_fill(bids, float(size))
         buy_key = f"impact_buy_bps_{size}"
         sell_key = f"impact_sell_bps_{size}"
-        buy_impact = None if buy_fill is None or mid <= 0 else ((buy_fill - mid) / mid) * 10_000.0
-        sell_impact = None if sell_fill is None or mid <= 0 else ((mid - sell_fill) / mid) * 10_000.0
+        buy_impact = (
+            None
+            if buy_fill is None or mid <= 0
+            else ((buy_fill - mid) / mid) * 10_000.0
+        )
+        sell_impact = (
+            None
+            if sell_fill is None or mid <= 0
+            else ((mid - sell_fill) / mid) * 10_000.0
+        )
         impacts[buy_key] = buy_impact
         impacts[sell_key] = sell_impact
         if buy_impact is not None:
@@ -354,15 +383,15 @@ def _family_features(
     basis_bps = None
     if ticker is not None and ticker.index_price is not None and ticker.index_price > 0:
         if ticker.mark_price is not None:
-            mark_index_spread_bps = ((ticker.mark_price - ticker.index_price) / ticker.index_price) * 10_000.0
+            mark_index_spread_bps = (
+                (ticker.mark_price - ticker.index_price) / ticker.index_price
+            ) * 10_000.0
         if ticker.last_pr is not None:
-            basis_bps = ((ticker.last_pr - ticker.index_price) / ticker.index_price) * 10_000.0
+            basis_bps = (
+                (ticker.last_pr - ticker.index_price) / ticker.index_price
+            ) * 10_000.0
     funding_time_to_next_ms = None
-    if (
-        supports_funding
-        and funding is not None
-        and funding.next_update_ms is not None
-    ):
+    if supports_funding and funding is not None and funding.next_update_ms is not None:
         funding_time_to_next_ms = max(0, funding.next_update_ms - analysis_ts_ms)
     return {
         "mark_index_spread_bps": mark_index_spread_bps,
@@ -380,7 +409,9 @@ def _depth_notional(levels: list[tuple[float, float]]) -> float:
     return total
 
 
-def _price_to_fill(levels: list[tuple[float, float]], target_notional_usdt: float) -> float | None:
+def _price_to_fill(
+    levels: list[tuple[float, float]], target_notional_usdt: float
+) -> float | None:
     cumulative = 0.0
     for price, size in levels:
         if price <= 0 or size <= 0:

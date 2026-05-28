@@ -8,11 +8,18 @@ import scripts.demo_lifecycle_evidence_report as mod
 def test_demo_lifecycle_never_enables_live(tmp_path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
     monkeypatch.setattr(mod, "REPORTS", tmp_path)
     (tmp_path / "demo_trading_evidence_DEMO_VERIFIED.json").write_text(
-        json.dumps({"result": "DEMO_VERIFIED", "checks": {"private_readonly_result": "PASS"}}),
+        json.dumps(
+            {"result": "DEMO_VERIFIED", "checks": {"private_readonly_result": "PASS"}}
+        ),
         encoding="utf-8",
     )
     (tmp_path / "demo_reconcile_evidence_CLOSE_VERIFIED.json").write_text(
-        json.dumps({"reconcile_status": "CLOSE_VERIFIED", "checks": {"detected_position_side": "long"}}),
+        json.dumps(
+            {
+                "reconcile_status": "CLOSE_VERIFIED",
+                "checks": {"detected_position_side": "long"},
+            }
+        ),
         encoding="utf-8",
     )
     (tmp_path / "demo_reconcile_evidence_CLEAN.json").write_text(

@@ -132,7 +132,10 @@ def test_pipeline_deterministic_twice(signal_settings) -> None:
     assert a["db_row"]["source_snapshot_json"]["uncertainty_assessment"] is None
     assert a["db_row"]["source_snapshot_json"]["hybrid_decision"] is None
     assert a["event_payload"]["market_regime"] == "compression"
-    assert a["event_payload"]["playbook_decision_mode"] == a["db_row"]["playbook_decision_mode"]
+    assert (
+        a["event_payload"]["playbook_decision_mode"]
+        == a["db_row"]["playbook_decision_mode"]
+    )
     assert a["event_payload"]["take_trade_prob"] is None
     assert a["event_payload"]["expected_return_bps"] is None
     assert a["event_payload"]["trade_action"] == a["db_row"]["trade_action"]
@@ -214,6 +217,6 @@ def test_pipeline_stable_signal_id_with_replay_trace(signal_settings) -> None:
         upstream_event_id="drawing-upstream-1",
     )
     assert a["db_row"]["signal_id"] == b["db_row"]["signal_id"]
-    assert a["db_row"]["source_snapshot_json"]["correlation_chain"]["replay_session_id"] == (
-        "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
-    )
+    assert a["db_row"]["source_snapshot_json"]["correlation_chain"][
+        "replay_session_id"
+    ] == ("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")

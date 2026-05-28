@@ -71,7 +71,9 @@ def _rsi_column(closes: np.ndarray, window: int) -> np.ndarray:
             if len(seg) < window + 1:
                 out[i] = 50.0
             else:
-                out[i] = float(apex_core.compute_rsi_sma(seg.astype(np.float64), window))
+                out[i] = float(
+                    apex_core.compute_rsi_sma(seg.astype(np.float64), window)
+                )
         return out
     except Exception:
         logger.debug("apex_core RSI nicht verfuegbar — Spalte mit 50.0 gefuellt")
@@ -175,9 +177,11 @@ class EpisodeReplayRecorder:
             {
                 "t": int(t),
                 "obs_digest": float(np.mean(obs)) if obs.size else 0.0,
-                "action": np.asarray(action).tolist()
-                if not isinstance(action, (int, float))
-                else action,
+                "action": (
+                    np.asarray(action).tolist()
+                    if not isinstance(action, int | float)
+                    else action
+                ),
                 "reward": float(reward),
                 "info": {k: v for k, v in info.items() if k != "raw_obs"},
             }
@@ -231,7 +235,9 @@ class TradingReplayEnv(gym.Env):
         self._rec = recorder
         self._ams_sim = bool(ams_simulation_mode)
         self._ams_p = float(max(0.0, min(1.0, ams_attack_probability)))
-        self._ams_rng = random.Random(int(ams_rng_seed) if ams_rng_seed is not None else None)
+        self._ams_rng = random.Random(
+            int(ams_rng_seed) if ams_rng_seed is not None else None
+        )
 
         self._rsi = _rsi_column(self._closes, 14)
         self._n_feat = 7  # OHLCV + logret + rsi_norm
@@ -308,7 +314,9 @@ class TradingReplayEnv(gym.Env):
         obs = self._obs_at(self._t)
         return obs, {"t": self._t, "equity": self._equity}
 
-    def step(self, action: np.ndarray | tuple[int, ...]) -> tuple[np.ndarray, float, bool, bool, dict[str, Any]]:
+    def step(
+        self, action: np.ndarray | tuple[int, ...]
+    ) -> tuple[np.ndarray, float, bool, bool, dict[str, Any]]:
         if self._t >= len(self._closes) - 2:
             return self._obs_at(self._t), 0.0, True, False, {"reason": "end_of_data"}
 
@@ -366,12 +374,17 @@ class TradingReplayEnv(gym.Env):
 
         ret = realized_pnl_delta / max(pre_equity, 1e-12)
         self._returns_hist.append(float(ret))
-        sharpe_after = _rolling_sharpe(np.asarray(self._returns_hist, dtype=np.float64), min(64, len(self._returns_hist)))
+        sharpe_after = _rolling_sharpe(
+            np.asarray(self._returns_hist, dtype=np.float64),
+            min(64, len(self._returns_hist)),
+        )
         sharpe_before = self._last_sharpe
         self._last_sharpe = sharpe_after
 
         ams_trap = bool(
-            self._ams_sim and self._ams_rng.random() < self._ams_p and self._t > self._window + 2
+            self._ams_sim
+            and self._ams_rng.random() < self._ams_p
+            and self._t > self._window + 2
         )
         opened = order in (1, 2) and abs(prev_pos) < 1e-9 and abs(target) > 1e-9
         governor_blocked = ams_trap and not opened
@@ -403,7 +416,13 @@ class TradingReplayEnv(gym.Env):
             "ams_governor_blocked": governor_blocked,
         }
         if self._rec:
-            self._rec.record(t=self._t, obs=obs, action=tuple(int(x) for x in a[:3]), reward=reward, info=info)
+            self._rec.record(
+                t=self._t,
+                obs=obs,
+                action=tuple(int(x) for x in a[:3]),
+                reward=reward,
+                info=info,
+            )
         return obs, reward, terminated, False, info
 
 
@@ -450,10 +469,14 @@ class ConsensusWeightsReplayEnv(gym.Env):
         dd = float(np.max(self._c[: self._t + 1]) - self._c[self._t]) / max(
             float(np.max(self._c[: self._t + 1])), 1e-12
         )
-        out = np.concatenate([r.astype(np.float32), np.array([vol, dd], dtype=np.float32)])
+        out = np.concatenate(
+            [r.astype(np.float32), np.array([vol, dd], dtype=np.float32)]
+        )
         return out
 
-    def step(self, action: np.ndarray) -> tuple[np.ndarray, float, bool, bool, dict[str, Any]]:
+    def step(
+        self, action: np.ndarray
+    ) -> tuple[np.ndarray, float, bool, bool, dict[str, Any]]:
         if self._t >= len(self._c) - 2:
             return self._obs(), 0.0, True, False, {}
 
@@ -480,4 +503,10 @@ class ConsensusWeightsReplayEnv(gym.Env):
 
         self._t += 1
         terminated = self._t >= len(self._c) - 2
-        return self._obs(), reward, terminated, False, {"weights": weights.tolist(), "score": score}
+        return (
+            self._obs(),
+            reward,
+            terminated,
+            False,
+            {"weights": weights.tolist(), "score": score},
+        )

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from math import isnan
-from typing import Sequence
 
 from structure_engine.algorithms.swings import Candle
 
@@ -32,7 +32,9 @@ class CompressionParams:
     range_off: float
 
 
-def range_20_ratio(highs: Sequence[float], lows: Sequence[float], close: float) -> float:
+def range_20_ratio(
+    highs: Sequence[float], lows: Sequence[float], close: float
+) -> float:
     if len(highs) < 20 or len(lows) < 20 or close <= 0:
         return float("nan")
     window_h = highs[-20:]
@@ -59,11 +61,7 @@ def next_compression_state(
             return False, "COMPRESSION_OFF"
         return True, None
     sinking = range20_prev is None or range20 < range20_prev
-    if (
-        atr_pct_ratio < params.atrp_on
-        and range20 < params.range_on
-        and sinking
-    ):
+    if atr_pct_ratio < params.atrp_on and range20 < params.range_on and sinking:
         return True, "COMPRESSION_ON"
     return False, None
 

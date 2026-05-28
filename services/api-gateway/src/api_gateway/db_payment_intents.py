@@ -43,7 +43,14 @@ def upsert_intent_for_checkout(
         ON CONFLICT (tenant_id, idempotency_key) DO NOTHING
         RETURNING *
         """,
-        (tenant_id, idempotency_key[:128], provider[:32], environment[:16], str(amount_list_usd), currency[:8]),
+        (
+            tenant_id,
+            idempotency_key[:128],
+            provider[:32],
+            environment[:16],
+            str(amount_list_usd),
+            currency[:8],
+        ),
     ).fetchone()
     if row is not None:
         return _row_intent(dict(row)), True

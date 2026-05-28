@@ -6,8 +6,12 @@ import json
 from decimal import Decimal
 from typing import Any
 
-from learning_engine.analytics.strategy_metrics import compute_trade_metrics, max_drawdown_fraction_from_pnls
 from shared_py.model_contracts import extract_primary_feature_snapshot
+
+from learning_engine.analytics.strategy_metrics import (
+    compute_trade_metrics,
+    max_drawdown_fraction_from_pnls,
+)
 
 
 def _actual_take_label(row: dict[str, Any]) -> int:

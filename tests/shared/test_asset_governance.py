@@ -31,23 +31,33 @@ def _record(**overrides: object) -> AssetGovernanceRecord:
 
 
 def test_discovered_blocks_live() -> None:
-    assert "state_discovered_nicht_live_freigegeben" in live_block_reasons(_record(state="discovered"))
+    assert "state_discovered_nicht_live_freigegeben" in live_block_reasons(
+        _record(state="discovered")
+    )
 
 
 def test_quarantine_blocks_live() -> None:
-    assert "state_quarantine_nicht_live_freigegeben" in live_block_reasons(_record(state="quarantine"))
+    assert "state_quarantine_nicht_live_freigegeben" in live_block_reasons(
+        _record(state="quarantine")
+    )
 
 
 def test_paper_allowed_blocks_real_orders() -> None:
-    assert "state_paper_allowed_nicht_live_freigegeben" in live_block_reasons(_record(state="paper_allowed"))
+    assert "state_paper_allowed_nicht_live_freigegeben" in live_block_reasons(
+        _record(state="paper_allowed")
+    )
 
 
 def test_shadow_allowed_blocks_real_orders() -> None:
-    assert "state_shadow_allowed_nicht_live_freigegeben" in live_block_reasons(_record(state="shadow_allowed"))
+    assert "state_shadow_allowed_nicht_live_freigegeben" in live_block_reasons(
+        _record(state="shadow_allowed")
+    )
 
 
 def test_live_candidate_blocks_real_orders() -> None:
-    assert "state_live_candidate_nicht_live_freigegeben" in live_block_reasons(_record(state="live_candidate"))
+    assert "state_live_candidate_nicht_live_freigegeben" in live_block_reasons(
+        _record(state="live_candidate")
+    )
 
 
 def test_live_allowed_without_actor_blocks() -> None:
@@ -61,15 +71,21 @@ def test_live_allowed_without_evidence_blocks() -> None:
 
 
 def test_delisted_blocks() -> None:
-    assert "state_delisted_nicht_live_freigegeben" in live_block_reasons(_record(state="delisted"))
+    assert "state_delisted_nicht_live_freigegeben" in live_block_reasons(
+        _record(state="delisted")
+    )
 
 
 def test_suspended_blocks() -> None:
-    assert "state_suspended_nicht_live_freigegeben" in live_block_reasons(_record(state="suspended"))
+    assert "state_suspended_nicht_live_freigegeben" in live_block_reasons(
+        _record(state="suspended")
+    )
 
 
 def test_unknown_blocks() -> None:
-    assert "state_unknown_nicht_live_freigegeben" in live_block_reasons(_record(state="unknown"))
+    assert "state_unknown_nicht_live_freigegeben" in live_block_reasons(
+        _record(state="unknown")
+    )
 
 
 def test_transition_does_not_skip_discovered_to_live_allowed() -> None:
@@ -90,7 +106,12 @@ def test_transition_does_not_skip_discovered_to_live_allowed() -> None:
 
 def test_trade_decision_machine_readable_no_trade() -> None:
     decision = evaluate_trade_decision(
-        _record(state="live_candidate", evidence_refs=[], data_quality_status="data_unknown", liquidity_ok=False)
+        _record(
+            state="live_candidate",
+            evidence_refs=[],
+            data_quality_status="data_unknown",
+            liquidity_ok=False,
+        )
     )
     assert decision.allowed is False
     assert decision.decision == "no_trade"

@@ -69,6 +69,17 @@ if ($pyValidate -and (Test-Path -LiteralPath $validator)) {
     }
 }
 
+if ($Profile -eq "production") {
+    $goLiveCheck = Join-Path $Root "scripts\go_live_check.ps1"
+    if (Test-Path -LiteralPath $goLiveCheck) {
+        Write-Host "==> Go-Live ENV/Preflight (Production)" -ForegroundColor Cyan
+        & $goLiveCheck -EnvFile $envFile
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "Go-Live-Check meldet Fehler — LIVE-Trading bleibt blockiert bis behoben."
+        }
+    }
+}
+
 function Import-DotEnvFile {
     param([string] $Path)
     Get-Content -LiteralPath $Path -Encoding UTF8 | ForEach-Object {

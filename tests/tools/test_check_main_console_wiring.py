@@ -7,7 +7,6 @@ from pathlib import Path
 
 from tools.check_main_console_wiring import REQUIRED_AREAS, validate_wiring
 
-
 ROOT = Path(__file__).resolve().parents[2]
 TOOL = ROOT / "tools" / "check_main_console_wiring.py"
 
@@ -68,7 +67,9 @@ def test_checker_detects_missing_error_state_doc(tmp_path: Path) -> None:
 
 
 def test_checker_detects_missing_bff_doc(tmp_path: Path) -> None:
-    doc = _valid_doc().replace("/api/dashboard/gateway/v1/system/health", "/v1/system/health")
+    doc = _valid_doc().replace(
+        "/api/dashboard/gateway/v1/system/health", "/v1/system/health"
+    )
     _write_minimal_repo(tmp_path, doc)
     assert "bff_doc_missing" in _codes(tmp_path)
 

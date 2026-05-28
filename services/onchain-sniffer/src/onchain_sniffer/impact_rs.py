@@ -31,14 +31,19 @@ def _load_lib(path: str | None) -> ctypes.CDLL | None:
             ctypes.c_double,
         ]
         _lib.onchain_impact_cpmm_slippage_bps.restype = ctypes.c_double
-        _lib.onchain_impact_heuristic_slippage_bps.argtypes = [ctypes.c_double, ctypes.c_double]
+        _lib.onchain_impact_heuristic_slippage_bps.argtypes = [
+            ctypes.c_double,
+            ctypes.c_double,
+        ]
         _lib.onchain_impact_heuristic_slippage_bps.restype = ctypes.c_double
         return _lib
     except OSError:
         return None
 
 
-def cpmm_slippage_bps_py(reserve_in: float, reserve_out: float, amount_in: float) -> float:
+def cpmm_slippage_bps_py(
+    reserve_in: float, reserve_out: float, amount_in: float
+) -> float:
     if reserve_in <= 0 or reserve_out <= 0 or amount_in <= 0:
         return float("nan")
     mid = reserve_out / reserve_in
@@ -53,14 +58,18 @@ def heuristic_slippage_bps_py(notional_usd: float, pool_tvl_usd: float) -> float
     return 10_000.0 * r * 0.55
 
 
-def estimate_slippage_bps(settings: "OnchainSnifferSettings", notional_usd: float) -> float:
+def estimate_slippage_bps(
+    settings: "OnchainSnifferSettings", notional_usd: float
+) -> float:
     lib = _load_lib(settings.onchain_impact_lib_path)
     rin = settings.reserve_in_hint
     rout = settings.reserve_out_hint
     if rin is not None and rout is not None and rin > 0 and rout > 0:
         amt_in = max(float(notional_usd), 1.0)
         if lib is not None:
-            v = float(lib.onchain_impact_cpmm_slippage_bps(float(rin), float(rout), amt_in))
+            v = float(
+                lib.onchain_impact_cpmm_slippage_bps(float(rin), float(rout), amt_in)
+            )
             if v == v:
                 return v
         v = cpmm_slippage_bps_py(float(rin), float(rout), amt_in)
@@ -73,4 +82,6 @@ def estimate_slippage_bps(settings: "OnchainSnifferSettings", notional_usd: floa
                 float(settings.pool_tvl_usd_hint),
             )
         )
-    return heuristic_slippage_bps_py(float(notional_usd), float(settings.pool_tvl_usd_hint))
+    return heuristic_slippage_bps_py(
+        float(notional_usd), float(settings.pool_tvl_usd_hint)
+    )

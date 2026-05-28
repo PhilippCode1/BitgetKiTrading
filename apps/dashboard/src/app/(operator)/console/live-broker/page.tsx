@@ -225,8 +225,13 @@ export default async function LiveBrokerOpsPage({
     orderCount: orders.length,
   });
   const unknownStates = brokerUnknownStates({ runtime, health });
-  const lastOrderAction = brokerLastOrderActionSummary({ orders, orderActions });
-  const reconcileStatus = health?.ops?.live_broker?.latest_reconcile_status ?? "unbekannt";
+  const lastOrderAction = brokerLastOrderActionSummary({
+    orders,
+    orderActions,
+  });
+  const reconcileStatus =
+    health?.ops?.live_broker?.latest_reconcile_status ??
+    t("pages.broker.valueUnknown");
   const reconcileOk = reconcileStatus === "ok";
   const killSwitchActive = (runtime?.active_kill_switches?.length ?? 0) > 0;
   const safetyLatchActive = runtime?.safety_latch_active === true;
@@ -266,55 +271,71 @@ export default async function LiveBrokerOpsPage({
       <LiveDataSituationBar model={brokerSituationModel} />
 
       <div className="panel">
-        <h2>Broker-Uebersicht</h2>
+        <h2>{t("pages.broker.overviewPanelTitle")}</h2>
         <ul className="news-list">
           <li>
-            Betriebsmodus: <strong>{runtime?.execution_mode ?? dash}</strong>
+            {t("pages.broker.overviewExecutionMode")}{" "}
+            <strong>{runtime?.execution_mode ?? dash}</strong>
           </li>
           <li>
-            Live-Trading aktiv: <strong>{liveStatus}</strong>
+            {t("pages.broker.overviewLiveActive")}{" "}
+            <strong>{liveStatus}</strong>
           </li>
           <li>
-            Bitget Public Readiness:{" "}
+            {t("pages.broker.overviewBitgetPublic")}{" "}
             <strong>
               {runtime?.bitget_private_status?.public_api_ok == null
-                ? "unbekannt"
+                ? t("pages.broker.valueUnknown")
                 : String(runtime?.bitget_private_status?.public_api_ok)}
             </strong>
           </li>
           <li>
-            Bitget Private Readiness:{" "}
+            {t("pages.broker.overviewBitgetPrivate")}{" "}
             <strong>
               {runtime?.bitget_private_status?.private_auth_ok == null
-                ? "unbekannt"
+                ? t("pages.broker.valueUnknown")
                 : String(runtime?.bitget_private_status?.private_auth_ok)}
             </strong>
           </li>
           <li>
-            Reconcile-Status: <strong>{reconcileStatus}</strong>
+            {t("pages.broker.overviewReconcile")}{" "}
+            <strong>{reconcileStatus}</strong>
           </li>
           <li>
-            Safety-Latch: <strong>{safetyLatchActive ? "aktiv" : "aus"}</strong>
+            {t("pages.broker.overviewSafetyLatch")}{" "}
+            <strong>
+              {safetyLatchActive
+                ? t("pages.broker.valueActive")
+                : t("pages.broker.valueOff")}
+            </strong>
           </li>
           <li>
-            Kill-Switch: <strong>{killSwitchActive ? "aktiv" : "aus"}</strong>
+            {t("pages.broker.overviewKillSwitch")}{" "}
+            <strong>
+              {killSwitchActive
+                ? t("pages.broker.valueActive")
+                : t("pages.broker.valueOff")}
+            </strong>
           </li>
           <li>
-            Letzte Order/Action: <strong>{lastOrderAction}</strong>
+            {t("pages.broker.overviewLastAction")}{" "}
+            <strong>{lastOrderAction}</strong>
           </li>
         </ul>
         {liveBlockerReasons.length > 0 ? (
           <p className="muted small" role="status">
-            Live-Blocker: {liveBlockerReasons.join(" · ")}
+            {t("pages.broker.overviewLiveBlockers")}{" "}
+            {liveBlockerReasons.join(" · ")}
           </p>
         ) : (
           <p className="muted small" role="status">
-            Keine harten Live-Blocker erkannt.
+            {t("pages.broker.overviewNoBlockers")}
           </p>
         )}
         {unknownStates.length > 0 ? (
           <p className="muted small" role="status">
-            Unknown States: {unknownStates.join(" · ")}
+            {t("pages.broker.overviewUnknownStates")}{" "}
+            {unknownStates.join(" · ")}
           </p>
         ) : null}
       </div>
@@ -431,7 +452,10 @@ export default async function LiveBrokerOpsPage({
                 {runtime.bitget_private_status.private_auth_detail_de}
               </p>
             ) : null}
-            <div className="panel" style={{ marginTop: "1rem", padding: "0.8rem" }}>
+            <div
+              className="panel"
+              style={{ marginTop: "1rem", padding: "0.8rem" }}
+            >
               <h3 className="small">Bitget-Verbindung</h3>
               <ul className="news-list">
                 <li>
@@ -441,16 +465,22 @@ export default async function LiveBrokerOpsPage({
                 <li>
                   Demo/Live-Modus:{" "}
                   <strong>
-                    {privateCredentialVm.demoModus ? "demo_only" : "live_or_paper"}
+                    {privateCredentialVm.demoModus
+                      ? "demo_only"
+                      : "live_or_paper"}
                   </strong>
                 </li>
                 <li>
                   Read-only geprüft:{" "}
-                  <strong>{String(privateCredentialVm.readOnlyGeprueft)}</strong>
+                  <strong>
+                    {String(privateCredentialVm.readOnlyGeprueft)}
+                  </strong>
                 </li>
                 <li>
                   Trading-Permission erkannt:{" "}
-                  <strong>{String(privateCredentialVm.tradingPermissionErkannt)}</strong>
+                  <strong>
+                    {String(privateCredentialVm.tradingPermissionErkannt)}
+                  </strong>
                 </li>
                 <li>
                   Withdrawal-Permission erkannt:{" "}
@@ -482,7 +512,9 @@ export default async function LiveBrokerOpsPage({
                 </li>
                 <li>
                   Runtime-Profil:{" "}
-                  <strong>{publicEnv.deploymentProfile || "local_private"}</strong>
+                  <strong>
+                    {publicEnv.deploymentProfile || "local_private"}
+                  </strong>
                 </li>
               </ul>
               {privateCredentialVm.blockgruendeDe.length ? (
@@ -491,12 +523,12 @@ export default async function LiveBrokerOpsPage({
                 </p>
               ) : null}
               <p className="muted small" role="status">
-                Sicherheitsmodus:{" "}
+                {t("pages.broker.safetyModeLabel")}{" "}
                 {publicEnv.deploymentProfile === "local_ngrok_preview"
-                  ? "ngrok-preview erkannt; sensible Daten bleiben geschützt und Live-Write blockiert."
+                  ? t("pages.broker.safetyModeNgrok")
                   : publicEnv.deploymentProfile === "production_private"
-                    ? "production_private aktiv; server-only Auth und fail-closed Live-Gates erforderlich."
-                    : "Privater Modus aktiv; bei Unsicherheit bleibt Live blockiert."}
+                    ? t("pages.broker.safetyModeProductionPrivate")
+                    : t("pages.broker.safetyModePrivateDefault")}
               </p>
             </div>
             {runtime.bitget_private_status.bitget_private_rest ? (

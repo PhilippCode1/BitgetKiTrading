@@ -4,7 +4,6 @@ from decimal import Decimal, InvalidOperation
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
-
 from shared_py.bitget.instruments import MarginAccountMode, MarketFamily
 from shared_py.signal_contracts import SignalDirection
 
@@ -185,7 +184,10 @@ OperatorReleaseSource = Literal["internal-api", "telegram_operator"]
 
 
 class OperatorReleasePostBody(BaseModel):
-    """Optionale Audit-Metadaten fuer operator_release (z. B. Telegram-Zweistufen-Flow)."""
+    """
+    Optionale Audit-Metadaten fuer operator_release
+    (z. B. Telegram-Zweistufen-Flow).
+    """
 
     source: OperatorReleaseSource = "internal-api"
     audit: dict[str, Any] = Field(default_factory=dict)

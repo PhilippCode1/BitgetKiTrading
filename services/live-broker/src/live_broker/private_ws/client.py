@@ -10,15 +10,16 @@ from typing import Any
 from urllib.parse import urlparse
 
 import websockets
-from websockets.exceptions import ConnectionClosed
-
 from shared_py.bitget.config import BitgetSettings
 from shared_py.bitget.http import build_signature_payload, sign_hmac_sha256_base64
+from websockets.exceptions import ConnectionClosed
+
 from live_broker.private_ws.models import NormalizedPrivateEvent
 
 MessageHandler = Callable[[NormalizedPrivateEvent], Awaitable[None]]
 ConnectedCallback = Callable[[bool], Awaitable[None]]
 StaleRecoverCallback = Callable[[], None]
+PrivateWsChannel = dict[str, str | None]
 
 
 @dataclass(slots=True)
@@ -85,7 +86,7 @@ class BitgetPrivateWsClient:
         self._message_handlers = message_handlers or []
         self._connected_callbacks = connected_callbacks or []
         inst = self._settings.product_type
-        self._channels = [
+        self._channels: list[PrivateWsChannel] = [
             {"instType": inst, "channel": "orders", "instId": "default"},
             {"instType": inst, "channel": "positions", "instId": "default"},
             {"instType": inst, "channel": "fill", "instId": "default"},
@@ -142,16 +143,16 @@ class BitgetPrivateWsClient:
             self._websocket = websocket
             self._last_pong_monotonic = time.monotonic()
             self._last_inbound_monotonic = time.monotonic()
-            
+
             await self._login()
-            
+
             self._stats.connection_state = "connected"
             self._stats.last_error = None
             self._stats.stale_escalation_count = 0
             self._logger.info("Private WS connected and authenticated")
-            
+
             await self._subscribe_channels()
-            
+
             is_reconnect = self._ever_connected
             for callback in self._connected_callbacks:
                 try:
@@ -186,7 +187,10 @@ class BitgetPrivateWsClient:
                 raise RuntimeError("websocket loop ended without exception")
 
     async def _login(self) -> None:
-        if not self._settings.effective_api_key or not self._settings.effective_api_secret:
+        if (
+            not self._settings.effective_api_key
+            or not self._settings.effective_api_secret
+        ):
             raise ValueError("API Key/Secret missing for Private WS")
 
         ts = str(int(time.time() * 1000))
@@ -195,9 +199,11 @@ class BitgetPrivateWsClient:
             method="GET",
             request_path="/user/verify",
         )
-        signature = sign_hmac_sha256_base64(self._settings.effective_api_secret, payload)
-        
-        login_msg = {
+        signature = sign_hmac_sha256_base64(
+            self._settings.effective_api_secret, payload
+        )
+
+        login_msg: dict[str, object] = {
             "op": "login",
             "args": [
                 {
@@ -209,11 +215,11 @@ class BitgetPrivateWsClient:
             ],
         }
         await self._send_json(login_msg)
-        
+
         # Wait for login response
         if self._websocket is None:
             raise RuntimeError("WebSocket not connected")
-            
+
         try:
             # We expect a response to our login immediately
             response = await asyncio.wait_for(self._websocket.recv(), timeout=10.0)
@@ -227,11 +233,11 @@ class BitgetPrivateWsClient:
                 if sc not in ("0", "00000", ""):
                     raise ValueError(f"WS login rejected code={code} body={resp_data}")
                 self._logger.info("Private WS login successful")
-        except asyncio.TimeoutError:
-            raise TimeoutError("Timeout waiting for WS login response")
+        except TimeoutError as exc:
+            raise TimeoutError("Timeout waiting for WS login response") from exc
 
     async def _subscribe_channels(self) -> None:
-        sub_msg = {
+        sub_msg: dict[str, object] = {
             "op": "subscribe",
             "args": self._channels,
         }
@@ -262,17 +268,17 @@ class BitgetPrivateWsClient:
             except json.JSONDecodeError:
                 self._logger.warning("ignoring non-JSON WS frame: %s", text_message)
                 continue
-                
+
             if not isinstance(decoded, dict):
                 continue
-                
+
             if decoded.get("event") == "pong":
                 self._mark_pong()
                 continue
-                
+
             if decoded.get("event") in ("subscribe", "login"):
                 continue
-                
+
             if decoded.get("event") == "error":
                 self._logger.warning("Bitget WS error event: %s", decoded)
                 continue

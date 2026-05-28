@@ -22,7 +22,7 @@ import { PaperPanel } from "@/components/live/PaperPanel";
 import { SignalPanel } from "@/components/live/SignalPanel";
 import { TerminalSafetyHaltOverlay } from "@/components/live/TerminalSafetyHaltOverlay";
 import { StatusPillLink } from "@/components/ui/StatusPillLink";
-import { fetchLiveState } from "@/lib/api";
+import { fetchLiveState } from "@/lib/api-client";
 import type { ExecutionPathViewModel } from "@/lib/execution-path-view-model";
 import { buildLiveDataSurfaceModelFromLiveState } from "@/lib/live-data-surface-model";
 import {
@@ -413,7 +413,8 @@ export function LiveTerminalClient({
     return {
       ...base,
       areaLabel: t("live.terminal.fetchIssueLead"),
-      userAction: `${base.userAction} ${t("live.terminal.reconnectHint")}`.trim(),
+      userAction:
+        `${base.userAction} ${t("live.terminal.reconnectHint")}`.trim(),
     };
   }, [fetchErr, t]);
 
@@ -593,10 +594,8 @@ export function LiveTerminalClient({
   const riskStatus = buildRiskStatusLabel(state);
   const qualityHint = buildDataQualityHint(state.latest_feature);
   const liquidityHint = buildLiquiditySpreadHint(state.latest_feature);
-  const instrumentMeta = (state.latest_signal?.instrument_metadata || {}) as Record<
-    string,
-    unknown
-  >;
+  const instrumentMeta = (state.latest_signal?.instrument_metadata ||
+    {}) as Record<string, unknown>;
   const productType = String(instrumentMeta.product_type || "—");
 
   return (
@@ -796,10 +795,16 @@ export function LiveTerminalClient({
         </div>
       ) : null}
       {workspaceAlertText ? (
-        <div className="live-terminal-banner live-terminal-banner--critical" role="alert">
+        <div
+          className="live-terminal-banner live-terminal-banner--critical"
+          role="alert"
+        >
           <strong>{workspaceAlertText}</strong>
           {fetchErr ? (
-            <span className="muted small" style={{ display: "block", marginTop: 4 }}>
+            <span
+              className="muted small"
+              style={{ display: "block", marginTop: 4 }}
+            >
               {redactChartErrorDetail(fetchErr)}
             </span>
           ) : null}

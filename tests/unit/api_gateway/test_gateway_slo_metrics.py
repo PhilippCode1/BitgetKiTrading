@@ -1,6 +1,7 @@
 """
 SLO-Metriken: Slow-Request-Trace (CRITICAL) und Prometheus-/metrics-Exposure.
 """
+
 from __future__ import annotations
 
 import asyncio

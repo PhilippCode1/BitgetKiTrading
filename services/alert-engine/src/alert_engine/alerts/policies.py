@@ -5,7 +5,10 @@ from dataclasses import dataclass
 from typing import Any
 
 from shared_py.eventbus import EventEnvelope
-from shared_py.operator_intel import format_operator_intel_message, redact_operator_intel_payload
+from shared_py.operator_intel import (
+    format_operator_intel_message,
+    redact_operator_intel_payload,
+)
 
 from alert_engine.alerts import formatter
 from alert_engine.config import Settings
@@ -41,7 +44,9 @@ def _num(payload: dict[str, Any], key: str, default: float = 0.0) -> float:
         return default
 
 
-def evaluate_signal_created(env: EventEnvelope, settings: Settings) -> list[AlertIntent]:
+def evaluate_signal_created(
+    env: EventEnvelope, settings: Settings
+) -> list[AlertIntent]:
     p = env.payload
     sym = env.symbol
     tf = env.timeframe or str(p.get("timeframe") or "")
@@ -163,7 +168,9 @@ def evaluate_structure_updated(
         f"Struktur / Richtung {sym} {tf}\n"
         f"CHOCH={choch} trend {old!r} -> {new_trend!r}"
     )
-    logger.info("policy matched: TREND_WARN symbol=%s flip=%s choch=%s", sym, flip, choch)
+    logger.info(
+        "policy matched: TREND_WARN symbol=%s flip=%s choch=%s", sym, flip, choch
+    )
     return [
         AlertIntent(
             alert_type="TREND_WARN",
@@ -214,7 +221,11 @@ def evaluate_risk_alert(env: EventEnvelope) -> list[AlertIntent]:
     sev_raw = str(p.get("severity") or "").lower()
     warnings = p.get("warnings") or []
     sq = int(p.get("stop_quality_score") or 0)
-    wtxt = ", ".join(str(x) for x in warnings) if isinstance(warnings, list) else str(warnings)
+    wtxt = (
+        ", ".join(str(x) for x in warnings)
+        if isinstance(warnings, list)
+        else str(warnings)
+    )
     if sev_raw in ("high", "critical"):
         severity = "critical" if sev_raw == "critical" else "warn"
     elif sq <= 50 and len(wtxt) > 0:
@@ -248,9 +259,7 @@ def evaluate_news_scored(env: EventEnvelope, settings: Settings) -> list[AlertIn
     title = str(p.get("title") or news_id)
     url = str(p.get("url") or "")
     url_d = formatter.shorten_url_display(url) if url else "—"
-    bucket = _ts_bucket_ms(
-        int(env.ingest_ts_ms), settings.alert_dedupe_minutes_news
-    )
+    bucket = _ts_bucket_ms(int(env.ingest_ts_ms), settings.alert_dedupe_minutes_news)
     dk = f"news:{news_id}:{bucket}"
     text = f"News HIGH {score}/100 {sent}\n{title}\n{url_d}"
     logger.info("policy matched: NEWS_HIGH news_id=%s", news_id)
@@ -321,7 +330,9 @@ def _system_alert_type(alert_key: str | None) -> str:
         return "LIVE_BROKER_EMERGENCY_FLATTEN"
     if key.startswith("live-broker:order-timeout"):
         return "LIVE_BROKER_ORDER_TIMEOUT"
-    if key.startswith("live-broker:reconcile") or key.startswith("svc:live-broker:reconcile"):
+    if key.startswith("live-broker:reconcile") or key.startswith(
+        "svc:live-broker:reconcile"
+    ):
         return "LIVE_BROKER_RECONCILE"
     if key.startswith("svc:live-broker:"):
         return "LIVE_BROKER_MONITOR"

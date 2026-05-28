@@ -10,7 +10,14 @@ def _base() -> dict:
         "product_type": "USDT-FUTURES",
         "candles": [
             {"ts_ms": 1000, "open": 10, "high": 12, "low": 9, "close": 11, "volume": 1},
-            {"ts_ms": 2000, "open": 11, "high": 13, "low": 10, "close": 12, "volume": 1},
+            {
+                "ts_ms": 2000,
+                "open": 11,
+                "high": 13,
+                "low": 10,
+                "close": 12,
+                "volume": 1,
+            },
         ],
         "expected_candle_interval_ms": 1000,
         "orderbook_present": True,
@@ -58,4 +65,3 @@ def test_provider_unavailable_blocks_live() -> None:
     result = evaluate_market_data_quality(payload)
     assert result.live_allowed is False
     assert "provider_or_cache_unavailable" in result.reasons
-

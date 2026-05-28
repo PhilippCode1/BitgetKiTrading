@@ -25,9 +25,9 @@ import { readConsoleChartPrefs } from "@/lib/chart-prefs-server";
 import { publicEnv } from "@/lib/env";
 import {
   derivePaperClosedTradeStats,
-  paperSectionFetchErrorMessage,
   previewPaperJournalDetail,
 } from "@/lib/paper-console";
+import { userFacingBodyForFetchFailure } from "@/lib/user-facing-fetch-error";
 import {
   emptyPaperJournalResponse,
   emptyPaperLedgerResponse,
@@ -91,32 +91,32 @@ export default async function PaperPage({
   if (pRes.status === "fulfilled") positions = pRes.value;
   else
     sectionErrors.push(
-      `${t("pages.paper.sectionPositions")}: ${paperSectionFetchErrorMessage(pRes.reason)}`,
+      `${t("pages.paper.sectionPositions")}: ${userFacingBodyForFetchFailure(pRes.reason, t)}`,
     );
   if (tRes.status === "fulfilled") trades = tRes.value;
   else
     sectionErrors.push(
-      `${t("pages.paper.sectionTrades")}: ${paperSectionFetchErrorMessage(tRes.reason)}`,
+      `${t("pages.paper.sectionTrades")}: ${userFacingBodyForFetchFailure(tRes.reason, t)}`,
     );
   if (mRes.status === "fulfilled") metrics = mRes.value;
   else
     sectionErrors.push(
-      `${t("pages.paper.sectionMetrics")}: ${paperSectionFetchErrorMessage(mRes.reason)}`,
+      `${t("pages.paper.sectionMetrics")}: ${userFacingBodyForFetchFailure(mRes.reason, t)}`,
     );
   if (jRes.status === "fulfilled") journal = jRes.value;
   else
     sectionErrors.push(
-      `${t("pages.paper.sectionJournal")}: ${paperSectionFetchErrorMessage(jRes.reason)}`,
+      `${t("pages.paper.sectionJournal")}: ${userFacingBodyForFetchFailure(jRes.reason, t)}`,
     );
   if (lRes.status === "fulfilled") ledger = lRes.value;
   else
     sectionErrors.push(
-      `${t("pages.paper.sectionLedger")}: ${paperSectionFetchErrorMessage(lRes.reason)}`,
+      `${t("pages.paper.sectionLedger")}: ${userFacingBodyForFetchFailure(lRes.reason, t)}`,
     );
   if (hRes.status === "fulfilled") systemHealth = hRes.value;
   else
     sectionErrors.push(
-      `${t("pages.paper.sectionSystemHealth")}: ${paperSectionFetchErrorMessage(hRes.reason)}`,
+      `${t("pages.paper.sectionSystemHealth")}: ${userFacingBodyForFetchFailure(hRes.reason, t)}`,
     );
 
   const allFailed = sectionErrors.length === settled.length;

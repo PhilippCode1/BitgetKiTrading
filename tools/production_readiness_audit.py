@@ -15,9 +15,10 @@ import argparse
 import json
 import re
 import sys
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path
-from typing import Any, Callable, Final
+from typing import Any, Final
 
 _DEFAULT_REPO = Path(__file__).resolve().parents[1]
 CI_WORKFLOW: Final[Path] = Path(".github/workflows/ci.yml")
@@ -92,9 +93,15 @@ def _level_ci(root: Path, marks: dict[str, int]) -> tuple[int, str]:
     ok_gate = "check_release_approval_gates" in y or "release-approval-gate" in y
     ok_py = "pytest" in y
     if ok_gate and ok_py:
-        return 3, f"{CI_WORKFLOW} enthaelt Merge-/Release-Gate-Referenz und pytest (L3)."
+        return (
+            3,
+            f"{CI_WORKFLOW} enthaelt Merge-/Release-Gate-Referenz und pytest (L3).",
+        )
     if y:
-        return 1, f"{CI_WORKFLOW} existiert, aber unklare L3-Abdeckung (Gate+pytest) (L1)."
+        return (
+            1,
+            f"{CI_WORKFLOW} existiert, aber unklare L3-Abdeckung (Gate+pytest) (L1).",
+        )
     return 0, "Kein CI-Workflow sichtbar."
 
 
@@ -105,7 +112,9 @@ def _level_disaster(root: Path, marks: dict[str, int]) -> tuple[int, str]:
     t = _read_text(Path("docs/migrations.md"), root) + _read_text(
         Path("docs/db-schema.md"), root
     )
-    if re.search(r"restor|back.?up|pitr|snapshot|fail.?over|disaster|recovery", t, re.I):
+    if re.search(
+        r"restor|back.?up|pitr|snapshot|fail.?over|disaster|recovery", t, re.I
+    ):
         return 2, "Doku-Drift/Schema/Migrations nennen DR-Themen, kein L4-Report (L2)."
     if t.strip():
         return 1, "Doku-Datei(en) teilweise vorhanden, DR-Keywords schwach (L1)."
@@ -146,7 +155,10 @@ def _level_alert(root: Path, marks: dict[str, int]) -> tuple[int, str]:
 def _level_security(root: Path, marks: dict[str, int]) -> tuple[int, str]:
     m = max(marks.get("security_audit", 0), marks.get("security", 0))
     if m >= 4:
-        return m, f"readiness_mark in {RELEASE_EVID_DIR} (L{m}) - ersetzt kein externes Audit-Programm."
+        return (
+            m,
+            f"readiness_mark in {RELEASE_EVID_DIR} (L{m}) - ersetzt kein externes Audit-Programm.",
+        )
     ciy = _ci_yaml(root)
     l3 = (
         "pip_audit_supply_chain_gate" in ciy
@@ -177,7 +189,10 @@ def _level_customer_ui(root: Path, marks: dict[str, int]) -> tuple[int, str]:
 def _level_secrets(root: Path, marks: dict[str, int]) -> tuple[int, str]:
     m = max(marks.get("secrets_vault", 0), marks.get("secrets", 0))
     if m >= 4:
-        return m, f"readiness_mark in {RELEASE_EVID_DIR} (L{m}); Vault-Ops aussen bleibt extern."
+        return (
+            m,
+            f"readiness_mark in {RELEASE_EVID_DIR} (L{m}); Vault-Ops aussen bleibt extern.",
+        )
     ciy = _ci_yaml(root)
     has_val = (root / "tools" / "validate_env_profile.py").is_file()
     has_chk = (root / "tools" / "check_production_env_template_security.py").is_file()
@@ -204,7 +219,10 @@ def _level_live_mirror(root: Path, marks: dict[str, int]) -> tuple[int, str]:
         (root / "tests").rglob("*run85*")
     )
     if lb and (has_gate or ch) and tlive2:
-        return 3, "Live-Broker + Checklist + Test-Referenzen (L3); Staging-Probe = L4 extern erwartbar."
+        return (
+            3,
+            "Live-Broker + Checklist + Test-Referenzen (L3); Staging-Probe = L4 extern erwartbar.",
+        )
     if lb and ch:
         return 2, "Doku + live-broker, Test-Trace duenn (L2)."
     if lb:
@@ -218,7 +236,10 @@ def _level_performance(root: Path, marks: dict[str, int]) -> tuple[int, str]:
         return m, f"readiness_mark (L{m})."
     ciy = _ci_yaml(root)
     if "check_coverage" in ciy or "check_coverage_gates" in ciy or "modul_mate" in ciy:
-        return 3, "Coverage-/Modul-Qualitaet in CI-Trace (L3) - keine Markt-Alpha-Garantie (L4)."
+        return (
+            3,
+            "Coverage-/Modul-Qualitaet in CI-Trace (L3) - keine Markt-Alpha-Garantie (L4).",
+        )
     if (root / "tools" / "check_coverage_gates.py").is_file():
         return 2, "Coverage-Tool, CI-Referenz schwach (L2)."
     return 0, "Wenig Performance/SLO-Trace sichtbar (L0)."
@@ -227,10 +248,16 @@ def _level_performance(root: Path, marks: dict[str, int]) -> tuple[int, str]:
 def _level_compliance(root: Path, marks: dict[str, int]) -> tuple[int, str]:
     m = marks.get("compliance", 0)
     if m >= 5:
-        return m, f"readiness_mark L5 in {RELEASE_EVID_DIR} (L{m}) - ersetzt keine reale Rechtspruefung."
+        return (
+            m,
+            f"readiness_mark L5 in {RELEASE_EVID_DIR} (L{m}) - ersetzt keine reale Rechtspruefung.",
+        )
     ext = _read_text(Path("docs/EXTERNAL_GO_LIVE_DEPENDENCIES.md"), root)
     if ext and len(ext) > 200:
-        return 1, "EXTERNAL_GO_LIVE: Abhaengigkeiten benannt (L1), L5-Signoff fehlt im Repo-EV."
+        return (
+            1,
+            "EXTERNAL_GO_LIVE: Abhaengigkeiten benannt (L1), L5-Signoff fehlt im Repo-EV.",
+        )
     return 0, "Recht/Compliance in Repo unzureichend adressiert (L0)."
 
 
@@ -239,10 +266,9 @@ def _level_release(root: Path, marks: dict[str, int]) -> tuple[int, str]:
     if m >= 4:
         return m, f"readiness_mark in {RELEASE_EVID_DIR} (L{m})."
     has_dir = (root / RELEASE_EVID_DIR).is_dir()
-    has_tool = (
-        (root / "tools" / "check_release_approval_gates.py").is_file()
-        or (root / "tools" / "collect_release_evidence.ps1").is_file()
-    )
+    has_tool = (root / "tools" / "check_release_approval_gates.py").is_file() or (
+        root / "tools" / "collect_release_evidence.ps1"
+    ).is_file()
     ciy = "check_release_approval_gates" in _ci_yaml(root)
     if has_dir and has_tool and ciy:
         return 3, f"{RELEASE_EVID_DIR} + Gate-Tool + CI-Referenz (L3)."
@@ -269,8 +295,15 @@ def _branch_row() -> CategoryResult:
 
 
 def _build_categories(root: Path, marks: dict[str, int]) -> list[CategoryResult]:
-    spec: list[tuple[str, str, int, Callable[[Path, dict[str, int]], tuple[int, str]]]] = [
-        ("ci_branch", "CI/Workflow & Merge-Release-Gates (Definition im Repo)", 3, _level_ci),
+    spec: list[
+        tuple[str, str, int, Callable[[Path, dict[str, int]], tuple[int, str]]]
+    ] = [
+        (
+            "ci_branch",
+            "CI/Workflow & Merge-Release-Gates (Definition im Repo)",
+            3,
+            _level_ci,
+        ),
         (
             "disaster_recovery",
             "Disaster Recovery (Backup/Restore-Realitaet)",
@@ -366,9 +399,7 @@ def _apply_strict_mutable(
     return out, strict_ok
 
 
-def _global_traffic(
-    strict: bool, strict_ok: bool, res: list[CategoryResult]
-) -> str:
+def _global_traffic(strict: bool, strict_ok: bool, res: list[CategoryResult]) -> str:
     if strict and not strict_ok:
         return "RED"
     nonex = [c for c in res if not c.external]
@@ -454,9 +485,7 @@ def main() -> int:
     ap.add_argument(
         "--report-md", type=Path, default=None, help="Markdown-Report-Datei"
     )
-    ap.add_argument(
-        "--out-json", type=Path, default=None, help="JSON-Report-Datei"
-    )
+    ap.add_argument("--out-json", type=Path, default=None, help="JSON-Report-Datei")
     args = ap.parse_args()
     d = run_audit(args.repo_root, args.strict)
     if d.get("ok") is not True:

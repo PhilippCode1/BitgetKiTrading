@@ -42,7 +42,11 @@ REPAIR_OUTPUT_SCHEMA: dict[str, Any] = {
             "maxItems": 24,
             "items": {"type": "string", "maxLength": 128},
         },
-        "proposed_unified_diff": {"type": "string", "minLength": 1, "maxLength": 120000},
+        "proposed_unified_diff": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120000,
+        },
         "recommended_verify_command_de": {"type": "string", "maxLength": 2000},
         "confidence_0_1": {"type": "number", "minimum": 0, "maximum": 1},
     },
@@ -55,7 +59,13 @@ def _repo_root() -> Path:
 
 
 def _instruction_text(repo: Path) -> str:
-    p = repo / "shared" / "prompts" / "tasks" / "safety_incident_diagnosis.instruction_de.txt"
+    p = (
+        repo
+        / "shared"
+        / "prompts"
+        / "tasks"
+        / "safety_incident_diagnosis.instruction_de.txt"
+    )
     if p.is_file():
         return p.read_text(encoding="utf-8")
     return "Diagnostiziere den Fehler knapp auf Deutsch (keine Secrets)."
@@ -107,7 +117,9 @@ def _read_snippets(repo: Path, rel_paths: list[str], *, max_chars: int = 24_000)
     return "\n".join(chunks)[:max_chars]
 
 
-def _optional_audit_ledger_context(settings: LearningEngineSettings) -> list[dict[str, Any]]:
+def _optional_audit_ledger_context(
+    settings: LearningEngineSettings,
+) -> list[dict[str, Any]]:
     base = (settings.audit_ledger_base_url or "").strip().rstrip("/")
     if not base or not (settings.service_internal_api_key or "").strip():
         return []
@@ -148,7 +160,9 @@ def _call_llm_repair_plan(
                 headers={"X-Internal-Service-Key": key},
             )
         if r.status_code != 200:
-            logger.warning("llm structured self_healing status=%s %s", r.status_code, r.text[:500])
+            logger.warning(
+                "llm structured self_healing status=%s %s", r.status_code, r.text[:500]
+            )
             return None
         data = r.json()
         inner = data.get("result") if isinstance(data.get("result"), dict) else data
@@ -197,7 +211,9 @@ def _publish_operator_proposal(
     bus.publish(STREAM_OPERATOR_INTEL, env)
 
 
-def _store_apply_token(redis_url: str, proposal_id: str, token: str, patch: str) -> None:
+def _store_apply_token(
+    redis_url: str, proposal_id: str, token: str, patch: str
+) -> None:
     r = Redis.from_url(redis_url, decode_responses=True, socket_timeout=5)
     try:
         r.setex(f"self_healing:apply:{proposal_id}", 7200, token)
@@ -287,7 +303,9 @@ def run_self_healing_for_system_alert(
         )
         return prop
 
-    sandbox = run_tests_in_sandbox(repo, timeout_sec=float(settings.self_healing_sandbox_timeout_sec))
+    sandbox = run_tests_in_sandbox(
+        repo, timeout_sec=float(settings.self_healing_sandbox_timeout_sec)
+    )
     ok = sandbox.exit_code == 0
     prop = SelfHealingProposal(
         proposal_id=proposal_id,
@@ -299,7 +317,9 @@ def run_self_healing_for_system_alert(
         affected_paths=rels,
     )
     if ok:
-        _store_apply_token(settings.redis_url, proposal_id, apply_token, llm_out.proposed_unified_diff)
+        _store_apply_token(
+            settings.redis_url, proposal_id, apply_token, llm_out.proposed_unified_diff
+        )
         _publish_operator_proposal(
             settings,
             prop,

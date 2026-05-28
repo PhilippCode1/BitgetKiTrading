@@ -24,7 +24,9 @@ def test_production_template_strict_fails() -> None:
         text=True,
         check=False,
     )
-    assert r.returncode == 1, f"Erwartet FAIL auf Platzhalter-Template, got {r.stdout!r} {r.stderr!r}"
+    assert (
+        r.returncode == 1
+    ), f"Erwartet FAIL auf Platzhalter-Template, got {r.stdout!r} {r.stderr!r}"
 
 
 def test_synthetic_production_file_passes_strict(tmp_path: Path) -> None:
@@ -63,7 +65,9 @@ VAULT_ADDR=
     alnum_48 = re.search(r"sk-[a-zA-Z0-9_]{20,}\b", out) or re.search(
         r"\b[a-f0-9]{48,}\b", out, re.I
     )
-    assert alnum_48 is None, "Roh-Token-ähnliches Muster in Ausgabe vermeiden (redact check)"
+    assert (
+        alnum_48 is None
+    ), "Roh-Token-ähnliches Muster in Ausgabe vermeiden (redact check)"
 
 
 def test_placeholder_detected(tmp_path: Path) -> None:

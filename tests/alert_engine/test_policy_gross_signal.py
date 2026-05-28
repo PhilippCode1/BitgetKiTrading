@@ -4,7 +4,6 @@ import time
 
 from alert_engine.alerts.policies import evaluate_signal_created
 from alert_engine.config import Settings
-
 from shared_py.eventbus import EventEnvelope
 
 

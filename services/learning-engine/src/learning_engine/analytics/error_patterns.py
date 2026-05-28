@@ -4,7 +4,10 @@ import json
 from collections import Counter
 from typing import Any
 
-from shared_py.model_contracts import extract_primary_feature_snapshot, normalize_market_regime
+from shared_py.model_contracts import (
+    extract_primary_feature_snapshot,
+    normalize_market_regime,
+)
 
 
 def _parse_labels(raw: Any) -> list[str]:
@@ -94,7 +97,9 @@ def losing_trade_condition_key(row: dict[str, Any]) -> str:
     return "|".join(str(p) for p in parts)
 
 
-def top_losing_conditions(rows: list[dict[str, Any]], *, limit: int = 10) -> list[dict[str, Any]]:
+def top_losing_conditions(
+    rows: list[dict[str, Any]], *, limit: int = 10
+) -> list[dict[str, Any]]:
     losses = [r for r in rows if _dec_loss(r)]
     cnt: Counter[str] = Counter()
     examples: dict[str, list[str]] = {}
@@ -108,7 +113,9 @@ def top_losing_conditions(rows: list[dict[str, Any]], *, limit: int = 10) -> lis
             examples.setdefault(k, []).append(pid)
     out = []
     for key, c in cnt.most_common(limit):
-        out.append({"condition_key": key, "count": c, "examples": examples.get(key, [])})
+        out.append(
+            {"condition_key": key, "count": c, "examples": examples.get(key, [])}
+        )
     return out
 
 

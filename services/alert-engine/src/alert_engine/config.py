@@ -4,10 +4,9 @@ import logging
 from functools import lru_cache
 from typing import ClassVar
 
+from config.settings import BaseServiceSettings, TelegramMode, _is_blank_or_placeholder
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import SettingsConfigDict
-
-from config.settings import BaseServiceSettings, TelegramMode, _is_blank_or_placeholder
 
 _log = logging.getLogger("alert_engine.config")
 
@@ -32,19 +31,27 @@ class Settings(BaseServiceSettings):
 
     telegram_bot_token: str = Field(default="", alias="TELEGRAM_BOT_TOKEN")
     telegram_mode: TelegramMode = Field(default="getUpdates", alias="TELEGRAM_MODE")
-    telegram_longpoll_timeout_sec: int = Field(default=30, alias="TELEGRAM_LONGPOLL_TIMEOUT_SEC")
+    telegram_longpoll_timeout_sec: int = Field(
+        default=30, alias="TELEGRAM_LONGPOLL_TIMEOUT_SEC"
+    )
     telegram_allowed_updates: str = Field(
         default="message,callback_query", alias="TELEGRAM_ALLOWED_UPDATES"
     )
-    telegram_allowed_chat_ids: str = Field(default="", alias="TELEGRAM_ALLOWED_CHAT_IDS")
-    telegram_send_max_per_sec: float = Field(default=1.0, alias="TELEGRAM_SEND_MAX_PER_SEC")
+    telegram_allowed_chat_ids: str = Field(
+        default="", alias="TELEGRAM_ALLOWED_CHAT_IDS"
+    )
+    telegram_send_max_per_sec: float = Field(
+        default=1.0, alias="TELEGRAM_SEND_MAX_PER_SEC"
+    )
     telegram_send_max_per_min_per_chat: int = Field(
         default=20, alias="TELEGRAM_SEND_MAX_PER_MIN_PER_CHAT"
     )
     telegram_send_max_retries: int = Field(default=3, alias="TELEGRAM_SEND_MAX_RETRIES")
     telegram_dry_run: bool = Field(default=True, alias="TELEGRAM_DRY_RUN")
     telegram_parse_mode: str = Field(default="none", alias="TELEGRAM_PARSE_MODE")
-    telegram_message_safe_len: int = Field(default=3500, alias="TELEGRAM_MESSAGE_SAFE_LEN")
+    telegram_message_safe_len: int = Field(
+        default=3500, alias="TELEGRAM_MESSAGE_SAFE_LEN"
+    )
     telegram_operator_thread_ttl_sec: int = Field(
         default=604800,
         alias="TELEGRAM_OPERATOR_THREAD_TTL_SEC",
@@ -58,13 +65,25 @@ class Settings(BaseServiceSettings):
     telegram_webhook_url: str = Field(default="", alias="TELEGRAM_WEBHOOK_URL")
     telegram_webhook_secret: str = Field(default="", alias="TELEGRAM_WEBHOOK_SECRET")
 
-    alert_signal_gross_threshold: int = Field(default=80, alias="ALERT_SIGNAL_GROSS_THRESHOLD")
-    alert_signal_core_threshold: int = Field(default=65, alias="ALERT_SIGNAL_CORE_THRESHOLD")
+    alert_signal_gross_threshold: int = Field(
+        default=80, alias="ALERT_SIGNAL_GROSS_THRESHOLD"
+    )
+    alert_signal_core_threshold: int = Field(
+        default=65, alias="ALERT_SIGNAL_CORE_THRESHOLD"
+    )
     alert_news_threshold: int = Field(default=80, alias="ALERT_NEWS_THRESHOLD")
-    alert_dedupe_minutes_gross: int = Field(default=10, alias="ALERT_DEDUPE_MINUTES_GROSS")
-    alert_dedupe_minutes_core: int = Field(default=10, alias="ALERT_DEDUPE_MINUTES_CORE")
-    alert_dedupe_minutes_trend: int = Field(default=10, alias="ALERT_DEDUPE_MINUTES_TREND")
-    alert_dedupe_minutes_news: int = Field(default=30, alias="ALERT_DEDUPE_MINUTES_NEWS")
+    alert_dedupe_minutes_gross: int = Field(
+        default=10, alias="ALERT_DEDUPE_MINUTES_GROSS"
+    )
+    alert_dedupe_minutes_core: int = Field(
+        default=10, alias="ALERT_DEDUPE_MINUTES_CORE"
+    )
+    alert_dedupe_minutes_trend: int = Field(
+        default=10, alias="ALERT_DEDUPE_MINUTES_TREND"
+    )
+    alert_dedupe_minutes_news: int = Field(
+        default=30, alias="ALERT_DEDUPE_MINUTES_NEWS"
+    )
 
     consumer_group: str = Field(default="alert-engine", alias="ALERT_CONSUMER_GROUP")
     consumer_name: str = Field(default="ae-1", alias="ALERT_CONSUMER_NAME")
@@ -145,7 +164,7 @@ class Settings(BaseServiceSettings):
         return out
 
     @model_validator(mode="after")
-    def _validate_telegram_runtime(self) -> "Settings":
+    def _validate_telegram_runtime(self) -> Settings:
         if self.telegram_mode == "webhook":
             if _is_blank_or_placeholder(self.telegram_webhook_url):
                 raise ValueError(
@@ -166,14 +185,16 @@ class Settings(BaseServiceSettings):
         return self
 
     @model_validator(mode="after")
-    def _telegram_operator_requires_upstream(self) -> "Settings":
+    def _telegram_operator_requires_upstream(self) -> Settings:
         if self.telegram_operator_actions_enabled:
             if _is_blank_or_placeholder(self.live_broker_ops_base_url):
                 raise ValueError(
                     "ALERT_ENGINE_LIVE_BROKER_BASE_URL ist Pflicht wenn "
                     "TELEGRAM_OPERATOR_ACTIONS_ENABLED=true"
                 )
-            if self.production and _is_blank_or_placeholder(self.service_internal_api_key):
+            if self.production and _is_blank_or_placeholder(
+                self.service_internal_api_key
+            ):
                 raise ValueError(
                     "INTERNAL_API_KEY ist Pflicht fuer TELEGRAM_OPERATOR_ACTIONS in Production"
                 )

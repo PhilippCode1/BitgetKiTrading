@@ -43,8 +43,12 @@ def test_apply_projection_subtracts_round_trip_and_inflates_mae() -> None:
 
 
 def test_liquidation_stress_increases_with_leverage_and_mae() -> None:
-    s_low = liquidation_proximity_stress_0_1(effective_adverse_bps=100.0, preview_leverage=10)
-    s_high_lev = liquidation_proximity_stress_0_1(effective_adverse_bps=100.0, preview_leverage=40)
+    s_low = liquidation_proximity_stress_0_1(
+        effective_adverse_bps=100.0, preview_leverage=10
+    )
+    s_high_lev = liquidation_proximity_stress_0_1(
+        effective_adverse_bps=100.0, preview_leverage=40
+    )
     assert s_low is not None and s_high_lev is not None
     assert s_high_lev > s_low
 

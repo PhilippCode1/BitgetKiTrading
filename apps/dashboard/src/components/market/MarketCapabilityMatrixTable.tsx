@@ -1,8 +1,9 @@
-import type { MarketUniverseCategoryRow } from "@/lib/types";
+"use client";
 
-function boolLabel(value: boolean): string {
-  return value ? "ja" : "nein";
-}
+import { useMemo } from "react";
+
+import { useI18n } from "@/components/i18n/I18nProvider";
+import type { MarketUniverseCategoryRow } from "@/lib/types";
 
 function categoryLabel(item: MarketUniverseCategoryRow): string {
   if (item.market_family === "futures") {
@@ -19,23 +20,31 @@ type Props = Readonly<{
 }>;
 
 export function MarketCapabilityMatrixTable({ categories }: Props) {
+  const { t } = useI18n();
+
+  const boolLabel = useMemo(
+    () => (value: boolean) =>
+      value ? t("pages.ops.valueYes") : t("pages.ops.valueNo"),
+    [t],
+  );
+
   return (
     <div className="table-wrap">
       <table className="data-table">
         <thead>
           <tr>
-            <th>Kategorie</th>
-            <th>Category Key</th>
-            <th>Inventar</th>
-            <th>Analytics</th>
-            <th>Paper/Shadow</th>
-            <th>Live</th>
-            <th>Exec disabled</th>
-            <th>Leverage</th>
-            <th>Shorting</th>
-            <th>Funding/OI</th>
-            <th>Instrumente</th>
-            <th>Samples</th>
+            <th>{t("pages.capabilities.matrixThCategory")}</th>
+            <th>{t("pages.capabilities.matrixThCategoryKey")}</th>
+            <th>{t("pages.capabilities.matrixThInventory")}</th>
+            <th>{t("pages.capabilities.matrixThAnalytics")}</th>
+            <th>{t("pages.capabilities.matrixThPaperShadow")}</th>
+            <th>{t("pages.capabilities.matrixThLive")}</th>
+            <th>{t("pages.capabilities.matrixThExecDisabled")}</th>
+            <th>{t("pages.capabilities.matrixThLeverage")}</th>
+            <th>{t("pages.capabilities.matrixThShorting")}</th>
+            <th>{t("pages.capabilities.matrixThFundingOi")}</th>
+            <th>{t("pages.capabilities.matrixThInstruments")}</th>
+            <th>{t("pages.capabilities.matrixThSamples")}</th>
           </tr>
         </thead>
         <tbody>
@@ -55,8 +64,10 @@ export function MarketCapabilityMatrixTable({ categories }: Props) {
                 {boolLabel(item.supports_open_interest)}
               </td>
               <td>
-                {item.instrument_count} / tradeable{" "}
-                {item.tradeable_instrument_count}
+                {t("pages.capabilities.matrixInstrumentCount", {
+                  count: item.instrument_count,
+                  tradeable: item.tradeable_instrument_count,
+                })}
               </td>
               <td className="mono-small">
                 {item.sample_symbols.join(", ") || "—"}

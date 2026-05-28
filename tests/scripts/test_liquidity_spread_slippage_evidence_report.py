@@ -5,7 +5,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts" / "liquidity_spread_slippage_evidence_report.py"
 FIXTURE = ROOT / "tests" / "fixtures" / "liquidity_quality_sample.json"

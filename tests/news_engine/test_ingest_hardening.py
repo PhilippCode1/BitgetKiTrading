@@ -3,7 +3,6 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-
 REPO = Path(__file__).resolve().parents[2]
 NE_SRC = REPO / "services" / "news-engine" / "src"
 SHARED_SRC = REPO / "shared" / "python" / "src"

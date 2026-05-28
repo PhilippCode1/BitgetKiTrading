@@ -11,7 +11,10 @@ for candidate in (LEARNING_SRC, SHARED_SRC):
     if candidate.is_dir() and candidate_str not in sys.path:
         sys.path.insert(0, candidate_str)
 
-from learning_engine.labeling.labels import feature_snapshot_compact, signal_snapshot_compact
+from learning_engine.labeling.labels import (
+    feature_snapshot_compact,
+    signal_snapshot_compact,
+)
 from shared_py.model_contracts import FEATURE_SCHEMA_HASH, MODEL_OUTPUT_SCHEMA_HASH
 from shared_py.playbook_registry import PLAYBOOK_REGISTRY_VERSION
 
@@ -167,7 +170,10 @@ def test_learning_signal_snapshot_uses_shared_output_contract() -> None:
     assert snapshot["playbook_decision_mode"] == "selected"
     assert snapshot["take_trade_model_version"] == "hgb-cal-1700000000000"
     assert snapshot["expected_return_bps"] == 19.5
-    assert snapshot["target_projection_models_json"][0]["model_name"] == "expected_return_bps"
+    assert (
+        snapshot["target_projection_models_json"][0]["model_name"]
+        == "expected_return_bps"
+    )
     assert snapshot["model_uncertainty_0_1"] == 0.22
     assert snapshot["trade_action"] == "allow_trade"
     assert snapshot["decision_confidence_0_1"] == 0.82

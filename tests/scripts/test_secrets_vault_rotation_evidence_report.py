@@ -18,9 +18,14 @@ def test_payload_blocks_private_live_until_external_secret_evidence_exists() -> 
 
     assert payload["private_live_decision"] == "NO_GO"
     assert payload["full_autonomous_live"] == "NO_GO"
-    assert "vault_runtime_secret_store_attestation_missing" in payload["external_required"]
+    assert (
+        "vault_runtime_secret_store_attestation_missing" in payload["external_required"]
+    )
     assert "real_secret_rotation_drill_missing" in payload["external_required"]
-    assert "owner_signed_secret_rotation_acceptance_missing" in payload["external_required"]
+    assert (
+        "owner_signed_secret_rotation_acceptance_missing"
+        in payload["external_required"]
+    )
 
 
 def test_payload_has_no_browser_secret_leaks_and_no_template_failures() -> None:
@@ -36,7 +41,9 @@ def test_payload_covers_critical_rotation_policies() -> None:
     rotation = payload["rotation_policy"]
 
     assert rotation["required_policy_missing"] == []
-    assert set(REQUIRED_CRITICAL_POLICIES).issubset(set(rotation["reuse_forbidden_critical"]))
+    assert set(REQUIRED_CRITICAL_POLICIES).issubset(
+        set(rotation["reuse_forbidden_critical"])
+    )
     assert all(item["expired"] is True for item in rotation["stale_examples"])
     assert payload["simulated_rotation_drill"]["raw_secret_values_included"] is False
 

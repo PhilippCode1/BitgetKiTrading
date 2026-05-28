@@ -87,9 +87,11 @@ export function summarizeNoTradeReasons(
     );
   }
   const abs = asStringArray(s.abstention_reasons_json);
-  for (const x of abs.slice(0, 8)) lines.push(tNo(t, "abstention", { detail: x }));
+  for (const x of abs.slice(0, 8))
+    lines.push(tNo(t, "abstention", { detail: x }));
   const rej = asStringArray(s.rejection_reasons_json);
-  for (const x of rej.slice(0, 8)) lines.push(tNo(t, "rejection", { detail: x }));
+  for (const x of rej.slice(0, 8))
+    lines.push(tNo(t, "rejection", { detail: x }));
   const uni = asStringArray(s.governor_universal_hard_block_reasons_json);
   for (const x of uni.slice(0, 8))
     lines.push(tNo(t, "governorUniversal", { detail: x }));
@@ -107,7 +109,8 @@ export function summarizeNoTradeReasons(
     );
   }
   const lev = asStringArray(s.leverage_cap_reasons_json);
-  for (const x of lev.slice(0, 6)) lines.push(tNo(t, "leverageCap", { detail: x }));
+  for (const x of lev.slice(0, 6))
+    lines.push(tNo(t, "leverageCap", { detail: x }));
   if (
     typeof s.stop_fragility_0_1 === "number" &&
     s.stop_fragility_0_1 >= 0.65 &&
@@ -185,8 +188,10 @@ export function summarizeTradeRationale(
   } else {
     return lines;
   }
-  if (s.meta_trade_lane) lines.push(tTr(t, "lane", { lane: s.meta_trade_lane }));
-  if (s.market_family) lines.push(tTr(t, "marketFamily", { family: s.market_family }));
+  if (s.meta_trade_lane)
+    lines.push(tTr(t, "lane", { lane: s.meta_trade_lane }));
+  if (s.market_family)
+    lines.push(tTr(t, "marketFamily", { family: s.market_family }));
   if (s.instrument_product_type || s.instrument_margin_account_mode) {
     lines.push(
       tTr(t, "instrumentContext", {
@@ -207,9 +212,7 @@ export function summarizeTradeRationale(
   if (s.specialist_router_id)
     lines.push(tTr(t, "router", { id: s.specialist_router_id }));
   if (s.router_selected_playbook_id)
-    lines.push(
-      tTr(t, "routerPlaybook", { id: s.router_selected_playbook_id }),
-    );
+    lines.push(tTr(t, "routerPlaybook", { id: s.router_selected_playbook_id }));
   if (s.router_operator_gate_required === true) {
     lines.push(tTr(t, "operatorGate"));
   }
@@ -230,9 +233,7 @@ export function summarizeTradeRationale(
         ? "—"
         : `${formatNum(s.recommended_leverage, 0)}×`;
     const allow =
-      s.allowed_leverage == null
-        ? "—"
-        : `${formatNum(s.allowed_leverage, 0)}×`;
+      s.allowed_leverage == null ? "—" : `${formatNum(s.allowed_leverage, 0)}×`;
     lines.push(tTr(t, "leverage", { rec, allow }));
   }
   if (

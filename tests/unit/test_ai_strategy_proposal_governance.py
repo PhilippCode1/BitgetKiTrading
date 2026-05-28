@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import pytest
-from fastapi import HTTPException
-
 from api_gateway.ai_strategy_proposal_governance import (
+    assert_promotion_allowed,
     normalize_proposal_payload,
     run_deterministic_validation,
 )
-from api_gateway.ai_strategy_proposal_governance import assert_promotion_allowed
+from fastapi import HTTPException
 
 
 def _valid_result() -> dict:

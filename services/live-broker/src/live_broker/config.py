@@ -2,12 +2,10 @@ from __future__ import annotations
 
 from typing import ClassVar, Self
 
+from config.settings import BaseServiceSettings, TriggerType
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import SettingsConfigDict
-
-from config.settings import BaseServiceSettings, TriggerType
 from shared_py.bitget import BitgetSettings
-from shared_py.shadow_live_divergence import ShadowLiveThresholds
 from shared_py.eventbus import (
     EVENT_STREAMS,
     STREAM_SIGNAL_CREATED,
@@ -15,6 +13,7 @@ from shared_py.eventbus import (
     STREAM_TRADE_OPENED,
     STREAM_TRADE_UPDATED,
 )
+from shared_py.shadow_live_divergence import ShadowLiveThresholds
 
 _DEFAULT_REFERENCE_STREAMS = ",".join(
     (STREAM_TRADE_OPENED, STREAM_TRADE_UPDATED, STREAM_TRADE_CLOSED)
@@ -42,17 +41,26 @@ class LiveBrokerSettings(BitgetSettings):
     live_broker_strategy_version_id: str = Field(
         default="",
         alias="LIVE_BROKER_STRATEGY_VERSION_ID",
-        description="Optional: gebundene learn.strategy_versions.id — Startup prüft Hash gegen DB.",
+        description=(
+            "Optional: gebundene learn.strategy_versions.id — Startup prüft "
+            "Hash gegen DB."
+        ),
     )
     live_broker_strategy_config_expected_hash: str = Field(
         default="",
         alias="LIVE_BROKER_STRATEGY_CONFIG_CHECKSUM",
-        description="SHA-256 (hex) der gebundenen Strategie-Parameter; muss learn.strategy_versions.configuration_hash treffen.",
+        description=(
+            "SHA-256 (hex) der gebundenen Strategie-Parameter; muss "
+            "learn.strategy_versions.configuration_hash treffen."
+        ),
     )
     audit_ledger_internal_url: str = Field(
         default="",
         alias="AUDIT_LEDGER_INTERNAL_URL",
-        description="Optional: Base-URL audit-ledger fuer POST /internal/v1/apex-latency/upsert; sonst DB direkt im Live-Broker.",
+        description=(
+            "Optional: Base-URL audit-ledger fuer POST "
+            "/internal/v1/apex-latency/upsert; sonst DB direkt im Live-Broker."
+        ),
     )
     redis_url: str = Field(default="", alias="REDIS_URL")
     live_broker_port: int = Field(default=8120, alias="LIVE_BROKER_PORT")
@@ -112,13 +120,16 @@ class LiveBrokerSettings(BitgetSettings):
         default=90,
         alias="LIVE_BROKER_PRIVATE_WS_STALE_AFTER_SEC",
         description=(
-            "Kein privates WS-Datenpush innerhalb dieser Sekunden → Stale-Eskalation und REST-Catchup."
+            "Kein privates WS-Datenpush innerhalb dieser Sekunden → "
+            "Stale-Eskalation und REST-Catchup."
         ),
     )
     live_broker_private_ws_stale_escalation_max_cycles: int = Field(
         default=10,
         alias="LIVE_BROKER_PRIVATE_WS_STALE_ESCALATION_MAX_CYCLES",
-        description="Nach so vielen Stale-Zyklen ohne Erholung: Verbindung neu aufbauen.",
+        description=(
+            "Nach so vielen Stale-Zyklen ohne Erholung: Verbindung neu aufbauen."
+        ),
     )
     live_order_timeout_sec: int = Field(
         default=300,
@@ -169,14 +180,19 @@ class LiveBrokerSettings(BitgetSettings):
         ge=1,
         le=600,
         alias="LIVE_BROKER_POSITION_DRIFT_INTERVAL_SEC",
-        description="Aktive Positions-Drift: Abgleich live.positions vs. Bitget (Sekunden).",
+        description=(
+            "Aktive Positions-Drift: Abgleich live.positions vs. Bitget (Sekunden)."
+        ),
     )
     live_broker_position_notional_halt_ratio: float = Field(
         default=0.01,
         ge=0.0001,
         le=1.0,
         alias="LIVE_BROKER_POSITION_NOTIONAL_HALT_RATIO",
-        description="Relativer Notional-Drift (local vs. Exchange) loest system:global_halt aus.",
+        description=(
+            "Relativer Notional-Drift (local vs. Exchange) loest "
+            "system:global_halt aus."
+        ),
     )
     live_broker_block_live_without_exchange_truth: bool = Field(
         default=False,
@@ -208,32 +224,42 @@ class LiveBrokerSettings(BitgetSettings):
         alias="LIVE_PREDATORY_PASSIVE_MAKER_DEFAULT",
         description=(
             "Signal-Events: trace.predatory_passive_maker setzen (Market-Opens werden "
-            "im Order-Service zu post-only Limit am Best-Bid/Ask umgeschrieben, Futures)."
+            "im Order-Service zu post-only Limit am Best-Bid/Ask "
+            "umgeschrieben, Futures)."
         ),
     )
     live_passive_max_slippage_bps_default: float = Field(
         default=25.0,
         alias="LIVE_PASSIVE_MAX_SLIPPAGE_BPS_DEFAULT",
-        description="Max. Abweichung vom Anchor-Preis fuer Chase-Replace (Basis-Punkte).",
+        description=(
+            "Max. Abweichung vom Anchor-Preis fuer Chase-Replace (Basis-Punkte)."
+        ),
     )
     live_passive_iceberg_slices_default: int = Field(
         default=4,
         alias="LIVE_PASSIVE_ICEBERG_SLICES_DEFAULT",
         ge=1,
         le=500,
-        description="Anzahl Tranchen (nur erste wird pro Submit platziert; Plan im Trace).",
+        description=(
+            "Anzahl Tranchen (nur erste wird pro Submit platziert; Plan im Trace)."
+        ),
     )
     live_passive_imbalance_pause_ms: int = Field(
         default=400,
         alias="LIVE_PASSIVE_IMBALANCE_PAUSE_MS",
         ge=0,
         le=60_000,
-        description="Hinweis-Dauer im Fehlertext wenn Safety-Latch Orderbuch-Wall erkennt.",
+        description=(
+            "Hinweis-Dauer im Fehlertext wenn Safety-Latch Orderbuch-Wall erkennt."
+        ),
     )
     live_passive_imbalance_against_threshold: float = Field(
         default=0.55,
         alias="LIVE_PASSIVE_IMBALANCE_AGAINST_THRESHOLD",
-        description="|Imbalance| groesser als Schwelle gegen unsere Seite -> kein Submit (retry).",
+        description=(
+            "|Imbalance| groesser als Schwelle gegen unsere Seite -> kein "
+            "Submit (retry)."
+        ),
     )
     live_preset_stop_min_distance_bps: float | None = Field(
         default=None,
@@ -262,7 +288,9 @@ class LiveBrokerSettings(BitgetSettings):
     enable_pre_flight_liquidity_guard: bool = Field(
         default=True,
         alias="LIVE_ENABLE_PRE_FLIGHT_LIQUIDITY_GUARD",
-        description="Vor Market-Submits: Top-5-Orderbook aus Redis, Slippage-Limit (Prompt 30).",
+        description=(
+            "Vor Market-Submits: Top-5-Orderbook aus Redis, Slippage-Limit (Prompt 30)."
+        ),
     )
     live_liquidity_guard_max_slippage_bps: str = Field(
         default="50",
@@ -281,12 +309,16 @@ class LiveBrokerSettings(BitgetSettings):
     live_operator_intel_outbox_enabled: bool = Field(
         default=False,
         alias="LIVE_OPERATOR_INTEL_OUTBOX_ENABLED",
-        description="Publiziert operator_intel Events (Telegram via alert-engine Outbox)",
+        description=(
+            "Publiziert operator_intel Events (Telegram via alert-engine Outbox)"
+        ),
     )
     runtime_safety_oracle_enabled: bool = Field(
         default=True,
         alias="RUNTIME_SAFETY_ORACLE_ENABLED",
-        description="Prompt 75: periodische Axiom-Pruefung (DB) + global_halt bei Verletzung.",
+        description=(
+            "Prompt 75: periodische Axiom-Pruefung (DB) + global_halt bei Verletzung."
+        ),
     )
     runtime_safety_oracle_interval_sec: float = Field(
         default=0.5,
@@ -297,7 +329,10 @@ class LiveBrokerSettings(BitgetSettings):
     runtime_safety_max_notional_equity_mult: str = Field(
         default="10",
         alias="RUNTIME_SAFETY_MAX_NOTIONAL_EQUITY_MULT",
-        description="Axiom: Summe |Notional| < Equity * Faktor (konservativer Sicherheits-Deckel).",
+        description=(
+            "Axiom: Summe |Notional| < Equity * Faktor (konservativer "
+            "Sicherheits-Deckel)."
+        ),
     )
     stop_trigger_type_default: TriggerType = Field(
         default="mark_price",
@@ -357,7 +392,9 @@ class LiveBrokerSettings(BitgetSettings):
     billing_prepaid_gate_enabled: bool = Field(
         default=False,
         alias="BILLING_PREPAID_GATE_ENABLED",
-        description="Opening-Orders nur bei ausreichendem app.customer_wallet (Tenant).",
+        description=(
+            "Opening-Orders nur bei ausreichendem app.customer_wallet (Tenant)."
+        ),
     )
     billing_prepaid_tenant_id: str = Field(
         default="default",
@@ -393,7 +430,8 @@ class LiveBrokerSettings(BitgetSettings):
     def commercial_gates_enforced_for_exchange_submit(self) -> bool:
         """True wenn Tenant-Kommerzgates vor Boersen-Submit geladen werden muessen."""
         return bool(
-            self.modul_mate_gate_enforcement or self.live_broker_require_commercial_gates
+            self.modul_mate_gate_enforcement
+            or self.live_broker_require_commercial_gates
         )
 
     @field_validator("shadow_live_max_slippage_expectation_bps", mode="before")
@@ -419,7 +457,9 @@ class LiveBrokerSettings(BitgetSettings):
     @classmethod
     def _metadata_age_sec(cls, value: int) -> int:
         if value < 0 or value > 86_400:
-            raise ValueError("LIVE_PREFLIGHT_MAX_CATALOG_METADATA_AGE_SEC muss 0..86400 sein")
+            raise ValueError(
+                "LIVE_PREFLIGHT_MAX_CATALOG_METADATA_AGE_SEC muss 0..86400 sein"
+            )
         return value
 
     @field_validator(
@@ -432,7 +472,9 @@ class LiveBrokerSettings(BitgetSettings):
         if value is None:
             return None
         if value <= 0 or value > 1_000_000:
-            raise ValueError("Execution-Guard-Schwellen muessen NULL oder > 0 und plausibel sein")
+            raise ValueError(
+                "Execution-Guard-Schwellen muessen NULL oder > 0 und plausibel sein"
+            )
         return value
 
     @field_validator("live_broker_port")
@@ -466,7 +508,9 @@ class LiveBrokerSettings(BitgetSettings):
     @classmethod
     def _validate_signal_stream(cls, value: str) -> str:
         if value not in EVENT_STREAMS:
-            raise ValueError("LIVE_BROKER_SIGNAL_STREAM ist kein gueltiger Event-Stream")
+            raise ValueError(
+                "LIVE_BROKER_SIGNAL_STREAM ist kein gueltiger Event-Stream"
+            )
         return value
 
     @field_validator("order_idempotency_prefix")
@@ -478,9 +522,7 @@ class LiveBrokerSettings(BitgetSettings):
         if len(normalized) > 13:
             raise ValueError("ORDER_IDEMPOTENCY_PREFIX darf max. 13 Zeichen lang sein")
         if any(ch not in "abcdefghijklmnopqrstuvwxyz0123456789-" for ch in normalized):
-            raise ValueError(
-                "ORDER_IDEMPOTENCY_PREFIX erlaubt nur a-z, 0-9 und '-'"
-            )
+            raise ValueError("ORDER_IDEMPOTENCY_PREFIX erlaubt nur a-z, 0-9 und '-'")
         return normalized
 
     @field_validator("stop_trigger_type_default", "tp_trigger_type_default")
@@ -572,7 +614,9 @@ class LiveBrokerSettings(BitgetSettings):
     @classmethod
     def _validate_break_even_index(cls, value: int) -> int:
         if value < 0 or value > 2:
-            raise ValueError("EXIT_BREAK_EVEN_AFTER_TP_INDEX muss im Bereich 0..2 liegen")
+            raise ValueError(
+                "EXIT_BREAK_EVEN_AFTER_TP_INDEX muss im Bereich 0..2 liegen"
+            )
         return value
 
     @field_validator("shadow_live_max_timing_skew_ms")
@@ -593,7 +637,9 @@ class LiveBrokerSettings(BitgetSettings):
     @classmethod
     def _validate_shadow_div(cls, value: float) -> float:
         if not 0.0 <= value <= 1.0:
-            raise ValueError("SHADOW_LIVE_MAX_SIGNAL_SHADOW_DIVERGENCE_0_1 muss 0..1 sein")
+            raise ValueError(
+                "SHADOW_LIVE_MAX_SIGNAL_SHADOW_DIVERGENCE_0_1 muss 0..1 sein"
+            )
         return value
 
     @field_validator("shadow_live_max_slippage_expectation_bps")
@@ -602,7 +648,9 @@ class LiveBrokerSettings(BitgetSettings):
         if value is None:
             return None
         if value <= 0 or value > 500:
-            raise ValueError("SHADOW_LIVE_MAX_SLIPPAGE_EXPECTATION_BPS muss NULL oder 0..500 sein")
+            raise ValueError(
+                "SHADOW_LIVE_MAX_SLIPPAGE_EXPECTATION_BPS muss NULL oder 0..500 sein"
+            )
         return value
 
     @field_validator("live_broker_base_url")
@@ -611,9 +659,7 @@ class LiveBrokerSettings(BitgetSettings):
         normalized = value.strip()
         if not normalized:
             return normalized
-        if not (
-            normalized.startswith("http://") or normalized.startswith("https://")
-        ):
+        if not (normalized.startswith("http://") or normalized.startswith("https://")):
             raise ValueError(
                 "LIVE_BROKER_BASE_URL muss mit http:// oder https:// beginnen"
             )
@@ -625,9 +671,7 @@ class LiveBrokerSettings(BitgetSettings):
         normalized = value.strip()
         if not normalized:
             return normalized
-        if not (
-            normalized.startswith("ws://") or normalized.startswith("wss://")
-        ):
+        if not (normalized.startswith("ws://") or normalized.startswith("wss://")):
             raise ValueError(
                 "LIVE_BROKER_WS_PRIVATE_URL muss mit ws:// oder wss:// beginnen"
             )
@@ -647,7 +691,9 @@ class LiveBrokerSettings(BitgetSettings):
         reference_streams = self.reference_streams
         if not reference_streams:
             raise ValueError("LIVE_BROKER_REFERENCE_STREAMS darf nicht leer sein")
-        invalid = [stream for stream in reference_streams if stream not in EVENT_STREAMS]
+        invalid = [
+            stream for stream in reference_streams if stream not in EVENT_STREAMS
+        ]
         if invalid:
             raise ValueError(
                 f"LIVE_BROKER_REFERENCE_STREAMS enthaelt ungueltige Streams: {invalid}"
@@ -686,38 +732,54 @@ class LiveBrokerSettings(BitgetSettings):
         jlim = self.live_reconcile_journal_tail_limit
         if jlim < 20 or jlim > 2000:
             raise ValueError("LIVE_RECONCILE_JOURNAL_TAIL_LIMIT muss 20..2000 sein")
-        if (self.production or self.app_env == "production") and self.bitget_demo_enabled:
+        if (
+            self.production or self.app_env == "production"
+        ) and self.bitget_demo_enabled:
             raise ValueError(
                 "BITGET_DEMO_ENABLED=true ist fuer PRODUCTION / APP_ENV=production "
-                "nicht zulaessig (Live-Broker: keine Demo/Paper-REST fuer Echtgeld-Pfad)"
+                "nicht zulaessig (Live-Broker: keine Demo/Paper-REST fuer "
+                "Echtgeld-Pfad)"
             )
-        if (self.production or self.app_env == "production") and self.bitget_relax_credential_isolation:
+        if (
+            self.production or self.app_env == "production"
+        ) and self.bitget_relax_credential_isolation:
             raise ValueError(
-                "BITGET_RELAX_CREDENTIAL_ISOLATION=true ist in Production nicht zulaessig"
+                "BITGET_RELAX_CREDENTIAL_ISOLATION=true ist in Production "
+                "nicht zulaessig"
             )
         if not self.bitget_relax_credential_isolation:
             if self.bitget_demo_enabled and self.private_exchange_access_enabled:
                 if self.api_key or self.api_secret or self.api_passphrase:
                     raise ValueError(
-                        "BITGET_DEMO_ENABLED=true mit privatem Exchange-Zugriff (Shadow/Live): "
-                        "BITGET_API_KEY, BITGET_API_SECRET und BITGET_API_PASSPHRASE muessen leer sein "
+                        "BITGET_DEMO_ENABLED=true mit privatem Exchange-Zugriff "
+                        "(Shadow/Live): BITGET_API_KEY, BITGET_API_SECRET und "
+                        "BITGET_API_PASSPHRASE muessen leer sein "
                         "(keine Live-Credentials im Demo-Private-Pfad). "
                         "Ausnahme lokal: BITGET_RELAX_CREDENTIAL_ISOLATION=true."
                     )
             elif not self.bitget_demo_enabled and self.private_exchange_access_enabled:
-                if self.demo_api_key or self.demo_api_secret or self.demo_api_passphrase:
+                if (
+                    self.demo_api_key
+                    or self.demo_api_secret
+                    or self.demo_api_passphrase
+                ):
                     raise ValueError(
-                        "Private Exchange-Anbindung aktiv (Shadow/Live-Orders) ohne Demo-Modus: "
-                        "BITGET_DEMO_API_KEY/SECRET/PASSPHRASE muessen leer sein — keine Demo-Keys im Live-Pfad. "
+                        "Private Exchange-Anbindung aktiv (Shadow/Live-Orders) "
+                        "ohne Demo-Modus: BITGET_DEMO_API_KEY/SECRET/PASSPHRASE "
+                        "muessen leer sein — keine Demo-Keys im Live-Pfad. "
                         "Ausnahme lokal: BITGET_RELAX_CREDENTIAL_ISOLATION=true."
                     )
         if self.modul_mate_gate_enforcement and not (self.database_url or "").strip():
             raise ValueError(
                 "MODUL_MATE_GATE_ENFORCEMENT=true erfordert eine gesetzte DATABASE_URL"
             )
-        if self.live_broker_require_commercial_gates and not (self.database_url or "").strip():
+        if (
+            self.live_broker_require_commercial_gates
+            and not (self.database_url or "").strip()
+        ):
             raise ValueError(
-                "LIVE_BROKER_REQUIRE_COMMERCIAL_GATES=true erfordert eine gesetzte DATABASE_URL"
+                "LIVE_BROKER_REQUIRE_COMMERCIAL_GATES=true erfordert eine "
+                "gesetzte DATABASE_URL"
             )
         if (
             (self.production or self.app_env == "production")
@@ -726,8 +788,10 @@ class LiveBrokerSettings(BitgetSettings):
             and not self.commercial_gates_enforced_for_exchange_submit
         ):
             raise ValueError(
-                "Production mit aktivem Live-Order-Submit: setze MODUL_MATE_GATE_ENFORCEMENT=true "
-                "oder LIVE_BROKER_REQUIRE_COMMERCIAL_GATES=true (Tenant-Gates gegen Vertrag/Abo/Admin)."
+                "Production mit aktivem Live-Order-Submit: setze "
+                "MODUL_MATE_GATE_ENFORCEMENT=true oder "
+                "LIVE_BROKER_REQUIRE_COMMERCIAL_GATES=true (Tenant-Gates gegen "
+                "Vertrag/Abo/Admin)."
             )
         return self
 

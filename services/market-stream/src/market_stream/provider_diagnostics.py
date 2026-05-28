@@ -10,14 +10,18 @@ from typing import Any
 class ProviderDiagnostics:
     """Thread-sichere Oberfläche für Bitget-Protokollfehler vs. Transport-Störungen."""
 
-    _lock: threading.Lock = field(default_factory=threading.Lock, repr=False, compare=False)
+    _lock: threading.Lock = field(
+        default_factory=threading.Lock, repr=False, compare=False
+    )
     _protocol_ts_ms: int | None = field(default=None, repr=False)
     _protocol_source: str | None = field(default=None, repr=False)
     _protocol_detail: str | None = field(default=None, repr=False)
     _transport_ts_ms: int | None = field(default=None, repr=False)
     _transport_detail: str | None = field(default=None, repr=False)
 
-    def record_protocol_error(self, source: str, detail: str, *, max_len: int = 2000) -> None:
+    def record_protocol_error(
+        self, source: str, detail: str, *, max_len: int = 2000
+    ) -> None:
         """Bitget/API-Protokoll: WS-error-Event, REST code != 00000, HTTP 4xx/5xx nach Body."""
         detail_s = (detail or "")[:max_len]
         now = int(time.time() * 1000)

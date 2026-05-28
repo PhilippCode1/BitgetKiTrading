@@ -8,15 +8,6 @@ from typing import Any
 import psycopg
 import psycopg.errors
 from psycopg.rows import dict_row
-
-from alert_engine.config import Settings
-from alert_engine.log_safety import safe_chat_ref, safe_user_ref
-from shared_py.telegram_chat_contract import TELEGRAM_CHAT_CONTRACT_VERSION
-from alert_engine.storage.repo_audit import RepoAudit
-from alert_engine.storage.repo_outbox import RepoOutbox
-from alert_engine.storage.repo_subscriptions import RepoSubscriptions
-from alert_engine.storage.repo_telegram_operator import RepoTelegramOperator
-from alert_engine.telegram.api_client import TelegramApiClient
 from shared_py.customer_telegram_notify import enqueue_customer_notify
 from shared_py.customer_telegram_prefs import (
     DEFAULT_PREFS,
@@ -30,6 +21,15 @@ from shared_py.customer_telegram_repo import (
     get_tenant_id_for_chat,
     try_complete_customer_start_link,
 )
+from shared_py.telegram_chat_contract import TELEGRAM_CHAT_CONTRACT_VERSION
+
+from alert_engine.config import Settings
+from alert_engine.log_safety import safe_chat_ref, safe_user_ref
+from alert_engine.storage.repo_audit import RepoAudit
+from alert_engine.storage.repo_outbox import RepoOutbox
+from alert_engine.storage.repo_subscriptions import RepoSubscriptions
+from alert_engine.storage.repo_telegram_operator import RepoTelegramOperator
+from alert_engine.telegram.api_client import TelegramApiClient
 
 logger = logging.getLogger("alert_engine.commands")
 
@@ -129,7 +129,10 @@ def _dispatch_customer_portal_command(
         chat_id=chat_id,
         user_id=int(user_id) if user_id else None,
         command=cmd,
-        args={"arg": arg[:300], "chat_contract_version": TELEGRAM_CHAT_CONTRACT_VERSION},
+        args={
+            "arg": arg[:300],
+            "chat_contract_version": TELEGRAM_CHAT_CONTRACT_VERSION,
+        },
     )
 
     if cmd == "/kunde_help":
@@ -154,7 +157,8 @@ def _dispatch_customer_portal_command(
                 except psycopg.errors.UndefinedTable:
                     prefs = dict(DEFAULT_PREFS)
                 lines = ["Benachrichtigungen (an/aus):"] + [
-                    f"- {k}: {'an' if prefs.get(k) else 'aus'}" for k in NOTIFY_PREFS_ORDERED_BOOL_KEYS
+                    f"- {k}: {'an' if prefs.get(k) else 'aus'}"
+                    for k in NOTIFY_PREFS_ORDERED_BOOL_KEYS
                 ]
                 ctx.api.send_message(chat_id, "\n".join(lines))
             elif cmd == "/set_notify":
@@ -170,17 +174,22 @@ def _dispatch_customer_portal_command(
                 if key not in NOTIFY_PREFS_ORDERED_BOOL_KEYS:
                     ctx.api.send_message(
                         chat_id,
-                        "Unbekannter Schluessel. Erlaubt: " + ", ".join(NOTIFY_PREFS_ORDERED_BOOL_KEYS),
+                        "Unbekannter Schluessel. Erlaubt: "
+                        + ", ".join(NOTIFY_PREFS_ORDERED_BOOL_KEYS),
                     )
                     return
                 b = _parse_notify_bool_token(tok)
                 if b is None:
-                    ctx.api.send_message(chat_id, "Zweites Argument: an oder aus (oder true/false).")
+                    ctx.api.send_message(
+                        chat_id, "Zweites Argument: an oder aus (oder true/false)."
+                    )
                     return
                 try:
                     before = fetch_notify_prefs_merged(conn, tenant_id=tenant_id)
                     with conn.transaction():
-                        after = upsert_notify_prefs(conn, tenant_id=tenant_id, **{key: b})
+                        after = upsert_notify_prefs(
+                            conn, tenant_id=tenant_id, **{key: b}
+                        )
                         audit_prefs_changed(
                             conn,
                             tenant_id=tenant_id,
@@ -206,7 +215,11 @@ def _dispatch_customer_portal_command(
                     )
                 else:
                     te = row.get("trial_ends_at")
-                    te_s = te.isoformat() if hasattr(te, "isoformat") else (str(te) if te else "—")
+                    te_s = (
+                        te.isoformat()
+                        if hasattr(te, "isoformat")
+                        else (str(te) if te else "—")
+                    )
                     ctx.api.send_message(
                         chat_id,
                         "Konto (Kurz):\n"
@@ -223,7 +236,9 @@ def _dispatch_customer_portal_command(
                 )
     except Exception as exc:
         logger.exception("customer portal cmd: %s", exc)
-        ctx.api.send_message(chat_id, "Interner Fehler. Bitte spaeter erneut versuchen.")
+        ctx.api.send_message(
+            chat_id, "Interner Fehler. Bitte spaeter erneut versuchen."
+        )
 
 
 def _customer_link_error_de(err: str) -> str:
@@ -366,7 +381,12 @@ def handle_update(raw: dict[str, Any], ctx: CommandContext) -> None:
             str(title) if title else None,
             force_allowed=force_allowed,
         )
-        ctx.audit.log_command(chat_id=chat_id, user_id=int(user_id) if user_id else None, command=cmd, args={})
+        ctx.audit.log_command(
+            chat_id=chat_id,
+            user_id=int(user_id) if user_id else None,
+            command=cmd,
+            args={},
+        )
         if force_allowed or status == "allowed":
             reply = "Willkommen. Du bist freigeschaltet. /help fuer Befehle."
         elif not env_ids:
@@ -420,7 +440,9 @@ def handle_update(raw: dict[str, Any], ctx: CommandContext) -> None:
     if cmd in OPERATOR_TELEGRAM_COMMANDS:
         from alert_engine.telegram.operator_actions import dispatch_operator_command
 
-        dispatch_operator_command(cmd, arg, chat_id, int(user_id) if user_id else None, ctx)
+        dispatch_operator_command(
+            cmd, arg, chat_id, int(user_id) if user_id else None, ctx
+        )
         return
 
     if cmd == "/help":
@@ -453,7 +475,9 @@ def handle_update(raw: dict[str, Any], ctx: CommandContext) -> None:
         ctx.api.send_message(chat_id, "Stumm aufgehoben.")
     elif cmd == "/lastsignal":
         s = ctx.outbox.last_alert_summary(chat_id, ("GROSS_SIGNAL", "CORE_SIGNAL"))
-        ctx.api.send_message(chat_id, s or "Keine Signal-Alerts in der Outbox fuer diesen Chat.")
+        ctx.api.send_message(
+            chat_id, s or "Keine Signal-Alerts in der Outbox fuer diesen Chat."
+        )
     elif cmd == "/lastnews":
         s = ctx.outbox.last_alert_summary(chat_id, ("NEWS_HIGH",))
         ctx.api.send_message(chat_id, s or "Keine News-Alerts.")

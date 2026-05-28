@@ -69,7 +69,9 @@ def self_healing_restart(
         headers[INTERNAL_SERVICE_HEADER] = k
     url = f"{base}/ops/self-healing/restart"
     try:
-        payload = json.dumps({"service_name": body.service_name.strip()}).encode("utf-8")
+        payload = json.dumps({"service_name": body.service_name.strip()}).encode(
+            "utf-8"
+        )
         with httpx.Client(timeout=30.0) as client:
             r = client.post(
                 url,

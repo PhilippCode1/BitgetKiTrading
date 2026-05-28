@@ -62,7 +62,8 @@ def _runtime_bundle() -> dict[str, Any]:
         fills = fetch_live_broker_fills(conn, limit=20)
         decisions = fetch_live_broker_decisions(conn, limit=20)
         universe = fetch_market_universe_status(
-            conn, configuration_snapshot=get_gateway_settings().market_universe_snapshot()
+            conn,
+            configuration_snapshot=get_gateway_settings().market_universe_snapshot(),
         )
     return {
         "runtime": runtime,
@@ -104,7 +105,8 @@ def demo_status(
     payload = {
         "demo_mode": mode,
         "demo_connection_status": (
-            (data["runtime"] or {}).get("bitget_private_status", {}).get("ui_status") or "unknown"
+            (data["runtime"] or {}).get("bitget_private_status", {}).get("ui_status")
+            or "unknown"
         ),
         "demo_account": (data["runtime"] or {}).get("bitget_private_status", {}),
         "latest_reconcile": {
@@ -152,7 +154,9 @@ def demo_assets(
             "database_url_missing",
         )
     except Exception:
-        return _db_error_envelope("Demo-Assets konnten nicht geladen werden.", "database_error")
+        return _db_error_envelope(
+            "Demo-Assets konnten nicht geladen werden.", "database_error"
+        )
     instruments = (data["universe"] or {}).get("instruments") or []
     rows = []
     for item in instruments:
@@ -183,14 +187,19 @@ def demo_balance(
     try:
         data = _runtime_bundle()
     except DatabaseHealthError:
-        return _db_error_envelope("Demo-Balance ist ohne Datenbank nicht abrufbar.", "database_url_missing")
+        return _db_error_envelope(
+            "Demo-Balance ist ohne Datenbank nicht abrufbar.", "database_url_missing"
+        )
     except Exception:
-        return _db_error_envelope("Demo-Balance konnte nicht geladen werden.", "database_error")
+        return _db_error_envelope(
+            "Demo-Balance konnte nicht geladen werden.", "database_error"
+        )
     runtime = data["runtime"] or {}
     account = runtime.get("bitget_private_status") or {}
     return merge_read_envelope(
         {
-            "balance_hint": account.get("private_auth_detail_de") or "Keine Balance-Daten im Runtime-Snapshot.",
+            "balance_hint": account.get("private_auth_detail_de")
+            or "Keine Balance-Daten im Runtime-Snapshot.",
             "demo_account_status": account.get("ui_status") or "unknown",
         },
         status="ok",
@@ -225,8 +234,14 @@ def demo_open_orders(
             "database_url_missing",
         )
     except Exception:
-        return _db_error_envelope("Demo-Open-Orders konnten nicht geladen werden.", "database_error")
-    items = [o for o in (data["orders"] or []) if str(o.get("status") or "").lower() not in ("filled", "canceled")]
+        return _db_error_envelope(
+            "Demo-Open-Orders konnten nicht geladen werden.", "database_error"
+        )
+    items = [
+        o
+        for o in (data["orders"] or [])
+        if str(o.get("status") or "").lower() not in ("filled", "canceled")
+    ]
     return merge_read_envelope({"items": items, "count": len(items)}, status="ok")
 
 
@@ -242,8 +257,12 @@ def demo_order_history(
             "database_url_missing",
         )
     except Exception:
-        return _db_error_envelope("Demo-Order-Historie konnte nicht geladen werden.", "database_error")
-    return merge_read_envelope({"items": data["orders"] or [], "count": len(data["orders"] or [])}, status="ok")
+        return _db_error_envelope(
+            "Demo-Order-Historie konnte nicht geladen werden.", "database_error"
+        )
+    return merge_read_envelope(
+        {"items": data["orders"] or [], "count": len(data["orders"] or [])}, status="ok"
+    )
 
 
 @router.post("/order/preview", response_model=None)
@@ -262,7 +281,9 @@ def demo_order_preview(
             ),
         },
         status="ok" if mode["ready_for_demo_submit"] else "degraded",
-        degradation_reason=None if mode["ready_for_demo_submit"] else "demo_preview_blocked",
+        degradation_reason=(
+            None if mode["ready_for_demo_submit"] else "demo_preview_blocked"
+        ),
     )
 
 
@@ -272,7 +293,9 @@ def demo_order_submit_blocked(
 ) -> dict[str, Any]:
     mode = _settings_snapshot()
     reasons = list(mode.get("blockgruende_de") or [])
-    reasons.append("Demo-Order-Submit ist serverseitig noch nicht freigegeben (Safety-First).")
+    reasons.append(
+        "Demo-Order-Submit ist serverseitig noch nicht freigegeben (Safety-First)."
+    )
     return merge_read_envelope(
         {
             "allowed": False,

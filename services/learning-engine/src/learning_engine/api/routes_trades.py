@@ -7,8 +7,8 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException
 
 from learning_engine.config import LearningEngineSettings
-from learning_engine.storage.connection import db_connect
 from learning_engine.storage import repo_eval
+from learning_engine.storage.connection import db_connect
 
 
 def _jsonable(row: dict[str, Any]) -> dict[str, Any]:
@@ -24,7 +24,11 @@ def build_trades_router(settings: LearningEngineSettings) -> APIRouter:
             raise HTTPException(status_code=400, detail="limit 1..200")
         with db_connect(settings.database_url) as conn:
             rows = repo_eval.list_recent_evaluations(conn, limit=limit)
-        return {"status": "ok", "count": len(rows), "items": [_jsonable(x) for x in rows]}
+        return {
+            "status": "ok",
+            "count": len(rows),
+            "items": [_jsonable(x) for x in rows],
+        }
 
     @r.get("/learning/trades/{paper_trade_id}")
     def one(paper_trade_id: str) -> dict[str, Any]:

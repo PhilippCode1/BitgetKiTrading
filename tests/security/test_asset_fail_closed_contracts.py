@@ -1,7 +1,13 @@
 from __future__ import annotations
 
-from shared_py.bitget.asset_governance import AssetGovernanceRecord, evaluate_trade_decision
-from shared_py.bitget.instruments import BitgetAssetUniverseInstrument, evaluate_asset_universe_live_eligibility
+from shared_py.bitget.asset_governance import (
+    AssetGovernanceRecord,
+    evaluate_trade_decision,
+)
+from shared_py.bitget.instruments import (
+    BitgetAssetUniverseInstrument,
+    evaluate_asset_universe_live_eligibility,
+)
 
 
 def _instrument(**overrides: object) -> BitgetAssetUniverseInstrument:
@@ -50,7 +56,9 @@ def test_missing_price_and_quantity_precision_block_trade() -> None:
 
 def test_delisted_and_quarantined_block_trade() -> None:
     delisted = evaluate_asset_universe_live_eligibility(_instrument(status="delisted"))
-    quarantined = evaluate_asset_universe_live_eligibility(_instrument(status="quarantined"))
+    quarantined = evaluate_asset_universe_live_eligibility(
+        _instrument(status="quarantined")
+    )
     assert delisted.is_live_allowed is False
     assert quarantined.is_live_allowed is False
 

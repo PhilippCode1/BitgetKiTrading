@@ -43,7 +43,9 @@ def test_high_tf_conflict_recommendation() -> None:
     losses = [_row(pnl="-10", labels=["HIGH_TF_CONFLICT"]) for _ in range(8)]
     wins = [_row(pnl="5", labels=[]) for _ in range(5)]
     settings = MagicMock()
-    recs = recommendations.build_signal_and_risk_recommendations(losses + wins, settings)
+    recs = recommendations.build_signal_and_risk_recommendations(
+        losses + wins, settings
+    )
     types = {r["type"] for r in recs}
     assert "signal_weights" in types
 

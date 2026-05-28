@@ -25,7 +25,7 @@ def main() -> None:
     )
     from audit_ledger.config import AuditLedgerSettings
 
-    s = AuditLedgerSettings()
+    AuditLedgerSettings()
     uvicorn.run(
         "audit_ledger.app:build_app",
         factory=True,

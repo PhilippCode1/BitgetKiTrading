@@ -52,7 +52,14 @@ PLACEHOLDER_MARKERS = (
     "your_secret_value_here",
     "placeholder",
 )
-SECRET_KEY_FRAGMENTS = ("SECRET", "TOKEN", "PASSWORD", "PASSPHRASE", "API_KEY", "ACCESS-KEY")
+SECRET_KEY_FRAGMENTS = (
+    "SECRET",
+    "TOKEN",
+    "PASSWORD",
+    "PASSPHRASE",
+    "API_KEY",
+    "ACCESS-KEY",
+)
 
 
 @dataclass
@@ -144,10 +151,17 @@ def detect_profile(env: dict[str, str]) -> str:
 
 
 def credential_type(env: dict[str, str]) -> str:
-    live = any(not is_placeholder(env.get(key)) for key in ("BITGET_API_KEY", "BITGET_API_SECRET", "BITGET_API_PASSPHRASE"))
+    live = any(
+        not is_placeholder(env.get(key))
+        for key in ("BITGET_API_KEY", "BITGET_API_SECRET", "BITGET_API_PASSPHRASE")
+    )
     demo = any(
         not is_placeholder(env.get(key))
-        for key in ("BITGET_DEMO_API_KEY", "BITGET_DEMO_API_SECRET", "BITGET_DEMO_API_PASSPHRASE")
+        for key in (
+            "BITGET_DEMO_API_KEY",
+            "BITGET_DEMO_API_SECRET",
+            "BITGET_DEMO_API_PASSPHRASE",
+        )
     )
     if live and demo:
         return "mixed"
@@ -207,12 +221,18 @@ class _MinimalBitgetSettings:
     def __init__(self, env: dict[str, str]) -> None:
         self.bitget_demo_enabled = truthy(env, "BITGET_DEMO_ENABLED")
         self.bitget_rest_locale = env.get("BITGET_REST_LOCALE", "en-US") or "en-US"
-        self.bitget_demo_paptrading_header = env.get("BITGET_DEMO_PAPTRADING_HEADER", "1") or "1"
+        self.bitget_demo_paptrading_header = (
+            env.get("BITGET_DEMO_PAPTRADING_HEADER", "1") or "1"
+        )
         self.effective_api_key = (
-            env.get("BITGET_DEMO_API_KEY") if self.bitget_demo_enabled else env.get("BITGET_API_KEY")
+            env.get("BITGET_DEMO_API_KEY")
+            if self.bitget_demo_enabled
+            else env.get("BITGET_API_KEY")
         )
         self.effective_api_secret = (
-            env.get("BITGET_DEMO_API_SECRET") if self.bitget_demo_enabled else env.get("BITGET_API_SECRET")
+            env.get("BITGET_DEMO_API_SECRET")
+            if self.bitget_demo_enabled
+            else env.get("BITGET_API_SECRET")
         )
         self.effective_api_passphrase = (
             env.get("BITGET_DEMO_API_PASSPHRASE")
@@ -221,14 +241,22 @@ class _MinimalBitgetSettings:
         )
 
     def demo_headers(self) -> dict[str, str]:
-        return {"paptrading": self.bitget_demo_paptrading_header} if self.bitget_demo_enabled else {}
+        return (
+            {"paptrading": self.bitget_demo_paptrading_header}
+            if self.bitget_demo_enabled
+            else {}
+        )
 
 
-def _get_json(client: httpx.Client, base_url: str, path: str, params: dict[str, str] | None = None) -> tuple[int, dict[str, Any]]:
+def _get_json(
+    client: httpx.Client, base_url: str, path: str, params: dict[str, str] | None = None
+) -> tuple[int, dict[str, Any]]:
     assert_readonly_request("GET", path)
     response = client.get(f"{base_url}{path}", params=params)
     payload = response.json() if response.content else {}
-    return response.status_code, payload if isinstance(payload, dict) else {"data": payload}
+    return response.status_code, (
+        payload if isinstance(payload, dict) else {"data": payload}
+    )
 
 
 def _private_get_json(
@@ -250,10 +278,14 @@ def _private_get_json(
     )
     response = client.get(f"{base_url}{path}", params=params, headers=headers)
     payload = response.json() if response.content else {}
-    return response.status_code, payload if isinstance(payload, dict) else {"data": payload}
+    return response.status_code, (
+        payload if isinstance(payload, dict) else {"data": payload}
+    )
 
 
-def _status_from(blockers: list[str], warnings: list[str], runtime_evidence_present: bool) -> str:
+def _status_from(
+    blockers: list[str], warnings: list[str], runtime_evidence_present: bool
+) -> str:
     if blockers:
         return "failed"
     if warnings:
@@ -287,8 +319,16 @@ def build_readiness_report(
     profile = detect_profile(env)
     cred_type = credential_type(env)
     base_url = (env.get("BITGET_API_BASE_URL") or BITGET_BASE_URL).rstrip("/")
-    product_type = env.get("BITGET_PRODUCT_TYPE") or env.get("BITGET_FUTURES_DEFAULT_PRODUCT_TYPE") or "USDT-FUTURES"
-    margin_coin = env.get("BITGET_MARGIN_COIN") or env.get("BITGET_FUTURES_DEFAULT_MARGIN_COIN") or "USDT"
+    product_type = (
+        env.get("BITGET_PRODUCT_TYPE")
+        or env.get("BITGET_FUTURES_DEFAULT_PRODUCT_TYPE")
+        or "USDT-FUTURES"
+    )
+    margin_coin = (
+        env.get("BITGET_MARGIN_COIN")
+        or env.get("BITGET_FUTURES_DEFAULT_MARGIN_COIN")
+        or "USDT"
+    )
 
     runtime_evidence_present = False
     demo_trade_smoke_executed = False
@@ -302,7 +342,11 @@ def build_readiness_report(
     if product_type == "COIN-FUTURES" and is_placeholder(margin_coin):
         blockers.append("coin_futures_requires_margin_coin")
     product_mapping_status = StepStatus(
-        status="ready" if not any(b.startswith("coin_futures") for b in blockers) else "error",
+        status=(
+            "ready"
+            if not any(b.startswith("coin_futures") for b in blockers)
+            else "error"
+        ),
         detail=f"productType={product_type}; marginCoin={margin_coin or 'missing'}",
     )
 
@@ -328,16 +372,24 @@ def build_readiness_report(
             classification = classify_http_status(status)
             if classification == "rate_limit":
                 warnings.append("public_api_rate_limit")
-            elif classification != "ok" or str(payload.get("code") or "00000") != "00000":
+            elif (
+                classification != "ok" or str(payload.get("code") or "00000") != "00000"
+            ):
                 blockers.append(f"public_api_{classification}")
             else:
                 runtime_evidence_present = True
             server_time = _extract_server_time(payload)
-            offset_ms = None if server_time is None else server_time - int(datetime.now(tz=UTC).timestamp() * 1000)
+            offset_ms = (
+                None
+                if server_time is None
+                else server_time - int(datetime.now(tz=UTC).timestamp() * 1000)
+            )
             skew_blockers = server_time_skew_blockers(offset_ms)
             blockers.extend(skew_blockers)
             public_api_status = StepStatus(
-                status="ready" if not skew_blockers and classification == "ok" else "error",
+                status=(
+                    "ready" if not skew_blockers and classification == "ok" else "error"
+                ),
                 detail=f"server_time_offset_ms={offset_ms if offset_ms is not None else 'unknown'}",
                 http_status=status,
                 classification=classification,
@@ -356,19 +408,37 @@ def build_readiness_report(
             else:
                 runtime_evidence_present = True
             instrument_status = StepStatus(
-                status="ready" if inst_classification == "ok" and bool(inst_payload) else "error",
-                detail="instrument universe response received" if bool(inst_payload) else "instrument universe missing",
+                status=(
+                    "ready"
+                    if inst_classification == "ok" and bool(inst_payload)
+                    else "error"
+                ),
+                detail=(
+                    "instrument universe response received"
+                    if bool(inst_payload)
+                    else "instrument universe missing"
+                ),
                 http_status=inst_status,
                 classification=inst_classification,
             )
             rate_limit_status = StepStatus(
-                status="degraded" if "rate_limit" in {classification, inst_classification} else "ready",
-                detail="rate limit observed" if "rate_limit" in {classification, inst_classification} else "no rate limit observed",
+                status=(
+                    "degraded"
+                    if "rate_limit" in {classification, inst_classification}
+                    else "ready"
+                ),
+                detail=(
+                    "rate limit observed"
+                    if "rate_limit" in {classification, inst_classification}
+                    else "no rate limit observed"
+                ),
             )
             if _mode_requires_private(mode):
                 if cred_type not in {"live", "demo"}:
                     warnings.append("private_credentials_missing_readonly_skipped")
-                    permission_status = StepStatus(status="degraded", detail="private credentials missing")
+                    permission_status = StepStatus(
+                        status="degraded", detail="private credentials missing"
+                    )
                 else:
                     private_path = PRIVATE_FUTURES_ACCOUNT_PATH
                     private_status_code, private_payload = _private_get_json(
@@ -394,18 +464,28 @@ def build_readiness_report(
                         classification=private_classification,
                     )
                     if _extract_permissions(private_payload):
-                        permission_status = StepStatus(status="ready", detail="permissions observed via runtime payload")
+                        permission_status = StepStatus(
+                            status="ready",
+                            detail="permissions observed via runtime payload",
+                        )
                     else:
-                        permission_status = StepStatus(status="degraded", detail="permissions endpoint not observable")
+                        permission_status = StepStatus(
+                            status="degraded",
+                            detail="permissions endpoint not observable",
+                        )
                         warnings.append("permissions_not_explicit_in_runtime_payload")
                     if mode == "demo-trade-smoke":
                         demo_trade_smoke_executed = True
-                        warnings.append("demo_trade_smoke_write_call_not_implemented_in_script")
+                        warnings.append(
+                            "demo_trade_smoke_write_call_not_implemented_in_script"
+                        )
         except httpx.HTTPStatusError as exc:
             blockers.append(f"http_status_error:{exc.response.status_code}")
         except httpx.HTTPError as exc:
             blockers.append("bitget_transport_error")
-            public_api_status = StepStatus("error", str(exc)[:180], classification="transport")
+            public_api_status = StepStatus(
+                "error", str(exc)[:180], classification="transport"
+            )
         finally:
             if close_client:
                 client.close()
@@ -499,7 +579,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--env-file", type=Path, required=True)
     parser.add_argument(
         "--mode",
-        choices=("public", "readonly", "demo-readonly", "demo-trade-smoke", "live-readonly", "dry-run", "demo-safe"),
+        choices=(
+            "public",
+            "readonly",
+            "demo-readonly",
+            "demo-trade-smoke",
+            "live-readonly",
+            "dry-run",
+            "demo-safe",
+        ),
         default="public",
     )
     parser.add_argument("--output-json", type=Path)
@@ -512,7 +600,9 @@ def main(argv: list[str] | None = None) -> int:
         print(f"ERROR env_file_missing: {args.env_file}")
         return 1
     env = load_dotenv(args.env_file)
-    normalized_mode = {"dry-run": "public", "demo-safe": "demo-readonly"}.get(args.mode, args.mode)
+    normalized_mode = {"dry-run": "public", "demo-safe": "demo-readonly"}.get(
+        args.mode, args.mode
+    )
     report = build_readiness_report(
         env,
         mode=normalized_mode,
@@ -524,7 +614,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.output_json:
         args.output_json.parent.mkdir(parents=True, exist_ok=True)
         args.output_json.write_text(
-            json.dumps(redact(asdict(report)), indent=2, sort_keys=True, ensure_ascii=False),
+            json.dumps(
+                redact(asdict(report)), indent=2, sort_keys=True, ensure_ascii=False
+            ),
             encoding="utf-8",
         )
     payload = redact(asdict(report))

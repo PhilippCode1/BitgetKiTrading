@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
+
 from paper_broker.config import PaperBrokerSettings
 from paper_broker.strategy.engine import StrategyExecutionEngine
 from paper_broker.strategy.registry import pick_strategy

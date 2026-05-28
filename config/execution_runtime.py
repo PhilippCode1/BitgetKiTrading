@@ -74,7 +74,7 @@ def build_execution_runtime_snapshot(s: ExecutionRuntimeSettingsView) -> dict[st
                 config_live_orders and not strategy_auto
             ),
         },
-        "execution_tier": build_execution_tier_payload(s),
+        "execution_tier": build_execution_tier_payload(s),  # type: ignore[arg-type]
     }
     config_snapshot = getattr(s, "configuration_runtime_snapshot", None)
     if callable(config_snapshot):

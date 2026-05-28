@@ -15,11 +15,20 @@ for import_path in (ROOT, SHARED_SRC):
     if str(import_path) not in sys.path:
         sys.path.insert(0, str(import_path))
 
-DEFAULT_TEMPLATE = ROOT / "docs" / "production_10_10" / "bitget_key_permission_evidence.template.json"
+DEFAULT_TEMPLATE = (
+    ROOT / "docs" / "production_10_10" / "bitget_key_permission_evidence.template.json"
+)
 DEFAULT_OUTPUT_MD = ROOT / "reports" / "bitget_key_permission_evidence.md"
 DEFAULT_OUTPUT_JSON = ROOT / "reports" / "bitget_key_permission_evidence.json"
 
-SECRET_LIKE_KEYS = ("api_key", "secret", "passphrase", "token", "password", "private_key")
+SECRET_LIKE_KEYS = (
+    "api_key",
+    "secret",
+    "passphrase",
+    "token",
+    "password",
+    "private_key",
+)
 
 
 def load_payload(path: Path) -> dict[str, Any]:
@@ -94,7 +103,9 @@ def _validate_payload(payload: dict[str, Any]) -> dict[str, Any]:
         warnings.append("ip_allowlist_not_checked_not_enough_evidence")
     if payload.get("account_protection_checked") is not True:
         warnings.append("account_protection_not_checked_not_enough_evidence")
-    is_template = any("CHANGE_ME" in str(v) for v in payload.values() if isinstance(v, str))
+    is_template = any(
+        "CHANGE_ME" in str(v) for v in payload.values() if isinstance(v, str)
+    )
     if is_template or payload.get("status") in {"template", "not_enough_evidence"}:
         warnings.append("template_or_placeholder_evidence_not_enough_evidence")
     expected_redacted = ("account_alias_redacted", "key_id_redacted")
@@ -102,11 +113,15 @@ def _validate_payload(payload: dict[str, Any]) -> dict[str, Any]:
         val = str(payload.get(key, ""))
         if not val or ("*" not in val and "redacted" not in val.lower()):
             warnings.append(f"field_not_redacted_hint:{key}")
-    final_status = "failed" if blockers else ("not_enough_evidence" if warnings else "verified")
+    final_status = (
+        "failed" if blockers else ("not_enough_evidence" if warnings else "verified")
+    )
     return {"status": final_status, "blockers": blockers, "warnings": warnings}
 
 
-def render_markdown(payload: dict[str, Any], assessment: dict[str, Any], secret_issues: list[str]) -> str:
+def render_markdown(
+    payload: dict[str, Any], assessment: dict[str, Any], secret_issues: list[str]
+) -> str:
     lines = [
         "# Bitget Key Permission Evidence Check",
         "",
@@ -164,7 +179,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.write_template:
         args.write_template.parent.mkdir(parents=True, exist_ok=True)
-        args.write_template.write_text(json.dumps(build_template(), indent=2, ensure_ascii=False), encoding="utf-8")
+        args.write_template.write_text(
+            json.dumps(build_template(), indent=2, ensure_ascii=False), encoding="utf-8"
+        )
         print(f"wrote template: {args.write_template}")
         return 0
 
@@ -179,10 +196,15 @@ def main(argv: list[str] | None = None) -> int:
     }
     if args.output_md:
         args.output_md.parent.mkdir(parents=True, exist_ok=True)
-        args.output_md.write_text(render_markdown(payload, assessment, secret_issues), encoding="utf-8")
+        args.output_md.write_text(
+            render_markdown(payload, assessment, secret_issues), encoding="utf-8"
+        )
     if args.output_json:
         args.output_json.parent.mkdir(parents=True, exist_ok=True)
-        args.output_json.write_text(json.dumps(result, indent=2, sort_keys=True, ensure_ascii=False), encoding="utf-8")
+        args.output_json.write_text(
+            json.dumps(result, indent=2, sort_keys=True, ensure_ascii=False),
+            encoding="utf-8",
+        )
     if args.json:
         print(json.dumps(result, indent=2, sort_keys=True, ensure_ascii=False))
     else:

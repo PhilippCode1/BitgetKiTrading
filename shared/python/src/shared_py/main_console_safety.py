@@ -13,7 +13,11 @@ class SafetyCenterSnapshot:
 
 
 def live_blocked_by_safety_center(snapshot: SafetyCenterSnapshot) -> bool:
-    critical_unknown = snapshot.reconcile_status in {"unknown", "stale", "fail"} or snapshot.exchange_truth_status in {
+    critical_unknown = snapshot.reconcile_status in {
+        "unknown",
+        "stale",
+        "fail",
+    } or snapshot.exchange_truth_status in {
         "unknown",
         "stale",
         "fehlt",
@@ -28,7 +32,9 @@ def live_blocked_by_safety_center(snapshot: SafetyCenterSnapshot) -> bool:
     return False
 
 
-def emergency_flatten_is_reduce_only(*, reduce_only: bool, requested_qty: float, position_qty: float) -> bool:
+def emergency_flatten_is_reduce_only(
+    *, reduce_only: bool, requested_qty: float, position_qty: float
+) -> bool:
     if not reduce_only:
         return False
     if requested_qty <= 0 or position_qty <= 0:

@@ -191,5 +191,9 @@ def test_classify_chop_on_false_breakout_noise() -> None:
     )
     regime = classify_market_regime(ctx)
     assert regime.market_regime == "chop"
-    assert regime.regime_state in {"mean_reverting", "range_grind", "session_transition"}
+    assert regime.regime_state in {
+        "mean_reverting",
+        "range_grind",
+        "session_transition",
+    }
     assert "recent_false_breakout" in regime.regime_reasons_json

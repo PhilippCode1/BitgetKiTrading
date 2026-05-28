@@ -36,7 +36,15 @@ SHADOW_CERTIFICATE_SCHEMA_VERSION = "shadow-burn-in-certificate-v1"
 DEFAULT_CERTIFICATE_TEMPLATE = (
     _REPO / "docs" / "production_10_10" / "shadow_burn_in_certificate.template.json"
 )
-SECRET_LIKE_KEYS = ("database_url", "dsn", "password", "secret", "token", "api_key", "private_key")
+SECRET_LIKE_KEYS = (
+    "database_url",
+    "dsn",
+    "password",
+    "secret",
+    "token",
+    "api_key",
+    "private_key",
+)
 
 
 def build_shadow_certificate_template() -> dict[str, Any]:
@@ -119,7 +127,9 @@ def certificate_secret_surface_issues(data: dict[str, Any]) -> list[str]:
     return issues
 
 
-def assess_shadow_certificate(data: dict[str, Any] | None) -> tuple[str, list[str], list[str]]:
+def assess_shadow_certificate(
+    data: dict[str, Any] | None
+) -> tuple[str, list[str], list[str]]:
     if not data:
         return "FAIL", ["shadow_certificate_missing"], []
     blockers: list[str] = []
@@ -158,7 +168,11 @@ def assess_shadow_certificate(data: dict[str, Any] | None) -> tuple[str, list[st
         ("live_trade_enable", False, "live_trade_enable_not_false"),
         ("shadow_trade_enable", True, "shadow_trade_enable_not_true"),
         ("live_broker_enabled", True, "live_broker_enabled_not_true"),
-        ("require_shadow_match_before_live", True, "require_shadow_match_before_live_not_true"),
+        (
+            "require_shadow_match_before_live",
+            True,
+            "require_shadow_match_before_live_not_true",
+        ),
         ("operator_release_required", True, "operator_release_required_not_true"),
         ("execution_binding_required", True, "execution_binding_required_not_true"),
     )
@@ -215,7 +229,13 @@ def assess_shadow_certificate(data: dict[str, Any] | None) -> tuple[str, list[st
     return status, blockers, warnings
 
 
-def _certificate_markdown(data: dict[str, Any], status: str, blockers: list[str], warnings: list[str], secret_issues: list[str]) -> str:
+def _certificate_markdown(
+    data: dict[str, Any],
+    status: str,
+    blockers: list[str],
+    warnings: list[str],
+    secret_issues: list[str],
+) -> str:
     lines = [
         "# Shadow Burn-in Certificate Check",
         "",
@@ -1314,7 +1334,8 @@ def _check_operator_release_gates_enabled(
         if strict:
             return (
                 False,
-                "NO_EVIDENCE: Gate-Flag(s) fehlen in execution_controls: " + ", ".join(missing),
+                "NO_EVIDENCE: Gate-Flag(s) fehlen in execution_controls: "
+                + ", ".join(missing),
                 ex,
             )
         return (True, "Gate-Flag(s) fehlen (nicht-strict).", ex)
@@ -1738,10 +1759,29 @@ def main() -> int:
         help="ueberschreibt --readiness-out wenn gesetzt.",
     )
     ap.add_argument("--output-json", type=Path, default=None, dest="outjson")
-    ap.add_argument("--dry-run", action="store_true", help="Kein DB-Zugriff; erzeugt sicheren Beispiel-/Warnreport.")
-    ap.add_argument("--input-json", type=Path, default=None, help="Fixture-basierte Burn-in-Bewertung ohne DB.")
-    ap.add_argument("--certificate-json", type=Path, default=None, help="Externer Shadow-Burn-in-Certificate-Contract ohne DB.")
-    ap.add_argument("--write-certificate-template", type=Path, default=None, help="Schreibt ein secret-freies Certificate-Template.")
+    ap.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Kein DB-Zugriff; erzeugt sicheren Beispiel-/Warnreport.",
+    )
+    ap.add_argument(
+        "--input-json",
+        type=Path,
+        default=None,
+        help="Fixture-basierte Burn-in-Bewertung ohne DB.",
+    )
+    ap.add_argument(
+        "--certificate-json",
+        type=Path,
+        default=None,
+        help="Externer Shadow-Burn-in-Certificate-Contract ohne DB.",
+    )
+    ap.add_argument(
+        "--write-certificate-template",
+        type=Path,
+        default=None,
+        help="Schreibt ein secret-freies Certificate-Template.",
+    )
     ap.add_argument(
         "--strict",
         action="store_true",
@@ -1751,7 +1791,9 @@ def main() -> int:
     if args.write_certificate_template is not None:
         args.write_certificate_template.parent.mkdir(parents=True, exist_ok=True)
         args.write_certificate_template.write_text(
-            json.dumps(build_shadow_certificate_template(), indent=2, ensure_ascii=False),
+            json.dumps(
+                build_shadow_certificate_template(), indent=2, ensure_ascii=False
+            ),
             encoding="utf-8",
         )
         print(f"wrote template: {args.write_certificate_template}")
@@ -1771,13 +1813,21 @@ def main() -> int:
         if args.outmd is not None:
             args.outmd.parent.mkdir(parents=True, exist_ok=True)
             args.outmd.write_text(
-                _certificate_markdown(loaded, status, blockers, warnings, secret_issues),
+                _certificate_markdown(
+                    loaded, status, blockers, warnings, secret_issues
+                ),
                 encoding="utf-8",
             )
         if args.outjson is not None:
             args.outjson.parent.mkdir(parents=True, exist_ok=True)
-            args.outjson.write_text(json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False), encoding="utf-8")
-        print(_certificate_markdown(loaded, status, blockers, warnings, secret_issues), end="")
+            args.outjson.write_text(
+                json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False),
+                encoding="utf-8",
+            )
+        print(
+            _certificate_markdown(loaded, status, blockers, warnings, secret_issues),
+            end="",
+        )
         return 1 if args.strict and not payload["ok"] else 0
     if args.dry_run or args.input_json is not None:
         return _run_fixture_or_dry_run(
@@ -1850,7 +1900,8 @@ def main() -> int:
         if args.outjson:
             args.outjson.parent.mkdir(parents=True, exist_ok=True)
             args.outjson.write_text(
-                json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+                json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
             )
             print(f"Written: {args.outjson}", file=sys.stderr)
         print(

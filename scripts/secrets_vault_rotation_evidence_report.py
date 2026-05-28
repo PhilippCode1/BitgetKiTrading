@@ -7,8 +7,8 @@ import argparse
 import json
 import subprocess
 import sys
-from functools import lru_cache
 from datetime import UTC, datetime, timedelta
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -69,7 +69,12 @@ def _git_sha() -> str:
 def _template_assessment(path_name: str, profile: str) -> dict[str, Any]:
     path = ROOT / path_name
     if not path.is_file():
-        return {"path": path_name, "profile": profile, "ok": False, "issues": ["env_template_missing"]}
+        return {
+            "path": path_name,
+            "profile": profile,
+            "ok": False,
+            "issues": ["env_template_missing"],
+        }
     env = load_dotenv(path)
     issues: list[str] = []
     issues.extend(conditional_env_issues(env, profile, template=True))
@@ -92,9 +97,18 @@ def _template_assessment(path_name: str, profile: str) -> dict[str, Any]:
 def _surface_assessment() -> dict[str, Any]:
     payload = scan_repo()
     findings = payload["findings"]
-    browser_leaks = [item for item in findings if item["rule"] == "next_public_secret_name"]
+    browser_leaks = [
+        item for item in findings if item["rule"] == "next_public_secret_name"
+    ]
     server_secret_rows = [
-        item for item in findings if item["rule"] in {"jwt_secret_assignment", "internal_api_key_assignment", "secret_key_assignment"}
+        item
+        for item in findings
+        if item["rule"]
+        in {
+            "jwt_secret_assignment",
+            "internal_api_key_assignment",
+            "secret_key_assignment",
+        }
     ]
     return {
         "row_count": payload["scanned_files"],
@@ -119,7 +133,9 @@ def _rotation_policy_assessment(now: datetime) -> dict[str, Any]:
         for name in ("BITGET_API_SECRET", "GATEWAY_JWT_SECRET", "DATABASE_URL")
     ]
     reuse_forbidden = sorted(
-        name for name in REQUIRED_CRITICAL_POLICIES if secret_reuse_across_env_is_forbidden(name)
+        name
+        for name in REQUIRED_CRITICAL_POLICIES
+        if secret_reuse_across_env_is_forbidden(name)
     )
     return {
         "policy_count": len(policies),
@@ -141,7 +157,9 @@ def build_report_payload() -> dict[str, Any]:
         "owner_signed_secret_rotation_acceptance_missing",
     ]
     failures: list[str] = []
-    failures.extend(f"template_failed:{item['path']}" for item in templates if not item["ok"])
+    failures.extend(
+        f"template_failed:{item['path']}" for item in templates if not item["ok"]
+    )
     if surface["browser_public_leak_count"] > 0:
         failures.append("browser_public_secret_leak_detected")
     if rotation["required_policy_missing"]:
@@ -197,7 +215,9 @@ def render_markdown(payload: dict[str, Any]) -> str:
     ]
     for item in payload["templates"]:
         issues = ", ".join(f"`{issue}`" for issue in item["issues"]) or "-"
-        lines.append(f"| `{item['path']}` | `{item['profile']}` | `{item['ok']}` | {issues} |")
+        lines.append(
+            f"| `{item['path']}` | `{item['profile']}` | `{item['ok']}` | {issues} |"
+        )
     lines.extend(["", "## External Required", ""])
     lines.extend(f"- `{item}`" for item in payload["external_required"])
     lines.extend(["", "## Einordnung", ""])
@@ -216,7 +236,9 @@ def main(argv: list[str] | None = None) -> int:
     payload = build_report_payload()
     if args.output_json:
         args.output_json.parent.mkdir(parents=True, exist_ok=True)
-        args.output_json.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+        args.output_json.write_text(
+            json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
     if args.output_md:
         args.output_md.parent.mkdir(parents=True, exist_ok=True)
         args.output_md.write_text(render_markdown(payload), encoding="utf-8")

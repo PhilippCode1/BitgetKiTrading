@@ -34,7 +34,9 @@ def test_coordinator_logs_and_skips_retrain_on_handler(
     s = LearningEngineSettings()
     s.learning_drift_skip_event_bus = True
     s.learning_drift_retrain_cooldown_sec = 0
-    mon = MseAdwinDriftMonitor(delta=0.5, min_window=8, max_window=100, min_confidence=0.5)
+    mon = MseAdwinDriftMonitor(
+        delta=0.5, min_window=8, max_window=100, min_confidence=0.5
+    )
     fired: list[str] = []
 
     def _h() -> None:
@@ -64,7 +66,9 @@ def test_coordinator_smoke_inprocess_creates_pending_eval(
     if not dsn:
         pytest.skip("TEST_DATABASE_URL nicht gesetzt")
     monkeypatch.setenv("DATABASE_URL", dsn)
-    monkeypatch.setenv("REDIS_URL", os.getenv("TEST_REDIS_URL", "redis://127.0.0.1:6379/0"))
+    monkeypatch.setenv(
+        "REDIS_URL", os.getenv("TEST_REDIS_URL", "redis://127.0.0.1:6379/0")
+    )
     monkeypatch.setenv("TAKE_TRADE_MODEL_ARTIFACTS_DIR", str(tmp_path / "tt"))
     from learning_engine.config import LearningEngineSettings
     from learning_engine.drift.adwin_detector import MseAdwinDriftMonitor
@@ -75,7 +79,9 @@ def test_coordinator_smoke_inprocess_creates_pending_eval(
     s.learning_drift_retrain_cooldown_sec = 0
     s.learning_drift_retrain_inprocess = True
     s.learning_drift_retrain_smoke = True
-    mon = MseAdwinDriftMonitor(delta=0.5, min_window=8, max_window=100, min_confidence=0.5)
+    mon = MseAdwinDriftMonitor(
+        delta=0.5, min_window=8, max_window=100, min_confidence=0.5
+    )
     c = DriftActionCoordinator(s, monitor=mon)
     caplog.set_level(logging.WARNING)
     for m in [0.01] * 12 + [1.0] * 20:
@@ -96,7 +102,9 @@ def test_coordinator_smoke_inprocess_creates_pending_eval(
             """,
             (TAKE_TRADE_MODEL_NAME,),
         ).fetchone()
-    assert row is not None, "Erwartet PENDING_EVAL Challenger-Stub nach Drift-Smoke-Retrain"
+    assert (
+        row is not None
+    ), "Erwartet PENDING_EVAL Challenger-Stub nach Drift-Smoke-Retrain"
     run_id = row[0]
     with psycopg.connect(dsn) as conn:
         conn.execute(

@@ -31,7 +31,9 @@ def test_assess_match_ok_when_paths_align() -> None:
 
 
 def test_assess_hard_on_shadow_divergence_and_leverage() -> None:
-    th = ShadowLiveThresholds(max_signal_shadow_divergence_0_1=0.1, max_leverage_delta=0)
+    th = ShadowLiveThresholds(
+        max_signal_shadow_divergence_0_1=0.1, max_leverage_delta=0
+    )
     sp = {
         "trade_action": "allow_trade",
         "recommended_leverage": 10,
@@ -82,7 +84,11 @@ def test_assess_hard_shadow_blocked_live_candidate() -> None:
     r = assess_shadow_live_divergence(
         shadow_decision=("blocked", "shadow_trade_disabled"),
         live_decision=("live_candidate_recorded", "validated_live_candidate"),
-        signal_payload={"trade_action": "allow_trade", "recommended_leverage": 7, "allowed_leverage": 10},
+        signal_payload={
+            "trade_action": "allow_trade",
+            "recommended_leverage": 7,
+            "allowed_leverage": 10,
+        },
         risk_decision={"trade_action": "allow_trade"},
         intent_leverage=7,
         now_ms=1000,

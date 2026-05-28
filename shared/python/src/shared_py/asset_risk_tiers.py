@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from typing import Literal
+from typing import Literal, Any
 
 AssetRiskTier = Literal[
     "RISK_TIER_0_BLOCKED",
@@ -32,7 +32,7 @@ class AssetTierPolicy:
     recommended_operator_note_de: str
 
 
-_POLICIES: dict[AssetRiskTier, AssetTierPolicy] = {
+_POLICIES: dict[str, AssetTierPolicy] = {
     "RISK_TIER_0_BLOCKED": AssetTierPolicy(
         tier="RISK_TIER_0_BLOCKED",
         allowed_modes=("paper",),
@@ -178,7 +178,7 @@ def classify_asset_risk_band(
     )
     if not tier:
         return "RISK_TIER_E"
-    policy = _POLICIES.get(tier)  # type: ignore[arg-type]
+    policy = _POLICIES.get(tier)
     if policy is None:
         return "RISK_TIER_E"
     if data_quality_status != "data_ok":
@@ -195,7 +195,7 @@ def classify_asset_risk_band(
 def asset_tier_allows_mode(tier: str | None, mode: TradingMode) -> bool:
     if tier is None:
         return False
-    policy = _POLICIES.get(str(tier).strip().upper())  # type: ignore[arg-type]
+    policy = _POLICIES.get(str(tier).strip().upper())
     if policy is None:
         return False
     return mode in policy.allowed_modes
@@ -204,7 +204,7 @@ def asset_tier_allows_mode(tier: str | None, mode: TradingMode) -> bool:
 def max_leverage_for_asset_tier(tier: str | None) -> int:
     if tier is None:
         return 1
-    policy = _POLICIES.get(str(tier).strip().upper())  # type: ignore[arg-type]
+    policy = _POLICIES.get(str(tier).strip().upper())
     if policy is None:
         return 1
     return policy.max_leverage
@@ -230,7 +230,7 @@ def dynamic_max_leverage_for_asset(
 def max_notional_for_asset_tier(tier: str | None) -> float:
     if tier is None:
         return 0.0
-    policy = _POLICIES.get(str(tier).strip().upper())  # type: ignore[arg-type]
+    policy = _POLICIES.get(str(tier).strip().upper())
     if policy is None:
         return 0.0
     return policy.max_position_notional_usdt
@@ -240,7 +240,7 @@ def asset_tier_requires_owner_review(tier: str | None) -> bool:
     normalized_tier = str(tier).strip().upper() if tier else None
     if not normalized_tier:
         return True
-    policy = _POLICIES.get(normalized_tier)  # type: ignore[arg-type]
+    policy = _POLICIES.get(normalized_tier)
     if policy is None:
         return True
     return policy.risk_band in {"RISK_TIER_C", "RISK_TIER_D", "RISK_TIER_E"} or policy.required_owner_approval
@@ -252,7 +252,7 @@ def asset_risk_tier_blocks_live(tier: str | None) -> bool:
         return True
     if normalized_tier in {"RISK_TIER_0_BLOCKED", "RISK_TIER_4_SHADOW_ONLY", "RISK_TIER_5_BANNED_OR_DELISTED"}:
         return True
-    policy = _POLICIES.get(normalized_tier)  # type: ignore[arg-type]
+    policy = _POLICIES.get(normalized_tier)
     if policy is None:
         return True
     return "live" not in policy.allowed_modes
@@ -273,7 +273,7 @@ def asset_live_eligibility_reasons(
     if not normalized_tier:
         reasons.append("asset_tier_missing")
         return reasons
-    policy = _POLICIES.get(normalized_tier)  # type: ignore[arg-type]
+    policy = _POLICIES.get(normalized_tier)
     if policy is None:
         reasons.append("asset_tier_unknown")
         return reasons
@@ -307,10 +307,10 @@ def validate_multi_asset_order_sizing(
     mode: TradingMode,
     requested_leverage: int,
     requested_notional_usdt: float,
-) -> dict:
+) -> dict[str, Any]:
     reasons: list[str] = []
     normalized_tier = str(tier).strip().upper() if tier else None
-    policy = _POLICIES.get(normalized_tier) if normalized_tier else None  # type: ignore[arg-type]
+    policy = _POLICIES.get(normalized_tier) if normalized_tier else None
     if policy is None:
         reasons.append("asset_tier_missing_or_unknown")
         return {
@@ -351,9 +351,9 @@ def build_asset_risk_audit_payload(
     tier: str | None,
     mode: TradingMode,
     reasons: list[str],
-) -> dict:
+) -> dict[str, Any]:
     normalized_tier = str(tier).strip().upper() if tier else None
-    policy = _POLICIES.get(normalized_tier) if normalized_tier else None  # type: ignore[arg-type]
+    policy = _POLICIES.get(normalized_tier) if normalized_tier else None
     return {
         "symbol": symbol,
         "tier": normalized_tier,
@@ -373,7 +373,7 @@ def build_asset_risk_summary_de(
     max_notional_usdt: float | None = None,
 ) -> str:
     normalized_tier = str(tier).strip().upper() if tier else "UNBEKANNT"
-    policy = _POLICIES.get(normalized_tier) if normalized_tier in _POLICIES else None  # type: ignore[arg-type]
+    policy = _POLICIES.get(normalized_tier) if normalized_tier in _POLICIES else None
     band = policy.risk_band if policy else "RISK_TIER_E"
     lev = max_leverage if max_leverage is not None else max_leverage_for_asset_tier(tier)
     notional = max_notional_usdt if max_notional_usdt is not None else max_notional_for_asset_tier(tier)

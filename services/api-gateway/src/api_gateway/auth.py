@@ -15,10 +15,10 @@ S2S-Header/Legacy-Admin: keine JWT-Claim-Pruefung.
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
-from typing import Any, cast
+from typing import Annotated, Any, cast
 
 import jwt
-from fastapi import Header, HTTPException, Request
+from fastapi import Depends, Header, HTTPException, Request
 from shared_py.portal_access_contract import (
     PORTAL_ROLE_CUSTOMER,
     PORTAL_ROLE_SUPER_ADMIN,
@@ -300,7 +300,9 @@ def resolve_gateway_auth_with_diagnostic(
     if expected_internal:
         if internal:
             if internal == expected_internal:
-                roles = _parse_internal_key_roles_csv(settings.gateway_internal_key_roles)
+                roles = _parse_internal_key_roles_csv(
+                    settings.gateway_internal_key_roles
+                )
                 return (
                     GatewayAuthContext(
                         actor="gateway_internal",
@@ -468,7 +470,8 @@ def _admin_read_problem_detail(
     return {
         "code": "GATEWAY_AUTH_MISSING",
         "message": "Kein gueltiges Bearer-JWT / X-Gateway-Internal-Key / Legacy-Admin-Token.",
-        "hint": _HINT_BFF_JWT + " Legacy: X-Admin-Token nur wenn GATEWAY_ALLOW_LEGACY_ADMIN_TOKEN=true.",
+        "hint": _HINT_BFF_JWT
+        + " Legacy: X-Admin-Token nur wenn GATEWAY_ALLOW_LEGACY_ADMIN_TOKEN=true.",
         "required_capability": "admin_read",
     }
 
@@ -549,9 +552,7 @@ def _admin_forbidden_customer_session_detail() -> dict[str, str | bool]:
 
 
 def _forbid_admin_if_customer_jwt(
-    request: Request,
-    ctx: GatewayAuthContext | None,
-    *, event: str
+    request: Request, ctx: GatewayAuthContext | None, *, event: str
 ) -> None:
     if ctx is None or not ctx.is_customer_portal_jwt():
         return
@@ -582,9 +583,7 @@ def _admin_forbidden_jwt_not_admin_role_detail() -> dict[str, str | bool]:
 
 
 def _forbid_admin_if_jwt_main_role_not_admin(
-    request: Request,
-    ctx: GatewayAuthContext | None,
-    *, event: str
+    request: Request, ctx: GatewayAuthContext | None, *, event: str
 ) -> None:
     if ctx is None or ctx.auth_method != "jwt":
         return
@@ -773,7 +772,9 @@ async def require_live_stream_access(
     record_gateway_auth_failure(
         request,
         "auth_failure_live_stream",
-        extra={"failure_code": (fail_diag or {}).get("code") or "live_stream_auth_failed"},
+        extra={
+            "failure_code": (fail_diag or {}).get("code") or "live_stream_auth_failed"
+        },
     )
     d = _sensitive_read_problem_detail(fail_ctx, fail_diag)
     d = dict(d)
@@ -861,7 +862,9 @@ async def require_billing_admin(
         auth_method=ctx.auth_method if ctx is not None else "none",
         extra={"failure_code": fc},
     )
-    raise HTTPException(status_code=401, detail=_billing_admin_problem_detail(ctx, diag))
+    raise HTTPException(
+        status_code=401, detail=_billing_admin_problem_detail(ctx, diag)
+    )
 
 
 async def require_operator_aggregate_auth(
@@ -914,9 +917,7 @@ async def require_customer_role(
     Kunden- und Abo-Scope: delegiert an require_billing_read (identische technische Pruefung).
     Gegenstueck zu require_admin_read / require_admin_write auf /v1/admin/... .
     """
-    return await require_billing_read(
-        request, authorization, x_gateway_internal_key
-    )
+    return await require_billing_read(request, authorization, x_gateway_internal_key)
 
 
 # --- RBAC: /v1/admin bevorzugt explizit benannte Dependencies ---
@@ -924,3 +925,34 @@ require_admin_read_role = require_admin_read
 require_admin_write_role = require_admin_write
 # /v1/admin: Kunden-Portal 403, JWT muss role=admin; Schreiben: require_admin_write_role
 require_admin_role = require_admin_read
+
+
+async def get_current_tenant(
+    auth: Annotated[GatewayAuthContext, Depends(require_customer_role)],
+) -> str:
+    """
+    Extrahiert die tenant_id aus dem JWT des Kunden und validiert sie.
+    Stellt sicher, dass ein Kunde nur auf seine eigene tenant_id zugreifen kann.
+    """
+    settings = get_gateway_settings()
+    default_tid = settings.commercial_default_tenant_id.strip() or "default"
+    tid = auth.effective_tenant(default_tenant_id=default_tid)
+    if not tid or tid == "default" and auth.is_customer_portal_jwt():
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "TENANT_ID_REQUIRED",
+                "message": "Fuer Kunden-Commerce ist eine gueltige tenant_id erforderlich.",
+            },
+        )
+    return tid
+
+
+async def get_operator(
+    auth: Annotated[GatewayAuthContext, Depends(require_admin_read)],
+) -> GatewayAuthContext:
+    """
+    Validiert Admin-Zugriffe und stellt sicher, dass der Actor ein Operator/Admin ist.
+    """
+    return auth
+

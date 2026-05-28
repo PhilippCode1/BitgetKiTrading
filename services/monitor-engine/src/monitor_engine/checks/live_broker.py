@@ -43,7 +43,9 @@ def build_live_broker_service_checks(
         "last_fill_age_ms": last_fill_age_ms,
     }
     if isinstance(latest_reconcile, dict):
-        latest_status = str(latest_reconcile.get("status") or "").strip().lower() or None
+        latest_status = (
+            str(latest_reconcile.get("status") or "").strip().lower() or None
+        )
         created_ts = latest_reconcile.get("created_ts")
         age_ms = _age_ms(created_ts, now_ms=now_ms)
         details_json = _coerce_json_dict(latest_reconcile.get("details_json"))
@@ -294,13 +296,19 @@ def load_live_broker_snapshot(
             "match_failures_24h": int(shadow_live_row.get("match_failures_24h") or 0),
         }
     safety_latch_active = (
-        str(dict(latch_row).get("action") or "") == "arm" if latch_row is not None else False
+        str(dict(latch_row).get("action") or "") == "arm"
+        if latch_row is not None
+        else False
     )
     return {
-        "latest_reconcile": dict(latest_reconcile) if latest_reconcile is not None else None,
+        "latest_reconcile": (
+            dict(latest_reconcile) if latest_reconcile is not None else None
+        ),
         "active_kill_switches": [dict(row) for row in active_kill_switches],
         "critical_audits": [dict(row) for row in critical_audits],
-        "last_fill_created_ts": last_fill["created_ts"] if last_fill is not None else None,
+        "last_fill_created_ts": (
+            last_fill["created_ts"] if last_fill is not None else None
+        ),
         "order_status_counts": {
             str(row["status"]): int(row["total"]) for row in order_rows
         },

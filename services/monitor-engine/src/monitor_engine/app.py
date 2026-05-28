@@ -53,11 +53,16 @@ def create_app() -> FastAPI:
         app.state.scheduler = scheduler
         app.state.bus = bus
         app.state.boot_ts_ms = int(time.time() * 1000)
-        loop_task = asyncio.create_task(scheduler.run_forever(), name="monitor-scheduler")
+        loop_task = asyncio.create_task(
+            scheduler.run_forever(), name="monitor-scheduler"
+        )
         from monitor_engine.incident_rca.watcher import start_global_halt_watcher
 
         incident_watcher = start_global_halt_watcher(app)
-        logger.info("monitor-engine started (incident RCA watcher=%s)", settings.monitor_incident_rca_enabled)
+        logger.info(
+            "monitor-engine started (incident RCA watcher=%s)",
+            settings.monitor_incident_rca_enabled,
+        )
         yield
         if incident_watcher is not None:
             incident_watcher.cancel()

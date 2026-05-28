@@ -5,23 +5,28 @@ import time
 from decimal import Decimal, InvalidOperation
 from typing import TYPE_CHECKING, Any
 
-from live_broker.events import publish_operator_intel
-from live_broker.orders.models import OrderCreateRequest, OrderReplaceRequest, ReduceOnlyOrderRequest
-from live_broker.private_rest import BitgetRestError
 from shared_py.eventbus import RedisStreamBus
-from shared_py.operator_intel import build_operator_intel_envelope_payload
-from shared_py.exit_family_resolver import (
-    extract_exit_execution_hints_from_trace,
-    extract_exit_family_resolution_from_trace,
-)
 from shared_py.exit_engine import (
     adjust_stop_take_for_mae_mfe,
     build_exit_intent_document,
     build_live_exit_plans,
-    merge_exit_build_overrides,
     evaluate_exit_plan,
+    merge_exit_build_overrides,
     validate_exit_plan,
 )
+from shared_py.exit_family_resolver import (
+    extract_exit_execution_hints_from_trace,
+    extract_exit_family_resolution_from_trace,
+)
+from shared_py.operator_intel import build_operator_intel_envelope_payload
+
+from live_broker.events import publish_operator_intel
+from live_broker.orders.models import (
+    OrderCreateRequest,
+    OrderReplaceRequest,
+    ReduceOnlyOrderRequest,
+)
+from live_broker.private_rest import BitgetRestError
 
 if TYPE_CHECKING:
     from live_broker.config import LiveBrokerSettings
@@ -90,10 +95,10 @@ def _open_side(position_side: str) -> str:
 class LiveExitService:
     def __init__(
         self,
-        settings: "LiveBrokerSettings",
-        repo: "LiveBrokerRepository",
-        exchange_client: "BitgetExchangeClient",
-        order_service: "LiveBrokerOrderService",
+        settings: LiveBrokerSettings,
+        repo: LiveBrokerRepository,
+        exchange_client: BitgetExchangeClient,
+        order_service: LiveBrokerOrderService,
     ) -> None:
         self._settings = settings
         self._repo = repo
@@ -110,8 +115,12 @@ class LiveExitService:
         internal_order_id: str,
         request: OrderCreateRequest,
     ) -> dict[str, Any] | None:
-        stop_loss = _dec(request.preset_stop_loss_price or request.trace.get("stop_loss"))
-        take_profit = _dec(request.preset_stop_surplus_price or request.trace.get("take_profit"))
+        stop_loss = _dec(
+            request.preset_stop_loss_price or request.trace.get("stop_loss")
+        )
+        take_profit = _dec(
+            request.preset_stop_surplus_price or request.trace.get("take_profit")
+        )
         if stop_loss <= 0 and take_profit <= 0:
             return None
         return self._build_plan_record(
@@ -124,7 +133,10 @@ class LiveExitService:
             entry_price=_dec(request.price or request.trace.get("entry_price")),
             stop_loss=stop_loss if stop_loss > 0 else None,
             take_profit=take_profit if take_profit > 0 else None,
-            leverage=_dec(request.trace.get("leverage") or request.trace.get("signal_recommended_leverage")),
+            leverage=_dec(
+                request.trace.get("leverage")
+                or request.trace.get("signal_recommended_leverage")
+            ),
             allowed_leverage=_opt_int(
                 request.trace.get("allowed_leverage")
                 or request.trace.get("signal_allowed_leverage")
@@ -136,10 +148,14 @@ class LiveExitService:
             ),
             existing_plan=None,
             last_reason="order_create_preview",
-            signal_trace=dict(request.trace) if isinstance(request.trace, dict) else None,
+            signal_trace=(
+                dict(request.trace) if isinstance(request.trace, dict) else None
+            ),
         )
 
-    def persist_order_exit_plan(self, *, order: dict[str, Any], preview: dict[str, Any] | None) -> None:
+    def persist_order_exit_plan(
+        self, *, order: dict[str, Any], preview: dict[str, Any] | None
+    ) -> None:
         if preview is None:
             return
         stored = self._repo.upsert_exit_plan(preview)
@@ -185,13 +201,18 @@ class LiveExitService:
             timeframe=_opt_text(context.get("timeframe")),
             source_signal_id=_opt_text(context.get("source_signal_id")),
             qty_base=_dec(request.new_size or new_order.get("size")),
-            entry_price=_dec(request.new_price or new_order.get("price") or context.get("entry_price")),
+            entry_price=_dec(
+                request.new_price
+                or new_order.get("price")
+                or context.get("entry_price")
+            ),
             stop_loss=_dec(
                 request.new_preset_stop_loss_price or context.get("raw_stop_loss_price")
             )
             or None,
             take_profit=_dec(
-                request.new_preset_stop_surplus_price or context.get("raw_take_profit_price")
+                request.new_preset_stop_surplus_price
+                or context.get("raw_take_profit_price")
             )
             or None,
             leverage=_dec(context.get("leverage")),
@@ -256,11 +277,15 @@ class LiveExitService:
         for plan in plans:
             summary["plans_checked"] += 1
             try:
-                position = self._position_snapshot(str(plan["symbol"]), str(plan["side"]))
+                position = self._position_snapshot(
+                    str(plan["symbol"]), str(plan["side"])
+                )
                 state = str(plan.get("state") or "pending")
                 if state == "closing":
                     if position is None or position["qty"] <= 0:
-                        self._close_plan(plan, reason="position_flattened_after_exit_submission")
+                        self._close_plan(
+                            plan, reason="position_flattened_after_exit_submission"
+                        )
                         summary["plans_closed"] += 1
                     continue
                 if position is None or position["qty"] <= 0:
@@ -276,7 +301,11 @@ class LiveExitService:
                 submitted = self._evaluate_active_plan(plan, position, reason=reason)
                 summary["exit_orders_submitted"] += submitted
             except Exception as exc:
-                logger.exception("live exit evaluation failed plan_id=%s error=%s", plan.get("plan_id"), exc)
+                logger.exception(
+                    "live exit evaluation failed plan_id=%s error=%s",
+                    plan.get("plan_id"),
+                    exc,
+                )
                 self._audit(
                     category="exit_plan",
                     action="evaluation_failed",
@@ -312,7 +341,9 @@ class LiveExitService:
             return None
         side = _position_side_for_order(order_side)
         context = dict((existing_plan or {}).get("context_json") or {})
-        trace: dict[str, Any] = dict(signal_trace) if isinstance(signal_trace, dict) else {}
+        trace: dict[str, Any] = (
+            dict(signal_trace) if isinstance(signal_trace, dict) else {}
+        )
         context.update(
             {
                 "source_signal_id": source_signal_id,
@@ -320,8 +351,12 @@ class LiveExitService:
                 "leverage": str(leverage) if leverage > 0 else None,
                 "allowed_leverage": allowed_leverage,
                 "risk_trade_action": risk_trade_action,
-                "raw_stop_loss_price": str(stop_loss) if stop_loss is not None else None,
-                "raw_take_profit_price": str(take_profit) if take_profit is not None else None,
+                "raw_stop_loss_price": (
+                    str(stop_loss) if stop_loss is not None else None
+                ),
+                "raw_take_profit_price": (
+                    str(take_profit) if take_profit is not None else None
+                ),
                 "entry_price": str(entry_price) if entry_price > 0 else None,
             }
         )
@@ -375,7 +410,9 @@ class LiveExitService:
                 ),
                 runner_enabled=bool(self._settings.exit_runner_enabled),
                 runner_trail_mult=Decimal(str(self._settings.runner_trail_atr_mult)),
-                break_even_after_tp_index=int(self._settings.exit_break_even_after_tp_index),
+                break_even_after_tp_index=int(
+                    self._settings.exit_break_even_after_tp_index
+                ),
                 hints=hints,
             )
             stop_payload, tp_payload = build_live_exit_plans(
@@ -407,44 +444,92 @@ class LiveExitService:
                 risk_trade_action=risk_trade_action,
                 mark_price=mp if mp > 0 else None,
                 fill_price=fp if fp > 0 else None,
-                market_family=str(trace.get("market_family") or self._settings.market_family),
-                spread_bps=_dec(trace.get("spread_bps")) if trace.get("spread_bps") not in (None, "") else None,
+                market_family=str(
+                    trace.get("market_family") or self._settings.market_family
+                ),
+                spread_bps=(
+                    _dec(trace.get("spread_bps"))
+                    if trace.get("spread_bps") not in (None, "")
+                    else None
+                ),
                 price_tick_size=_trace_decimal(
-                    ((trace.get("instrument_metadata") or {}).get("entry") or {}).get("price_tick_size")
-                    if isinstance((trace.get("instrument_metadata") or {}).get("entry"), dict)
+                    ((trace.get("instrument_metadata") or {}).get("entry") or {}).get(
+                        "price_tick_size"
+                    )
+                    if isinstance(
+                        (trace.get("instrument_metadata") or {}).get("entry"), dict
+                    )
                     else None
                 ),
                 quantity_step=_trace_decimal(
-                    ((trace.get("instrument_metadata") or {}).get("entry") or {}).get("quantity_step")
-                    if isinstance((trace.get("instrument_metadata") or {}).get("entry"), dict)
+                    ((trace.get("instrument_metadata") or {}).get("entry") or {}).get(
+                        "quantity_step"
+                    )
+                    if isinstance(
+                        (trace.get("instrument_metadata") or {}).get("entry"), dict
+                    )
                     else None
                 ),
                 quantity_min=_trace_decimal(
-                    ((trace.get("instrument_metadata") or {}).get("entry") or {}).get("quantity_min")
-                    if isinstance((trace.get("instrument_metadata") or {}).get("entry"), dict)
+                    ((trace.get("instrument_metadata") or {}).get("entry") or {}).get(
+                        "quantity_min"
+                    )
+                    if isinstance(
+                        (trace.get("instrument_metadata") or {}).get("entry"), dict
+                    )
                     else None
                 ),
                 quantity_max=_trace_decimal(
-                    ((trace.get("instrument_metadata") or {}).get("entry") or {}).get("quantity_max")
-                    if isinstance((trace.get("instrument_metadata") or {}).get("entry"), dict)
+                    ((trace.get("instrument_metadata") or {}).get("entry") or {}).get(
+                        "quantity_max"
+                    )
+                    if isinstance(
+                        (trace.get("instrument_metadata") or {}).get("entry"), dict
+                    )
                     else None
                 ),
                 trading_status=_opt_text(
-                    ((trace.get("instrument_metadata") or {}).get("entry") or {}).get("trading_status")
-                    if isinstance((trace.get("instrument_metadata") or {}).get("entry"), dict)
+                    ((trace.get("instrument_metadata") or {}).get("entry") or {}).get(
+                        "trading_status"
+                    )
+                    if isinstance(
+                        (trace.get("instrument_metadata") or {}).get("entry"), dict
+                    )
                     else None
                 ),
                 session_trade_allowed=(
-                    bool(((trace.get("instrument_metadata") or {}).get("session_state") or {}).get("trade_allowed_now"))
-                    if isinstance((trace.get("instrument_metadata") or {}).get("session_state"), dict)
+                    bool(
+                        (
+                            (trace.get("instrument_metadata") or {}).get(
+                                "session_state"
+                            )
+                            or {}
+                        ).get("trade_allowed_now")
+                    )
+                    if isinstance(
+                        (trace.get("instrument_metadata") or {}).get("session_state"),
+                        dict,
+                    )
                     else None
                 ),
                 session_open_new_positions_allowed=(
-                    bool(((trace.get("instrument_metadata") or {}).get("session_state") or {}).get("open_new_positions_allowed_now"))
-                    if isinstance((trace.get("instrument_metadata") or {}).get("session_state"), dict)
+                    bool(
+                        (
+                            (trace.get("instrument_metadata") or {}).get(
+                                "session_state"
+                            )
+                            or {}
+                        ).get("open_new_positions_allowed_now")
+                    )
+                    if isinstance(
+                        (trace.get("instrument_metadata") or {}).get("session_state"),
+                        dict,
+                    )
                     else None
                 ),
-                catalog_snapshot_id=_opt_text((trace.get("instrument_metadata") or {}).get("snapshot_id")),
+                catalog_snapshot_id=_opt_text(
+                    (trace.get("instrument_metadata") or {}).get("snapshot_id")
+                ),
                 depth_ratio=_trace_float(trace.get("depth_to_bar_volume_ratio")),
             )
             last_decision = {
@@ -490,7 +575,9 @@ class LiveExitService:
             "closed_ts": None if state in {"pending", "active"} else self._now_ts(),
         }
 
-    def _finalize_pending_plan(self, plan: dict[str, Any], position: dict[str, Any]) -> bool:
+    def _finalize_pending_plan(
+        self, plan: dict[str, Any], position: dict[str, Any]
+    ) -> bool:
         context = dict(plan.get("context_json") or {})
         try:
             record = self._build_plan_record(
@@ -516,7 +603,10 @@ class LiveExitService:
                     **plan,
                     "state": "invalid",
                     "last_reason": str(exc),
-                    "last_decision_json": {"stage": "finalize_pending_failed", "error": str(exc)},
+                    "last_decision_json": {
+                        "stage": "finalize_pending_failed",
+                        "error": str(exc),
+                    },
                     "closed_ts": self._now_ts(),
                 }
             )
@@ -542,7 +632,10 @@ class LiveExitService:
             scope_key=f"order:{plan['root_internal_order_id']}",
             internal_order_id=str(plan["root_internal_order_id"]),
             symbol=plan.get("symbol"),
-            details={"entry_price": str(position["entry_price"]), "qty": str(position["qty"])},
+            details={
+                "entry_price": str(position["entry_price"]),
+                "qty": str(position["qty"]),
+            },
         )
         return True
 
@@ -569,8 +662,16 @@ class LiveExitService:
             current_qty=current_qty,
             mark_price=mark_price,
             fill_price=fill_price,
-            stop_plan=plan.get("stop_plan_json") if isinstance(plan.get("stop_plan_json"), dict) else {},
-            tp_plan=plan.get("tp_plan_json") if isinstance(plan.get("tp_plan_json"), dict) else {},
+            stop_plan=(
+                plan.get("stop_plan_json")
+                if isinstance(plan.get("stop_plan_json"), dict)
+                else {}
+            ),
+            tp_plan=(
+                plan.get("tp_plan_json")
+                if isinstance(plan.get("tp_plan_json"), dict)
+                else {}
+            ),
             now_ms=now_ms,
         )
         actions = list(decision.get("actions") or [])
@@ -656,7 +757,8 @@ class LiveExitService:
             "context_json": ctx,
             "last_market_json": market,
             "last_decision_json": {"reason": reason, "decision": decision},
-            "last_reason": ",".join(decision.get("reasons") or []) or "exit_action_submitted",
+            "last_reason": ",".join(decision.get("reasons") or [])
+            or "exit_action_submitted",
             "closed_ts": self._now_ts() if state == "closed" else None,
         }
         self._repo.upsert_exit_plan(updated)
@@ -675,7 +777,9 @@ class LiveExitService:
         return close_price if close_price > 0 else mark_price
 
     def _position_snapshot(self, symbol: str, side: str) -> dict[str, Decimal] | None:
-        snapshots = self._repo.list_latest_exchange_snapshots("positions", symbol=symbol, limit=20)
+        snapshots = self._repo.list_latest_exchange_snapshots(
+            "positions", symbol=symbol, limit=20
+        )
         for snapshot in snapshots:
             raw_data = snapshot.get("raw_data")
             if not isinstance(raw_data, dict):
@@ -728,11 +832,18 @@ class LiveExitService:
         self._maybe_publish_exit_intel(plan, reason=reason)
 
     def _maybe_publish_exit_intel(self, plan: dict[str, Any], *, reason: str) -> None:
-        if not self._settings.live_operator_intel_outbox_enabled or self._event_bus is None:
+        if (
+            not self._settings.live_operator_intel_outbox_enabled
+            or self._event_bus is None
+        ):
             return
         root = str(plan.get("root_internal_order_id") or "")
         sym = str(plan.get("symbol") or "?")
-        ctx = plan.get("context_json") if isinstance(plan.get("context_json"), dict) else {}
+        ctx = (
+            plan.get("context_json")
+            if isinstance(plan.get("context_json"), dict)
+            else {}
+        )
         pl = build_operator_intel_envelope_payload(
             intel_kind="exit_result",
             symbol=sym,

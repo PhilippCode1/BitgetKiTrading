@@ -18,7 +18,6 @@ from api_gateway.auth import (
 )
 from api_gateway.config import get_gateway_settings
 from api_gateway.db import get_database_url
-from api_gateway.db_customer_performance import fetch_admin_performance_aggregates
 from api_gateway.db_admin_console import (
     fetch_contract_review_open_count,
     fetch_customer_notify_outbox_failed_recent,
@@ -32,6 +31,7 @@ from api_gateway.db_admin_console import (
     fetch_subscription_summary,
     fetch_telegram_command_audit_recent,
 )
+from api_gateway.db_customer_performance import fetch_admin_performance_aggregates
 from api_gateway.db_dashboard_queries import (
     fetch_admin_rules,
     update_strategy_status,
@@ -149,8 +149,8 @@ def admin_telegram_customer_delivery(
         except psycopg.errors.UndefinedTable:
             payload["customer_notify_recent"] = None
         try:
-            payload["customer_notify_failed_recent"] = fetch_customer_notify_outbox_failed_recent(
-                conn, limit=20
+            payload["customer_notify_failed_recent"] = (
+                fetch_customer_notify_outbox_failed_recent(conn, limit=20)
             )
         except psycopg.errors.UndefinedTable:
             payload["customer_notify_failed_recent"] = None
@@ -163,7 +163,10 @@ def admin_telegram_customer_delivery(
     return payload
 
 
-@router.get("/console-overview", summary="Admin-Cockpit: Lebenszyklus, Abo, Vertraege, Integrationen")
+@router.get(
+    "/console-overview",
+    summary="Admin-Cockpit: Lebenszyklus, Abo, Vertraege, Integrationen",
+)
 def admin_console_overview(
     request: Request,
     auth: Annotated[GatewayAuthContext, Depends(require_admin_read_role)],
@@ -175,7 +178,9 @@ def admin_console_overview(
     payload: dict[str, Any] = {
         "schema_version": "admin-console-overview-v1",
         "commercial_enabled": bool(g.commercial_enabled),
-        "profit_fee_module_enabled": bool(getattr(g, "profit_fee_module_enabled", False)),
+        "profit_fee_module_enabled": bool(
+            getattr(g, "profit_fee_module_enabled", False)
+        ),
         "lifecycle": None,
         "subscriptions": None,
         "contracts_review_open": None,

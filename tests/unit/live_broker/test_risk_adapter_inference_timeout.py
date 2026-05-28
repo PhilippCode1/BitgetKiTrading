@@ -23,11 +23,17 @@ from live_broker.execution.risk_adapter import build_live_trade_risk_decision
 
 
 class _FakeRepo:
-    def list_latest_exchange_snapshots(self, snapshot_type: str, *, symbol=None, limit: int = 200):
+    def list_latest_exchange_snapshots(
+        self, snapshot_type: str, *, symbol=None, limit: int = 200
+    ):
         if snapshot_type == "account":
             return [
                 {
-                    "raw_json": {"equity": "1000", "available": "900", "usdtEquity": "1000"},
+                    "raw_json": {
+                        "equity": "1000",
+                        "available": "900",
+                        "usdtEquity": "1000",
+                    },
                     "margin_coin": "USDT",
                 }
             ]

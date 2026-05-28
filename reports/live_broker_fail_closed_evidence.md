@@ -1,7 +1,7 @@
 # Live Broker Fail-Closed Evidence Report
 
-- Generiert: `2026-04-26T09:54:30Z`
-- Git SHA: `339dd15`
+- Generiert: `2026-05-28T18:18:03Z`
+- Git SHA: `3f1d5f5`
 - Status: `implemented`
 - Decision: `NOT_ENOUGH_EVIDENCE`
 - Verified: `False`

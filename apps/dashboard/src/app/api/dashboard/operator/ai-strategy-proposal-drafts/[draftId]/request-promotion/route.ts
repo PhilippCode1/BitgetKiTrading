@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 type P = { draftId: string };
 
 export async function POST(req: Request, context: { params: P | Promise<P> }) {
-  const auth = requireOperatorGatewayAuth();
+  const auth = requireOperatorGatewayAuth(req.headers);
   if (!auth.ok) return auth.response;
   const { draftId } = await Promise.resolve(context.params);
   if (!draftId?.trim()) {

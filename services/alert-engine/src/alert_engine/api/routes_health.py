@@ -5,6 +5,7 @@ from typing import Any
 
 import psycopg
 import redis
+from config.settings import _is_blank_or_placeholder
 from fastapi import APIRouter
 from shared_py.observability import (
     append_peer_readiness_checks,
@@ -12,13 +13,12 @@ from shared_py.observability import (
     check_redis_url,
     merge_ready_details,
 )
+from shared_py.telegram_chat_contract import command_contract_summary
 
 from alert_engine.config import get_settings
 from alert_engine.storage.repo_outbox import RepoOutbox
 from alert_engine.storage.repo_state import RepoBotState
 from alert_engine.storage.repo_subscriptions import RepoSubscriptions
-from config.settings import _is_blank_or_placeholder
-from shared_py.telegram_chat_contract import command_contract_summary
 
 logger = logging.getLogger("alert_engine.health")
 
@@ -29,7 +29,10 @@ def _telegram_readiness(settings: Any) -> tuple[bool, str]:
     """Lokal/paper: ohne Token startfaehig (dry_run oder non-prod). Produktion: Token Pflicht."""
     token_missing = _is_blank_or_placeholder(settings.telegram_bot_token)
     if settings.telegram_dry_run:
-        return True, f"mode={settings.telegram_mode} dry_run token_set={not token_missing}"
+        return (
+            True,
+            f"mode={settings.telegram_mode} dry_run token_set={not token_missing}",
+        )
     if settings.production and token_missing:
         return False, "production_requires_TELEGRAM_BOT_TOKEN"
     if token_missing:
@@ -108,8 +111,7 @@ def ready() -> dict[str, Any]:
             # Lokal/paper: historische failed-Eintraege blockieren Compose-Health nicht
             ob_ok = True
             ob_detail = (
-                f"outbox_failed_messages={failed_ct} "
-                f"(non_production_not_blocking)"
+                f"outbox_failed_messages={failed_ct} " f"(non_production_not_blocking)"
             )
     tel_ok, tel_detail = _telegram_readiness(settings)
     parts = {

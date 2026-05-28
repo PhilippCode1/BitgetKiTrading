@@ -70,6 +70,14 @@ def load_report_payloads(reports_dir: Path = REPORTS_DIR) -> dict[str, Any]:
             loaded = None
         if isinstance(loaded, dict):
             payloads["asset_preflight_evidence"] = loaded
+    demo_lifecycle = reports_dir / "demo_lifecycle_evidence.json"
+    if demo_lifecycle.is_file():
+        try:
+            loaded = json.loads(demo_lifecycle.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            loaded = None
+        if isinstance(loaded, dict):
+            payloads["demo_lifecycle_evidence"] = loaded
     return payloads
 
 

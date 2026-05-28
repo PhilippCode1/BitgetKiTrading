@@ -8,7 +8,6 @@ import json
 import os
 import re
 import subprocess
-import sys
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -16,8 +15,18 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 RESTORE_EVIDENCE_SCHEMA_VERSION = "postgres-restore-dr-evidence-v1"
-DEFAULT_EVIDENCE_TEMPLATE = ROOT / "docs" / "production_10_10" / "postgres_restore_evidence.template.json"
-SECRET_LIKE_KEYS = ("database_url", "dsn", "password", "secret", "token", "api_key", "private_key")
+DEFAULT_EVIDENCE_TEMPLATE = (
+    ROOT / "docs" / "production_10_10" / "postgres_restore_evidence.template.json"
+)
+SECRET_LIKE_KEYS = (
+    "database_url",
+    "dsn",
+    "password",
+    "secret",
+    "token",
+    "api_key",
+    "private_key",
+)
 
 
 @dataclass(frozen=True)
@@ -48,7 +57,13 @@ def redact_database_url(url: str) -> str:
 
 def is_production_database_url(url: str) -> bool:
     lowered = url.lower()
-    production_markers = ("prod", "production", "rds.amazonaws.com", "azure.com", "cloudsql")
+    production_markers = (
+        "prod",
+        "production",
+        "rds.amazonaws.com",
+        "azure.com",
+        "cloudsql",
+    )
     test_markers = ("test", "staging", "shadow", "local", "localhost", "127.0.0.1")
     return any(marker in lowered for marker in production_markers) and not any(
         marker in lowered for marker in test_markers
@@ -106,14 +121,22 @@ def secret_surface_issues(payload: dict[str, Any]) -> list[str]:
     return issues
 
 
-def assess_external_restore_evidence(payload: dict[str, Any] | None) -> ExternalRestoreEvidenceAssessment:
+def assess_external_restore_evidence(
+    payload: dict[str, Any] | None
+) -> ExternalRestoreEvidenceAssessment:
     if not payload:
-        return ExternalRestoreEvidenceAssessment("FAIL", ["restore_evidence_missing"], [])
+        return ExternalRestoreEvidenceAssessment(
+            "FAIL", ["restore_evidence_missing"], []
+        )
     blockers: list[str] = []
     warnings: list[str] = []
     if payload.get("schema_version") != RESTORE_EVIDENCE_SCHEMA_VERSION:
         blockers.append("schema_version_mismatch")
-    if payload.get("environment") not in {"staging", "production_clone", "shadow_clone"}:
+    if payload.get("environment") not in {
+        "staging",
+        "production_clone",
+        "shadow_clone",
+    }:
         blockers.append("environment_invalid")
     if not str(payload.get("backup_label") or "").strip():
         blockers.append("backup_label_missing")
@@ -375,7 +398,9 @@ def main(argv: list[str] | None = None) -> int:
             encoding="utf-8",
         )
     if args.json:
-        print(json.dumps(asdict(evidence), indent=2, sort_keys=True, ensure_ascii=False))
+        print(
+            json.dumps(asdict(evidence), indent=2, sort_keys=True, ensure_ascii=False)
+        )
     else:
         print(
             f"dr_postgres_restore_test: status={evidence.status} "

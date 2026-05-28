@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 import threading
-from typing import Any
+from typing import Any, cast
 
 import redis
 
@@ -124,7 +124,7 @@ class GlobalHaltLatch:
             logger.error("GLOBAL_HALT: Redis-Client fehlgeschlagen: %s", exc)
             return
         try:
-            v = self._main_r.get(REDIS_KEY_GLOBAL_HALT)
+            v = cast(str | None, self._main_r.get(REDIS_KEY_GLOBAL_HALT))
             self._apply_from_raw(v)
         except Exception as exc:  # noqa: BLE001
             logger.warning("GLOBAL_HALT: initialer GET fehlgeschlagen: %s", exc)
@@ -157,7 +157,9 @@ class GlobalHaltLatch:
                 "Global Halt (Redis) — Order-Mutationen bis Aufhebung gesperrt"
             )
 
-    def force_halt_in_process(self, *, reason: str = "infrastructure_redis_loss") -> None:
+    def force_halt_in_process(
+        self, *, reason: str = "infrastructure_redis_loss"
+    ) -> None:
         """
         Fail-Closed, wenn ``SET system:global_halt`` wegen ausgefallenem Redis nicht
         sofort spiegelbar ist (Prompt 72) — lokal keine Order-Mutationen mehr.

@@ -144,9 +144,7 @@ def _format_risk_rules(
 
 def _final_fill_prices(phase_ex: dict[str, Any]) -> str:
     fills: Sequence[dict[str, Any]] = (
-        phase_ex.get("fills")
-        if isinstance(phase_ex.get("fills"), list)
-        else ()
+        phase_ex.get("fills") if isinstance(phase_ex.get("fills"), list) else ()  # type: ignore
     )
     if not fills:
         return "—"
@@ -175,10 +173,7 @@ def _row_digest_for_table(row: dict[str, Any]) -> dict[str, str]:
     phases = _m(gr.get("phases")) if "phases" in gr else _m({})
     sig_core = _m(_m(phases.get("signal")).get("core"))
     sig = str(
-        row.get("signal_id")
-        or gr.get("signal_id")
-        or sig_core.get("signal_id")
-        or "—"
+        row.get("signal_id") or gr.get("signal_id") or sig_core.get("signal_id") or "—"
     )[:64]
     ts = str(row.get("created_at") or "—")[:32]
     ai = _m(
@@ -249,12 +244,9 @@ def build_apex_regulatory_compliance_report_pdf_bytes(
     ktip = (global_ledger_chain_tip_hash_hex or "none").strip() or "none"
     # Klartext in /Info: revisionssichere Suche/Tests ohne Stream-Parsing
     meta_tid = _ascii_fold(_trunc(tenant_id, 64))
-    pdf.set_title(
-        f"apex-forensic-audit:tenant={meta_tid}:n={len(forensics_rows)}"
-    )
+    pdf.set_title(f"apex-forensic-audit:tenant={meta_tid}:n={len(forensics_rows)}")
     pdf.set_keywords(
-        f"schema=apex-forensic-report-v1;rows={len(forensics_rows)};"
-        f"chain_tip_sha256_hex={ktip}"
+        f"schema=apex-forensic-report-v1;rows={len(forensics_rows)};chain_tip_sha256_hex={ktip}"
     )
     pdf.set_creator("shared_py.regulatory_audit_report_pdf")
     pdf.set_auto_page_break(auto=True, margin=16)
@@ -291,10 +283,7 @@ def build_apex_regulatory_compliance_report_pdf_bytes(
         ).get("is_verified")
         is True
     )
-    summ = (
-        f"Krypt. Verifikation: {n_ok} / {len(forensics_rows)} "
-        f"Zeilen bestaetigt (Payload+Kettenlink)."
-    )
+    summ = f"Krypt. Verifikation: {n_ok} / {len(forensics_rows)} Zeilen bestaetigt (Payload+Kettenlink)."
     _set_font(pdf, family, "I", 8.5)
     pdf.multi_cell(0, 4, _t(summ), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.ln(2)
@@ -348,15 +337,11 @@ def build_apex_regulatory_compliance_report_pdf_bytes(
     _set_font(pdf, family, "", 8.5)
     na_tip = "n/a (Tabelle leer / keine Kettenspitze)"
     tip = (global_ledger_chain_tip_hash_hex or "").strip() or na_tip
-    monosp = (
-        f"letzter chain_checksum (Apex-Trade-Forensik, global, hex):  {tip}"
-    )
+    monosp = f"letzter chain_checksum (Apex-Trade-Forensik, global, hex):  {tip}"
     pdf.multi_cell(0, 4.2, _t(monosp), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     _set_font(pdf, family, "I", 7.8)
     foot = _t(
-        f"{REPORT_FOOTER_LEGAL}  "
-        f"Document digest: SHA256-Kette laut app.apex_trade_forensics, "
-        f"Spez. Migrations-626."
+        f"{REPORT_FOOTER_LEGAL}  Document digest: SHA256-Kette laut app.apex_trade_forensics, Spez. Migrations-626."
     )
     pdf.multi_cell(0, 3.6, foot, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     return bytes(pdf.output())

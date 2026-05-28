@@ -101,7 +101,9 @@ def test_ensemble_adversary_directional_veto_regime_vs_base() -> None:
         instrument=instrument,
     )
     adv = out["adversary_check"]
-    assert adv.get("directional_veto_recommended") or adv.get("regime_bias_conflict_veto_recommended")
+    assert adv.get("directional_veto_recommended") or adv.get(
+        "regime_bias_conflict_veto_recommended"
+    )
     assert out["router_arbitration"]["selected_trade_action"] == "do_not_trade"
     rsn = out["router_arbitration"]["reasons"]
     assert (

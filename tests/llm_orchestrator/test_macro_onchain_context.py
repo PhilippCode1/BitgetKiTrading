@@ -2,13 +2,21 @@ from __future__ import annotations
 
 import asyncio
 
-from llm_orchestrator.agents.macro import MacroAnalystAgent, _merge_onchain_whale_context
+from llm_orchestrator.agents.macro import (
+    MacroAnalystAgent,
+    _merge_onchain_whale_context,
+)
 
 
 def test_merge_onchain_whale_lowers_confidence() -> None:
     raw = {
         "confidence_0_1": 0.9,
-        "signal_proposal": {"action": "hold_research", "symbol": None, "timeframe": None, "payload": {}},
+        "signal_proposal": {
+            "action": "hold_research",
+            "symbol": None,
+            "timeframe": None,
+            "payload": {},
+        },
     }
     ctx = {"onchain_context": {"onchain_whale_pressure_0_1": 0.8}}
     _merge_onchain_whale_context(raw, ctx)

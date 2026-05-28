@@ -8,8 +8,8 @@ from fastapi import APIRouter, HTTPException
 
 from learning_engine.analytics import error_patterns
 from learning_engine.config import LearningEngineSettings
-from learning_engine.storage.connection import db_connect
 from learning_engine.storage import repo_learning_v1
+from learning_engine.storage.connection import db_connect
 
 
 def build_patterns_router(settings: LearningEngineSettings) -> APIRouter:
@@ -27,8 +27,12 @@ def build_patterns_router(settings: LearningEngineSettings) -> APIRouter:
         now_ms = int(time.time() * 1000)
         since = now_ms - wms
         with db_connect(settings.database_url) as conn:
-            stored = repo_learning_v1.list_error_patterns_top(conn, window=w, limit=limit)
-            rows = repo_learning_v1.fetch_evaluations_since_ms(conn, since_closed_ts_ms=since)
+            stored = repo_learning_v1.list_error_patterns_top(
+                conn, window=w, limit=limit
+            )
+            rows = repo_learning_v1.fetch_evaluations_since_ms(
+                conn, since_closed_ts_ms=since
+            )
         losing = error_patterns.top_losing_conditions(rows, limit=10)
         return {
             "status": "ok",

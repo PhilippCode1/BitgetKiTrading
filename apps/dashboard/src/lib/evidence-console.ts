@@ -49,14 +49,18 @@ export type OwnerPrivateLiveReleaseGate = {
   templateRelative: string;
 };
 
-export function readOwnerPrivateLiveReleaseGate(rootDir: string): OwnerPrivateLiveReleaseGate {
+export function readOwnerPrivateLiveReleaseGate(
+  rootDir: string,
+): OwnerPrivateLiveReleaseGate {
   const abs = resolve(rootDir, OWNER_RELEASE_REL);
   const filePresent = existsSync(abs);
   let payloadValid = false;
   if (filePresent) {
     try {
       const raw = readFileSync(abs, "utf-8");
-      payloadValid = ownerPrivateLiveReleasePayloadOk(JSON.parse(raw) as unknown);
+      payloadValid = ownerPrivateLiveReleasePayloadOk(
+        JSON.parse(raw) as unknown,
+      );
     } catch {
       payloadValid = false;
     }
@@ -81,7 +85,8 @@ export function readOwnerPrivateLiveReleaseGate(rootDir: string): OwnerPrivateLi
     payloadValid,
     scorecardBlocksPrivateLive,
     summaryDe,
-    templateRelative: "docs/production_10_10/owner_private_live_release.template.json",
+    templateRelative:
+      "docs/production_10_10/owner_private_live_release.template.json",
   };
 }
 
@@ -187,7 +192,10 @@ function statusLabelDe(status: EvidenceStatusCode): string {
   return "extern erforderlich";
 }
 
-function parseCategoryBlock(matrixRaw: string, categoryId: string): string | null {
+function parseCategoryBlock(
+  matrixRaw: string,
+  categoryId: string,
+): string | null {
   const marker = `- id: ${categoryId}`;
   const start = matrixRaw.indexOf(marker);
   if (start < 0) return null;
@@ -237,7 +245,9 @@ export function buildEvidenceCards(params?: {
   return CARD_SPECS.map((spec) => {
     const reportAbs = resolve(rootDir, spec.reportPath);
     const reportExists = existsSync(reportAbs);
-    const reportDate = reportExists ? statSync(reportAbs).mtime.toISOString() : null;
+    const reportDate = reportExists
+      ? statSync(reportAbs).mtime.toISOString()
+      : null;
     const category = parseCategoryStatus(matrixRaw, spec.categoryId);
     let status: EvidenceStatusCode = category.status ?? "missing";
     if (!reportExists) status = "missing";

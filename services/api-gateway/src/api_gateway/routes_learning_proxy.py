@@ -7,10 +7,13 @@ import psycopg
 from fastapi import APIRouter
 from psycopg import errors as pg_errors
 from psycopg.rows import dict_row
+from shared_py.learning_drift_api import (
+    drift_recent_response,
+    gateway_online_drift_state_response,
+)
 
 from api_gateway.config import get_gateway_settings
 from api_gateway.db import DatabaseHealthError, get_database_url
-from api_gateway.db_live_queries import fetch_online_drift_state_row
 from api_gateway.db_dashboard_queries import (
     fetch_backtest_runs,
     fetch_drift_recent,
@@ -20,11 +23,8 @@ from api_gateway.db_dashboard_queries import (
     fetch_model_registry_v2_slots,
     fetch_recommendations_recent,
 )
+from api_gateway.db_live_queries import fetch_online_drift_state_row
 from api_gateway.gateway_read_envelope import NEXT_STEP_DB, merge_read_envelope
-from shared_py.learning_drift_api import (
-    drift_recent_response,
-    gateway_online_drift_state_response,
-)
 
 logger = logging.getLogger("api_gateway.learning_proxy")
 
@@ -34,7 +34,9 @@ backtest_router = APIRouter(prefix="/v1/backtests", tags=["backtests"])
 
 def _lim(default: int, cap: int) -> int:
     try:
-        return max(1, min(cap, int(get_gateway_settings().dashboard_page_size or default)))
+        return max(
+            1, min(cap, int(get_gateway_settings().dashboard_page_size or default))
+        )
     except ValueError:
         return default
 
@@ -70,7 +72,9 @@ def learning_model_registry_v2() -> dict[str, Any]:
             message="Keine Registry-Slots geladen." if es else None,
             empty_state=es,
             degradation_reason="no_registry_slots" if es else None,
-            next_step="Model-Registry befuellen oder anderen Scope pruefen." if es else None,
+            next_step=(
+                "Model-Registry befuellen oder anderen Scope pruefen." if es else None
+            ),
         )
     except DatabaseHealthError as exc:
         logger.warning("learning registry-v2: %s", exc)
@@ -137,10 +141,18 @@ def learning_patterns_top() -> dict[str, Any]:
         )
     except DatabaseHealthError as exc:
         logger.warning("learning patterns: %s", exc)
-        return _degraded_learning(fallback={"items": [], "limit": 10}, reason="database_url_missing", msg="Datenbank ist nicht konfiguriert.")
+        return _degraded_learning(
+            fallback={"items": [], "limit": 10},
+            reason="database_url_missing",
+            msg="Datenbank ist nicht konfiguriert.",
+        )
     except (pg_errors.Error, OSError) as exc:
         logger.warning("learning patterns: %s", exc)
-        return _degraded_learning(fallback={"items": [], "limit": 10}, reason="database_error", msg="Muster konnten nicht geladen werden.")
+        return _degraded_learning(
+            fallback={"items": [], "limit": 10},
+            reason="database_error",
+            msg="Muster konnten nicht geladen werden.",
+        )
 
 
 @learning_router.get("/recommendations/recent", response_model=None)
@@ -195,7 +207,9 @@ def learning_drift_recent() -> dict[str, Any]:
             message="Keine Drift-Events in der Datenbank." if es else None,
             empty_state=es,
             degradation_reason="no_drift_events" if es else None,
-            next_step="Monitor und Online-Drift-Evaluator laufen lassen." if es else None,
+            next_step=(
+                "Monitor und Online-Drift-Evaluator laufen lassen." if es else None
+            ),
         )
     except DatabaseHealthError as exc:
         logger.warning("learning drift/recent: %s", exc)
@@ -273,10 +287,18 @@ def learning_drift_online_state() -> dict[str, Any]:
         return merge_read_envelope(
             raw,
             status="ok",
-            message="Kein materialisierter Online-Drift-State (Zeile fehlt)." if empty else None,
+            message=(
+                "Kein materialisierter Online-Drift-State (Zeile fehlt)."
+                if empty
+                else None
+            ),
             empty_state=empty,
             degradation_reason="no_online_drift_row" if empty else None,
-            next_step="Migration 400 und POST /learning/drift/evaluate-now auf der Learning-Engine ausfuehren." if empty else None,
+            next_step=(
+                "Migration 400 und POST /learning/drift/evaluate-now auf der Learning-Engine ausfuehren."
+                if empty
+                else None
+            ),
         )
     except DatabaseHealthError as exc:
         logger.warning("learning drift/online-state: %s", exc)
@@ -319,7 +341,15 @@ def backtest_runs() -> dict[str, Any]:
         )
     except DatabaseHealthError as exc:
         logger.warning("backtests runs: %s", exc)
-        return _degraded_learning(fallback={"items": [], "limit": 10}, reason="database_url_missing", msg="Datenbank ist nicht konfiguriert.")
+        return _degraded_learning(
+            fallback={"items": [], "limit": 10},
+            reason="database_url_missing",
+            msg="Datenbank ist nicht konfiguriert.",
+        )
     except (pg_errors.Error, OSError) as exc:
         logger.warning("backtests runs: %s", exc)
-        return _degraded_learning(fallback={"items": [], "limit": 10}, reason="database_error", msg="Backtests konnten nicht geladen werden.")
+        return _degraded_learning(
+            fallback={"items": [], "limit": 10},
+            reason="database_error",
+            msg="Backtests konnten nicht geladen werden.",
+        )

@@ -49,12 +49,14 @@ def log_learning_run(settings: LearningEngineSettings, report: dict[str, Any]) -
                     continue
                 if isinstance(v, float) and (v == float("inf") or v != v):
                     continue
-                if isinstance(v, (int, float)):
+                if isinstance(v, int | float):
                     flat_metrics[f"{w}_{k}"] = float(v)
         if flat_metrics:
             mlflow.log_metrics(flat_metrics)
 
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False, encoding="utf-8") as tmp:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", delete=False, encoding="utf-8"
+        ) as tmp:
             json.dump(report, tmp, indent=2, default=str)
             tmp_path = Path(tmp.name)
         try:

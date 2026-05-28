@@ -50,7 +50,11 @@ def maybe_update_tp_from_drawings(
     zones = repo_drawings.fetch_drawings_by_ids(conn, parent_ids)
     mids: list[tuple[Decimal, str]] = []
     for z in zones:
-        if str(z.get("type", "")) not in ("target_zone", "resistance_zone", "support_zone"):
+        if str(z.get("type", "")) not in (
+            "target_zone",
+            "resistance_zone",
+            "support_zone",
+        ):
             continue
         mid = repo_drawings.zone_mid(z["geometry"])
         if mid is not None:
@@ -109,8 +113,14 @@ def maybe_update_tp_from_drawings(
         new_targets = [targets[0], t2, t3]
         tp_p["targets"] = new_targets
         new_rr = estimate_rr(entry, side, stop_px, tp_p)
-        if old_rr is not None and new_rr is not None and new_rr < old_rr * Decimal("0.995"):
-            logger.info("drawing_tp_skip_rr_regression position_id=%s", pos["position_id"])
+        if (
+            old_rr is not None
+            and new_rr is not None
+            and new_rr < old_rr * Decimal("0.995")
+        ):
+            logger.info(
+                "drawing_tp_skip_rr_regression position_id=%s", pos["position_id"]
+            )
             continue
 
         pid = UUID(str(pos["position_id"]))

@@ -12,7 +12,6 @@ from scripts.bitget_readiness_check import (
     report_to_markdown,
 )
 
-
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts" / "bitget_readiness_check.py"
 
@@ -102,7 +101,7 @@ def test_report_contains_required_fields(tmp_path: Path) -> None:
         "Permission Status",
         "Instrument Universe Status",
         "Rate Limit Status",
-            "Status",
+        "Status",
         "Live-Write erlaubt",
     ):
         assert required in content
@@ -125,6 +124,8 @@ def test_demo_trade_smoke_requires_explicit_ack() -> None:
             "BITGET_DEMO_API_PASSPHRASE": "demo-pass",
         }
     )
-    report = build_readiness_report(env, mode="demo-trade-smoke", demo_trade_smoke_ack=False)
+    report = build_readiness_report(
+        env, mode="demo-trade-smoke", demo_trade_smoke_ack=False
+    )
     assert report.status == "failed"
     assert "demo_trade_smoke_requires_explicit_ack" in report.blockers

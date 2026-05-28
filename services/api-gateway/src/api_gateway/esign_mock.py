@@ -16,7 +16,9 @@ class MockEnvelopePayload(BaseModel):
     """Payload fuer Kunden-UI (Signatur-URL ist hier nur Platzhalter)."""
 
     envelope_id: str = Field(..., description="Eindeutige Envelope-ID (Mock)")
-    signing_url: str = Field(..., description="URL zum Signieren (Mock: Dashboard-Link)")
+    signing_url: str = Field(
+        ..., description="URL zum Signieren (Mock: Dashboard-Link)"
+    )
     expires_at_unix: int = Field(..., description="Ablaufzeit (Unix-Sekunden)")
 
 
@@ -58,7 +60,9 @@ def sign_webhook_body(secret: str, body: dict[str, Any]) -> str:
     return hmac.new(secret.encode("utf-8"), raw, hashlib.sha256).hexdigest()
 
 
-def verify_webhook_signature(secret: str, body_bytes: bytes, signature_hex: str) -> bool:
+def verify_webhook_signature(
+    secret: str, body_bytes: bytes, signature_hex: str
+) -> bool:
     if not secret or not signature_hex:
         return False
     expected = hmac.new(secret.encode("utf-8"), body_bytes, hashlib.sha256).hexdigest()

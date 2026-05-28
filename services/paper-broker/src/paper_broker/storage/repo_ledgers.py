@@ -98,7 +98,9 @@ def sum_fees_for_position(conn: psycopg.Connection[Any], position_id: UUID) -> D
     return Decimal(str(row[0])) if row else Decimal("0")
 
 
-def sum_funding_for_position(conn: psycopg.Connection[Any], position_id: UUID) -> Decimal:
+def sum_funding_for_position(
+    conn: psycopg.Connection[Any], position_id: UUID
+) -> Decimal:
     """Summe gebuchter Funding-Betraege (positiv = erhalten, negativ = gezahlt)."""
     row = conn.execute(
         "SELECT COALESCE(SUM(funding_usdt), 0) FROM paper.funding_ledger WHERE position_id = %s",

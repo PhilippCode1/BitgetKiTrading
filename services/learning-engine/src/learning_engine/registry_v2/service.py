@@ -8,6 +8,12 @@ from uuid import UUID
 import psycopg
 from fastapi import HTTPException
 from psycopg import errors as pg_errors
+from shared_py.model_registry_policy import (
+    champion_assignment_calibration_ok,
+    model_requires_probability_calibration,
+    parse_metadata_json,
+)
+from shared_py.model_registry_scope import normalize_registry_scope
 
 from learning_engine.config import LearningEngineSettings
 from learning_engine.registry_v2.champion_promotion_gates import (
@@ -17,23 +23,23 @@ from learning_engine.registry_v2.champion_promotion_gates import (
 )
 from learning_engine.storage import (
     repo_model_champion_lifecycle,
-    repo_model_runs,
     repo_model_registry_v2,
+    repo_model_runs,
     repo_online_drift,
 )
-from shared_py.model_registry_policy import (
-    champion_assignment_calibration_ok,
-    model_requires_probability_calibration,
-    parse_metadata_json,
-)
-from shared_py.model_registry_scope import normalize_registry_scope
 
 logger = logging.getLogger("learning_engine.registry_v2")
 
 _OVERRIDE_REASON_MIN_LEN = 8
 
 
-def _audit(conn: psycopg.Connection[Any], *, action: str, entity_id: str, payload: dict[str, Any]) -> None:
+def _audit(
+    conn: psycopg.Connection[Any],
+    *,
+    action: str,
+    entity_id: str,
+    payload: dict[str, Any],
+) -> None:
     conn.execute(
         """
         INSERT INTO app.audit_log (entity_schema, entity_table, entity_id, action, payload)
@@ -78,7 +84,11 @@ def assign_champion(
     gate_report: dict[str, Any] = {"skipped_gates": skip_promotion_gates}
     if not skip_promotion_gates:
         od_eff: str | None = None
-        if settings.model_promotion_apply_online_drift_gate and st == "global" and sk == "":
+        if (
+            settings.model_promotion_apply_online_drift_gate
+            and st == "global"
+            and sk == ""
+        ):
             od_row = repo_online_drift.fetch_online_drift_state(conn, scope="global")
             if od_row:
                 od_eff = str(od_row.get("effective_action") or "ok")
@@ -121,7 +131,10 @@ def assign_champion(
             gate_report["override_reason"] = reason_txt
             gate_report["changed_by"] = changed_by
 
-    if not skip_promotion_gates and settings.model_challenger_champion_backtest_require_baseline_match:
+    if (
+        not skip_promotion_gates
+        and settings.model_challenger_champion_backtest_require_baseline_match
+    ):
         bbt = get_champion_challenger_backtest_block(
             parse_metadata_json(row.get("metadata_json"))
         )
@@ -279,7 +292,9 @@ def clear_registry_slot(
     x_champion_clear_secret: str | None = None,
 ) -> dict[str, Any]:
     if role not in ("champion", "challenger"):
-        raise HTTPException(status_code=400, detail="role muss champion oder challenger sein")
+        raise HTTPException(
+            status_code=400, detail="role muss champion oder challenger sein"
+        )
     st, sk = normalize_registry_scope(scope_type=scope_type, scope_key=scope_key)
     if role == "champion" and settings.model_registry_champion_deletion_forbidden:
         need = (settings.model_registry_champion_clear_secret or "").strip()
@@ -328,7 +343,9 @@ def mark_challenger_ready_for_live(
         conn, model_name=model_name, scope_type=st, scope_key=sk
     )
     if chal is None:
-        raise HTTPException(status_code=404, detail="kein Challenger-Slot fuer model_name/scope")
+        raise HTTPException(
+            status_code=404, detail="kein Challenger-Slot fuer model_name/scope"
+        )
     if not settings.model_challenger_champion_backtest_gate_enabled:
         raise HTTPException(
             status_code=400,
@@ -369,7 +386,11 @@ def mark_challenger_ready_for_live(
         role="challenger",
         run_id=run_id,
         calibration_status=cal,
-        notes=chal.get("registry_notes") if chal.get("registry_notes") is not None else None,
+        notes=(
+            chal.get("registry_notes")
+            if chal.get("registry_notes") is not None
+            else None
+        ),
         scope_type=st,
         scope_key=sk,
     )
@@ -383,13 +404,17 @@ def mark_challenger_ready_for_live(
             "changed_by": changed_by,
             "scope_type": st,
             "scope_key": sk,
-            "champion_challenger_backtest": (gr.details or {}).get("champion_challenger_backtest"),
+            "champion_challenger_backtest": (gr.details or {}).get(
+                "champion_challenger_backtest"
+            ),
         },
     )
     return {
         "status": "ok",
         "slot": slot,
-        "champion_challenger_backtest": (gr.details or {}).get("champion_challenger_backtest"),
+        "champion_challenger_backtest": (gr.details or {}).get(
+            "champion_challenger_backtest"
+        ),
     }
 
 
@@ -456,7 +481,9 @@ def _close_champion_history_safe(
     except pg_errors.UndefinedTable:
         logger.warning("model_champion_history fehlt — Migration 410 ausfuehren")
     except pg_errors.UndefinedColumn:
-        logger.warning("model_champion_history.scope_* fehlt — Migration 550 ausfuehren")
+        logger.warning(
+            "model_champion_history.scope_* fehlt — Migration 550 ausfuehren"
+        )
 
 
 def _insert_champion_history_safe(
@@ -482,7 +509,9 @@ def _insert_champion_history_safe(
     except pg_errors.UndefinedTable:
         logger.warning("model_champion_history fehlt — Migration 410 ausfuehren")
     except pg_errors.UndefinedColumn:
-        logger.warning("model_champion_history.scope_* fehlt — Migration 550 ausfuehren")
+        logger.warning(
+            "model_champion_history.scope_* fehlt — Migration 550 ausfuehren"
+        )
 
 
 def mark_stable_champion_checkpoint(
@@ -502,7 +531,9 @@ def mark_stable_champion_checkpoint(
             conn, model_name=model_name, role="champion", scope_type=st, scope_key=sk
         )
         if cur is None:
-            raise HTTPException(status_code=404, detail="kein Champion-Slot fuer model_name/scope")
+            raise HTTPException(
+                status_code=404, detail="kein Champion-Slot fuer model_name/scope"
+            )
         target = cur
     slot = repo_model_champion_lifecycle.fetch_registry_slot_run_id(
         conn, model_name=model_name, role="champion", scope_type=st, scope_key=sk
@@ -532,7 +563,12 @@ def mark_stable_champion_checkpoint(
         conn,
         action="stable_champion_checkpoint_marked",
         entity_id=entity_id,
-        payload={"run_id": str(target), "marked_by": marked_by, "scope_type": st, "scope_key": sk},
+        payload={
+            "run_id": str(target),
+            "marked_by": marked_by,
+            "scope_type": st,
+            "scope_key": sk,
+        },
     )
     return {
         "status": "ok",
@@ -611,7 +647,10 @@ def try_auto_rollback_on_drift_hard_block(
 ) -> dict[str, Any] | None:
     if not settings.model_registry_auto_rollback_on_drift_hard_block:
         return None
-    if new_effective_action != "hard_block" or previous_effective_action == "hard_block":
+    if (
+        new_effective_action != "hard_block"
+        or previous_effective_action == "hard_block"
+    ):
         return None
     mn = (settings.model_registry_auto_rollback_model_name or "").strip()
     if not mn:

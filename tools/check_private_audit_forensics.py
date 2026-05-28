@@ -10,7 +10,9 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
-DOC_PATH = ROOT / "docs" / "production_10_10" / "audit_forensics_replay_private_console.md"
+DOC_PATH = (
+    ROOT / "docs" / "production_10_10" / "audit_forensics_replay_private_console.md"
+)
 CONTRACT_PATH = ROOT / "shared" / "python" / "src" / "shared_py" / "audit_contracts.py"
 REPLAY_PATH = ROOT / "shared" / "python" / "src" / "shared_py" / "replay_summary.py"
 MAIN_CONSOLE_DOC = ROOT / "docs" / "dashboard_operator_console.md"
@@ -135,7 +137,9 @@ def render_text(summary: dict[str, Any]) -> str:
     ]
     for issue in summary["issues"]:
         where = f" [{issue['path']}]" if issue.get("path") else ""
-        lines.append(f"{issue['severity'].upper()} {issue['code']}: {issue['message']}{where}")
+        lines.append(
+            f"{issue['severity'].upper()} {issue['code']}: {issue['message']}{where}"
+        )
     return "\n".join(lines)
 
 

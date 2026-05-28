@@ -18,7 +18,9 @@ TIMEFRAME_TO_MS: dict[str, int] = {
 }
 
 
-def fetch_position(conn: psycopg.Connection[Any], position_id: UUID) -> dict[str, Any] | None:
+def fetch_position(
+    conn: psycopg.Connection[Any], position_id: UUID
+) -> dict[str, Any] | None:
     row = conn.execute(
         "SELECT * FROM paper.positions WHERE position_id = %s",
         (str(position_id),),
@@ -26,7 +28,9 @@ def fetch_position(conn: psycopg.Connection[Any], position_id: UUID) -> dict[str
     return dict(row) if row else None
 
 
-def fetch_fills_ordered(conn: psycopg.Connection[Any], position_id: UUID) -> list[dict[str, Any]]:
+def fetch_fills_ordered(
+    conn: psycopg.Connection[Any], position_id: UUID
+) -> list[dict[str, Any]]:
     rows = conn.execute(
         """
         SELECT f.* FROM paper.fills f
@@ -54,7 +58,9 @@ def sum_funding(conn: psycopg.Connection[Any], position_id: UUID) -> Decimal:
     return Decimal(str(row["s"])) if row else Decimal("0")
 
 
-def fetch_position_events(conn: psycopg.Connection[Any], position_id: UUID) -> list[dict[str, Any]]:
+def fetch_position_events(
+    conn: psycopg.Connection[Any], position_id: UUID
+) -> list[dict[str, Any]]:
     rows = conn.execute(
         """
         SELECT * FROM paper.position_events
@@ -66,7 +72,9 @@ def fetch_position_events(conn: psycopg.Connection[Any], position_id: UUID) -> l
     return [dict(r) for r in rows]
 
 
-def fetch_signal_v1(conn: psycopg.Connection[Any], signal_id: UUID) -> dict[str, Any] | None:
+def fetch_signal_v1(
+    conn: psycopg.Connection[Any], signal_id: UUID
+) -> dict[str, Any] | None:
     row = conn.execute(
         "SELECT * FROM app.signals_v1 WHERE signal_id = %s",
         (str(signal_id),),
@@ -74,7 +82,9 @@ def fetch_signal_v1(conn: psycopg.Connection[Any], signal_id: UUID) -> dict[str,
     return dict(row) if row else None
 
 
-def fetch_strategy_state(conn: psycopg.Connection[Any], key: str) -> dict[str, Any] | None:
+def fetch_strategy_state(
+    conn: psycopg.Connection[Any], key: str
+) -> dict[str, Any] | None:
     row = conn.execute(
         "SELECT * FROM paper.strategy_state WHERE key = %s",
         (key,),
@@ -124,7 +134,12 @@ def fetch_structure_events_around(
 
 
 def fetch_structure_events_before(
-    conn: psycopg.Connection[Any], *, symbol: str, timeframe: str, ts_ms: int, limit: int = 20
+    conn: psycopg.Connection[Any],
+    *,
+    symbol: str,
+    timeframe: str,
+    ts_ms: int,
+    limit: int = 20,
 ) -> list[dict[str, Any]]:
     rows = conn.execute(
         """
@@ -220,7 +235,9 @@ def fetch_news_window(
     return [dict(r) for r in rows]
 
 
-def has_news_shock_strategy_event(conn: psycopg.Connection[Any], position_id: UUID) -> bool:
+def has_news_shock_strategy_event(
+    conn: psycopg.Connection[Any], position_id: UUID
+) -> bool:
     row = conn.execute(
         """
         SELECT 1 FROM paper.strategy_events
@@ -236,7 +253,7 @@ def has_news_shock_strategy_event(conn: psycopg.Connection[Any], position_id: UU
 def _parse_jsonb(val: Any) -> Any:
     if val is None:
         return None
-    if isinstance(val, (dict, list)):
+    if isinstance(val, dict | list):
         return val
     if isinstance(val, str):
         try:

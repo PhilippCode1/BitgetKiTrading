@@ -110,7 +110,11 @@ def _distinct_instruments_for_portfolio(
     open_rows: list[dict[str, Any]],
     intent_symbol: str,
 ) -> int:
-    insts = {str(r.get("inst_id") or "").strip().upper() for r in open_rows if _is_live_position_open(r)}
+    insts = {
+        str(r.get("inst_id") or "").strip().upper()
+        for r in open_rows
+        if _is_live_position_open(r)
+    }
     s = str(intent_symbol or "").strip().upper()
     if s:
         insts.add(s)
@@ -139,24 +143,29 @@ def assert_portfolio_exposure_limit(
 ) -> tuple[bool, dict[str, Any]]:
     """
     True, wenn Summe(Notional offene DB-Positionen) + geplante Eroeffnung
-    die effektive Portfoliogrenze (Equity * Limit, Surival-Buffer bei vielen Instrumenten) nicht uebersteigt.
+    die effektive Portfoliogrenze (Equity * Limit, Surival-Buffer bei vielen
+    Instrumenten) nicht uebersteigt.
     """
     detail: dict[str, Any] = {
-        "active": bool(_intent_opening_increase_exposure(intent) and int(intent.leverage or 0) > 0),
+        "active": bool(
+            _intent_opening_increase_exposure(intent) and int(intent.leverage or 0) > 0
+        ),
     }
     if not detail["active"] or total_equity <= 0:
         return True, detail
 
-    rows = (
-        repo.list_live_positions() if hasattr(repo, "list_live_positions") else []  # type: ignore[union-attr]
-    )
+    rows = repo.list_live_positions() if hasattr(repo, "list_live_positions") else []
     if not isinstance(rows, list):
         rows = []
     open_rows = [r for r in rows if isinstance(r, dict) and _is_live_position_open(r)]
-    existing = sum((_position_notional_leveraged_usdt(r) for r in open_rows), start=Decimal("0"))
+    existing = sum(
+        (_position_notional_leveraged_usdt(r) for r in open_rows), start=Decimal("0")
+    )
     proposed = _proposed_open_notional_usdt(intent)
     distinct = _distinct_instruments_for_portfolio(open_rows, intent.symbol)
-    buffer_pi = float(getattr(settings, "risk_portfolio_diversification_buffer_per_instrument", 0.05))
+    buffer_pi = float(
+        getattr(settings, "risk_portfolio_diversification_buffer_per_instrument", 0.05)
+    )
     base = float(getattr(settings, "risk_max_portfolio_exposure_pct", 0.25))
     buf = portfolio_diversification_risk_buffer_0_1(
         distinct_instruments=distinct,
@@ -209,13 +218,19 @@ def _portfolio_rejected_risk_shape(
         "limits": asdict(limits) if limits is not None else {},
         "metrics": {
             "open_positions_count": metrics.get("open_positions_count"),
-            "position_notional_usdt": _decimal_json(position_notional) if position_notional is not None else None,
+            "position_notional_usdt": (
+                _decimal_json(position_notional)
+                if position_notional is not None
+                else None
+            ),
             "position_risk_pct": position_risk_pct,
             "projected_margin_usage_pct": projected_margin_usage_pct,
             "account_drawdown_pct": metrics.get("account_drawdown_pct"),
             "daily_drawdown_pct": metrics.get("daily_drawdown_pct"),
             "weekly_drawdown_pct": metrics.get("weekly_drawdown_pct"),
-            "daily_loss_usdt": _decimal_json(metrics.get("daily_loss_usdt", Decimal("0"))),
+            "daily_loss_usdt": _decimal_json(
+                metrics.get("daily_loss_usdt", Decimal("0"))
+            ),
             "allowed_leverage": signal_payload.get("allowed_leverage"),
             "recommended_leverage": signal_payload.get("recommended_leverage"),
             "projected_rr": None,
@@ -251,7 +266,9 @@ def _inference_timeout_rejected_risk_shape(
             "account_drawdown_pct": metrics.get("account_drawdown_pct"),
             "daily_drawdown_pct": metrics.get("daily_drawdown_pct"),
             "weekly_drawdown_pct": metrics.get("weekly_drawdown_pct"),
-            "daily_loss_usdt": _decimal_json(metrics.get("daily_loss_usdt", Decimal("0"))),
+            "daily_loss_usdt": _decimal_json(
+                metrics.get("daily_loss_usdt", Decimal("0"))
+            ),
             "allowed_leverage": signal_payload.get("allowed_leverage"),
             "recommended_leverage": signal_payload.get("recommended_leverage"),
             "projected_rr": None,
@@ -288,7 +305,9 @@ def _vpin_toxic_halt_risk_shape(
             "account_drawdown_pct": metrics.get("account_drawdown_pct"),
             "daily_drawdown_pct": metrics.get("daily_drawdown_pct"),
             "weekly_drawdown_pct": metrics.get("weekly_drawdown_pct"),
-            "daily_loss_usdt": _decimal_json(metrics.get("daily_loss_usdt", Decimal("0"))),
+            "daily_loss_usdt": _decimal_json(
+                metrics.get("daily_loss_usdt", Decimal("0"))
+            ),
             "allowed_leverage": signal_payload.get("allowed_leverage"),
             "recommended_leverage": signal_payload.get("recommended_leverage"),
             "projected_rr": None,
@@ -504,7 +523,11 @@ def build_live_account_risk_metrics(
     )
 
     used_margin = _sum_position_margin(position_items)
-    if account_equity > 0 and available_equity > 0 and available_equity <= account_equity:
+    if (
+        account_equity > 0
+        and available_equity > 0
+        and available_equity <= account_equity
+    ):
         inferred_margin = account_equity - available_equity
         used_margin = max(used_margin, inferred_margin)
 
@@ -565,7 +588,7 @@ def _load_account_history(
             since_ts_ms = 0
         else:
             since_ts_ms = max(0, now_ms - window_ms)
-        snapshots = repo.list_exchange_snapshots_since(  # type: ignore[attr-defined]
+        snapshots = repo.list_exchange_snapshots_since(
             "account",
             since_ts_ms=since_ts_ms,
             limit=5000,
@@ -586,7 +609,7 @@ def _load_account_history(
 def _operational_staleness_reasons(repo: LiveBrokerRepository) -> list[str]:
     if not hasattr(repo, "latest_reconcile_snapshot"):
         return []
-    latest = repo.latest_reconcile_snapshot()  # type: ignore[attr-defined]
+    latest = repo.latest_reconcile_snapshot()
     if not isinstance(latest, dict):
         return []
     details = latest.get("details_json") or {}
@@ -646,7 +669,9 @@ def _first_matching_decimal(
     fields: tuple[str, ...],
 ) -> Decimal:
     for item in items:
-        item_margin_coin = str(item.get("marginCoin") or item.get("coin") or "").strip().upper()
+        item_margin_coin = (
+            str(item.get("marginCoin") or item.get("coin") or "").strip().upper()
+        )
         if item_margin_coin and item_margin_coin != str(margin_coin).strip().upper():
             continue
         value = _first_decimal(item, fields)

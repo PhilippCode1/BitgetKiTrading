@@ -7,10 +7,9 @@ import type { ApiFetchKind } from "./api-fetch-errors";
 import type { FetchErrorKind } from "./user-facing-fetch-error";
 
 const BFF_CONFIG_CODES = new Set(
-  [
-    "DASHBOARD_GATEWAY_AUTH_MISSING",
-    "API_GATEWAY_URL_MISSING",
-  ].map((c) => c.toUpperCase()),
+  ["DASHBOARD_GATEWAY_AUTH_MISSING", "API_GATEWAY_URL_MISSING"].map((c) =>
+    c.toUpperCase(),
+  ),
 );
 
 const RATE_LIMIT_CODES = new Set(
@@ -35,9 +34,10 @@ function norm(s: string | undefined | null): string {
 /**
  * Liest code/layer aus Gateway-/BFF-JSON (flach oder error.code).
  */
-export function extractGatewayCodeAndLayer(
-  bodyText: string,
-): { code?: string; layer?: string } {
+export function extractGatewayCodeAndLayer(bodyText: string): {
+  code?: string;
+  layer?: string;
+} {
   const t = bodyText.slice(0, 4000).trim();
   if (!t) return {};
   try {

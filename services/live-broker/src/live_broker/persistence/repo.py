@@ -78,18 +78,16 @@ class LiveBrokerRepository:
     def __init__(self, dsn: str) -> None:
         self._dsn = dsn
         self._pool: Any = None
-        _use = (os.environ.get("BITGET_USE_PSYCOPG_POOL", "1") or "1").strip().lower() in (
+        _use = (
+            os.environ.get("BITGET_USE_PSYCOPG_POOL", "1") or "1"
+        ).strip().lower() in (
             "1",
             "true",
             "yes",
             "on",
             "",
         )
-        if (
-            _use
-            and dsn.strip()
-            and ConnectionPool is not None
-        ):
+        if _use and dsn.strip() and ConnectionPool is not None:
             self._pool = ConnectionPool(
                 dsn.strip(),
                 min_size=1,
@@ -114,13 +112,18 @@ class LiveBrokerRepository:
             to_regclass('live.positions') IS NOT NULL AS positions,
             to_regclass('live.kill_switch_events') IS NOT NULL AS kill_switch_events,
             to_regclass('live.audit_trails') IS NOT NULL AS audit_trails,
-            to_regclass('live.paper_reference_events') IS NOT NULL AS paper_reference_events,
-            to_regclass('live.reconcile_snapshots') IS NOT NULL AS reconcile_snapshots,
+            to_regclass('live.paper_reference_events') IS NOT NULL
+                AS paper_reference_events,
+            to_regclass('live.reconcile_snapshots') IS NOT NULL
+                AS reconcile_snapshots,
             to_regclass('live.reconcile_runs') IS NOT NULL AS reconcile_runs,
-            to_regclass('live.shadow_live_assessments') IS NOT NULL AS shadow_live_assessments,
-            to_regclass('live.execution_risk_snapshots') IS NOT NULL AS execution_risk_snapshots,
+            to_regclass('live.shadow_live_assessments') IS NOT NULL
+                AS shadow_live_assessments,
+            to_regclass('live.execution_risk_snapshots') IS NOT NULL
+                AS execution_risk_snapshots,
             to_regclass('live.execution_journal') IS NOT NULL AS execution_journal,
-            to_regclass('live.execution_operator_releases') IS NOT NULL AS execution_operator_releases
+            to_regclass('live.execution_operator_releases') IS NOT NULL
+                AS execution_operator_releases
         """
         try:
             with self._connect() as conn:
@@ -326,7 +329,9 @@ class LiveBrokerRepository:
         with self._connect() as conn:
             rows = conn.execute(
                 """
-                SELECT journal_id, execution_decision_id, internal_order_id, phase, created_ts
+                SELECT
+                    journal_id, execution_decision_id, internal_order_id,
+                    phase, created_ts
                 FROM live.execution_journal
                 ORDER BY created_ts DESC
                 LIMIT %s
@@ -341,8 +346,14 @@ class LiveBrokerRepository:
         risk_decision: dict[str, Any],
     ) -> None:
         detail = _json_safe(risk_decision)
-        metrics = detail.get("metrics") if isinstance(detail.get("metrics"), dict) else {}
-        reasons = detail.get("reasons_json") if isinstance(detail.get("reasons_json"), list) else []
+        metrics = (
+            detail.get("metrics") if isinstance(detail.get("metrics"), dict) else {}
+        )
+        reasons = (
+            detail.get("reasons_json")
+            if isinstance(detail.get("reasons_json"), list)
+            else []
+        )
         with self._connect() as conn:
             conn.execute(
                 """
@@ -386,7 +397,9 @@ class LiveBrokerRepository:
         gate_blocked: bool,
         report: dict[str, Any],
     ) -> None:
-        protocol_version = report.get("protocol_version") if isinstance(report, dict) else None
+        protocol_version = (
+            report.get("protocol_version") if isinstance(report, dict) else None
+        )
         with self._connect() as conn:
             conn.execute(
                 """
@@ -556,7 +569,10 @@ class LiveBrokerRepository:
                     product_type = EXCLUDED.product_type,
                     margin_mode = EXCLUDED.margin_mode,
                     margin_coin = EXCLUDED.margin_coin,
-                    market_family = COALESCE(EXCLUDED.market_family, live.orders.market_family),
+                    market_family = COALESCE(
+                        EXCLUDED.market_family,
+                        live.orders.market_family
+                    ),
                     margin_account_mode = COALESCE(
                         EXCLUDED.margin_account_mode, live.orders.margin_account_mode
                     ),
@@ -658,18 +674,26 @@ class LiveBrokerRepository:
                 """,
                 {
                     **record,
-                    "stop_plan_json": Json(_json_safe(record.get("stop_plan_json", {}))),
+                    "stop_plan_json": Json(
+                        _json_safe(record.get("stop_plan_json", {}))
+                    ),
                     "tp_plan_json": Json(_json_safe(record.get("tp_plan_json", {}))),
                     "context_json": Json(_json_safe(record.get("context_json", {}))),
-                    "last_market_json": Json(_json_safe(record.get("last_market_json", {}))),
-                    "last_decision_json": Json(_json_safe(record.get("last_decision_json", {}))),
+                    "last_market_json": Json(
+                        _json_safe(record.get("last_market_json", {}))
+                    ),
+                    "last_decision_json": Json(
+                        _json_safe(record.get("last_decision_json", {}))
+                    ),
                 },
             ).fetchone()
         if row is None:
             raise RuntimeError("exit plan upsert failed")
         return _serialize_row(dict(row))
 
-    def get_exit_plan_by_root_order(self, root_internal_order_id: str) -> dict[str, Any] | None:
+    def get_exit_plan_by_root_order(
+        self, root_internal_order_id: str
+    ) -> dict[str, Any] | None:
         with self._connect() as conn:
             row = conn.execute(
                 """
@@ -698,7 +722,7 @@ class LiveBrokerRepository:
                 f"""
                 SELECT *
                 FROM live.exit_plans
-                WHERE {' AND '.join(where)}
+                WHERE {" AND ".join(where)}
                 ORDER BY updated_ts ASC
                 LIMIT %s
                 """,
@@ -734,7 +758,9 @@ class LiveBrokerRepository:
             return None
         return _serialize_row(dict(row))
 
-    def get_order_by_exchange_order_id(self, exchange_order_id: str) -> dict[str, Any] | None:
+    def get_order_by_exchange_order_id(
+        self, exchange_order_id: str
+    ) -> dict[str, Any] | None:
         with self._connect() as conn:
             row = conn.execute(
                 """
@@ -877,7 +903,10 @@ class LiveBrokerRepository:
                     is_maker,
                     exchange_ts_ms,
                     ingest_source,
-                    raw_json
+                    raw_json,
+                    execution_mode,
+                    applied_leverage,
+                    bot_strategy_id
                 ) VALUES (
                     %(internal_order_id)s,
                     %(exchange_order_id)s,
@@ -891,7 +920,10 @@ class LiveBrokerRepository:
                     %(is_maker)s,
                     %(exchange_ts_ms)s,
                     %(ingest_source)s,
-                    %(raw_json)s
+                    %(raw_json)s,
+                    %(execution_mode)s,
+                    %(applied_leverage)s,
+                    %(bot_strategy_id)s
                 )
                 ON CONFLICT (exchange_trade_id) DO UPDATE SET
                     internal_order_id = EXCLUDED.internal_order_id,
@@ -905,13 +937,19 @@ class LiveBrokerRepository:
                     is_maker = EXCLUDED.is_maker,
                     exchange_ts_ms = EXCLUDED.exchange_ts_ms,
                     ingest_source = EXCLUDED.ingest_source,
-                    raw_json = EXCLUDED.raw_json
+                    raw_json = EXCLUDED.raw_json,
+                    execution_mode = EXCLUDED.execution_mode,
+                    applied_leverage = EXCLUDED.applied_leverage,
+                    bot_strategy_id = EXCLUDED.bot_strategy_id
                 RETURNING *
                 """,
                 {
                     **record,
                     "ingest_source": record.get("ingest_source") or "exchange",
                     "raw_json": Json(_json_safe(record.get("raw_json", {}))),
+                    "execution_mode": record.get("execution_mode"),
+                    "applied_leverage": record.get("applied_leverage"),
+                    "bot_strategy_id": record.get("bot_strategy_id"),
                 },
             ).fetchone()
         if row is None:
@@ -1043,9 +1081,15 @@ class LiveBrokerRepository:
         exit_plan_limit: int = 200,
     ) -> dict[str, Any]:
         open_orders = self.list_active_orders(limit=order_limit)
-        order_snapshots = self.list_latest_exchange_snapshots("orders", limit=order_limit)
-        position_snapshots = self.list_latest_exchange_snapshots("positions", limit=order_limit)
-        account_snapshots = self.list_latest_exchange_snapshots("account", limit=order_limit)
+        order_snapshots = self.list_latest_exchange_snapshots(
+            "orders", limit=order_limit
+        )
+        position_snapshots = self.list_latest_exchange_snapshots(
+            "positions", limit=order_limit
+        )
+        account_snapshots = self.list_latest_exchange_snapshots(
+            "account", limit=order_limit
+        )
         recent_fills = self.list_recent_fills(fill_limit)
         journal_recent = self.list_recent_execution_journal(journal_limit)
         exit_plans = self.list_active_exit_plans(limit=exit_plan_limit)
@@ -1187,7 +1231,10 @@ class LiveBrokerRepository:
         return _serialize_row(dict(row))
 
     def safety_latch_is_active(self) -> bool:
-        """True wenn letztes safety_latch-Audit `arm` ist (blockt Live-Fire bis operatorisches release)."""
+        """
+        True wenn letztes safety_latch-Audit `arm` ist
+        (blockt Live-Fire bis operatorisches release).
+        """
         with self._connect() as conn:
             row = conn.execute(
                 """
@@ -1351,7 +1398,9 @@ class LiveBrokerRepository:
             "recent_fills": self.list_recent_fills(20),
             "active_kill_switches": self.active_kill_switches(),
             "latest_reconcile": self.latest_reconcile_snapshot(),
-            "recovery_state": self.reconstruct_runtime_state(order_limit=100, fill_limit=100),
+            "recovery_state": self.reconstruct_runtime_state(
+                order_limit=100, fill_limit=100
+            ),
         }
 
     def list_live_positions(self) -> list[dict[str, Any]]:
@@ -1365,14 +1414,20 @@ class LiveBrokerRepository:
             ).fetchall()
         return [_serialize_row(dict(r)) for r in rows]
 
-    def delete_live_position(self, inst_id: str, product_type: str, hold_side: str) -> bool:
+    def delete_live_position(
+        self, inst_id: str, product_type: str, hold_side: str
+    ) -> bool:
         with self._connect() as conn:
             r = conn.execute(
                 """
                 DELETE FROM live.positions
                 WHERE inst_id = %s AND product_type = %s AND hold_side = %s
                 """,
-                (inst_id.strip().upper(), product_type.strip().upper(), hold_side.strip().lower()),
+                (
+                    inst_id.strip().upper(),
+                    product_type.strip().upper(),
+                    hold_side.strip().lower(),
+                ),
             )
             return (r.rowcount or 0) > 0
 
@@ -1402,9 +1457,12 @@ class LiveBrokerRepository:
             r = conn.execute(
                 """
                 INSERT INTO live.positions (
-                    inst_id, product_type, hold_side, size_base, entry_price, margin, notional_value, raw_json, source
+                    inst_id, product_type, hold_side, size_base, entry_price,
+                    margin, notional_value, raw_json, source
                 ) VALUES (
-                    %(inst_id)s, %(product_type)s, %(hold_side)s, %(size_base)s, %(entry_price)s, %(margin)s, %(notional_value)s, %(raw_json)s, %(source)s
+                    %(inst_id)s, %(product_type)s, %(hold_side)s,
+                    %(size_base)s, %(entry_price)s, %(margin)s,
+                    %(notional_value)s, %(raw_json)s, %(source)s
                 )
                 ON CONFLICT (inst_id, product_type, hold_side) DO UPDATE SET
                     size_base = EXCLUDED.size_base,
@@ -1439,8 +1497,15 @@ class LiveBrokerRepository:
         execution_id: str | None,
         apex_trace: dict[str, Any],
     ) -> None:
-        """Prompt 39: `app.apex_latency_audit` (kein starker Contract mit audit-ledger HTTP)."""
-        if not (signal_id or "").strip() or not isinstance(apex_trace, dict) or not apex_trace:
+        """
+        Prompt 39: `app.apex_latency_audit`
+        (kein starker Contract mit audit-ledger HTTP).
+        """
+        if (
+            not (signal_id or "").strip()
+            or not isinstance(apex_trace, dict)
+            or not apex_trace
+        ):
             return
         eid: UUID | None
         try:
@@ -1450,10 +1515,15 @@ class LiveBrokerRepository:
         with self._connect() as conn:
             conn.execute(
                 """
-                INSERT INTO app.apex_latency_audit (signal_id, execution_id, trace_id, apex_trace, updated_at)
+                INSERT INTO app.apex_latency_audit (
+                    signal_id, execution_id, trace_id, apex_trace, updated_at
+                )
                 VALUES (%(sid)s, %(eid)s, %(tid)s, %(apex)s, now())
                 ON CONFLICT (signal_id) DO UPDATE SET
-                    execution_id = COALESCE(EXCLUDED.execution_id, app.apex_latency_audit.execution_id),
+                    execution_id = COALESCE(
+                        EXCLUDED.execution_id,
+                        app.apex_latency_audit.execution_id
+                    ),
                     trace_id = EXCLUDED.trace_id,
                     apex_trace = EXCLUDED.apex_trace,
                     updated_at = now()
@@ -1469,11 +1539,8 @@ class LiveBrokerRepository:
     def _connect(self) -> Any:
         if self._pool is not None:
             return self._pool.connection()
-        return cast(
-            psycopg.Connection[Any],
-            psycopg.connect(
-                self._dsn,
-                row_factory=cast(Any, dict_row),
-                connect_timeout=5,
-            ),
+        return psycopg.connect(
+            self._dsn,
+            row_factory=cast(Any, dict_row),
+            connect_timeout=5,
         )

@@ -5,8 +5,13 @@ import uuid
 from typing import Any
 
 from shared_py.bitget.instruments import BitgetInstrumentIdentity
-from shared_py.eventbus import EventEnvelope, RedisStreamBus, STREAM_SIGNAL_CREATED
-from shared_py.observability.apex_trace import finalize_apex_deltas, new_apex_trace, now_ns, set_hop
+from shared_py.eventbus import STREAM_SIGNAL_CREATED, EventEnvelope, RedisStreamBus
+from shared_py.observability.apex_trace import (
+    finalize_apex_deltas,
+    new_apex_trace,
+    now_ns,
+    set_hop,
+)
 from shared_py.replay_determinism import stable_stream_event_id
 
 

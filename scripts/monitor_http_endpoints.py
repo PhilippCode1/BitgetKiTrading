@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import json
 import os
-import sys
 import urllib.request
 from pathlib import Path
 
@@ -30,7 +29,9 @@ def load_dotenv(path: Path) -> dict[str, str]:
 
 
 def get_json(url: str, timeout: float = 8.0) -> tuple[int, dict]:
-    req = urllib.request.Request(url, method="GET", headers={"User-Agent": "monitor-http-endpoints/1.0"})
+    req = urllib.request.Request(
+        url, method="GET", headers={"User-Agent": "monitor-http-endpoints/1.0"}
+    )
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         raw = resp.read().decode("utf-8", errors="replace")
         return resp.status, json.loads(raw) if raw.strip() else {}
@@ -44,12 +45,16 @@ def main() -> int:
     if bind in ("0.0.0.0", "[::]", "::"):
         bind = "127.0.0.1"
     gw = (env.get("API_GATEWAY_URL") or f"http://{bind}:8000").rstrip("/")
-    dash = (os.environ.get("MONITOR_DASHBOARD_ORIGIN") or "http://127.0.0.1:3000").rstrip("/")
+    dash = (
+        os.environ.get("MONITOR_DASHBOARD_ORIGIN") or "http://127.0.0.1:3000"
+    ).rstrip("/")
 
     ok_all = True
     # Gateway
     try:
-        req = urllib.request.Request(f"{gw}/health", headers={"User-Agent": "monitor/1"})
+        req = urllib.request.Request(
+            f"{gw}/health", headers={"User-Agent": "monitor/1"}
+        )
         with urllib.request.urlopen(req, timeout=6) as r:
             gh = r.status == 200
             print(f"gateway_health http_status={r.status} ok={gh}")

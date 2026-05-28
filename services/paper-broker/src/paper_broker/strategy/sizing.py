@@ -74,8 +74,12 @@ def qty_for_signal_class(settings: PaperBrokerSettings, signal_class: str) -> De
     return base
 
 
-def leverage_for_signal(settings: PaperBrokerSettings, signal: dict[str, Any]) -> Decimal:
-    base = max(7, min(int(settings.paper_default_leverage), int(settings.paper_max_leverage)))
+def leverage_for_signal(
+    settings: PaperBrokerSettings, signal: dict[str, Any]
+) -> Decimal:
+    base = max(
+        7, min(int(settings.paper_default_leverage), int(settings.paper_max_leverage))
+    )
     preferred = _preferred_leverage(signal)
     if preferred is not None:
         return Decimal(str(max(7, min(int(settings.paper_max_leverage), preferred))))

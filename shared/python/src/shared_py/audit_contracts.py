@@ -136,7 +136,9 @@ def validate_private_audit_event(event: dict[str, Any]) -> AuditValidationResult
     }:
         warnings.append("operator_context_unexpected")
 
-    return AuditValidationResult(valid=not errors, errors=list(dict.fromkeys(errors)), warnings=warnings)
+    return AuditValidationResult(
+        valid=not errors, errors=list(dict.fromkeys(errors)), warnings=warnings
+    )
 
 
 def build_private_audit_event(payload: dict[str, Any]) -> dict[str, Any]:
@@ -154,7 +156,11 @@ def build_german_forensic_summary(event: dict[str, Any]) -> str:
     decision = str(event.get("decision") or "unbekannt")
     reasons = event.get("reason_codes") or []
     reason_text = str(event.get("reason_text_de") or "").strip()
-    reason_part = ", ".join(str(item) for item in reasons) if isinstance(reasons, list) else str(reasons)
+    reason_part = (
+        ", ".join(str(item) for item in reasons)
+        if isinstance(reasons, list)
+        else str(reasons)
+    )
     if reason_text:
         return f"Entscheidung fuer {symbol}: {decision}. Grund: {reason_text} ({reason_part})."
     return f"Entscheidung fuer {symbol}: {decision}. Grundcodes: {reason_part}."

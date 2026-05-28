@@ -17,7 +17,10 @@ for import_path in (ROOT, SHARED_SRC):
         sys.path.insert(0, str(import_path))
 
 from scripts.production_readiness_scorecard import build_from_repo  # noqa: E402
-from shared_py.readiness_scorecard import CategoryScore, ReadinessScorecard  # noqa: E402
+from shared_py.readiness_scorecard import (  # noqa: E402
+    CategoryScore,
+    ReadinessScorecard,
+)
 
 DEFAULT_OUTPUT = ROOT / "docs" / "production_10_10" / "CURSOR_MASTER_STATUS.md"
 
@@ -31,17 +34,37 @@ class AssessmentArea:
 
 ASSESSMENT_AREAS: tuple[AssessmentArea, ...] = (
     AssessmentArea(1, "Produktziel und Scope-Klarheit", ("private_owner_scope",)),
-    AssessmentArea(2, "Systemarchitektur", ("deployment_parity", "main_console_information_architecture")),
-    AssessmentArea(3, "Service-Grenzen und Datenfluesse", ("deployment_parity", "audit_forensics")),
-    AssessmentArea(4, "Trading-Kern / Signal-Engine", ("strategy_validation_per_asset_class",)),
+    AssessmentArea(
+        2,
+        "Systemarchitektur",
+        ("deployment_parity", "main_console_information_architecture"),
+    ),
+    AssessmentArea(
+        3, "Service-Grenzen und Datenfluesse", ("deployment_parity", "audit_forensics")
+    ),
+    AssessmentArea(
+        4, "Trading-Kern / Signal-Engine", ("strategy_validation_per_asset_class",)
+    ),
     AssessmentArea(5, "Risk-Governance", ("portfolio_risk", "asset_risk_tiers")),
     AssessmentArea(6, "Portfolio-Risk", ("portfolio_risk",)),
     AssessmentArea(7, "Asset-Risk-Tiers", ("asset_risk_tiers",)),
-    AssessmentArea(8, "Multi-Asset-Order-Sizing", ("multi_asset_order_sizing", "asset_risk_tiers")),
-    AssessmentArea(9, "Instrumentenkatalog / Bitget Asset Universe", ("instrument_catalog", "bitget_asset_universe")),
-    AssessmentArea(10, "Market-Data-Qualitaet pro Asset", ("market_data_quality_per_asset",)),
-    AssessmentArea(11, "Liquiditaet / Spread / Slippage", ("liquidity_spread_slippage_per_asset",)),
-    AssessmentArea(12, "Paper-Broker", ("strategy_validation_per_asset_class", "deployment_parity")),
+    AssessmentArea(
+        8, "Multi-Asset-Order-Sizing", ("multi_asset_order_sizing", "asset_risk_tiers")
+    ),
+    AssessmentArea(
+        9,
+        "Instrumentenkatalog / Bitget Asset Universe",
+        ("instrument_catalog", "bitget_asset_universe"),
+    ),
+    AssessmentArea(
+        10, "Market-Data-Qualitaet pro Asset", ("market_data_quality_per_asset",)
+    ),
+    AssessmentArea(
+        11, "Liquiditaet / Spread / Slippage", ("liquidity_spread_slippage_per_asset",)
+    ),
+    AssessmentArea(
+        12, "Paper-Broker", ("strategy_validation_per_asset_class", "deployment_parity")
+    ),
     AssessmentArea(13, "Shadow-Modus", ("shadow_burn_in",)),
     AssessmentArea(14, "Live-Broker", ("live_broker_fail_closed",)),
     AssessmentArea(15, "Live-Broker Fail-Closed", ("live_broker_fail_closed",)),
@@ -51,35 +74,87 @@ ASSESSMENT_AREAS: tuple[AssessmentArea, ...] = (
     AssessmentArea(19, "Emergency-Flatten", ("emergency_flatten",)),
     AssessmentArea(20, "Exchange-Readiness Bitget", ("bitget_exchange_readiness",)),
     AssessmentArea(21, "ENV-Profile", ("env_secrets_profiles", "deployment_parity")),
-    AssessmentArea(22, "Secrets / Vault / Rotation", ("env_secrets_profiles", "supply_chain_security")),
-    AssessmentArea(23, "API-Gateway Security", ("admin_access_single_owner", "frontend_main_console_security")),
+    AssessmentArea(
+        22,
+        "Secrets / Vault / Rotation",
+        ("env_secrets_profiles", "supply_chain_security"),
+    ),
+    AssessmentArea(
+        23,
+        "API-Gateway Security",
+        ("admin_access_single_owner", "frontend_main_console_security"),
+    ),
     AssessmentArea(24, "Interne Service-Auth", ("admin_access_single_owner",)),
-    AssessmentArea(25, "Dashboard / Main Console", ("main_console_information_architecture", "frontend_main_console_security")),
+    AssessmentArea(
+        25,
+        "Dashboard / Main Console",
+        ("main_console_information_architecture", "frontend_main_console_security"),
+    ),
     AssessmentArea(26, "Deutsche UX / Operator-Sprache", ("german_only_ui",)),
-    AssessmentArea(27, "Operator-Approval", ("final_go_no_go_scorecard", "admin_access_single_owner")),
+    AssessmentArea(
+        27,
+        "Operator-Approval",
+        ("final_go_no_go_scorecard", "admin_access_single_owner"),
+    ),
     AssessmentArea(28, "Audit / Forensics / Replay", ("audit_forensics",)),
     AssessmentArea(29, "Observability / Metrics / Logs", ("observability_slos",)),
     AssessmentArea(30, "Alert-Routing / Incident-Drill", ("alert_routing",)),
     AssessmentArea(31, "Backup / Restore", ("backup_restore",)),
     AssessmentArea(32, "Disaster-Recovery", ("disaster_recovery", "backup_restore")),
-    AssessmentArea(33, "CI/CD", ("deployment_parity", "supply_chain_security", "branch_protection_ci")),
-    AssessmentArea(34, "Branch-Protection-Evidence", ("branch_protection_ci", "final_go_no_go_scorecard")),
+    AssessmentArea(
+        33,
+        "CI/CD",
+        ("deployment_parity", "supply_chain_security", "branch_protection_ci"),
+    ),
+    AssessmentArea(
+        34,
+        "Branch-Protection-Evidence",
+        ("branch_protection_ci", "final_go_no_go_scorecard"),
+    ),
     AssessmentArea(35, "Testabdeckung", ("final_go_no_go_scorecard",)),
-    AssessmentArea(36, "Type Safety / Mypy / TS", ("deployment_parity", "supply_chain_security")),
-    AssessmentArea(37, "Dependency / Supply-Chain Security", ("supply_chain_security",)),
+    AssessmentArea(
+        36, "Type Safety / Mypy / TS", ("deployment_parity", "supply_chain_security")
+    ),
+    AssessmentArea(
+        37, "Dependency / Supply-Chain Security", ("supply_chain_security",)
+    ),
     AssessmentArea(38, "Docker / Compose / Runtime-Paritaet", ("deployment_parity",)),
     AssessmentArea(39, "Staging-Paritaet", ("deployment_parity",)),
-    AssessmentArea(40, "Release / Rollback", ("final_go_no_go_scorecard", "deployment_parity")),
-    AssessmentArea(41, "Performance / Load / Capacity", ("observability_slos", "deployment_parity")),
-    AssessmentArea(42, "LLM-Orchestrator / KI-Strecken", ("strategy_validation_per_asset_class", "audit_forensics")),
-    AssessmentArea(43, "LLM-Safety / Execution Authority", ("live_broker_fail_closed", "audit_forensics")),
+    AssessmentArea(
+        40, "Release / Rollback", ("final_go_no_go_scorecard", "deployment_parity")
+    ),
+    AssessmentArea(
+        41, "Performance / Load / Capacity", ("observability_slos", "deployment_parity")
+    ),
+    AssessmentArea(
+        42,
+        "LLM-Orchestrator / KI-Strecken",
+        ("strategy_validation_per_asset_class", "audit_forensics"),
+    ),
+    AssessmentArea(
+        43,
+        "LLM-Safety / Execution Authority",
+        ("live_broker_fail_closed", "audit_forensics"),
+    ),
     AssessmentArea(44, "Compliance-/Legal-Readiness", ("final_go_no_go_scorecard",)),
-    AssessmentArea(45, "Dokumentation / Runbooks", ("final_go_no_go_scorecard", "backup_restore", "disaster_recovery")),
+    AssessmentArea(
+        45,
+        "Dokumentation / Runbooks",
+        ("final_go_no_go_scorecard", "backup_restore", "disaster_recovery"),
+    ),
     AssessmentArea(46, "Evidence-Matrix", ("final_go_no_go_scorecard",)),
     AssessmentArea(47, "Production-Readiness-Scorecard", ("final_go_no_go_scorecard",)),
     AssessmentArea(48, "Finaler Go/No-Go-Prozess", ("final_go_no_go_scorecard",)),
-    AssessmentArea(49, "Private-Live-Candidate-Readiness", ("final_go_no_go_scorecard", "bitget_exchange_readiness")),
-    AssessmentArea(50, "Full-Autonomous-Live-Readiness", ("final_go_no_go_scorecard", "shadow_burn_in")),
+    AssessmentArea(
+        49,
+        "Private-Live-Candidate-Readiness",
+        ("final_go_no_go_scorecard", "bitget_exchange_readiness"),
+    ),
+    AssessmentArea(
+        50,
+        "Full-Autonomous-Live-Readiness",
+        ("final_go_no_go_scorecard", "shadow_burn_in"),
+    ),
 )
 
 
@@ -112,10 +187,18 @@ def _score_for_category(category: CategoryScore | None) -> int:
 
 
 def _area_score(area: AssessmentArea, by_id: dict[str, CategoryScore]) -> int:
-    scores = [_score_for_category(by_id.get(category_id)) for category_id in area.category_ids]
+    scores = [
+        _score_for_category(by_id.get(category_id)) for category_id in area.category_ids
+    ]
     score = round(mean(scores)) if scores else 2
-    if any(by_id.get(category_id) and by_id[category_id].blocks_live_trading for category_id in area.category_ids):
-        if any(by_id.get(category_id) and by_id[category_id].status != "verified" for category_id in area.category_ids):
+    if any(
+        by_id.get(category_id) and by_id[category_id].blocks_live_trading
+        for category_id in area.category_ids
+    ):
+        if any(
+            by_id.get(category_id) and by_id[category_id].status != "verified"
+            for category_id in area.category_ids
+        ):
             score = min(score, 6)
     if area.number == 50:
         score = min(score, 4)
@@ -129,7 +212,9 @@ def _category_reference(area: AssessmentArea, by_id: dict[str, CategoryScore]) -
         if category is None:
             references.append(f"{category_id}=missing")
         else:
-            references.append(f"{category_id}={category.status}/{category.decision}/{category.severity}")
+            references.append(
+                f"{category_id}={category.status}/{category.decision}/{category.severity}"
+            )
     return ", ".join(references)
 
 
@@ -160,13 +245,18 @@ def render_master_status(
     test_results = test_results or []
     not_run = not_run or []
     new_evidence = new_evidence or ["`docs/production_10_10/CURSOR_MASTER_STATUS.md`"]
-    next_step = next_step or "P0 zuerst: naechsten groessten Live-Blocker mit Strict-Report, Tests und Evidence-Matrix verknuepfen."
+    next_step = (
+        next_step
+        or "P0 zuerst: naechsten groessten Live-Blocker mit Strict-Report, Tests und Evidence-Matrix verknuepfen."
+    )
     by_id = {category.id: category for category in scorecard.categories}
     area_rows = [
         (area, _area_score(area, by_id), _category_reference(area, by_id))
         for area in ASSESSMENT_AREAS
     ]
-    overall_score = _overall_score([score for _area, score, _ref in area_rows], scorecard)
+    overall_score = _overall_score(
+        [score for _area, score, _ref in area_rows], scorecard
+    )
     p0_blockers = [item for item in scorecard.live_blockers if "(P0)" in item]
     p1_blockers = [item for item in scorecard.live_blockers if "(P1)" in item]
     p2_blockers = [item for item in scorecard.live_blockers if "(P2)" in item]

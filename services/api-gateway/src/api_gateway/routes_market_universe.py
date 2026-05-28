@@ -6,6 +6,7 @@ from typing import Annotated, Any
 import psycopg
 from fastapi import APIRouter, Depends, HTTPException, Query
 from psycopg.rows import dict_row
+from shared_py.bitget.instruments import MARKET_UNIVERSE_SCHEMA_VERSION
 
 from api_gateway.auth import GatewayAuthContext, require_operator_aggregate_auth
 from api_gateway.config import get_gateway_settings
@@ -18,7 +19,6 @@ from api_gateway.db_live_queries import (
 )
 from api_gateway.db_market_universe_queries import fetch_market_universe_status
 from api_gateway.gateway_read_envelope import NEXT_STEP_DB, merge_read_envelope
-from shared_py.bitget.instruments import MARKET_UNIVERSE_SCHEMA_VERSION
 
 logger = logging.getLogger("api_gateway.market_universe")
 
@@ -53,6 +53,7 @@ def _degraded_universe_payload(configuration: dict[str, Any]) -> dict[str, Any]:
         "instruments": [],
     }
 
+
 router = APIRouter(prefix="/v1/market-universe", tags=["market-universe"])
 
 
@@ -64,7 +65,9 @@ def market_universe_status(
     try:
         dsn = get_database_url()
         with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
-            payload = fetch_market_universe_status(conn, configuration_snapshot=configuration)
+            payload = fetch_market_universe_status(
+                conn, configuration_snapshot=configuration
+            )
         return merge_read_envelope(
             payload,
             status="ok",
@@ -123,15 +126,21 @@ def market_universe_candles(
         resolved_symbol = validate_live_symbol(symbol)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    res_mf = str(
-        market_family
-        or g.dashboard_default_market_family
-        or g.next_public_default_market_family
-        or "futures"
-    ).strip().lower()
+    res_mf = (
+        str(
+            market_family
+            or g.dashboard_default_market_family
+            or g.next_public_default_market_family
+            or "futures"
+        )
+        .strip()
+        .lower()
+    )
     res_pt: str | None = None
     if res_mf == "futures":
-        res_pt = (product_type or g.default_futures_product_type() or "").strip().upper() or None
+        res_pt = (
+            product_type or g.default_futures_product_type() or ""
+        ).strip().upper() or None
     res_margin_mode: str | None = None
     if res_mf == "margin":
         res_margin_mode = (margin_account_mode or "isolated").strip().lower()
@@ -191,12 +200,12 @@ def market_universe_candles(
             "timeframe": tf_resolved,
         },
         status="empty" if empty else "ok",
-        message="Keine Zeilen in tsdb.candles fuer dieses Symbol/TF."
-        if empty
-        else None,
+        message=(
+            "Keine Zeilen in tsdb.candles fuer dieses Symbol/TF." if empty else None
+        ),
         empty_state=empty,
         degradation_reason="no_candles" if empty else None,
-        next_step="Market-Stream/Feature-Engine; tsdb.candles pruefen."
-        if empty
-        else None,
+        next_step=(
+            "Market-Stream/Feature-Engine; tsdb.candles pruefen." if empty else None
+        ),
     )

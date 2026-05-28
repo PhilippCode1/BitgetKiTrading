@@ -3,6 +3,10 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
+from shared_py.take_trade_model import (
+    BPS_REGRESSION_MODEL_NAMES,
+    MARKET_REGIME_CLASSIFIER_MODEL_NAME,
+)
 
 from learning_engine.config import LearningEngineSettings
 from learning_engine.meta_models import (
@@ -12,8 +16,9 @@ from learning_engine.meta_models import (
 )
 from learning_engine.storage import repo_model_runs
 from learning_engine.storage.connection import db_connect
-from learning_engine.training.specialist_readiness import audit_specialist_training_readiness
-from shared_py.take_trade_model import BPS_REGRESSION_MODEL_NAMES, MARKET_REGIME_CLASSIFIER_MODEL_NAME
+from learning_engine.training.specialist_readiness import (
+    audit_specialist_training_readiness,
+)
 
 
 def build_models_router(settings: LearningEngineSettings) -> APIRouter:
@@ -28,7 +33,9 @@ def build_models_router(settings: LearningEngineSettings) -> APIRouter:
                 promoted_only=True,
             )
         if row is None:
-            raise HTTPException(status_code=404, detail="kein promoted take_trade_prob Modell")
+            raise HTTPException(
+                status_code=404, detail="kein promoted take_trade_prob Modell"
+            )
         return {"status": "ok", "model": repo_model_runs.jsonable_row(row)}
 
     @r.get("/learning/models/take-trade/runs")
@@ -75,7 +82,9 @@ def build_models_router(settings: LearningEngineSettings) -> APIRouter:
                 if row is not None:
                     items[model_name] = repo_model_runs.jsonable_row(row)
         if not items:
-            raise HTTPException(status_code=404, detail="keine promoted expected-bps Modelle")
+            raise HTTPException(
+                status_code=404, detail="keine promoted expected-bps Modelle"
+            )
         return {"status": "ok", "models": items}
 
     @r.get("/learning/models/expected-bps/runs")
@@ -94,7 +103,9 @@ def build_models_router(settings: LearningEngineSettings) -> APIRouter:
         return {"status": "ok", "models": items}
 
     @r.post("/learning/models/expected-bps/train-now")
-    def train_expected_bps(symbol: str | None = None, promote: bool = True) -> dict[str, Any]:
+    def train_expected_bps(
+        symbol: str | None = None, promote: bool = True
+    ) -> dict[str, Any]:
         try:
             with db_connect(settings.database_url) as conn:
                 with conn.transaction():
@@ -117,7 +128,9 @@ def build_models_router(settings: LearningEngineSettings) -> APIRouter:
                 promoted_only=True,
             )
         if row is None:
-            raise HTTPException(status_code=404, detail="kein promoted market_regime_classifier")
+            raise HTTPException(
+                status_code=404, detail="kein promoted market_regime_classifier"
+            )
         return {"status": "ok", "model": repo_model_runs.jsonable_row(row)}
 
     @r.get("/learning/models/regime-classifier/runs")
@@ -144,7 +157,9 @@ def build_models_router(settings: LearningEngineSettings) -> APIRouter:
         return {"status": "ok", "report": report}
 
     @r.post("/learning/models/regime-classifier/train-now")
-    def train_regime_classifier(symbol: str | None = None, promote: bool = True) -> dict[str, Any]:
+    def train_regime_classifier(
+        symbol: str | None = None, promote: bool = True
+    ) -> dict[str, Any]:
         try:
             with db_connect(settings.database_url) as conn:
                 with conn.transaction():

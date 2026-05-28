@@ -121,7 +121,9 @@ def test_fetch_latest_feature_snapshot_formats_cost_and_liquidity_fields() -> No
         "funding_source": "bitget_rest_funding",
         "open_interest_source": "bitget_rest_open_interest",
     }
-    snapshot = fetch_latest_feature_snapshot(_FakeConn(row), symbol="BTCUSDT", timeframe="5m")
+    snapshot = fetch_latest_feature_snapshot(
+        _FakeConn(row), symbol="BTCUSDT", timeframe="5m"
+    )
     assert snapshot is not None
     assert snapshot["canonical_instrument_id"] == "bitget:futures:USDT-FUTURES:BTCUSDT"
     assert snapshot["market_family"] == "futures"
@@ -191,7 +193,9 @@ def test_fetch_latest_signal_bundle_includes_regime_fields() -> None:
         "targets_explain_json": {},
         "reward_risk_ratio": 1.8,
     }
-    bundle = fetch_latest_signal_bundle(_FakeConn(row), symbol="BTCUSDT", timeframe="5m")
+    bundle = fetch_latest_signal_bundle(
+        _FakeConn(row), symbol="BTCUSDT", timeframe="5m"
+    )
     assert bundle is not None
     assert bundle["canonical_instrument_id"] == "bitget:futures:USDT-FUTURES:BTCUSDT"
     assert bundle["market_family"] == "futures"
@@ -288,7 +292,9 @@ def test_fetch_latest_signal_bundle_decision_graph_from_reasons_json() -> None:
         "targets_explain_json": {},
         "reward_risk_ratio": None,
     }
-    bundle = fetch_latest_signal_bundle(_FakeConn(row), symbol="BTCUSDT", timeframe="5m")
+    bundle = fetch_latest_signal_bundle(
+        _FakeConn(row), symbol="BTCUSDT", timeframe="5m"
+    )
     assert bundle is not None
     assert bundle["decision_pipeline_version"] == "se-end-decision-v4"
     assert bundle["decision_control_flow"] == dcf

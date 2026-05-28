@@ -68,7 +68,10 @@ def gateway_readiness_core_parts_resilient() -> dict[str, tuple[bool, str]]:
     rurl = effective_redis_url(s)
     if not dsn.strip() or not (rurl or "").strip():
         return parts
-    if not (parts.get("postgres", (False, ""))[0] and parts.get("postgres_schema", (False, ""))[0]):
+    if not (
+        parts.get("postgres", (False, ""))[0]
+        and parts.get("postgres_schema", (False, ""))[0]
+    ):
         return parts
     time.sleep(READINESS_REDIS_TRANSIENT_RECHECK_SEC)
     return gateway_readiness_core_parts_raw()

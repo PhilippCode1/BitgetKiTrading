@@ -4,17 +4,17 @@ Status: automatisch erzeugt aus `docs/production_10_10/evidence_matrix.yaml`.
 
 ## Summary
 
-- Kategorien: 31
+- Kategorien: 32
 - Live-Blocker nicht verified: 30
 - Schema-Fehler: 0
-- Warnungen: 30
+- Warnungen: 270
 
 ## Status Counts
 
 | Status | Anzahl |
 | --- | ---: |
 | `external_required` | 2 |
-| `implemented` | 28 |
+| `implemented` | 29 |
 | `missing` | 0 |
 | `partial` | 0 |
 | `verified` | 1 |
@@ -89,36 +89,277 @@ Status: automatisch erzeugt aus `docs/production_10_10/evidence_matrix.yaml`.
 | supply_chain_security | `implemented` | ja | `docs/REPO_SBOM_AND_RELEASE_METADATA.md`, `tools/pip_audit_supply_chain_gate.py`, `tools/pip_audit_allowlist.txt`, `docs/ci_release_gates.md`, `docs/production_10_10/supply_chain_release_audit_evidence.template.json`, `scripts/deployment_supply_chain_evidence_report.py`, `reports/deployment_supply_chain_evidence.md`, `reports/deployment_supply_chain_evidence.json`, `tests/scripts/test_deployment_supply_chain_evidence_report.py` |
 | branch_protection_ci | `implemented` | ja | `.github/workflows/ci.yml`, `tools/check_github_branch_protection.py`, `docs/ci_release_gates.md`, `release-readiness.md`, `docs/production_10_10/branch_protection_evidence.template.json`, `scripts/branch_protection_ci_evidence_report.py`, `reports/branch_protection_ci_evidence.md`, `reports/branch_protection_ci_evidence.json`, `tests/scripts/test_branch_protection_ci_evidence_report.py`, `tests/unit/docs/test_ci_release_gates_doc_contract.py` |
 | final_go_no_go_scorecard | `external_required` | ja | `docs/production_10_10/evidence_matrix.yaml`, `docs/production_10_10/no_go_rules.md`, `docs/production_10_10/owner_private_live_release.template.json`, `docs/production_10_10/production_readiness_scorecard.md`, `docs/production_10_10/production_readiness_scorecard_template.md`, `shared/python/src/shared_py/readiness_scorecard.py`, `scripts/production_readiness_scorecard.py`, `tests/scripts/test_production_readiness_scorecard.py`, `tests/security/test_readiness_scorecard_decisions.py`, `tools/check_10_10_evidence.py`, `tests/docs/test_no_go_rules_contract.py`, `tests/security/test_readiness_private_live_invariants.py`, `tests/security/test_owner_release_gitignore_contract.py`, `tests/tools/test_release_gates_repo_smoke.py`, `tests/tools/test_cursor_master_status_repo_smoke.py`, `tests/tools/test_ci_workflow_evidence_gates.py` |
+| demo_trading_lifecycle | `implemented` | nein | `scripts/demo_trading_evidence_report.py`, `scripts/demo_reconcile_evidence_report.py`, `scripts/demo_lifecycle_evidence_report.py`, `reports/demo_trading_evidence_DEMO_VERIFIED.json`, `reports/demo_reconcile_evidence_CLOSE_VERIFIED.json`, `reports/demo_reconcile_evidence_CLEAN.json`, `reports/demo_lifecycle_evidence.json`, `tests/scripts/test_demo_lifecycle_evidence_report.py`, `tests/security/test_demo_lifecycle_never_enables_live.py`, `tests/security/test_demo_evidence_does_not_count_as_live_verified.py` |
 
 ## Issues
 
+- WARNING `missing_evidence_file` `private_owner_scope`: missing evidence file: AGENTS.md
+- WARNING `missing_evidence_file` `private_owner_scope`: missing evidence file: docs/production_10_10/private_owner_scope.md
+- WARNING `missing_evidence_file` `private_owner_scope`: missing evidence file: docs/production_10_10/README.md
+- WARNING `missing_evidence_file` `main_console_information_architecture`: missing evidence file: docs/production_10_10/main_console_bff_api_wiring.md
+- WARNING `missing_evidence_file` `main_console_information_architecture`: missing evidence file: docs/production_10_10/main_console_ai_operator_assistant.md
+- WARNING `missing_evidence_file` `main_console_information_architecture`: missing evidence file: docs/production_10_10/ai_operator_assistant_prompt_schema.md
+- WARNING `missing_evidence_file` `main_console_information_architecture`: missing evidence file: docs/dashboard_pages.md
+- WARNING `missing_evidence_file` `main_console_information_architecture`: missing evidence file: docs/dashboard_operator.md
 - WARNING `live_blocker_not_verified` `main_console_information_architecture`: blocks live trading and is not verified
+- WARNING `missing_evidence_file` `german_only_ui`: missing evidence file: docs/production_10_10/german_only_ui_policy.md
+- WARNING `missing_evidence_file` `german_only_ui`: missing evidence file: docs/production_10_10/german_ui_glossary.md
+- WARNING `missing_evidence_file` `german_only_ui`: missing evidence file: docs/production_10_10/german_ui_status_language.md
+- WARNING `missing_evidence_file` `german_only_ui`: missing evidence file: docs/operator_status_language.md
+- WARNING `missing_evidence_file` `german_only_ui`: missing evidence file: docs/dashboard_operator.md
+- WARNING `missing_evidence_file` `german_only_ui`: missing evidence file: docs/production_10_10/german_only_ui_uat.template.json
+- WARNING `missing_evidence_file` `german_only_ui`: missing evidence file: reports/german_only_ui_evidence.md
+- WARNING `missing_evidence_file` `german_only_ui`: missing evidence file: reports/german_only_ui_evidence.json
 - WARNING `live_blocker_not_verified` `german_only_ui`: blocks live trading and is not verified
+- WARNING `missing_evidence_file` `bitget_asset_universe`: missing evidence file: docs/bitget-config.md
+- WARNING `missing_evidence_file` `bitget_asset_universe`: missing evidence file: docs/production_10_10/bitget_asset_universe.md
+- WARNING `missing_evidence_file` `bitget_asset_universe`: missing evidence file: docs/production_10_10/BITGET_RUNTIME_EVIDENCE_GUIDE.md
+- WARNING `missing_evidence_file` `bitget_asset_universe`: missing evidence file: docs/production_10_10/instrument_catalog_contract.md
+- WARNING `missing_evidence_file` `bitget_asset_universe`: missing evidence file: docs/production_10_10/bitget_exchange_instrument_evidence.template.json
+- WARNING `missing_evidence_file` `bitget_asset_universe`: missing evidence file: reports/bitget_exchange_instrument_evidence.md
+- WARNING `missing_evidence_file` `bitget_asset_universe`: missing evidence file: reports/bitget_exchange_instrument_evidence.json
 - WARNING `live_blocker_not_verified` `bitget_asset_universe`: blocks live trading and is not verified
+- WARNING `missing_evidence_file` `instrument_catalog`: missing evidence file: docs/bitget-config.md
+- WARNING `missing_evidence_file` `instrument_catalog`: missing evidence file: docs/production_10_10/instrument_catalog_contract.md
+- WARNING `missing_evidence_file` `instrument_catalog`: missing evidence file: docs/production_10_10/BITGET_RUNTIME_EVIDENCE_GUIDE.md
+- WARNING `missing_evidence_file` `instrument_catalog`: missing evidence file: docs/production_10_10/bitget_exchange_instrument_evidence.template.json
+- WARNING `missing_evidence_file` `instrument_catalog`: missing evidence file: reports/bitget_exchange_instrument_evidence.md
+- WARNING `missing_evidence_file` `instrument_catalog`: missing evidence file: reports/bitget_exchange_instrument_evidence.json
+- WARNING `missing_evidence_file` `instrument_catalog`: missing evidence file: reports/bitget_asset_universe_sample.md
+- WARNING `missing_evidence_file` `instrument_catalog`: missing evidence file: reports/bitget_asset_universe_sample.json
 - WARNING `live_blocker_not_verified` `instrument_catalog`: blocks live trading and is not verified
+- WARNING `missing_evidence_file` `asset_quarantine_and_delisting`: missing evidence file: docs/bitget-config.md
+- WARNING `missing_evidence_file` `asset_quarantine_and_delisting`: missing evidence file: reports/asset_governance_evidence.md
+- WARNING `missing_evidence_file` `asset_quarantine_and_delisting`: missing evidence file: reports/asset_governance_evidence.json
+- WARNING `missing_evidence_file` `asset_quarantine_and_delisting`: missing evidence file: reports/asset_preflight_evidence.md
+- WARNING `missing_evidence_file` `asset_quarantine_and_delisting`: missing evidence file: reports/asset_preflight_evidence.json
 - WARNING `live_blocker_not_verified` `asset_quarantine_and_delisting`: blocks live trading and is not verified
+- WARNING `missing_evidence_file` `market_data_quality_per_asset`: missing evidence file: docs/production_10_10/market_data_quality_per_asset.md
+- WARNING `missing_evidence_file` `market_data_quality_per_asset`: missing evidence file: docs/production_10_10/MARKET_DATA_RUNTIME_EVIDENCE_GUIDE.md
+- WARNING `missing_evidence_file` `market_data_quality_per_asset`: missing evidence file: reports/asset_data_quality.md
+- WARNING `missing_evidence_file` `market_data_quality_per_asset`: missing evidence file: reports/asset_data_quality.json
 - WARNING `live_blocker_not_verified` `market_data_quality_per_asset`: blocks live trading and is not verified
+- WARNING `missing_evidence_file` `liquidity_spread_slippage_per_asset`: missing evidence file: docs/risk_governor.md
+- WARNING `missing_evidence_file` `liquidity_spread_slippage_per_asset`: missing evidence file: docs/portfolio_risk_governor.md
+- WARNING `missing_evidence_file` `liquidity_spread_slippage_per_asset`: missing evidence file: docs/production_10_10/LIQUIDITY_RUNTIME_EVIDENCE_GUIDE.md
+- WARNING `missing_evidence_file` `liquidity_spread_slippage_per_asset`: missing evidence file: reports/asset_governance_evidence.md
+- WARNING `missing_evidence_file` `liquidity_spread_slippage_per_asset`: missing evidence file: reports/asset_governance_evidence.json
+- WARNING `missing_evidence_file` `liquidity_spread_slippage_per_asset`: missing evidence file: reports/asset_preflight_evidence.md
+- WARNING `missing_evidence_file` `liquidity_spread_slippage_per_asset`: missing evidence file: reports/asset_preflight_evidence.json
+- WARNING `missing_evidence_file` `liquidity_spread_slippage_per_asset`: missing evidence file: tests/unit/live_broker/test_liquidity_guard.py
 - WARNING `live_blocker_not_verified` `liquidity_spread_slippage_per_asset`: blocks live trading and is not verified
+- WARNING `missing_evidence_file` `asset_risk_tiers`: missing evidence file: docs/production_10_10/asset_risk_tiers_and_order_sizing.md
+- WARNING `missing_evidence_file` `asset_risk_tiers`: missing evidence file: docs/production_10_10/RISK_LIMITS_OWNER_EVIDENCE_GUIDE.md
+- WARNING `missing_evidence_file` `asset_risk_tiers`: missing evidence file: docs/risk_governor.md
+- WARNING `missing_evidence_file` `asset_risk_tiers`: missing evidence file: docs/portfolio_risk_governor.md
+- WARNING `missing_evidence_file` `asset_risk_tiers`: missing evidence file: reports/asset_governance_evidence.md
+- WARNING `missing_evidence_file` `asset_risk_tiers`: missing evidence file: reports/asset_governance_evidence.json
+- WARNING `missing_evidence_file` `asset_risk_tiers`: missing evidence file: reports/asset_preflight_evidence.md
+- WARNING `missing_evidence_file` `asset_risk_tiers`: missing evidence file: reports/asset_preflight_evidence.json
 - WARNING `live_blocker_not_verified` `asset_risk_tiers`: blocks live trading and is not verified
+- WARNING `missing_evidence_file` `multi_asset_order_sizing`: missing evidence file: docs/risk_governor.md
+- WARNING `missing_evidence_file` `multi_asset_order_sizing`: missing evidence file: docs/live_broker.md
+- WARNING `missing_evidence_file` `multi_asset_order_sizing`: missing evidence file: docs/production_10_10/RISK_LIMITS_OWNER_EVIDENCE_GUIDE.md
+- WARNING `missing_evidence_file` `multi_asset_order_sizing`: missing evidence file: reports/asset_governance_evidence.md
+- WARNING `missing_evidence_file` `multi_asset_order_sizing`: missing evidence file: reports/asset_governance_evidence.json
+- WARNING `missing_evidence_file` `multi_asset_order_sizing`: missing evidence file: reports/asset_preflight_evidence.md
+- WARNING `missing_evidence_file` `multi_asset_order_sizing`: missing evidence file: reports/asset_preflight_evidence.json
 - WARNING `live_blocker_not_verified` `multi_asset_order_sizing`: blocks live trading and is not verified
+- WARNING `missing_evidence_file` `portfolio_risk`: missing evidence file: docs/portfolio_risk_governor.md
+- WARNING `missing_evidence_file` `portfolio_risk`: missing evidence file: docs/risk_governor.md
+- WARNING `missing_evidence_file` `portfolio_risk`: missing evidence file: docs/production_10_10/RISK_LIMITS_OWNER_EVIDENCE_GUIDE.md
+- WARNING `missing_evidence_file` `portfolio_risk`: missing evidence file: docs/production_10_10/PORTFOLIO_RISK_DRILL_GUIDE.md
+- WARNING `missing_evidence_file` `portfolio_risk`: missing evidence file: docs/production_10_10/owner_risk_limits.template.json
+- WARNING `missing_evidence_file` `portfolio_risk`: missing evidence file: docs/production_10_10/portfolio_strategy_evidence.template.json
+- WARNING `missing_evidence_file` `portfolio_risk`: missing evidence file: reports/portfolio_risk_drill.md
+- WARNING `missing_evidence_file` `portfolio_risk`: missing evidence file: reports/portfolio_risk_drill.json
+- WARNING `missing_evidence_file` `portfolio_risk`: missing evidence file: reports/portfolio_strategy_evidence.md
+- WARNING `missing_evidence_file` `portfolio_risk`: missing evidence file: reports/portfolio_strategy_evidence.json
+- WARNING `missing_evidence_file` `portfolio_risk`: missing evidence file: reports/risk_execution_evidence.md
+- WARNING `missing_evidence_file` `portfolio_risk`: missing evidence file: reports/risk_execution_evidence.json
 - WARNING `live_blocker_not_verified` `portfolio_risk`: blocks live trading and is not verified
+- WARNING `missing_evidence_file` `strategy_validation_per_asset_class`: missing evidence file: docs/model_stack_v2.md
+- WARNING `missing_evidence_file` `strategy_validation_per_asset_class`: missing evidence file: docs/playbook_registry.md
+- WARNING `missing_evidence_file` `strategy_validation_per_asset_class`: missing evidence file: docs/production_10_10/portfolio_strategy_evidence.template.json
+- WARNING `missing_evidence_file` `strategy_validation_per_asset_class`: missing evidence file: docs/production_10_10/STRATEGY_VALIDATION_EVIDENCE_GUIDE.md
+- WARNING `missing_evidence_file` `strategy_validation_per_asset_class`: missing evidence file: reports/portfolio_strategy_evidence.md
+- WARNING `missing_evidence_file` `strategy_validation_per_asset_class`: missing evidence file: reports/portfolio_strategy_evidence.json
+- WARNING `missing_evidence_file` `strategy_validation_per_asset_class`: missing evidence file: reports/strategy_asset_evidence.md
+- WARNING `missing_evidence_file` `strategy_validation_per_asset_class`: missing evidence file: reports/strategy_asset_evidence.json
+- WARNING `missing_evidence_file` `strategy_validation_per_asset_class`: missing evidence file: reports/multi_asset_strategy_evidence.md
+- WARNING `missing_evidence_file` `strategy_validation_per_asset_class`: missing evidence file: reports/multi_asset_strategy_evidence.json
 - WARNING `live_blocker_not_verified` `strategy_validation_per_asset_class`: blocks live trading and is not verified
+- WARNING `missing_evidence_file` `live_broker_fail_closed`: missing evidence file: docs/live_broker.md
+- WARNING `missing_evidence_file` `live_broker_fail_closed`: missing evidence file: docs/production_10_10/LIVE_BROKER_FAIL_CLOSED_DRILL_GUIDE.md
+- WARNING `missing_evidence_file` `live_broker_fail_closed`: missing evidence file: docs/production_10_10/live_broker_fail_closed_evidence.template.json
+- WARNING `missing_evidence_file` `live_broker_fail_closed`: missing evidence file: docs/production_10_10/09_live_mirror_gate_matrix.md
+- WARNING `missing_evidence_file` `live_broker_fail_closed`: missing evidence file: reports/live_broker_preflight_matrix.md
 - WARNING `live_blocker_not_verified` `live_broker_fail_closed`: blocks live trading and is not verified
+- WARNING `missing_evidence_file` `order_idempotency`: missing evidence file: docs/live_broker.md
+- WARNING `missing_evidence_file` `order_idempotency`: missing evidence file: docs/recovery_runbook.md
+- WARNING `missing_evidence_file` `order_idempotency`: missing evidence file: docs/production_10_10/RECONCILE_IDEMPOTENCY_DRILL_GUIDE.md
+- WARNING `missing_evidence_file` `order_idempotency`: missing evidence file: docs/production_10_10/reconcile_exchange_truth_per_asset.md
+- WARNING `missing_evidence_file` `order_idempotency`: missing evidence file: docs/production_10_10/reconcile_idempotency_evidence.template.json
+- WARNING `missing_evidence_file` `order_idempotency`: missing evidence file: reports/reconcile_idempotency_summary.md
+- WARNING `missing_evidence_file` `order_idempotency`: missing evidence file: reports/reconcile_idempotency_summary.json
+- WARNING `missing_evidence_file` `order_idempotency`: missing evidence file: reports/risk_execution_evidence.md
+- WARNING `missing_evidence_file` `order_idempotency`: missing evidence file: reports/risk_execution_evidence.json
 - WARNING `live_blocker_not_verified` `order_idempotency`: blocks live trading and is not verified
+- WARNING `missing_evidence_file` `reconcile_safety`: missing evidence file: docs/live_broker.md
+- WARNING `missing_evidence_file` `reconcile_safety`: missing evidence file: docs/emergency_runbook.md
+- WARNING `missing_evidence_file` `reconcile_safety`: missing evidence file: docs/recovery_runbook.md
+- WARNING `missing_evidence_file` `reconcile_safety`: missing evidence file: docs/production_10_10/RECONCILE_IDEMPOTENCY_DRILL_GUIDE.md
+- WARNING `missing_evidence_file` `reconcile_safety`: missing evidence file: docs/production_10_10/reconcile_exchange_truth_per_asset.md
+- WARNING `missing_evidence_file` `reconcile_safety`: missing evidence file: docs/production_10_10/reconcile_idempotency_evidence.template.json
+- WARNING `missing_evidence_file` `reconcile_safety`: missing evidence file: docs/production_10_10/live_safety_drill.md
+- WARNING `missing_evidence_file` `reconcile_safety`: missing evidence file: docs/production_10_10/live_safety_drill.template.json
+- WARNING `missing_evidence_file` `reconcile_safety`: missing evidence file: reports/reconcile_idempotency_summary.md
+- WARNING `missing_evidence_file` `reconcile_safety`: missing evidence file: reports/reconcile_idempotency_summary.json
+- WARNING `missing_evidence_file` `reconcile_safety`: missing evidence file: reports/risk_execution_evidence.md
+- WARNING `missing_evidence_file` `reconcile_safety`: missing evidence file: reports/risk_execution_evidence.json
 - WARNING `live_blocker_not_verified` `reconcile_safety`: blocks live trading and is not verified
+- WARNING `missing_evidence_file` `kill_switch_safety_latch`: missing evidence file: docs/live_broker.md
+- WARNING `missing_evidence_file` `kill_switch_safety_latch`: missing evidence file: docs/emergency_runbook.md
+- WARNING `missing_evidence_file` `kill_switch_safety_latch`: missing evidence file: docs/production_10_10/LIVE_SAFETY_DRILL_GUIDE.md
+- WARNING `missing_evidence_file` `kill_switch_safety_latch`: missing evidence file: docs/production_10_10/live_safety_drill.md
+- WARNING `missing_evidence_file` `kill_switch_safety_latch`: missing evidence file: docs/production_10_10/live_safety_drill.template.json
+- WARNING `missing_evidence_file` `kill_switch_safety_latch`: missing evidence file: reports/live_safety_summary.md
+- WARNING `missing_evidence_file` `kill_switch_safety_latch`: missing evidence file: reports/live_safety_summary.json
+- WARNING `missing_evidence_file` `kill_switch_safety_latch`: missing evidence file: reports/live_safety_evidence.md
+- WARNING `missing_evidence_file` `kill_switch_safety_latch`: missing evidence file: reports/live_safety_evidence.json
 - WARNING `live_blocker_not_verified` `kill_switch_safety_latch`: blocks live trading and is not verified
+- WARNING `missing_evidence_file` `emergency_flatten`: missing evidence file: docs/LaunchChecklist.md
+- WARNING `missing_evidence_file` `emergency_flatten`: missing evidence file: docs/production_10_10/LIVE_SAFETY_DRILL_GUIDE.md
+- WARNING `missing_evidence_file` `emergency_flatten`: missing evidence file: docs/production_10_10/live_safety_drill.md
+- WARNING `missing_evidence_file` `emergency_flatten`: missing evidence file: docs/production_10_10/live_safety_drill.template.json
+- WARNING `missing_evidence_file` `emergency_flatten`: missing evidence file: reports/live_safety_summary.md
+- WARNING `missing_evidence_file` `emergency_flatten`: missing evidence file: reports/live_safety_summary.json
+- WARNING `missing_evidence_file` `emergency_flatten`: missing evidence file: reports/live_safety_evidence.md
+- WARNING `missing_evidence_file` `emergency_flatten`: missing evidence file: reports/live_safety_evidence.json
 - WARNING `live_blocker_not_verified` `emergency_flatten`: blocks live trading and is not verified
+- WARNING `missing_evidence_file` `bitget_exchange_readiness`: missing evidence file: docs/bitget-config.md
+- WARNING `missing_evidence_file` `bitget_exchange_readiness`: missing evidence file: docs/production_10_10/bitget_exchange_readiness.md
+- WARNING `missing_evidence_file` `bitget_exchange_readiness`: missing evidence file: docs/production_10_10/BITGET_RUNTIME_EVIDENCE_GUIDE.md
+- WARNING `missing_evidence_file` `bitget_exchange_readiness`: missing evidence file: docs/production_10_10/bitget_key_permission_evidence.template.json
+- WARNING `missing_evidence_file` `bitget_exchange_readiness`: missing evidence file: docs/production_10_10/bitget_exchange_instrument_evidence.template.json
+- WARNING `missing_evidence_file` `bitget_exchange_readiness`: missing evidence file: reports/bitget_exchange_instrument_evidence.md
+- WARNING `missing_evidence_file` `bitget_exchange_readiness`: missing evidence file: reports/bitget_exchange_instrument_evidence.json
+- WARNING `missing_evidence_file` `bitget_exchange_readiness`: missing evidence file: reports/bitget_key_permission_evidence.md
+- WARNING `missing_evidence_file` `bitget_exchange_readiness`: missing evidence file: reports/bitget_key_permission_evidence.json
+- WARNING `missing_evidence_file` `bitget_exchange_readiness`: missing evidence file: reports/bitget_runtime_readiness.md
+- WARNING `missing_evidence_file` `bitget_exchange_readiness`: missing evidence file: reports/bitget_runtime_readiness.json
 - WARNING `live_blocker_not_verified` `bitget_exchange_readiness`: blocks live trading and is not verified
+- WARNING `missing_evidence_file` `env_secrets_profiles`: missing evidence file: docs/SECRETS_MATRIX.md
+- WARNING `missing_evidence_file` `env_secrets_profiles`: missing evidence file: docs/production_10_10/env_secrets_single_owner_safety.md
+- WARNING `missing_evidence_file` `env_secrets_profiles`: missing evidence file: docs/env_profiles.md
+- WARNING `missing_evidence_file` `env_secrets_profiles`: missing evidence file: reports/secrets_vault_rotation_evidence.md
+- WARNING `missing_evidence_file` `env_secrets_profiles`: missing evidence file: reports/secrets_vault_rotation_evidence.json
 - WARNING `live_blocker_not_verified` `env_secrets_profiles`: blocks live trading and is not verified
+- WARNING `missing_evidence_file` `observability_slos`: missing evidence file: docs/observability.md
+- WARNING `missing_evidence_file` `observability_slos`: missing evidence file: docs/observability_slos.md
+- WARNING `missing_evidence_file` `observability_slos`: missing evidence file: OBSERVABILITY_AND_SLOS.md
+- WARNING `missing_evidence_file` `observability_slos`: missing evidence file: docs/production_10_10/OBSERVABILITY_ALERT_INCIDENT_GUIDE.md
+- WARNING `missing_evidence_file` `observability_slos`: missing evidence file: docs/production_10_10/05_alert_routing_and_incident_drill.md
+- WARNING `missing_evidence_file` `observability_slos`: missing evidence file: docs/production_10_10/observability_slos_evidence.template.json
+- WARNING `missing_evidence_file` `observability_slos`: missing evidence file: reports/observability_alert_evidence.md
+- WARNING `missing_evidence_file` `observability_slos`: missing evidence file: reports/observability_alert_evidence.json
+- WARNING `missing_evidence_file` `observability_slos`: missing evidence file: reports/incident_drill.md
+- WARNING `missing_evidence_file` `observability_slos`: missing evidence file: reports/incident_drill.json
 - WARNING `live_blocker_not_verified` `observability_slos`: blocks live trading and is not verified
+- WARNING `missing_evidence_file` `alert_routing`: missing evidence file: docs/production_10_10/OBSERVABILITY_ALERT_INCIDENT_GUIDE.md
+- WARNING `missing_evidence_file` `alert_routing`: missing evidence file: docs/production_10_10/05_alert_routing_and_incident_drill.md
+- WARNING `missing_evidence_file` `alert_routing`: missing evidence file: docs/production_10_10/alert_routing_evidence.template.json
+- WARNING `missing_evidence_file` `alert_routing`: missing evidence file: docs/observability.md
+- WARNING `missing_evidence_file` `alert_routing`: missing evidence file: reports/observability_alert_evidence.md
+- WARNING `missing_evidence_file` `alert_routing`: missing evidence file: reports/observability_alert_evidence.json
+- WARNING `missing_evidence_file` `alert_routing`: missing evidence file: reports/alert_routing_verify.md
+- WARNING `missing_evidence_file` `alert_routing`: missing evidence file: reports/incident_drill.md
+- WARNING `missing_evidence_file` `alert_routing`: missing evidence file: reports/incident_drill.json
 - WARNING `live_blocker_not_verified` `alert_routing`: blocks live trading and is not verified
+- WARNING `missing_evidence_file` `backup_restore`: missing evidence file: docs/recovery_runbook.md
+- WARNING `missing_evidence_file` `backup_restore`: missing evidence file: docs/production_10_10/BACKUP_RESTORE_DR_GUIDE.md
+- WARNING `missing_evidence_file` `backup_restore`: missing evidence file: docs/production_10_10/03_postgres_restore_drill.md
+- WARNING `missing_evidence_file` `backup_restore`: missing evidence file: docs/production_10_10/disaster_recovery_restore_test.md
+- WARNING `missing_evidence_file` `backup_restore`: missing evidence file: docs/production_10_10/postgres_restore_evidence.template.json
+- WARNING `missing_evidence_file` `backup_restore`: missing evidence file: reports/backup_dr_evidence.md
+- WARNING `missing_evidence_file` `backup_restore`: missing evidence file: reports/backup_dr_evidence.json
+- WARNING `missing_evidence_file` `backup_restore`: missing evidence file: reports/postgres_restore_drill.md
+- WARNING `missing_evidence_file` `backup_restore`: missing evidence file: reports/postgres_restore_drill.json
+- WARNING `missing_evidence_file` `backup_restore`: missing evidence file: reports/disaster_recovery_drill.md
+- WARNING `missing_evidence_file` `backup_restore`: missing evidence file: reports/disaster_recovery_drill.json
 - WARNING `live_blocker_not_verified` `backup_restore`: blocks live trading and is not verified
+- WARNING `missing_evidence_file` `shadow_burn_in`: missing evidence file: docs/production_10_10/04_shadow_burn_in_certificate.md
+- WARNING `missing_evidence_file` `shadow_burn_in`: missing evidence file: docs/production_10_10/shadow_burn_in_certificate.md
+- WARNING `missing_evidence_file` `shadow_burn_in`: missing evidence file: docs/production_10_10/shadow_burn_in_certificate.template.json
 - WARNING `live_blocker_not_verified` `shadow_burn_in`: blocks live trading and is not verified
+- WARNING `missing_evidence_file` `disaster_recovery`: missing evidence file: docs/recovery_runbook.md
+- WARNING `missing_evidence_file` `disaster_recovery`: missing evidence file: docs/production_10_10/BACKUP_RESTORE_DR_GUIDE.md
+- WARNING `missing_evidence_file` `disaster_recovery`: missing evidence file: docs/production_10_10/03_postgres_restore_drill.md
+- WARNING `missing_evidence_file` `disaster_recovery`: missing evidence file: docs/production_10_10/disaster_recovery_restore_test.md
+- WARNING `missing_evidence_file` `disaster_recovery`: missing evidence file: docs/production_10_10/postgres_restore_evidence.template.json
+- WARNING `missing_evidence_file` `disaster_recovery`: missing evidence file: docs/production_10_10/live_safety_drill.md
+- WARNING `missing_evidence_file` `disaster_recovery`: missing evidence file: reports/backup_dr_evidence.md
+- WARNING `missing_evidence_file` `disaster_recovery`: missing evidence file: reports/backup_dr_evidence.json
+- WARNING `missing_evidence_file` `disaster_recovery`: missing evidence file: reports/postgres_restore_drill.md
+- WARNING `missing_evidence_file` `disaster_recovery`: missing evidence file: reports/postgres_restore_drill.json
+- WARNING `missing_evidence_file` `disaster_recovery`: missing evidence file: reports/disaster_recovery_drill.md
+- WARNING `missing_evidence_file` `disaster_recovery`: missing evidence file: reports/disaster_recovery_drill.json
 - WARNING `live_blocker_not_verified` `disaster_recovery`: blocks live trading and is not verified
+- WARNING `missing_evidence_file` `audit_forensics`: missing evidence file: docs/production_10_10/audit_forensics_replay_private_console.md
+- WARNING `missing_evidence_file` `audit_forensics`: missing evidence file: docs/dashboard_operator_console.md
+- WARNING `missing_evidence_file` `audit_forensics`: missing evidence file: reports/main_console_safety_audit.md
+- WARNING `missing_evidence_file` `audit_forensics`: missing evidence file: reports/main_console_safety_audit.json
+- WARNING `missing_evidence_file` `audit_forensics`: missing evidence file: docs/production_10_10/audit_forensics_replay_evidence.template.json
+- WARNING `missing_evidence_file` `audit_forensics`: missing evidence file: reports/audit_forensics_replay_evidence.md
+- WARNING `missing_evidence_file` `audit_forensics`: missing evidence file: reports/audit_forensics_replay_evidence.json
 - WARNING `live_blocker_not_verified` `audit_forensics`: blocks live trading and is not verified
+- WARNING `missing_evidence_file` `frontend_main_console_security`: missing evidence file: docs/api_gateway_security.md
+- WARNING `missing_evidence_file` `frontend_main_console_security`: missing evidence file: docs/dashboard_operator.md
+- WARNING `missing_evidence_file` `frontend_main_console_security`: missing evidence file: docs/production_10_10/main_console_safety_command_center.md
+- WARNING `missing_evidence_file` `frontend_main_console_security`: missing evidence file: reports/main_console_safety_audit.md
+- WARNING `missing_evidence_file` `frontend_main_console_security`: missing evidence file: reports/main_console_safety_audit.json
+- WARNING `missing_evidence_file` `frontend_main_console_security`: missing evidence file: reports/admin_gateway_security.md
+- WARNING `missing_evidence_file` `frontend_main_console_security`: missing evidence file: reports/admin_gateway_security.json
+- WARNING `missing_evidence_file` `frontend_main_console_security`: missing evidence file: docs/production_10_10/audit_forensics_replay_evidence.template.json
+- WARNING `missing_evidence_file` `frontend_main_console_security`: missing evidence file: reports/audit_forensics_replay_evidence.md
+- WARNING `missing_evidence_file` `frontend_main_console_security`: missing evidence file: reports/audit_forensics_replay_evidence.json
 - WARNING `live_blocker_not_verified` `frontend_main_console_security`: blocks live trading and is not verified
+- WARNING `missing_evidence_file` `admin_access_single_owner`: missing evidence file: docs/operator_urls_and_secrets.md
+- WARNING `missing_evidence_file` `admin_access_single_owner`: missing evidence file: docs/api_gateway_security.md
+- WARNING `missing_evidence_file` `admin_access_single_owner`: missing evidence file: docs/production_10_10/private_owner_scope.md
+- WARNING `missing_evidence_file` `admin_access_single_owner`: missing evidence file: docs/production_10_10/single_admin_access_control.md
+- WARNING `missing_evidence_file` `admin_access_single_owner`: missing evidence file: reports/admin_gateway_security.md
+- WARNING `missing_evidence_file` `admin_access_single_owner`: missing evidence file: reports/admin_gateway_security.json
+- WARNING `missing_evidence_file` `admin_access_single_owner`: missing evidence file: docs/production_10_10/audit_forensics_replay_evidence.template.json
+- WARNING `missing_evidence_file` `admin_access_single_owner`: missing evidence file: reports/audit_forensics_replay_evidence.md
+- WARNING `missing_evidence_file` `admin_access_single_owner`: missing evidence file: reports/audit_forensics_replay_evidence.json
 - WARNING `live_blocker_not_verified` `admin_access_single_owner`: blocks live trading and is not verified
+- WARNING `missing_evidence_file` `deployment_parity`: missing evidence file: docs/Deploy.md
+- WARNING `missing_evidence_file` `deployment_parity`: missing evidence file: docs/compose_runtime.md
+- WARNING `missing_evidence_file` `deployment_parity`: missing evidence file: docs/ci_release_gates.md
+- WARNING `missing_evidence_file` `deployment_parity`: missing evidence file: STAGING_PARITY.md
+- WARNING `missing_evidence_file` `deployment_parity`: missing evidence file: docs/STAGING_PARITY.md
+- WARNING `missing_evidence_file` `deployment_parity`: missing evidence file: docs/production_10_10/deployment_staging_parity_evidence.template.json
+- WARNING `missing_evidence_file` `deployment_parity`: missing evidence file: reports/deployment_supply_chain_evidence.md
+- WARNING `missing_evidence_file` `deployment_parity`: missing evidence file: reports/deployment_supply_chain_evidence.json
 - WARNING `live_blocker_not_verified` `deployment_parity`: blocks live trading and is not verified
+- WARNING `missing_evidence_file` `supply_chain_security`: missing evidence file: docs/REPO_SBOM_AND_RELEASE_METADATA.md
+- WARNING `missing_evidence_file` `supply_chain_security`: missing evidence file: docs/ci_release_gates.md
+- WARNING `missing_evidence_file` `supply_chain_security`: missing evidence file: docs/production_10_10/supply_chain_release_audit_evidence.template.json
+- WARNING `missing_evidence_file` `supply_chain_security`: missing evidence file: reports/deployment_supply_chain_evidence.md
+- WARNING `missing_evidence_file` `supply_chain_security`: missing evidence file: reports/deployment_supply_chain_evidence.json
 - WARNING `live_blocker_not_verified` `supply_chain_security`: blocks live trading and is not verified
+- WARNING `missing_evidence_file` `branch_protection_ci`: missing evidence file: docs/ci_release_gates.md
+- WARNING `missing_evidence_file` `branch_protection_ci`: missing evidence file: release-readiness.md
+- WARNING `missing_evidence_file` `branch_protection_ci`: missing evidence file: docs/production_10_10/branch_protection_evidence.template.json
+- WARNING `missing_evidence_file` `branch_protection_ci`: missing evidence file: reports/branch_protection_ci_evidence.md
+- WARNING `missing_evidence_file` `branch_protection_ci`: missing evidence file: reports/branch_protection_ci_evidence.json
 - WARNING `live_blocker_not_verified` `branch_protection_ci`: blocks live trading and is not verified
+- WARNING `missing_evidence_file` `final_go_no_go_scorecard`: missing evidence file: docs/production_10_10/owner_private_live_release.template.json
+- WARNING `missing_evidence_file` `final_go_no_go_scorecard`: missing evidence file: docs/production_10_10/production_readiness_scorecard.md
+- WARNING `missing_evidence_file` `final_go_no_go_scorecard`: missing evidence file: docs/production_10_10/production_readiness_scorecard_template.md
 - WARNING `live_blocker_not_verified` `final_go_no_go_scorecard`: blocks live trading and is not verified
+- WARNING `missing_evidence_file` `demo_trading_lifecycle`: missing evidence file: reports/demo_trading_evidence_DEMO_VERIFIED.json
+- WARNING `missing_evidence_file` `demo_trading_lifecycle`: missing evidence file: reports/demo_reconcile_evidence_CLOSE_VERIFIED.json
+- WARNING `missing_evidence_file` `demo_trading_lifecycle`: missing evidence file: reports/demo_reconcile_evidence_CLEAN.json
+- WARNING `missing_evidence_file` `demo_trading_lifecycle`: missing evidence file: reports/demo_lifecycle_evidence.json

@@ -76,13 +76,17 @@ def test_unknown_asset_live_blocked() -> None:
 
 
 def test_new_asset_not_automatically_live_allowed() -> None:
-    entry = _entry(operator_note_de="Neues Asset in Beobachtung", live_allowed=True).with_evaluated_live_gate()
+    entry = _entry(
+        operator_note_de="Neues Asset in Beobachtung", live_allowed=True
+    ).with_evaluated_live_gate()
     assert entry.live_allowed is False
     assert "neues_asset_nicht_automatisch_live" in entry.live_block_reasons
 
 
 def test_new_asset_blocks_even_when_input_live_flag_is_false() -> None:
-    entry = _entry(operator_note_de="Neu aufgenommen, vorerst shadow-only.", live_allowed=False).with_evaluated_live_gate()
+    entry = _entry(
+        operator_note_de="Neu aufgenommen, vorerst shadow-only.", live_allowed=False
+    ).with_evaluated_live_gate()
     assert entry.live_allowed is False
     assert "neues_asset_nicht_automatisch_live" in entry.live_block_reasons
 

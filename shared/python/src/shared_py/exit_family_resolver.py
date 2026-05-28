@@ -152,7 +152,9 @@ def resolve_exit_family_resolution(
     ]
     ranked_valid = [x for x in raw_ranked if x in _VALID_EXIT_FAMILIES]
 
-    primary_raw = _normalize_family(str(end_decision_binding.get("exit_family_primary") or "").strip())
+    primary_raw = _normalize_family(
+        str(end_decision_binding.get("exit_family_primary") or "").strip()
+    )
     primary_valid = primary_raw if primary_raw in _VALID_EXIT_FAMILIES else None
 
     drivers: list[str] = []
@@ -186,7 +188,10 @@ def resolve_exit_family_resolution(
 
     depth_ratio = _coerce_float(micro.get("depth_to_bar_volume_ratio"))
     if depth_ratio is not None and depth_ratio < 0.12:
-        if "liquidity_target" in _VALID_EXIT_FAMILIES and "liquidity_target" not in prepend:
+        if (
+            "liquidity_target" in _VALID_EXIT_FAMILIES
+            and "liquidity_target" not in prepend
+        ):
             prepend.append("liquidity_target")
         drivers.append("driver_thin_depth_ratio")
 
@@ -230,11 +235,15 @@ def resolve_exit_family_resolution(
         "drivers": sorted(set(drivers)),
         "execution_hints": hints,
         "ensemble_exit_family_primary": end_decision_binding.get("exit_family_primary"),
-        "ensemble_exit_families_ranked": list(end_decision_binding.get("exit_families_ranked") or []),
+        "ensemble_exit_families_ranked": list(
+            end_decision_binding.get("exit_families_ranked") or []
+        ),
     }
 
 
-def extract_exit_execution_hints_from_trace(trace: dict[str, Any] | None) -> dict[str, Any] | None:
+def extract_exit_execution_hints_from_trace(
+    trace: dict[str, Any] | None,
+) -> dict[str, Any] | None:
     if not isinstance(trace, dict):
         return None
     h = trace.get("exit_execution_hints")
@@ -260,7 +269,9 @@ def extract_exit_execution_hints_from_trace(trace: dict[str, Any] | None) -> dic
     return None
 
 
-def extract_exit_family_resolution_from_trace(trace: dict[str, Any] | None) -> dict[str, Any] | None:
+def extract_exit_family_resolution_from_trace(
+    trace: dict[str, Any] | None,
+) -> dict[str, Any] | None:
     if not isinstance(trace, dict):
         return None
     raw = trace.get("exit_family_resolution")

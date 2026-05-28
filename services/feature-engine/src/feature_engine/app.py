@@ -6,15 +6,10 @@ from contextlib import asynccontextmanager
 from typing import ClassVar
 
 import psycopg
+from config.settings import BaseServiceSettings
 from fastapi import FastAPI, HTTPException, Query
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import SettingsConfigDict
-
-from config.settings import BaseServiceSettings
-from feature_engine.correlation_worker import CorrelationGraphWorker
-from feature_engine.storage import FeatureRepository
-from feature_engine.tsfm_pipeline import TsfmPatchConsumer
-from feature_engine.worker import FeatureWorker
 from shared_py.bitget.catalog import BitgetInstrumentCatalog
 from shared_py.bitget.config import BitgetSettings
 from shared_py.bitget.metadata import BitgetInstrumentMetadataService
@@ -30,6 +25,12 @@ from shared_py.observability import (
     instrument_fastapi,
     merge_ready_details,
 )
+
+from feature_engine.correlation_worker import CorrelationGraphWorker
+from feature_engine.storage import FeatureRepository
+from feature_engine.tsfm_pipeline import TsfmPatchConsumer
+from feature_engine.worker import FeatureWorker
+
 
 class FeatureEngineSettings(BaseServiceSettings):
     model_config = SettingsConfigDict(
@@ -54,9 +55,15 @@ class FeatureEngineSettings(BaseServiceSettings):
     feature_atr_window: int = Field(default=14, alias="FEATURE_ATR_WINDOW")
     feature_rsi_window: int = Field(default=14, alias="FEATURE_RSI_WINDOW")
     feature_volz_window: int = Field(default=50, alias="FEATURE_VOLZ_WINDOW")
-    feature_max_event_age_ms: int = Field(default=120_000, alias="FEATURE_MAX_EVENT_AGE_MS")
-    feature_max_allowed_gap_bars: int = Field(default=3, alias="FEATURE_MAX_ALLOWED_GAP_BARS")
-    eventbus_default_block_ms: int = Field(default=2000, alias="EVENTBUS_DEFAULT_BLOCK_MS")
+    feature_max_event_age_ms: int = Field(
+        default=120_000, alias="FEATURE_MAX_EVENT_AGE_MS"
+    )
+    feature_max_allowed_gap_bars: int = Field(
+        default=3, alias="FEATURE_MAX_ALLOWED_GAP_BARS"
+    )
+    eventbus_default_block_ms: int = Field(
+        default=2000, alias="EVENTBUS_DEFAULT_BLOCK_MS"
+    )
     eventbus_default_count: int = Field(default=50, alias="EVENTBUS_DEFAULT_COUNT")
     eventbus_dedupe_ttl_sec: int = Field(default=86400, alias="EVENTBUS_DEDUPE_TTL_SEC")
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
@@ -77,7 +84,9 @@ class FeatureEngineSettings(BaseServiceSettings):
         default="google/timesfm-1.0-200m",
         alias="FEATURE_TSFM_MODEL_ID",
     )
-    tsfm_tick_stride: int = Field(default=10, ge=1, le=50_000, alias="FEATURE_TSFM_TICK_STRIDE")
+    tsfm_tick_stride: int = Field(
+        default=10, ge=1, le=50_000, alias="FEATURE_TSFM_TICK_STRIDE"
+    )
     tsfm_context_len: int = Field(
         default=1024,
         ge=128,
@@ -116,9 +125,15 @@ class FeatureEngineSettings(BaseServiceSettings):
         gt=0.0,
         alias="FEATURE_TSFM_PREPARE_BUDGET_MS",
     )
-    tsfm_tick_stream: str = Field(default=STREAM_MARKET_TICK, alias="FEATURE_TSFM_TICK_STREAM")
-    tsfm_tick_group: str = Field(default="feature-engine-tsfm", alias="FEATURE_TSFM_TICK_GROUP")
-    tsfm_tick_consumer: str = Field(default="fe-tsfm-1", alias="FEATURE_TSFM_TICK_CONSUMER")
+    tsfm_tick_stream: str = Field(
+        default=STREAM_MARKET_TICK, alias="FEATURE_TSFM_TICK_STREAM"
+    )
+    tsfm_tick_group: str = Field(
+        default="feature-engine-tsfm", alias="FEATURE_TSFM_TICK_GROUP"
+    )
+    tsfm_tick_consumer: str = Field(
+        default="fe-tsfm-1", alias="FEATURE_TSFM_TICK_CONSUMER"
+    )
     # P80: parallele market_tick-Handler begrenzen (verhindert Task-/OOM-Spitzen)
     feature_tsfm_tick_concurrency: int = Field(
         default=1,
@@ -131,7 +146,9 @@ class FeatureEngineSettings(BaseServiceSettings):
         ),
     )
 
-    correlation_graph_enabled: bool = Field(default=False, alias="CORRELATION_GRAPH_ENABLED")
+    correlation_graph_enabled: bool = Field(
+        default=False, alias="CORRELATION_GRAPH_ENABLED"
+    )
     correlation_publish_interval_sec: int = Field(
         default=60,
         ge=15,
@@ -212,13 +229,19 @@ class FeatureEngineSettings(BaseServiceSettings):
         return str(value).strip().upper() or "INFO"
 
     @model_validator(mode="after")
-    def _validate_windows(self) -> "FeatureEngineSettings":
+    def _validate_windows(self) -> FeatureEngineSettings:
         if self.feature_atr_window != 14:
-            raise ValueError("FEATURE_ATR_WINDOW muss fuer die persistierte Spalte atr_14 aktuell 14 sein")
+            raise ValueError(
+                "FEATURE_ATR_WINDOW muss fuer die persistierte Spalte atr_14 aktuell 14 sein"
+            )
         if self.feature_rsi_window != 14:
-            raise ValueError("FEATURE_RSI_WINDOW muss fuer die persistierte Spalte rsi_14 aktuell 14 sein")
+            raise ValueError(
+                "FEATURE_RSI_WINDOW muss fuer die persistierte Spalte rsi_14 aktuell 14 sein"
+            )
         if self.feature_volz_window != 50:
-            raise ValueError("FEATURE_VOLZ_WINDOW muss fuer die persistierte Spalte vol_z_50 aktuell 50 sein")
+            raise ValueError(
+                "FEATURE_VOLZ_WINDOW muss fuer die persistierte Spalte vol_z_50 aktuell 50 sein"
+            )
         minimum_lookback = max(
             self.feature_atr_window + 1,
             self.feature_rsi_window + 1,
@@ -316,7 +339,11 @@ class FeatureEngineRuntime:
                 "ingress_stream": self._settings.feature_stream,
                 "consumer_group": self._settings.feature_group,
                 "writes_table": "features.candle_features",
-                "reads_tables": ["tsdb.candles", "tsdb.ticker", "tsdb.orderbook_levels"],
+                "reads_tables": [
+                    "tsdb.candles",
+                    "tsdb.ticker",
+                    "tsdb.orderbook_levels",
+                ],
                 "upstream_services": ["market-stream"],
                 "note_de": (
                     "Ohne Redis oder ohne Eintraege in `events:candle_close` bleibt die Tabelle leer; "

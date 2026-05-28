@@ -41,7 +41,9 @@ def insert_order(
     return oid
 
 
-def mark_order_filled(conn: psycopg.Connection[Any], order_id: UUID, filled_ts_ms: int) -> None:
+def mark_order_filled(
+    conn: psycopg.Connection[Any], order_id: UUID, filled_ts_ms: int
+) -> None:
     conn.execute(
         "UPDATE paper.orders SET state = 'filled', filled_ts_ms = %s WHERE order_id = %s",
         (filled_ts_ms, str(order_id)),

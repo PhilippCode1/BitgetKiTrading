@@ -30,10 +30,7 @@ export function CustomerPerformanceTable() {
         </thead>
         <tbody>
           {MOCK_PERIODS.map((row) => (
-            <tr
-              key={row.id}
-              data-e2e-performance-row={row.id}
-            >
+            <tr key={row.id} data-e2e-performance-row={row.id}>
               <td>{t(row.labelKey)}</td>
               <td>
                 <Link

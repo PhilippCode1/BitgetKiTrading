@@ -14,7 +14,9 @@ def _rls_execute_stub() -> MagicMock:
     return MagicMock()
 
 
-def live_mode_conn_execute_sequence(ex_g: MagicMock, ex_c: MagicMock) -> list[MagicMock]:
+def live_mode_conn_execute_sequence(
+    ex_g: MagicMock, ex_c: MagicMock
+) -> list[MagicMock]:
     """Reihenfolge: RLS, RLS, Gates-SELECT, RLS, RLS, tenant_contract-SELECT."""
     return [
         _rls_execute_stub(),

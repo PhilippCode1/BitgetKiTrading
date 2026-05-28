@@ -15,7 +15,12 @@ for import_path in (ROOT, SHARED_SRC):
     if str(import_path) not in sys.path:
         sys.path.insert(0, str(import_path))
 
-from shared_py.portfolio_risk_controls import ExposureItem, PortfolioRiskLimits, PortfolioSnapshot, evaluate_portfolio_risk
+from shared_py.portfolio_risk_controls import (
+    ExposureItem,
+    PortfolioRiskLimits,
+    PortfolioSnapshot,
+    evaluate_portfolio_risk,
+)
 
 
 def _git_sha() -> str:
@@ -87,17 +92,67 @@ def _scenario_rows() -> list[dict[str, Any]]:
     b = _base_snapshot()
     scenarios: list[tuple[str, PortfolioSnapshot, bool]] = [
         ("normalzustand", b, True),
-        ("max_asset_exposure_verletzt", PortfolioSnapshot(**{**b.__dict__, "exposure_by_asset": {"BTCUSDT": 14_000.0}}), False),
-        ("max_family_exposure_verletzt", PortfolioSnapshot(**{**b.__dict__, "exposure_by_market_family": {"futures": 18_000.0}}), False),
-        ("max_correlation_exposure_verletzt", PortfolioSnapshot(**{**b.__dict__, "exposure_by_correlation_group": {"majors": 14_000.0}}), False),
-        ("daily_loss_limit_erreicht", PortfolioSnapshot(**{**b.__dict__, "daily_realized_pnl": -500.0}), False),
-        ("weekly_loss_limit_erreicht", PortfolioSnapshot(**{**b.__dict__, "weekly_pnl": -1500.0}), False),
-        ("drawdown_limit_erreicht", PortfolioSnapshot(**{**b.__dict__, "current_drawdown": 0.11}), False),
-        ("loss_streak_limit_erreicht", PortfolioSnapshot(**{**b.__dict__, "current_loss_streak": 6}), False),
-        ("global_halt_aktiv", PortfolioSnapshot(**{**b.__dict__, "global_halt_active": True}), False),
-        ("risk_state_unknown", PortfolioSnapshot(**{**b.__dict__, "snapshot_fresh": False}), False),
-        ("reduce_only_nach_loss_limit", PortfolioSnapshot(**{**b.__dict__, "daily_realized_pnl": -500.0}), False),
-        ("opening_order_nach_halt_blockiert", PortfolioSnapshot(**{**b.__dict__, "global_halt_active": True}), False),
+        (
+            "max_asset_exposure_verletzt",
+            PortfolioSnapshot(
+                **{**b.__dict__, "exposure_by_asset": {"BTCUSDT": 14_000.0}}
+            ),
+            False,
+        ),
+        (
+            "max_family_exposure_verletzt",
+            PortfolioSnapshot(
+                **{**b.__dict__, "exposure_by_market_family": {"futures": 18_000.0}}
+            ),
+            False,
+        ),
+        (
+            "max_correlation_exposure_verletzt",
+            PortfolioSnapshot(
+                **{**b.__dict__, "exposure_by_correlation_group": {"majors": 14_000.0}}
+            ),
+            False,
+        ),
+        (
+            "daily_loss_limit_erreicht",
+            PortfolioSnapshot(**{**b.__dict__, "daily_realized_pnl": -500.0}),
+            False,
+        ),
+        (
+            "weekly_loss_limit_erreicht",
+            PortfolioSnapshot(**{**b.__dict__, "weekly_pnl": -1500.0}),
+            False,
+        ),
+        (
+            "drawdown_limit_erreicht",
+            PortfolioSnapshot(**{**b.__dict__, "current_drawdown": 0.11}),
+            False,
+        ),
+        (
+            "loss_streak_limit_erreicht",
+            PortfolioSnapshot(**{**b.__dict__, "current_loss_streak": 6}),
+            False,
+        ),
+        (
+            "global_halt_aktiv",
+            PortfolioSnapshot(**{**b.__dict__, "global_halt_active": True}),
+            False,
+        ),
+        (
+            "risk_state_unknown",
+            PortfolioSnapshot(**{**b.__dict__, "snapshot_fresh": False}),
+            False,
+        ),
+        (
+            "reduce_only_nach_loss_limit",
+            PortfolioSnapshot(**{**b.__dict__, "daily_realized_pnl": -500.0}),
+            False,
+        ),
+        (
+            "opening_order_nach_halt_blockiert",
+            PortfolioSnapshot(**{**b.__dict__, "global_halt_active": True}),
+            False,
+        ),
     ]
     out: list[dict[str, Any]] = []
     limits = _limits()
@@ -167,8 +222,12 @@ def main() -> int:
     out_md.parent.mkdir(parents=True, exist_ok=True)
     out_json.parent.mkdir(parents=True, exist_ok=True)
     out_md.write_text(render_md(payload), encoding="utf-8")
-    out_json.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
-    print(f"portfolio_risk_drill_report: scenarios={len(payload['scenarios'])} verified={payload['verified']}")
+    out_json.write_text(
+        json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+    print(
+        f"portfolio_risk_drill_report: scenarios={len(payload['scenarios'])} verified={payload['verified']}"
+    )
     return 0
 
 

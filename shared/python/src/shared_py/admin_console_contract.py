@@ -175,7 +175,9 @@ class AdminRouteDef:
 ADMIN_PRIMARY_NAV: tuple[AdminRouteDef, ...] = (
     AdminRouteDef("start", "", "Start"),
     AdminRouteDef("customers", "/kunden", "Kunden"),
-    AdminRouteDef("billing", "/vereinbarungen-zahlungen", "Vereinbarungen und Zahlungen"),
+    AdminRouteDef(
+        "billing", "/vereinbarungen-zahlungen", "Vereinbarungen und Zahlungen"
+    ),
     AdminRouteDef("connections", "/anbindungen", "Anbindungen"),
     AdminRouteDef("ai", "/kuenstliche-intelligenz", "Kuenstliche Intelligenz"),
     AdminRouteDef("security", "/sicherheit-notfall", "Sicherheit und Notfall"),
@@ -227,7 +229,9 @@ CUSTOMER_DETAIL_TAB_LABELS_DE: dict[CustomerDetailTabId, str] = {
 }
 
 
-def customer_detail_path(customer_id: str, tab: CustomerDetailTabId | None = None) -> str:
+def customer_detail_path(
+    customer_id: str, tab: CustomerDetailTabId | None = None
+) -> str:
     base = admin_path(f"/kunden/{customer_id}")
     if tab is None:
         return base
@@ -241,7 +245,10 @@ def super_admin_display_name_de() -> str:
 
 def requires_reason_note(action: AdminActionId) -> bool:
     """Ob eine Begruendung/Notiz Pflicht ist ([ANNAHME]: bei allen kritischen Aenderungen)."""
-    return ACTION_WARNING_LEVEL[action] in (UiWarningLevel.ATTENTION, UiWarningLevel.CRITICAL)
+    return ACTION_WARNING_LEVEL[action] in (
+        UiWarningLevel.ATTENTION,
+        UiWarningLevel.CRITICAL,
+    )
 
 
 def admin_console_descriptor() -> dict[str, str | int]:
@@ -259,6 +266,4 @@ def admin_console_descriptor() -> dict[str, str | int]:
 # Platzhalter-Komponente (fuer UI-Spezifikation)
 EXPLAIN_PLACEHOLDER_SLOT_ID = "admin_explain_slot"
 EXPLAIN_PLACEHOLDER_TITLE_DE = "Kurz erklaert"
-EXPLAIN_PLACEHOLDER_BODY_DE = (
-    "Hier kann spaeter ein Bild, ein Video oder eine gefuehrte Erklaerung eingebunden werden."
-)
+EXPLAIN_PLACEHOLDER_BODY_DE = "Hier kann spaeter ein Bild, ein Video oder eine gefuehrte Erklaerung eingebunden werden."

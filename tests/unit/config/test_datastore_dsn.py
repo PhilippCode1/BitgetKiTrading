@@ -51,7 +51,9 @@ def test_os_env_database_url_overrides_dotenv_file(
     assert "redis.internal" in s.redis_url
 
 
-def test_use_docker_flag_prefers_database_url_docker(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_use_docker_flag_prefers_database_url_docker(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setenv("BITGET_USE_DOCKER_DATASTORE_DSN", "true")
     monkeypatch.setenv("APP_ENV", "local")
     monkeypatch.setenv("PRODUCTION", "false")

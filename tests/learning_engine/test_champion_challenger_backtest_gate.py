@@ -47,7 +47,9 @@ def settings_backtest_on(monkeypatch: pytest.MonkeyPatch) -> LearningEngineSetti
     return LearningEngineSettings()
 
 
-def test_backtest_passes_rel_sharpe_10pct(settings_backtest_on: LearningEngineSettings) -> None:
+def test_backtest_passes_rel_sharpe_10pct(
+    settings_backtest_on: LearningEngineSettings,
+) -> None:
     r = evaluate_champion_challenger_backtest_gate(
         metadata_json=_backtest_meta_ok(),
         settings=settings_backtest_on,
@@ -56,18 +58,26 @@ def test_backtest_passes_rel_sharpe_10pct(settings_backtest_on: LearningEngineSe
     assert (r.details.get("champion_challenger_backtest") or {}).get("pass") is True
 
 
-def test_backtest_fails_too_few_trades(settings_backtest_on: LearningEngineSettings) -> None:
+def test_backtest_fails_too_few_trades(
+    settings_backtest_on: LearningEngineSettings,
+) -> None:
     m = _backtest_meta_ok()
     m["champion_challenger_backtest"]["n_simulated_trades"] = 499
-    r = evaluate_champion_challenger_backtest_gate(metadata_json=m, settings=settings_backtest_on)
+    r = evaluate_champion_challenger_backtest_gate(
+        metadata_json=m, settings=settings_backtest_on
+    )
     assert not r.ok
     assert "champion_challenger_backtest_n_trades_below_minimum" in r.reasons
 
 
-def test_backtest_fails_worse_drawdown(settings_backtest_on: LearningEngineSettings) -> None:
+def test_backtest_fails_worse_drawdown(
+    settings_backtest_on: LearningEngineSettings,
+) -> None:
     m = _backtest_meta_ok()
     m["champion_challenger_backtest"]["challenger"]["max_drawdown"] = 0.20
-    r = evaluate_champion_challenger_backtest_gate(metadata_json=m, settings=settings_backtest_on)
+    r = evaluate_champion_challenger_backtest_gate(
+        metadata_json=m, settings=settings_backtest_on
+    )
     assert not r.ok
     assert "challenger_max_drawdown_worse_than_champion" in r.reasons
 

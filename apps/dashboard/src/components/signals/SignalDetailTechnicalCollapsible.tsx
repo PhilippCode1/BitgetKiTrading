@@ -67,8 +67,7 @@ export function SignalDetailTechnicalCollapsible({
   const operatorRelease =
     detail.operator_release_exists === true
       ? t("pages.signalsDetail.techOperatorReleaseYes", {
-          source:
-            detail.operator_release_source?.trim() || unknownLabel,
+          source: detail.operator_release_source?.trim() || unknownLabel,
         })
       : detail.operator_release_exists === false
         ? t("pages.signalsDetail.boolNo")

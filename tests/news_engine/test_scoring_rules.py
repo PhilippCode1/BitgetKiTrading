@@ -3,6 +3,7 @@ from __future__ import annotations
 import time
 
 import pytest
+
 from news_engine.scoring.impact_window import resolve_impact_window
 from news_engine.scoring.rules_v1 import score_news
 
@@ -69,8 +70,12 @@ def test_topic_tags_in_raw_json_boost_score() -> None:
 
 def test_age_multiplier_reduces_score() -> None:
     base_ts = 1_700_000_000_000
-    young = score_news("bitcoin rally", "btc", "gdelt", base_ts - 60_000, now_ms=base_ts)
-    old = score_news("bitcoin rally", "btc", "gdelt", base_ts - 10 * 3600_000, now_ms=base_ts)
+    young = score_news(
+        "bitcoin rally", "btc", "gdelt", base_ts - 60_000, now_ms=base_ts
+    )
+    old = score_news(
+        "bitcoin rally", "btc", "gdelt", base_ts - 10 * 3600_000, now_ms=base_ts
+    )
     assert young.relevance >= old.relevance
 
 

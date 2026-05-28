@@ -6,13 +6,15 @@ from typing import Any
 from uuid import UUID
 
 import psycopg
+from shared_py.leverage_allocator import MAX_LEVERAGE, allocate_integer_leverage
+from shared_py.unified_leverage_allocator import (
+    extract_execution_leverage_cap_from_signal_row,
+)
 
 from paper_broker.config import PaperBrokerSettings
 from paper_broker.engine.liquidation import should_liquidate_approx
 from paper_broker.risk.common_risk import build_paper_account_risk_metrics
 from paper_broker.risk.plan_service import build_auto_plan_bundle
-from shared_py.leverage_allocator import MAX_LEVERAGE, allocate_integer_leverage
-from shared_py.unified_leverage_allocator import extract_execution_leverage_cap_from_signal_row
 
 
 def allocate_paper_execution_leverage(
@@ -58,7 +60,9 @@ def allocate_paper_execution_leverage(
             pass
     caps = {
         "exchange_cap": risk_max,
-        "model_cap": _signal_model_cap(signal_payload, requested_leverage=requested_leverage, fallback=risk_max),
+        "model_cap": _signal_model_cap(
+            signal_payload, requested_leverage=requested_leverage, fallback=risk_max
+        ),
     }
     exec_cap = extract_execution_leverage_cap_from_signal_row(signal_payload or {})
     if exec_cap is not None and exec_cap >= 0:
@@ -199,7 +203,9 @@ def _preview_stop_bundle(
                 "stop_quality_score": stop_quality_score,
                 "stop_plan_preview": stop_plan,
             }
-        stop_distance_bps = float((abs(entry_price - stop_price) / entry_price) * Decimal("10000"))
+        stop_distance_bps = float(
+            (abs(entry_price - stop_price) / entry_price) * Decimal("10000")
+        )
         return {
             "stop_price": stop_price,
             "stop_distance_bps": round(stop_distance_bps, 6),
@@ -223,7 +229,10 @@ def _stop_distance_cap(
 ) -> int:
     if stop_distance_bps <= 0:
         return 0
-    raw_cap = int(Decimal(str(settings.leverage_stop_distance_scale_bps)) / Decimal(str(stop_distance_bps)))
+    raw_cap = int(
+        Decimal(str(settings.leverage_stop_distance_scale_bps))
+        / Decimal(str(stop_distance_bps))
+    )
     return max(0, min(risk_max, raw_cap))
 
 

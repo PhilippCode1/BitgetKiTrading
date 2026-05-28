@@ -26,7 +26,9 @@ def load_dotenv_simple(path: Path) -> dict[str, str]:
         k, _, v = line.partition("=")
         key = k.strip()
         val = v.strip()
-        if (val.startswith('"') and val.endswith('"')) or (val.startswith("'") and val.endswith("'")):
+        if (val.startswith('"') and val.endswith('"')) or (
+            val.startswith("'") and val.endswith("'")
+        ):
             val = val[1:-1]
         out[key] = val
     return out
@@ -42,7 +44,12 @@ def mint_token(env: dict[str, str], *, ttl_days: int) -> str:
     payload = {
         "sub": "dashboard-local",
         "role": "admin",
-        "gateway_roles": ["gateway:read", "admin:read", "admin:write", "operator:mutate"],
+        "gateway_roles": [
+            "gateway:read",
+            "admin:read",
+            "admin:write",
+            "operator:mutate",
+        ],
         "aud": aud,
         "iss": iss,
         "iat": now,
@@ -58,7 +65,12 @@ def update_env_file(path: Path, line: str) -> None:
     if pat.search(raw):
         new_body = pat.sub(line, raw)
     else:
-        new_body = raw.rstrip() + "\n\n# Dashboard -> Gateway (serverseitig, nicht im Browser)\n" + line + "\n"
+        new_body = (
+            raw.rstrip()
+            + "\n\n# Dashboard -> Gateway (serverseitig, nicht im Browser)\n"
+            + line
+            + "\n"
+        )
     path.write_text(new_body, encoding="utf-8", newline="\n")
 
 
@@ -66,7 +78,11 @@ def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--env-file", type=Path, default=Path(".env.local"))
     p.add_argument("--ttl-days", type=int, default=365)
-    p.add_argument("--print-line", action="store_true", help="Nur DASHBOARD_GATEWAY_AUTHORIZATION=Bearer ... ausgeben")
+    p.add_argument(
+        "--print-line",
+        action="store_true",
+        help="Nur DASHBOARD_GATEWAY_AUTHORIZATION=Bearer ... ausgeben",
+    )
     p.add_argument(
         "--update-env-file",
         action="store_true",

@@ -24,14 +24,18 @@ from tools.check_german_only_ui import (  # noqa: E402
     POLICY_DOC_DEFAULT,
     analyze_german_ui,
 )
-from tools.check_german_ui_language import analyze as analyze_german_ui_language  # noqa: E402
+from tools.check_german_ui_language import (
+    analyze as analyze_german_ui_language,  # noqa: E402
+)
 
 DEFAULT_UAT = ROOT / "docs" / "production_10_10" / "german_only_ui_uat.template.json"
 UAT_SCHEMA = 1
 
 
 def _now() -> str:
-    return datetime.now(tz=UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return (
+        datetime.now(tz=UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    )
 
 
 def _git_sha() -> str:
@@ -183,7 +187,9 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--output-md", type=Path)
     p.add_argument("--output-json", type=Path)
     p.add_argument("--write-uat-template", type=Path)
-    p.add_argument("--strict", action="store_true", help="Bei internen Scan-Fehlern Exit 1.")
+    p.add_argument(
+        "--strict", action="store_true", help="Bei internen Scan-Fehlern Exit 1."
+    )
     p.add_argument(
         "--strict-external",
         action="store_true",

@@ -15,7 +15,9 @@ def compute_slippage_metrics(
     top_n: int,
 ) -> dict[str, object]:
     if not bids or not asks:
-        raise ValueError("slippage metrics benoetigen mindestens eine Bid- und Ask-Stufe")
+        raise ValueError(
+            "slippage metrics benoetigen mindestens eine Bid- und Ask-Stufe"
+        )
 
     limited_bids = bids[:top_n]
     limited_asks = asks[:top_n]
@@ -80,7 +82,9 @@ def _depth_notional(levels: list[LevelPair]) -> Decimal:
     return total
 
 
-def _price_to_fill(levels: list[LevelPair], target_notional_usdt: Decimal) -> Decimal | None:
+def _price_to_fill(
+    levels: list[LevelPair], target_notional_usdt: Decimal
+) -> Decimal | None:
     cumulative = Decimal("0")
     for price, size in levels:
         level_notional = Decimal(price) * Decimal(size)

@@ -8,15 +8,15 @@ _llm_api_log = logging.getLogger("llm_orchestrator.api")
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+from shared_py.service_auth import (
+    InternalServiceAuthContext,
+    build_internal_service_dependency,
+)
 from starlette.requests import Request
 
 from llm_orchestrator.audit_ledger_commit import commit_war_room_to_audit_ledger
 from llm_orchestrator.exceptions import LLMPromptTooLargeError, LLMProviderOfflineError
 from llm_orchestrator.service import LLMService, ProviderPref
-from shared_py.service_auth import (
-    InternalServiceAuthContext,
-    build_internal_service_dependency,
-)
 
 if TYPE_CHECKING:
     from llm_orchestrator.consensus.war_room import ConsensusOrchestrator
@@ -174,7 +174,7 @@ def build_router(
     service: LLMService,
     *,
     settings: Any,
-    consensus: "ConsensusOrchestrator | None" = None,
+    consensus: ConsensusOrchestrator | None = None,
 ) -> APIRouter:
     r = APIRouter()
     require_internal = build_internal_service_dependency(settings)
@@ -243,7 +243,10 @@ def build_router(
         if consensus is None:
             raise HTTPException(
                 status_code=503,
-                detail={"code": "CONSENSUS_UNAVAILABLE", "message": "ConsensusOrchestrator nicht initialisiert"},
+                detail={
+                    "code": "CONSENSUS_UNAVAILABLE",
+                    "message": "ConsensusOrchestrator nicht initialisiert",
+                },
             )
         out = await consensus.evaluate(
             body.market_event_json,

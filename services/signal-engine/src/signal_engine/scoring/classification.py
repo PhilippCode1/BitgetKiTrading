@@ -28,7 +28,10 @@ def classify_signal(
     if market_regime == "chop" and decision_state != "accepted":
         return "warnung"
     if decision_state == "downgraded" or multi_tf_score < 42.0:
-        if composite_strength >= settings.signal_min_score_for_core and risk_score >= 50.0:
+        if (
+            composite_strength >= settings.signal_min_score_for_core
+            and risk_score >= 50.0
+        ):
             return "kern"
         return "mikro"
     if (
@@ -38,7 +41,10 @@ def classify_signal(
         and decision_state == "accepted"
     ):
         return "gross"
-    if market_regime == "compression" and composite_strength >= settings.signal_min_score_for_micro:
+    if (
+        market_regime == "compression"
+        and composite_strength >= settings.signal_min_score_for_micro
+    ):
         return "mikro"
     if composite_strength >= settings.signal_min_score_for_core:
         return "kern"

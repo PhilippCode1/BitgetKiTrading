@@ -26,7 +26,9 @@ def settings(monkeypatch: pytest.MonkeyPatch):
 
 
 def test_learning_engine_source_bundle_hash_stable() -> None:
-    from learning_engine.training.reproducibility import learning_engine_source_bundle_hash
+    from learning_engine.training.reproducibility import (
+        learning_engine_source_bundle_hash,
+    )
 
     a = learning_engine_source_bundle_hash()
     b = learning_engine_source_bundle_hash()

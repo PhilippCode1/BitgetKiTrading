@@ -17,7 +17,11 @@ for candidate in (LEARNING_SRC, SHARED_SRC):
 from learning_engine.config import LearningEngineSettings
 from learning_engine.meta_models.regime_classifier import train_market_regime_classifier
 from learning_engine.storage import repo_model_runs
-from shared_py.model_contracts import MARKET_REGIME_VALUES, build_feature_snapshot, build_model_output_snapshot
+from shared_py.model_contracts import (
+    MARKET_REGIME_VALUES,
+    build_feature_snapshot,
+    build_model_output_snapshot,
+)
 
 
 @pytest.fixture
@@ -27,7 +31,9 @@ def learning_settings(
 ) -> LearningEngineSettings:
     monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:5432/db")
     monkeypatch.setenv("REDIS_URL", "redis://localhost:6379")
-    monkeypatch.setenv("REGIME_CLASSIFIER_MODEL_ARTIFACTS_DIR", str(tmp_path / "regime"))
+    monkeypatch.setenv(
+        "REGIME_CLASSIFIER_MODEL_ARTIFACTS_DIR", str(tmp_path / "regime")
+    )
     monkeypatch.setenv("REGIME_CLASSIFIER_MIN_ROWS", "100")
     monkeypatch.setenv("REGIME_CLASSIFIER_MIN_PER_CLASS", "8")
     return LearningEngineSettings()

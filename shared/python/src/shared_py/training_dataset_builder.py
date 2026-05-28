@@ -10,8 +10,9 @@ from __future__ import annotations
 
 import json
 import math
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import Any, Callable, Mapping, Sequence
+from typing import Any
 
 from shared_py.model_contracts import extract_primary_feature_snapshot, stable_json_hash
 from shared_py.model_layer_contract import (
@@ -182,7 +183,9 @@ def build_take_trade_training_dataset(
     row_to_example: optionaler Hook fuer Tests; Standard baut den Signal+Feature-Vektor.
     """
     to_example = row_to_example or _example_from_evaluation_row
-    report = TakeTradeDatasetBuildReport(config_fingerprint=take_trade_dataset_config_fingerprint(config))
+    report = TakeTradeDatasetBuildReport(
+        config_fingerprint=take_trade_dataset_config_fingerprint(config)
+    )
     kept: list[dict[str, Any]] = []
     required_fields = required_signal_feature_fields()
     drift_logged = 0
@@ -203,7 +206,9 @@ def build_take_trade_training_dataset(
 
         drift = compare_vector_keys_to_canonical(example["features"])
         if not drift["exact_key_match"] and drift_logged < max_schema_drift_samples:
-            report.schema_drift_samples.append({"paper_trade_id": example["paper_trade_id"], **drift})
+            report.schema_drift_samples.append(
+                {"paper_trade_id": example["paper_trade_id"], **drift}
+            )
             drift_logged += 1
         if not drift["exact_key_match"]:
             report.record_drop("schema_key_mismatch")
@@ -217,10 +222,16 @@ def build_take_trade_training_dataset(
                 report.record_drop("missing_feature_computed_ts_ms")
                 continue
         else:
-            if config.drop_on_future_feature_ts and asof > decision_ts + config.future_feature_slack_ms:
+            if (
+                config.drop_on_future_feature_ts
+                and asof > decision_ts + config.future_feature_slack_ms
+            ):
                 report.record_drop("feature_ts_after_decision_leak")
                 continue
-            if config.drop_on_stale_features and decision_ts - asof > config.max_feature_age_ms:
+            if (
+                config.drop_on_stale_features
+                and decision_ts - asof > config.max_feature_age_ms
+            ):
                 report.record_drop("stale_features")
                 continue
 
@@ -244,6 +255,9 @@ def build_take_trade_training_dataset(
 def training_feature_matrix(
     examples: Sequence[Mapping[str, Any]],
 ) -> tuple[list[list[float]], list[int]]:
-    X = [[float(example["features"][name]) for name in TAKE_TRADE_FEATURE_FIELDS] for example in examples]
+    X = [
+        [float(example["features"][name]) for name in TAKE_TRADE_FEATURE_FIELDS]
+        for example in examples
+    ]
     y = [int(example["target"]) for example in examples]
     return X, y

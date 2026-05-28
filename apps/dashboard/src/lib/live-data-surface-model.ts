@@ -77,9 +77,16 @@ export type LiveDataSurfaceModel = Readonly<{
   streamStabilityKey: string | null;
   streamStabilityVars?: Record<string, string | number | boolean>;
   /** kürzer Schlüssel für Quellzeile */
-  dataSourceSummaryKey: "liveStateGateway" | "healthSnapshot" | "signalsApi" | "brokerApi";
+  dataSourceSummaryKey:
+    | "liveStateGateway"
+    | "healthSnapshot"
+    | "signalsApi"
+    | "brokerApi";
   /** Optionale Kontextzeilen (i18n keys mit Parametern, aufgelöst im Client) */
-  extraHintKeys: readonly { key: string; vars?: Record<string, string | number> }[];
+  extraHintKeys: readonly {
+    key: string;
+    vars?: Record<string, string | number>;
+  }[];
   /** Für „betroffene Bereiche“ */
   affectedAreaKeys: readonly string[];
   /** Market-Stream Puls (Lag/VPIN); Client aus SSE */
@@ -97,11 +104,7 @@ function inferExecutionLane(
   vm: ExecutionPathViewModel | null | undefined,
   executionModeLabel: string | null | undefined,
 ): LiveDataSurfaceModel["executionLane"] {
-  const mode = (
-    vm?.execution_mode ??
-    executionModeLabel ??
-    ""
-  ).toLowerCase();
+  const mode = (vm?.execution_mode ?? executionModeLabel ?? "").toLowerCase();
   if (mode.includes("paper")) return "paper";
   if (mode.includes("shadow")) return "shadow";
   if (mode.includes("live")) return "live";
@@ -167,17 +170,19 @@ function pickPrimaryBadge(args: {
 /**
  * Volles Modell aus GET /v1/live/state (Chart, Terminal).
  */
-export function buildLiveDataSurfaceModelFromLiveState(input: Readonly<{
-  live: LiveStateResponse | null;
-  executionVm: ExecutionPathViewModel | null;
-  executionModeLabel?: string | null;
-  fetchError: boolean;
-  loading: boolean;
-  candleCount: number;
-  surfaceKind: Extract<LiveDataSurfaceKind, "market_chart" | "terminal">;
-  streamStabilityKey?: string | null;
-  streamStabilityVars?: Record<string, string | number | boolean>;
-}>): LiveDataSurfaceModel {
+export function buildLiveDataSurfaceModelFromLiveState(
+  input: Readonly<{
+    live: LiveStateResponse | null;
+    executionVm: ExecutionPathViewModel | null;
+    executionModeLabel?: string | null;
+    fetchError: boolean;
+    loading: boolean;
+    candleCount: number;
+    surfaceKind: Extract<LiveDataSurfaceKind, "market_chart" | "terminal">;
+    streamStabilityKey?: string | null;
+    streamStabilityVars?: Record<string, string | number | boolean>;
+  }>,
+): LiveDataSurfaceModel {
   const live = input.live;
   const mf = live?.market_freshness ?? null;
   const lin = lineageStats(live?.data_lineage);
@@ -197,10 +202,7 @@ export function buildLiveDataSurfaceModelFromLiveState(input: Readonly<{
     demoOrFixture,
   });
 
-  const lane = inferExecutionLane(
-    input.executionVm,
-    input.executionModeLabel,
-  );
+  const lane = inferExecutionLane(input.executionVm, input.executionModeLabel);
 
   const lastIngest = mf?.candle?.last_ingest_ts_ms ?? null;
   const lastBar = mf?.candle?.last_start_ts_ms ?? null;
@@ -257,13 +259,15 @@ export function buildLiveDataSurfaceModelFromLiveState(input: Readonly<{
 /**
  * Kompakte Plattform-Sicht nur aus System-Health (Konsole-Start, wenn kein Symbol-Kontext).
  */
-export function buildLiveDataSurfaceModelFromHealth(input: Readonly<{
-  health: SystemHealthResponse | null;
-  surfaceKind?: Extract<
-    LiveDataSurfaceKind,
-    "health_overview" | "market_universe_meta"
-  >;
-}>): LiveDataSurfaceModel | null {
+export function buildLiveDataSurfaceModelFromHealth(
+  input: Readonly<{
+    health: SystemHealthResponse | null;
+    surfaceKind?: Extract<
+      LiveDataSurfaceKind,
+      "health_overview" | "market_universe_meta"
+    >;
+  }>,
+): LiveDataSurfaceModel | null {
   const h = input.health;
   if (!h) return null;
   const sk = input.surfaceKind ?? "health_overview";
@@ -333,13 +337,16 @@ export function buildLiveDataSurfaceModelFromHealth(input: Readonly<{
 /**
  * Signalliste (GET /v1/signals/recent) — kein Ersatz für Markt-Live-State.
  */
-export function buildLiveDataSurfaceModelFromSignalsRead(input: Readonly<{
-  data: SignalsRecentResponse;
-  executionVm: ExecutionPathViewModel | null;
-  fetchFailed: boolean;
-}>): LiveDataSurfaceModel {
+export function buildLiveDataSurfaceModelFromSignalsRead(
+  input: Readonly<{
+    data: SignalsRecentResponse;
+    executionVm: ExecutionPathViewModel | null;
+    fetchFailed: boolean;
+  }>,
+): LiveDataSurfaceModel {
   const degraded = input.data.status === "degraded";
-  const empty = Boolean(input.data.empty_state) || input.data.items.length === 0;
+  const empty =
+    Boolean(input.data.empty_state) || input.data.items.length === 0;
   const lane = inferExecutionLane(input.executionVm, null);
 
   let primary: LiveDataPrimaryBadge = "LIVE";
@@ -393,13 +400,15 @@ export function buildLiveDataSurfaceModelFromSignalsRead(input: Readonly<{
 /**
  * Live-Broker-Seite: Runtime + geladene Sektionen (kein Kerzen-Stream).
  */
-export function buildLiveDataSurfaceModelFromBrokerPage(input: Readonly<{
-  executionVm: ExecutionPathViewModel | null;
-  runtimeSnapshotTs: string | null;
-  upstreamOk: boolean | null;
-  sectionErrorCount: number;
-  runtimeFetchFailed: boolean;
-}>): LiveDataSurfaceModel {
+export function buildLiveDataSurfaceModelFromBrokerPage(
+  input: Readonly<{
+    executionVm: ExecutionPathViewModel | null;
+    runtimeSnapshotTs: string | null;
+    upstreamOk: boolean | null;
+    sectionErrorCount: number;
+    runtimeFetchFailed: boolean;
+  }>,
+): LiveDataSurfaceModel {
   const lane = inferExecutionLane(input.executionVm, null);
   const partial = input.sectionErrorCount > 0 || input.upstreamOk === false;
   let primary: LiveDataPrimaryBadge = "LIVE";
@@ -450,12 +459,14 @@ export function buildLiveDataSurfaceModelFromBrokerPage(input: Readonly<{
  * Shadow-Live-Seite: Live-State (Kerzen/Lineage) + optionale Health-Spur + Teilfehler
  * bei Decisions/Fills/Paper.
  */
-export function buildLiveDataSurfaceModelFromShadowLivePage(input: Readonly<{
-  health: SystemHealthResponse | null;
-  live: LiveStateResponse | null;
-  liveFetchFailed: boolean;
-  sectionErrorCount: number;
-}>): LiveDataSurfaceModel {
+export function buildLiveDataSurfaceModelFromShadowLivePage(
+  input: Readonly<{
+    health: SystemHealthResponse | null;
+    live: LiveStateResponse | null;
+    liveFetchFailed: boolean;
+    sectionErrorCount: number;
+  }>,
+): LiveDataSurfaceModel {
   const vm = executionPathFromSystemHealth(input.health);
   const exLabel = input.health?.execution?.execution_mode ?? null;
   const base = buildLiveDataSurfaceModelFromLiveState({

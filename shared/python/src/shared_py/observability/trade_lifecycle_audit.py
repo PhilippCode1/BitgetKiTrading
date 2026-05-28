@@ -128,9 +128,11 @@ class TradeLifecycleAuditRecord:
         if isinstance(sps, dict) and sps:
             phase_ai["specialist_forensic_summary"] = {
                 "schema_version": sps.get("schema_version"),
-                "decision_control_flow": (sps.get("decision_control_flow") or {})
-                if isinstance(sps.get("decision_control_flow"), dict)
-                else {},
+                "decision_control_flow": (
+                    (sps.get("decision_control_flow") or {})
+                    if isinstance(sps.get("decision_control_flow"), dict)
+                    else {}
+                ),
             }
 
         rs = timeline.get("risk_snapshot")
@@ -153,9 +155,7 @@ class TradeLifecycleAuditRecord:
             "approved_7x": dec.get("approved_7x"),
             "order_type": dec.get("order_type"),
             "qty_base": (
-                str(dec["qty_base"])
-                if dec.get("qty_base") is not None
-                else None
+                str(dec["qty_base"]) if dec.get("qty_base") is not None else None
             ),
         }
         pjl = _m(dec.get("payload_json"))

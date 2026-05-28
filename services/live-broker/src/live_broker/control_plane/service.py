@@ -7,15 +7,16 @@ from shared_py.bitget.instruments import endpoint_profile_for
 
 from live_broker.control_plane.capabilities import (
     CONTROL_PLANE_MATRIX_VERSION,
-    capability_matrix_for_profile,
     assert_read_capability,
     assert_write_capability,
+    capability_matrix_for_profile,
 )
 from live_broker.control_plane.models import (
     ControlPlaneReadHistoryRequest,
     ControlPlaneSetLeverageRequest,
 )
 from live_broker.private_rest import BitgetPrivateRestClient, BitgetRestError
+from live_broker.tenant_credentials import tenant_credentials_scope
 
 if TYPE_CHECKING:
     from live_broker.config import LiveBrokerSettings
@@ -34,14 +35,19 @@ def _response_to_audit(resp: Any) -> dict[str, Any]:
     }
 
 
+def _tenant_trace(tenant_id: str | None) -> dict[str, Any] | None:
+    tid = (tenant_id or "").strip()
+    return {"tenant_id": tid} if tid else None
+
+
 class BitgetControlPlaneService:
     """Einheitliche, policy-konforme Bitget-Zugriffe (Read/Write) mit Audit."""
 
     def __init__(
         self,
-        settings: "LiveBrokerSettings",
+        settings: LiveBrokerSettings,
         private: BitgetPrivateRestClient,
-        repo: "LiveBrokerRepository",
+        repo: LiveBrokerRepository,
     ) -> None:
         self._settings = settings
         self._private = private
@@ -66,7 +72,9 @@ class BitgetControlPlaneService:
             "categories": capability_matrix_for_profile(profile),
         }
 
-    def read_orders_history(self, body: ControlPlaneReadHistoryRequest) -> dict[str, Any]:
+    def read_orders_history(
+        self, body: ControlPlaneReadHistoryRequest
+    ) -> dict[str, Any]:
         profile = self._runtime_profile()
         assert_read_capability(profile, "order_history")
         params: dict[str, Any] = {"limit": str(body.limit)}
@@ -76,7 +84,10 @@ class BitgetControlPlaneService:
             params["startTime"] = body.start_time_ms
         if body.end_time_ms:
             params["endTime"] = body.end_time_ms
-        if str(profile.market_family).lower() == "futures" and self._settings.rest_product_type_param:
+        if (
+            str(profile.market_family).lower() == "futures"
+            and self._settings.rest_product_type_param
+        ):
             params["productType"] = self._settings.product_type
         req_path = profile.private_order_history_path or ""
         snapshot = {
@@ -87,12 +98,15 @@ class BitgetControlPlaneService:
             "audit_note": body.audit_note,
         }
         try:
-            resp = self._private.list_orders_history(
-                params=params,
-                priority=True,
-                request_path=req_path,
-                market_family=str(profile.market_family),
-            )
+            with tenant_credentials_scope(
+                self._settings, _tenant_trace(body.tenant_id)
+            ):
+                resp = self._private.list_orders_history(
+                    params=params,
+                    priority=True,
+                    request_path=req_path,
+                    market_family=str(profile.market_family),
+                )
         except BitgetRestError as exc:
             self._audit_exchange_action(
                 category="control_plane_read",
@@ -119,7 +133,10 @@ class BitgetControlPlaneService:
             params["startTime"] = body.start_time_ms
         if body.end_time_ms:
             params["endTime"] = body.end_time_ms
-        if str(profile.market_family).lower() == "futures" and self._settings.rest_product_type_param:
+        if (
+            str(profile.market_family).lower() == "futures"
+            and self._settings.rest_product_type_param
+        ):
             params["productType"] = self._settings.product_type
         if str(profile.market_family).lower() == "futures":
             params.setdefault("marginCoin", self._settings.effective_margin_coin)
@@ -132,12 +149,15 @@ class BitgetControlPlaneService:
             "audit_note": body.audit_note,
         }
         try:
-            resp = self._private.list_fill_history(
-                params=params,
-                priority=True,
-                request_path=req_path,
-                market_family=str(profile.market_family),
-            )
+            with tenant_credentials_scope(
+                self._settings, _tenant_trace(body.tenant_id)
+            ):
+                resp = self._private.list_fill_history(
+                    params=params,
+                    priority=True,
+                    request_path=req_path,
+                    market_family=str(profile.market_family),
+                )
         except BitgetRestError as exc:
             self._audit_exchange_action(
                 category="control_plane_read",
@@ -154,7 +174,9 @@ class BitgetControlPlaneService:
         )
         return {"ok": True, "exchange": _response_to_audit(resp)}
 
-    def set_leverage_operator(self, body: ControlPlaneSetLeverageRequest) -> dict[str, Any]:
+    def set_leverage_operator(
+        self, body: ControlPlaneSetLeverageRequest
+    ) -> dict[str, Any]:
         if not self._settings.live_order_submission_enabled:
             raise BitgetRestError(
                 classification="service_disabled",
@@ -183,9 +205,12 @@ class BitgetControlPlaneService:
             "audit_note": body.audit_note,
         }
         try:
-            resp = self._private.set_account_leverage(
-                leverage_body, priority=False, request_path=path
-            )
+            with tenant_credentials_scope(
+                self._settings, _tenant_trace(body.tenant_id)
+            ):
+                resp = self._private.set_account_leverage(
+                    leverage_body, priority=False, request_path=path
+                )
         except BitgetRestError as exc:
             self._dead_letter(snapshot, exc)
             self._audit_exchange_action(
@@ -229,7 +254,9 @@ class BitgetControlPlaneService:
         except Exception as exc:
             logger.warning("control_plane audit_trail failed: %s", exc)
 
-    def _dead_letter(self, request_snapshot: dict[str, Any], exc: BitgetRestError) -> None:
+    def _dead_letter(
+        self, request_snapshot: dict[str, Any], exc: BitgetRestError
+    ) -> None:
         if exc.retryable:
             return
         try:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+
 from signal_engine.models import ScoringContext
 from signal_engine.service import run_scoring_pipeline
 

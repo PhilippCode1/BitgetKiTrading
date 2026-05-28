@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import time
-from decimal import Decimal, ROUND_FLOOR
+from decimal import ROUND_FLOOR, Decimal
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
@@ -140,7 +140,10 @@ class BitgetInstrumentMetadataService:
         reasons = list(metadata.health_reasons)
         if not metadata.trading_enabled_now:
             reasons.append("instrument_session_not_tradeable")
-        if not reduce_only and not metadata.session_state.open_new_positions_allowed_now:
+        if (
+            not reduce_only
+            and not metadata.session_state.open_new_positions_allowed_now
+        ):
             reasons.append("instrument_open_session_restricted")
         if reduce_only and not metadata.entry.supports_reduce_only:
             reasons.append("instrument_does_not_support_reduce_only")
@@ -192,7 +195,7 @@ class BitgetInstrumentMetadataService:
                     reasons.append("quote_size_rounded_to_precision")
                 normalized_size = rounded
         else:
-            step = _dec(metadata.entry.quantity_step)
+            step = _dec(metadata.entry.quantity_step)  # type: ignore
             if step is not None and step > 0:
                 rounded = _round_down_to_step(raw_size, step)
                 if rounded != raw_size:
@@ -200,7 +203,11 @@ class BitgetInstrumentMetadataService:
                 normalized_size = rounded
 
         quantity_min = _dec(metadata.entry.quantity_min)
-        if quantity_min is not None and not quote_size_order and normalized_size < quantity_min:
+        if (
+            quantity_min is not None
+            and not quote_size_order
+            and normalized_size < quantity_min
+        ):
             reasons.append("order_size_below_minimum")
         quantity_max = _dec(
             metadata.entry.market_order_quantity_max
@@ -216,14 +223,22 @@ class BitgetInstrumentMetadataService:
         elif normalized_price is not None:
             notional_quote = normalized_price * normalized_size
         min_notional = _dec(metadata.entry.min_notional_quote)
-        if min_notional is not None and notional_quote is not None and notional_quote < min_notional:
+        if (
+            min_notional is not None
+            and notional_quote is not None
+            and notional_quote < min_notional
+        ):
             reasons.append("order_notional_below_minimum")
 
         return OrderPreflightResult(
             metadata=metadata,
-            normalized_price=(format(normalized_price, "f") if normalized_price is not None else None),
+            normalized_price=(
+                format(normalized_price, "f") if normalized_price is not None else None
+            ),
             normalized_size=format(normalized_size, "f"),
-            computed_notional_quote=(format(notional_quote, "f") if notional_quote is not None else None),
+            computed_notional_quote=(
+                format(notional_quote, "f") if notional_quote is not None else None
+            ),
             reasons=list(dict.fromkeys(reasons)),
         )
 
@@ -297,7 +312,9 @@ class BitgetInstrumentMetadataService:
             reasons.append("metadata_leverage_range_invalid")
         return reasons
 
-    def _session_state(self, entry: BitgetInstrumentCatalogEntry) -> InstrumentSessionState:
+    def _session_state(
+        self, entry: BitgetInstrumentCatalogEntry
+    ) -> InstrumentSessionState:
         meta = dict(entry.session_metadata or {})
         now_ms = int(time.time() * 1000)
         reasons: list[str] = []
@@ -319,7 +336,11 @@ class BitgetInstrumentMetadataService:
             reasons.append("trading_status_limit_open")
 
         maintain_time = meta.get("maintain_time")
-        if isinstance(maintain_time, int) and maintain_time > 0 and now_ms >= maintain_time:
+        if (
+            isinstance(maintain_time, int)
+            and maintain_time > 0
+            and now_ms >= maintain_time
+        ):
             maintenance_active = True
             trade_allowed_now = False
             open_new_positions_allowed_now = False
@@ -327,11 +348,19 @@ class BitgetInstrumentMetadataService:
 
         delivery_start = meta.get("delivery_start_time")
         delivery_time = meta.get("delivery_time")
-        if isinstance(delivery_start, int) and delivery_start > 0 and now_ms >= delivery_start:
+        if (
+            isinstance(delivery_start, int)
+            and delivery_start > 0
+            and now_ms >= delivery_start
+        ):
             delivery_window_active = True
             open_new_positions_allowed_now = False
             reasons.append("delivery_window_active")
-        if isinstance(delivery_time, int) and delivery_time > 0 and now_ms >= delivery_time:
+        if (
+            isinstance(delivery_time, int)
+            and delivery_time > 0
+            and now_ms >= delivery_time
+        ):
             trade_allowed_now = False
             subscribe_allowed_now = False
             open_new_positions_allowed_now = False

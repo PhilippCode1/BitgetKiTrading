@@ -47,4 +47,7 @@ def test_report_generates_german_block_reasons(tmp_path: Path) -> None:
     assert payload["status"] in {"NOT_ENOUGH_EVIDENCE", "implemented"}
     assert payload["checked_asset_classes"]
     assert all("decision" in item for item in payload["items"])
-    assert any(item["decision"] in {"BLOCK_FOR_LIVE", "BLOCK_ALL", "ALLOW_FOR_PAPER"} for item in payload["items"])
+    assert any(
+        item["decision"] in {"BLOCK_FOR_LIVE", "BLOCK_ALL", "ALLOW_FOR_PAPER"}
+        for item in payload["items"]
+    )

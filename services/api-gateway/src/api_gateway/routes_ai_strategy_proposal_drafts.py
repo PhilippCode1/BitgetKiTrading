@@ -127,7 +127,9 @@ def ai_strategy_proposal_generate_and_store(
         ) from exc
     except LLMOrchestratorForwardHttpError as exc:
         if exc.status_code in (413, 422):
-            raise HTTPException(status_code=exc.status_code, detail=exc.payload) from exc
+            raise HTTPException(
+                status_code=exc.status_code, detail=exc.payload
+            ) from exc
         raise HTTPException(
             status_code=502,
             detail={
@@ -147,7 +149,10 @@ def ai_strategy_proposal_generate_and_store(
     if not isinstance(result, dict):
         raise HTTPException(
             status_code=502,
-            detail={"code": "LLM_RESULT_MISSING", "message": "Orchestrator returned no result dict."},
+            detail={
+                "code": "LLM_RESULT_MISSING",
+                "message": "Orchestrator returned no result dict.",
+            },
         )
     normalized = normalize_proposal_payload(result)
 
@@ -221,7 +226,10 @@ def get_ai_strategy_proposal_draft(
     except psycopg.errors.UndefinedTable:
         raise HTTPException(
             status_code=503,
-            detail={"code": "AI_STRATEGY_PROPOSAL_TABLE_MISSING", "message": "Migration pending."},
+            detail={
+                "code": "AI_STRATEGY_PROPOSAL_TABLE_MISSING",
+                "message": "Migration pending.",
+            },
         )
     except psycopg.Error as exc:
         raise HTTPException(
@@ -261,7 +269,10 @@ def validate_ai_strategy_proposal_draft(
     except psycopg.errors.UndefinedTable:
         raise HTTPException(
             status_code=503,
-            detail={"code": "AI_STRATEGY_PROPOSAL_TABLE_MISSING", "message": "Migration pending."},
+            detail={
+                "code": "AI_STRATEGY_PROPOSAL_TABLE_MISSING",
+                "message": "Migration pending.",
+            },
         )
     except psycopg.Error as exc:
         raise HTTPException(
@@ -309,7 +320,10 @@ def request_promotion_ai_strategy_proposal_draft(
     except psycopg.errors.UndefinedTable:
         raise HTTPException(
             status_code=503,
-            detail={"code": "AI_STRATEGY_PROPOSAL_TABLE_MISSING", "message": "Migration pending."},
+            detail={
+                "code": "AI_STRATEGY_PROPOSAL_TABLE_MISSING",
+                "message": "Migration pending.",
+            },
         )
     except psycopg.Error as exc:
         raise HTTPException(

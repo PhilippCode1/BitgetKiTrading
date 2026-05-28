@@ -4,8 +4,6 @@ import os
 import sys
 from pathlib import Path
 
-import pytest
-
 ROOT = Path(__file__).resolve().parents[2]
 LEARN = ROOT / "services" / "learning-engine" / "src"
 SHARED = ROOT / "shared" / "python" / "src"
@@ -17,7 +15,11 @@ for p in (LEARN, SHARED):
 os.environ.setdefault("DATABASE_URL", "postgresql://u:p@127.0.0.1:5432/t")
 os.environ.setdefault("REDIS_URL", "redis://127.0.0.1:6379/0")
 
-from learning_engine.backtest.splits import Range, purged_walk_forward_indices, walk_forward_indices
+from learning_engine.backtest.splits import (
+    Range,
+    purged_walk_forward_indices,
+    walk_forward_indices,
+)
 from learning_engine.config import LearningEngineSettings
 from learning_engine.training.check_leakage import run_check_leakage
 from learning_engine.training.cv_leakage_family import verify_temporal_leakage_for_folds
@@ -31,7 +33,13 @@ def test_purged_walk_forward_verify_always_passes() -> None:
     twoh = 2 * 3600 * 1000
     n = 80
     # 1h Stufen, 1min Label-Span; Purge 2h verlangt lueckenhalt zu Test
-    r = [Range(1_000_000_000_000 + i * 3_600_000, 1_000_000_000_000 + i * 3_600_000 + 60_000) for i in range(n)]
+    r = [
+        Range(
+            1_000_000_000_000 + i * 3_600_000,
+            1_000_000_000_000 + i * 3_600_000 + 60_000,
+        )
+        for i in range(n)
+    ]
     s = LearningEngineSettings()
     s.train_cv_purge_ms = twoh
     s.train_cv_kfolds = 5

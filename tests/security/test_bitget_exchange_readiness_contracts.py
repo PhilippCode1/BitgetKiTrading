@@ -3,9 +3,9 @@ from __future__ import annotations
 import pytest
 
 from shared_py.bitget.exchange_readiness import (
+    assert_readonly_request,
     assess_external_key_evidence,
     assess_permissions,
-    assert_readonly_request,
     classify_http_status,
     path_uses_legacy_v1,
     readiness_verdict,

@@ -36,7 +36,9 @@ def _contract_registry() -> tuple[Registry, dict]:
             key,
             Resource.from_contents(doc, default_specification=DRAFT202012),
         )
-    env = json.loads((SCHEMAS / "event_envelope.schema.json").read_text(encoding="utf-8"))
+    env = json.loads(
+        (SCHEMAS / "event_envelope.schema.json").read_text(encoding="utf-8")
+    )
     v = Draft202012Validator(env, registry=r)
     Draft202012Validator.check_schema(v.schema)
     return r, env
@@ -49,7 +51,9 @@ def test_catalog_file_matches_runtime() -> None:
     assert tuple(r["stream"] for r in rows) == EVENT_STREAMS
     assert tuple(raw["live_sse_streams"]) == LIVE_SSE_STREAMS
     assert raw["envelope_default_schema_version"] == ENVELOPE_DEFAULT_SCHEMA_VERSION
-    assert raw["envelope_fingerprint_canon_version"] == ENVELOPE_FINGERPRINT_CANON_VERSION
+    assert (
+        raw["envelope_fingerprint_canon_version"] == ENVELOPE_FINGERPRINT_CANON_VERSION
+    )
 
 
 def test_event_type_literal_matches_catalog() -> None:
@@ -68,11 +72,18 @@ def test_event_envelope_schema_enum_matches_catalog() -> None:
     schema = json.loads(schema_path.read_text(encoding="utf-8"))
     a = schema.get("allOf", [])
     base: dict
-    if isinstance(a, list) and a and isinstance(a[0], dict) and a[0].get("type") == "object":
+    if (
+        isinstance(a, list)
+        and a
+        and isinstance(a[0], dict)
+        and a[0].get("type") == "object"
+    ):
         base = a[0]
     else:
         base = schema
-    enum_vals = set((base.get("properties") or {}).get("event_type", {}).get("enum", ()))
+    enum_vals = set(
+        (base.get("properties") or {}).get("event_type", {}).get("enum", ())
+    )
     raw = json.loads(CATALOG.read_text(encoding="utf-8"))
     assert enum_vals == {r["event_type"] for r in raw["streams"]}
 
@@ -80,9 +91,13 @@ def test_event_envelope_schema_enum_matches_catalog() -> None:
 def test_fixture_envelope_passes_jsonschema() -> None:
     r, env = _contract_registry()
     instance = json.loads(
-        (REPO_ROOT / "tests" / "fixtures" / "contracts" / "envelope_candle_close_ok.json").read_text(
-            encoding="utf-8"
-        )
+        (
+            REPO_ROOT
+            / "tests"
+            / "fixtures"
+            / "contracts"
+            / "envelope_candle_close_ok.json"
+        ).read_text(encoding="utf-8")
     )
     v = Draft202012Validator(env, registry=r)
     assert list(v.iter_errors(instance)) == []
@@ -122,7 +137,9 @@ def test_ensure_payload_matches_schema_wrong_type_raises() -> None:
 
 
 def test_fixture_envelope_pydantic_roundtrip() -> None:
-    path = REPO_ROOT / "tests" / "fixtures" / "contracts" / "envelope_candle_close_ok.json"
+    path = (
+        REPO_ROOT / "tests" / "fixtures" / "contracts" / "envelope_candle_close_ok.json"
+    )
     env = EventEnvelope.model_validate_json(path.read_text(encoding="utf-8"))
     assert env.event_type == "candle_close"
     assert env.default_stream() == event_stream_for_type("candle_close")
@@ -137,7 +154,9 @@ def test_fixture_envelope_pydantic_roundtrip() -> None:
     ],
 )
 def test_payload_schemas_minimal(payload_schema: str, event_type: EventType) -> None:
-    schema = json.loads((CONTRACTS / "schemas" / payload_schema).read_text(encoding="utf-8"))
+    schema = json.loads(
+        (CONTRACTS / "schemas" / payload_schema).read_text(encoding="utf-8")
+    )
     env = EventEnvelope(
         event_type=event_type,
         payload=_minimal_payload(event_type),

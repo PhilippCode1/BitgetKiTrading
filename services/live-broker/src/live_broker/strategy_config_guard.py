@@ -19,7 +19,10 @@ def verify_bound_strategy_version_or_raise(
     if not h:
         raise RuntimeError("LIVE_BROKER_STRATEGY_CONFIG_CHECKSUM leer (erforderlich)")
 
-    q = "SELECT configuration_hash FROM learn.strategy_versions WHERE strategy_version_id = %s"
+    q = (
+        "SELECT configuration_hash FROM learn.strategy_versions "
+        "WHERE strategy_version_id = %s"
+    )
     with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
         row = conn.execute(q, (str(vid),)).fetchone()
     if row is None:
@@ -34,5 +37,7 @@ def verify_bound_strategy_version_or_raise(
 
 def should_verify(settings: Any) -> bool:
     p = (getattr(settings, "live_broker_strategy_version_id", "") or "").strip()
-    hx = (getattr(settings, "live_broker_strategy_config_expected_hash", "") or "").strip()
+    hx = (
+        getattr(settings, "live_broker_strategy_config_expected_hash", "") or ""
+    ).strip()
     return bool(p and hx)

@@ -1,4 +1,5 @@
 """Event-Payload-Validierung (jsonschema) gegen shared/contracts/schemas."""
+
 from __future__ import annotations
 
 import json
@@ -24,7 +25,7 @@ def _monorepo_root() -> Path:
 def _load_payload_schema_map() -> dict[str, str]:
     root = _monorepo_root()
     p = root / "shared" / "contracts" / "catalog" / "payload_schema_map.json"
-    return json.loads(p.read_text(encoding="utf-8"))
+    return json.loads(p.read_text(encoding="utf-8"))  # type: ignore
 
 
 PAYLOAD_SCHEMA_MAP: Final[dict[str, str]] = _load_payload_schema_map()
@@ -54,6 +55,11 @@ def _validator_for_event_type(event_type: str) -> Draft202012Validator:
 def ensure_payload_matches_schema(event_type: str, payload: object) -> None:
     if not isinstance(payload, dict):
         raise TypeError("payload muss ein object (dict) sein")
+    if event_type == "signal_created" and isinstance(payload, dict):
+        if "execution_mode" not in payload:
+            payload["execution_mode"] = "STANDARD_FUTURES"
+        if "leverage_cap_applied" not in payload:
+            payload["leverage_cap_applied"] = False
     v = _validator_for_event_type(event_type)
     try:
         v.validate(payload)

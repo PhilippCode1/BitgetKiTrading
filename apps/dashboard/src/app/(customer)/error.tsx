@@ -13,10 +13,6 @@ export default function CustomerRouteGroupError({
   reset: () => void;
 }>) {
   return (
-    <AppErrorFallback
-      error={error}
-      reset={reset}
-      showCustomerPortalLink
-    />
+    <AppErrorFallback error={error} reset={reset} showCustomerPortalLink />
   );
 }

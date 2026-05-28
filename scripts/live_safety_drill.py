@@ -13,8 +13,19 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 SAFETY_DRILL_SCHEMA_VERSION = "live-safety-drill-evidence-v1"
-DEFAULT_DRILL_TEMPLATE = ROOT / "docs" / "production_10_10" / "live_safety_drill.template.json"
-SECRET_LIKE_KEYS = ("database_url", "dsn", "password", "secret", "token", "api_key", "private_key", "authorization")
+DEFAULT_DRILL_TEMPLATE = (
+    ROOT / "docs" / "production_10_10" / "live_safety_drill.template.json"
+)
+SECRET_LIKE_KEYS = (
+    "database_url",
+    "dsn",
+    "password",
+    "secret",
+    "token",
+    "api_key",
+    "private_key",
+    "authorization",
+)
 
 
 @dataclass(frozen=True)
@@ -100,9 +111,13 @@ def secret_surface_issues(payload: dict[str, Any]) -> list[str]:
     return issues
 
 
-def assess_external_safety_drill(payload: dict[str, Any] | None) -> ExternalSafetyDrillAssessment:
+def assess_external_safety_drill(
+    payload: dict[str, Any] | None
+) -> ExternalSafetyDrillAssessment:
     if not payload:
-        return ExternalSafetyDrillAssessment("FAIL", ["safety_drill_evidence_missing"], [])
+        return ExternalSafetyDrillAssessment(
+            "FAIL", ["safety_drill_evidence_missing"], []
+        )
     blockers: list[str] = []
     warnings: list[str] = []
     if payload.get("schema_version") != SAFETY_DRILL_SCHEMA_VERSION:
@@ -123,15 +138,27 @@ def assess_external_safety_drill(payload: dict[str, Any] | None) -> ExternalSafe
     required_true = (
         ("kill_switch_arm_verified", "kill_switch_arm_not_verified"),
         ("kill_switch_blocks_opening_submit", "kill_switch_opening_submit_not_blocked"),
-        ("kill_switch_release_requires_operator", "kill_switch_release_not_operator_gated"),
+        (
+            "kill_switch_release_requires_operator",
+            "kill_switch_release_not_operator_gated",
+        ),
         ("safety_latch_arm_verified", "safety_latch_arm_not_verified"),
         ("safety_latch_blocks_submit", "safety_latch_submit_not_blocked"),
         ("safety_latch_blocks_replace", "safety_latch_replace_not_blocked"),
-        ("safety_latch_release_requires_reason", "safety_latch_release_reason_not_required"),
+        (
+            "safety_latch_release_requires_reason",
+            "safety_latch_release_reason_not_required",
+        ),
         ("emergency_flatten_tested", "emergency_flatten_not_tested"),
         ("emergency_flatten_reduce_only", "emergency_flatten_not_reduce_only"),
-        ("emergency_flatten_exchange_truth_checked", "emergency_flatten_exchange_truth_not_checked"),
-        ("emergency_flatten_no_increase_only", "emergency_flatten_no_increase_not_confirmed"),
+        (
+            "emergency_flatten_exchange_truth_checked",
+            "emergency_flatten_exchange_truth_not_checked",
+        ),
+        (
+            "emergency_flatten_no_increase_only",
+            "emergency_flatten_no_increase_not_confirmed",
+        ),
         ("cancel_all_tested", "cancel_all_not_tested"),
         ("audit_trail_verified", "audit_trail_not_verified"),
         ("alert_delivery_verified", "alert_delivery_not_verified"),
@@ -158,10 +185,16 @@ def simulate_safety_drill(mode: str) -> SafetyDrillEvidence:
     opening_blocked_ks = kill_switch_active
     opening_blocked_latch = safety_latch_active
     emergency_reduce_only = True
-    emergency_safe = emergency_reduce_only and opening_blocked_ks and opening_blocked_latch
+    emergency_safe = (
+        emergency_reduce_only and opening_blocked_ks and opening_blocked_latch
+    )
     audit_expected = True
     alert_expected = True
-    go_no_go = "NO_GO" if opening_blocked_ks and opening_blocked_latch and emergency_safe else "FAIL"
+    go_no_go = (
+        "NO_GO"
+        if opening_blocked_ks and opening_blocked_latch and emergency_safe
+        else "FAIL"
+    )
     return SafetyDrillEvidence(
         generated_at=datetime.now(tz=UTC).isoformat(),
         git_sha=git_sha(),
@@ -290,11 +323,16 @@ def main(argv: list[str] | None = None) -> int:
             )
         if args.output_json:
             args.output_json.parent.mkdir(parents=True, exist_ok=True)
-            args.output_json.write_text(json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False), encoding="utf-8")
+            args.output_json.write_text(
+                json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False),
+                encoding="utf-8",
+            )
         if args.json:
             print(json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False))
         else:
-            print(external_evidence_to_markdown(loaded, assessment, secret_issues), end="")
+            print(
+                external_evidence_to_markdown(loaded, assessment, secret_issues), end=""
+            )
         return 1 if args.strict and not payload["ok"] else 0
     mode = "dry-run" if args.dry_run else args.mode
     evidence = simulate_safety_drill(mode)
@@ -308,7 +346,9 @@ def main(argv: list[str] | None = None) -> int:
             encoding="utf-8",
         )
     if args.json:
-        print(json.dumps(asdict(evidence), indent=2, sort_keys=True, ensure_ascii=False))
+        print(
+            json.dumps(asdict(evidence), indent=2, sort_keys=True, ensure_ascii=False)
+        )
     else:
         print(
             "live_safety_drill: "

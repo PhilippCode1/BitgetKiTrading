@@ -8,7 +8,6 @@ from pathlib import Path
 import yaml
 
 from shared_py.readiness_scorecard import REQUIRED_CATEGORIES
-
 from tools.check_10_10_evidence import (
     FORBIDDEN_REQUIRED_CATEGORY_IDS,
     REQUIRED_CATEGORY_IDS,
@@ -16,12 +15,13 @@ from tools.check_10_10_evidence import (
     validate_matrix,
 )
 
-
 ROOT = Path(__file__).resolve().parents[2]
 TOOL = ROOT / "tools" / "check_10_10_evidence.py"
 
 
-def _category(category_id: str, evidence_file: Path, **overrides: object) -> dict[str, object]:
+def _category(
+    category_id: str, evidence_file: Path, **overrides: object
+) -> dict[str, object]:
     data: dict[str, object] = {
         "id": category_id,
         "title": category_id.replace("_", " ").title(),
@@ -43,14 +43,18 @@ def _category(category_id: str, evidence_file: Path, **overrides: object) -> dic
 
 def _write_matrix(tmp_path: Path, categories: list[dict[str, object]]) -> Path:
     path = tmp_path / "matrix.yaml"
-    path.write_text(yaml.safe_dump({"categories": categories}, sort_keys=False), encoding="utf-8")
+    path.write_text(
+        yaml.safe_dump({"categories": categories}, sort_keys=False), encoding="utf-8"
+    )
     return path
 
 
 def _valid_categories(tmp_path: Path) -> list[dict[str, object]]:
     evidence_file = tmp_path / "evidence.md"
     evidence_file.write_text("ok\n", encoding="utf-8")
-    return [_category(category_id, evidence_file) for category_id in REQUIRED_CATEGORY_IDS]
+    return [
+        _category(category_id, evidence_file) for category_id in REQUIRED_CATEGORY_IDS
+    ]
 
 
 def test_repository_matrix_is_valid() -> None:

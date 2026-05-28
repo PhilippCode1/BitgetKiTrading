@@ -26,11 +26,11 @@ def main() -> None:
     parser.add_argument("--date", default=None, help="Accrual-Datum UTC YYYY-MM-DD")
     args = parser.parse_args()
 
-    from psycopg.rows import dict_row
-
     from api_gateway.billing.daily_run import run_daily_billing
     from api_gateway.config import get_gateway_settings
     from api_gateway.db import get_database_url
+    from psycopg.rows import dict_row
+
     from config.gateway_settings import get_gateway_settings as cached_gateway_settings
 
     cached_gateway_settings.cache_clear()

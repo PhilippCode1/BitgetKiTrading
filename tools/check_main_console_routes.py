@@ -6,7 +6,6 @@ from __future__ import annotations
 import argparse
 import json
 import re
-import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -210,7 +209,8 @@ def render_text(summary: dict[str, Any]) -> str:
         lines.append(
             "irrelevant_terms="
             + ", ".join(
-                f"{hit['term']}@{hit['route']}" for hit in summary["irrelevant_hits"][:20]
+                f"{hit['term']}@{hit['route']}"
+                for hit in summary["irrelevant_hits"][:20]
             )
         )
     for issue in summary["issues"]:

@@ -3,11 +3,14 @@ from __future__ import annotations
 import json
 
 import pytest
+
 from llm_orchestrator.config import LLMOrchestratorSettings
 from llm_orchestrator.service import LLMService
 
 
-def test_cache_second_call_uses_redis(mock_redis_bus, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_cache_second_call_uses_redis(
+    mock_redis_bus, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setenv("REDIS_URL", "redis://127.0.0.1:6379/0")
     monkeypatch.setenv("LLM_USE_FAKE_PROVIDER", "true")
     monkeypatch.setenv("LLM_CACHE_TTL_SEC", "3600")

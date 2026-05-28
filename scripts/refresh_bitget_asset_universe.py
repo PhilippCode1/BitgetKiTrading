@@ -30,7 +30,9 @@ def _redact_secret_like_values(value: Any) -> Any:
         out: dict[str, Any] = {}
         for key, raw in value.items():
             lowered = str(key).lower()
-            if any(token in lowered for token in ("secret", "token", "password", "key")):
+            if any(
+                token in lowered for token in ("secret", "token", "password", "key")
+            ):
                 out[key] = "***REDACTED***"
             else:
                 out[key] = _redact_secret_like_values(raw)
@@ -70,7 +72,9 @@ def build_report_payload(entries: list[BitgetAssetCatalogEntry]) -> dict[str, An
         "assets": [
             {
                 **entry.model_dump(mode="json"),
-                "live_block_reasons_de": block_reasons_to_german(entry.live_block_reasons),
+                "live_block_reasons_de": block_reasons_to_german(
+                    entry.live_block_reasons
+                ),
             }
             for entry in entries
         ],
@@ -107,7 +111,9 @@ def render_markdown(payload: dict[str, Any]) -> str:
             f"data_quality={item['data_quality_status']}"
         )
         if item["live_block_reasons_de"]:
-            lines.append("  - Blockgruende: " + "; ".join(item["live_block_reasons_de"]))
+            lines.append(
+                "  - Blockgruende: " + "; ".join(item["live_block_reasons_de"])
+            )
     lines.extend(
         [
             "",
@@ -130,7 +136,9 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.dry_run:
-        print("refresh_bitget_asset_universe: dry-run=true (network=disabled, read-only-plan-only)")
+        print(
+            "refresh_bitget_asset_universe: dry-run=true (network=disabled, read-only-plan-only)"
+        )
         print("planned_steps=load_fixture,evaluate_live_gates,build_reports")
         return 0
 
@@ -141,7 +149,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.output_json:
         args.output_json.parent.mkdir(parents=True, exist_ok=True)
-        args.output_json.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+        args.output_json.write_text(
+            json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
     if args.output_md:
         args.output_md.parent.mkdir(parents=True, exist_ok=True)
         args.output_md.write_text(render_markdown(payload), encoding="utf-8")

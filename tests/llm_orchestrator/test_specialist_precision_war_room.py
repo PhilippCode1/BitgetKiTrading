@@ -82,13 +82,30 @@ class StubAgent(BaseTradingAgent):
 
 def test_war_room_emits_weighted_stakes_log(caplog: object) -> None:
     reg = AgentRegistry()
-    reg.register(StubAgent("macro_analyst", _msg(agent_id="macro_analyst", action="buy_bias", conf=0.8, rationale="m")))
-    reg.register(StubAgent("quant_analyst", _msg(agent_id="quant_analyst", action="buy_bias", conf=0.8, rationale="q")))
-    reg.register(StubAgent("risk_governor", _msg(agent_id="risk_governor", action="allow", conf=0.8, rationale="r")))
+    reg.register(
+        StubAgent(
+            "macro_analyst",
+            _msg(agent_id="macro_analyst", action="buy_bias", conf=0.8, rationale="m"),
+        )
+    )
+    reg.register(
+        StubAgent(
+            "quant_analyst",
+            _msg(agent_id="quant_analyst", action="buy_bias", conf=0.8, rationale="q"),
+        )
+    )
+    reg.register(
+        StubAgent(
+            "risk_governor",
+            _msg(agent_id="risk_governor", action="allow", conf=0.8, rationale="r"),
+        )
+    )
     s = LLMOrchestratorSettings()
     s.war_room_fetch_specialist_precision = False
     orch = ConsensusOrchestrator(reg, settings=s)
-    with caplog.at_level(logging.INFO, logger="llm_orchestrator.consensus.specialist_precision"):
+    with caplog.at_level(
+        logging.INFO, logger="llm_orchestrator.consensus.specialist_precision"
+    ):
         asyncio.run(orch.evaluate({}, agent_timeout_sec=5.0))
     text = caplog.text
     assert "weighted_stakes pre_consensus" in text
@@ -99,8 +116,18 @@ def test_war_room_emits_weighted_stakes_log(caplog: object) -> None:
 
 def test_veto_with_quant_directional_adds_readiness_line() -> None:
     reg = AgentRegistry()
-    reg.register(StubAgent("macro_analyst", _msg(agent_id="macro_analyst", action="buy_bias", conf=0.8, rationale="m")))
-    reg.register(StubAgent("quant_analyst", _msg(agent_id="quant_analyst", action="buy_bias", conf=0.85, rationale="q")))
+    reg.register(
+        StubAgent(
+            "macro_analyst",
+            _msg(agent_id="macro_analyst", action="buy_bias", conf=0.8, rationale="m"),
+        )
+    )
+    reg.register(
+        StubAgent(
+            "quant_analyst",
+            _msg(agent_id="quant_analyst", action="buy_bias", conf=0.85, rationale="q"),
+        )
+    )
     reg.register(
         StubAgent(
             "risk_governor",

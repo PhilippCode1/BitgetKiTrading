@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireOperatorGatewayAuth } from "@/lib/gateway-bff";
+import { requirePortalGatewayAuth } from "@/lib/gateway-bff";
 import {
   fetchGatewayUpstream,
   GATEWAY_UPSTREAM_TIMEOUT_COMMERCE_MS,
@@ -9,8 +9,8 @@ import { upstreamFetchFailedResponse } from "@/lib/gateway-upstream";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-  const auth = requireOperatorGatewayAuth();
+export async function GET(req: Request) {
+  const auth = requirePortalGatewayAuth(req.headers);
   if (!auth.ok) return auth.response;
   let res: Response;
   try {
@@ -31,7 +31,7 @@ export async function GET() {
 }
 
 export async function PATCH(req: Request) {
-  const auth = requireOperatorGatewayAuth();
+  const auth = requirePortalGatewayAuth(req.headers);
   if (!auth.ok) return auth.response;
   const body = await req.text();
   let res: Response;

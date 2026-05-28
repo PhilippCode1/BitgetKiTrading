@@ -6,6 +6,7 @@ Katalog-Refresh: market_stream.app.MarketStreamRuntime.start() ruft BitgetInstru
 refresh_catalog() auf; periodisch _catalog_refresh_loop. Live-Daten: GET /api/v2/mix/market/
 contracts ist in shared_py.bitget.discovery/BitgetMarketDiscoveryClient integriert, nicht hier.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

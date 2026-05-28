@@ -35,8 +35,16 @@ def test_regime_total_variation_detects_shift() -> None:
 
 def test_signal_health_fractions_counts_ood_and_missing() -> None:
     rows = [
-        {"take_trade_prob": 0.5, "model_ood_alert": False, "rejection_reasons_json": []},
-        {"take_trade_prob": None, "model_ood_alert": True, "rejection_reasons_json": ["online_drift_hard_block"]},
+        {
+            "take_trade_prob": 0.5,
+            "model_ood_alert": False,
+            "rejection_reasons_json": [],
+        },
+        {
+            "take_trade_prob": None,
+            "model_ood_alert": True,
+            "rejection_reasons_json": ["online_drift_hard_block"],
+        },
     ]
     h = _signal_health_fractions(rows)
     assert h["n"] == 2
@@ -49,7 +57,9 @@ def test_shadow_champion_mae_from_snapshot() -> None:
     rows = [
         {
             "take_trade_prob": 0.8,
-            "source_snapshot_json": {"take_trade_model": {"challenger_take_trade_prob": 0.6}},
+            "source_snapshot_json": {
+                "take_trade_model": {"challenger_take_trade_prob": 0.6}
+            },
         }
     ]
     mae, n = _shadow_champion_prob_mae(rows)

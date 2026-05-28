@@ -13,7 +13,9 @@ from scripts.audit_forensics_replay_evidence_report import (
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts" / "audit_forensics_replay_evidence_report.py"
-DEFAULT_TEMPLATE = ROOT / "docs" / "production_10_10" / "audit_forensics_replay_evidence.template.json"
+DEFAULT_TEMPLATE = (
+    ROOT / "docs" / "production_10_10" / "audit_forensics_replay_evidence.template.json"
+)
 
 
 def _verified_external_payload() -> dict:
@@ -62,7 +64,10 @@ def test_default_payload_internal_clean_external_not_pass() -> None:
     complete = payload["replay_scenarios"]["complete"]
     assert complete["replay_sufficient"] is True
     assert payload["replay_scenarios"]["incomplete"]["replay_sufficient"] is False
-    assert "llm_explanation_not_audit_truth" in payload["replay_scenarios"]["llm_explanation_flag"]["warnings"]
+    assert (
+        "llm_explanation_not_audit_truth"
+        in payload["replay_scenarios"]["llm_explanation_flag"]["warnings"]
+    )
 
 
 def test_assess_external_passes_on_verified_fixture() -> None:
@@ -88,7 +93,9 @@ def test_build_template_roundtrip() -> None:
 
 def test_cli_strict_and_strict_external(tmp_path: Path) -> None:
     verified = tmp_path / "verified.json"
-    verified.write_text(json.dumps(_verified_external_payload(), indent=2), encoding="utf-8")
+    verified.write_text(
+        json.dumps(_verified_external_payload(), indent=2), encoding="utf-8"
+    )
     out_md = tmp_path / "out.md"
     out_json = tmp_path / "out.json"
     r1 = subprocess.run(

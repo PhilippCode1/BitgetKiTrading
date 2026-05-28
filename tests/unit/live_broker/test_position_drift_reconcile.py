@@ -17,8 +17,8 @@ for candidate in (REPO_ROOT, LIVE_BROKER_SRC):
         sys.path.insert(0, c)
 
 from live_broker.config import LiveBrokerSettings
-from live_broker.reconcile.position_drift import run_position_drift_once
 from live_broker.private_rest import BitgetRestResponse
+from live_broker.reconcile.position_drift import run_position_drift_once
 
 
 @dataclass
@@ -31,7 +31,9 @@ class InMemoryPosRepo:
     def list_live_positions(self) -> list[dict[str, Any]]:
         return [dict(r) for r in self.rows]
 
-    def delete_live_position(self, inst_id: str, product_type: str, hold_side: str) -> bool:
+    def delete_live_position(
+        self, inst_id: str, product_type: str, hold_side: str
+    ) -> bool:
         t = (inst_id.upper(), product_type.upper(), hold_side.lower())
         for i, r in enumerate(self.rows):
             if (
@@ -77,7 +79,9 @@ class InMemoryPosRepo:
 class _FakeRest:
     payload: dict[str, Any]
 
-    def list_all_positions(self, *, priority: bool = True) -> BitgetRestResponse:  # noqa: ARG002
+    def list_all_positions(
+        self, *, priority: bool = True
+    ) -> BitgetRestResponse:  # noqa: ARG002
         return BitgetRestResponse(
             http_status=200,
             payload=self.payload,
@@ -151,7 +155,9 @@ def test_ghost_position_shadow_sync_one_cycle(monkeypatch: pytest.MonkeyPatch) -
     res = run_position_drift_once(settings=s, repo=repo, private=private, bus=B())  # type: ignore[arg-type]
     assert res.get("ok") is True
     assert res.get("ghosts_repaired") == 1
-    keys = {(r["inst_id"], r.get("hold_side"), r.get("product_type", "")) for r in repo.rows}
+    keys = {
+        (r["inst_id"], r.get("hold_side"), r.get("product_type", "")) for r in repo.rows
+    }
     assert ("ETHUSDT", "long", "USDT-FUTURES") in keys
     assert any(
         t[0] == "live-broker:GHOST_POSITION_DETECTED" for t in repo.system_alerts
@@ -166,7 +172,9 @@ def test_notional_mismatch_triggers_global_halt(
     def _halt(url: str, active: bool) -> None:  # noqa: ARG001
         published.append(active)
 
-    monkeypatch.setattr("live_broker.reconcile.position_drift.publish_global_halt_state", _halt)
+    monkeypatch.setattr(
+        "live_broker.reconcile.position_drift.publish_global_halt_state", _halt
+    )
     repo = InMemoryPosRepo()
     repo.rows.append(
         {

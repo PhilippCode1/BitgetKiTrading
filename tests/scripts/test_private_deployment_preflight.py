@@ -143,7 +143,16 @@ def test_output_report_contains_no_secrets_and_german_mode(tmp_path: Path) -> No
             ]
         ),
     )
-    proc = _run(["--env-file", str(env), "--mode", "staging_private", "--output-md", str(out_md)])
+    proc = _run(
+        [
+            "--env-file",
+            str(env),
+            "--mode",
+            "staging_private",
+            "--output-md",
+            str(out_md),
+        ]
+    )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     content = out_md.read_text(encoding="utf-8")
     assert "Main-Console-Sicherheitsmodus" in content

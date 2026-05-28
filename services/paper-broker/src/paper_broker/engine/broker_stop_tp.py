@@ -6,11 +6,14 @@ from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 import psycopg
+from shared_py.exit_engine import evaluate_exit_plan
 
-from paper_broker.events.publisher import publish_trade_closed_evt, publish_trade_updated
+from paper_broker.events.publisher import (
+    publish_trade_closed_evt,
+    publish_trade_updated,
+)
 from paper_broker.risk.plan_service import parse_plan_json
 from paper_broker.storage import repo_position_events, repo_positions
-from shared_py.exit_engine import evaluate_exit_plan
 
 # Fach-Exit (Trailing/Wick) ist ausschliesslich in shared_py.exit_engine — hier nur I/O
 
@@ -24,6 +27,8 @@ def _dec(x: Any) -> Decimal:
     if x is None:
         return Decimal("0")
     return Decimal(str(x))
+
+
 def run_stop_tp_for_position(
     broker: PaperBrokerService,
     conn: psycopg.Connection[Any],
@@ -78,7 +83,9 @@ def run_stop_tp_for_position(
             if qty0 <= 0:
                 return True
             reason_code = str(action.get("reason_code") or "exit")
-            event_type = "SL_HIT" if reason_code == "stop_loss_hit" else "RUNNER_TRAIL_HIT"
+            event_type = (
+                "SL_HIT" if reason_code == "stop_loss_hit" else "RUNNER_TRAIL_HIT"
+            )
             close_reason = "SL_HIT" if event_type == "SL_HIT" else "RUNNER_TRAIL"
             with conn.transaction():
                 broker._close_qty_in_conn(  # noqa: SLF001
@@ -169,7 +176,9 @@ def run_stop_tp_for_position(
                     tp_plan_json=updated_tp,
                     plan_updated_ts_ms=now_ms,
                 )
-            if any(action.get("reason_code") == "break_even_applied" for action in actions):
+            if any(
+                action.get("reason_code") == "break_even_applied" for action in actions
+            ):
                 repo_position_events.insert_position_event(
                     conn,
                     position_id=pid,

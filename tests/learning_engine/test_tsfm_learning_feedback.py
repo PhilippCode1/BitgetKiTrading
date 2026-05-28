@@ -32,7 +32,9 @@ def test_specialist_disagreement() -> None:
     assert specialist_disagreement_from_war_room(
         {"macro_quant_high_uncertainty": True, "consensus_status": "ok"},
     )
-    assert specialist_disagreement_from_war_room({"consensus_status": "high_uncertainty"})
+    assert specialist_disagreement_from_war_room(
+        {"consensus_status": "high_uncertainty"}
+    )
 
 
 def test_consensus_to_labels_hard_lesson() -> None:
@@ -50,16 +52,17 @@ def test_consensus_to_labels_hard_lesson() -> None:
     cp2, uw2 = consensus_to_labels(wr, pnl_net_usdt=1.0, has_signal_link=True)
     assert cp2 == 0.25
     assert uw2 == 1.25
-    assert consensus_to_labels(wr, pnl_net_usdt=-1.0, has_signal_link=False) == (0.0, 1.0)
+    assert consensus_to_labels(wr, pnl_net_usdt=-1.0, has_signal_link=False) == (
+        0.0,
+        1.0,
+    )
 
 
 def test_enrich_with_stubbed_apex() -> None:
     sid = uuid4()
     orig = tlf._fetch_by_signal_json_path
 
-    def _stub(
-        _conn: object, signal_id_strs: list[str]
-    ) -> list[dict]:
+    def _stub(_conn: object, signal_id_strs: list[str]) -> list[dict]:
         assert str(sid) in signal_id_strs
         pld = {
             "market_event_json": {"signal_id": str(sid)},
@@ -123,9 +126,7 @@ def test_dod_build_includes_consensus_in_kept_examples() -> None:
     row = dict(row)
     row["consensus_penalty"] = 0.8
     row["uncertainty_weight"] = 2.5
-    ex, _rep = build_take_trade_training_dataset(
-        [row], TakeTradeDatasetBuildConfig()
-    )
+    ex, _rep = build_take_trade_training_dataset([row], TakeTradeDatasetBuildConfig())
     assert len(ex) == 1
     assert ex[0].get("consensus_penalty") == 0.8
     assert ex[0].get("uncertainty_weight") == 2.5

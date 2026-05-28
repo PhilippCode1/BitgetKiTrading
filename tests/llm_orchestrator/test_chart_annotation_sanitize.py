@@ -5,9 +5,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
-
-from llm_orchestrator.chart_annotation_sanitize import sanitize_strategy_chart_annotations
+from llm_orchestrator.chart_annotation_sanitize import (
+    sanitize_strategy_chart_annotations,
+)
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "chart_annotations"
 

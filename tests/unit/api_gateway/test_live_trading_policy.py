@@ -20,6 +20,7 @@ from api_gateway.deps import (
     LIVE_TRADING_NOT_ALLOWED_ERROR_CODE,
     verify_live_trading_capability,
 )
+
 from shared_py.product_policy import ExecutionPolicyViolationError
 
 
@@ -65,7 +66,9 @@ def test_verify_live_trading_bypasses_gateway_internal_key() -> None:
 
 def test_verify_live_trading_403_when_db_denies() -> None:
     auth = _ctx(roles={"operator:mutate", "emergency:mutate"})
-    with patch("api_gateway.deps.get_gateway_settings", return_value=_mock_settings(ttl=0)):
+    with patch(
+        "api_gateway.deps.get_gateway_settings", return_value=_mock_settings(ttl=0)
+    ):
         with patch(
             "api_gateway.deps._read_live_ok_from_cache",
             return_value=None,
@@ -80,11 +83,57 @@ def test_verify_live_trading_403_when_db_denies() -> None:
                 with pytest.raises(HTTPException) as ei:
                     verify_live_trading_capability(auth)
     assert ei.value.status_code == 403
-    assert ei.value.detail == {"error": LIVE_TRADING_NOT_ALLOWED_ERROR_CODE}
+    assert ei.value.detail == {
+        "error": LIVE_TRADING_NOT_ALLOWED_ERROR_CODE,
+        "message": "Echtgeld-Handel für diesen Account nicht freigeschaltet. Bitte Vertrag abschließen.",
+        "reason": "no_active_commercial_contract",
+    }
+
+
+def test_verify_live_trading_200_when_db_allows() -> None:
+    auth = _ctx(roles={"operator:mutate", "emergency:mutate"})
+    with patch(
+        "api_gateway.deps.get_gateway_settings", return_value=_mock_settings(ttl=0)
+    ):
+        with patch(
+            "api_gateway.deps._read_live_ok_from_cache",
+            return_value=None,
+        ):
+            with patch(
+                "api_gateway.deps._live_policy_db_check",
+                return_value=None,
+            ) as m:
+                # Sollte ohne Exception durchlaufen
+                verify_live_trading_capability(auth)
+    m.assert_called_once()
+
+
+def test_verify_live_trading_enforced_in_production() -> None:
+    auth = _ctx(roles={"operator:mutate"})
+    settings = _mock_settings(enforce=False)
+    settings.production = True  # In der Produktion MUSS es erzwungen werden!
+    with patch(
+        "api_gateway.deps.get_gateway_settings", return_value=settings
+    ):
+        with patch(
+            "api_gateway.deps._read_live_ok_from_cache",
+            return_value=None,
+        ):
+            with patch(
+                "api_gateway.deps._live_policy_db_check",
+                return_value=None,
+            ) as m:
+                verify_live_trading_capability(auth)
+    m.assert_called_once()
 
 
 def test_verify_skipped_when_enforce_off() -> None:
-    with patch("api_gateway.deps.get_gateway_settings", return_value=_mock_settings(enforce=False)):
+    settings = _mock_settings(enforce=False)
+    settings.production = False
+    with patch(
+        "api_gateway.deps.get_gateway_settings",
+        return_value=settings,
+    ):
         with patch("api_gateway.deps._live_policy_db_check") as m:
             verify_live_trading_capability(_ctx(roles={"operator:mutate"}))
     m.assert_not_called()

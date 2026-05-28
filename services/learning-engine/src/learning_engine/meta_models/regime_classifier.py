@@ -8,24 +8,11 @@ from uuid import UUID, uuid4
 
 import psycopg
 from joblib import dump
-from sklearn.ensemble import HistGradientBoostingClassifier
-from sklearn.metrics import accuracy_score, log_loss
-from sklearn.preprocessing import LabelEncoder
-
-from learning_engine.config import LearningEngineSettings
-from learning_engine.storage import repo_model_runs
-from learning_engine.training.cv_leakage_family import build_cv_report_with_leakage_family_audit
-from learning_engine.training.cv_runner import (
-    mean_fold_metric,
-    run_purged_kfold_multiclass_classification,
-    run_walk_forward_multiclass_classification,
+from shared_py.model_contracts import (
+    MODEL_TARGET_SCHEMA_HASH,
+    normalize_market_regime,
+    stable_json_hash,
 )
-from learning_engine.training.data_version import compute_data_version_hash
-from learning_engine.training.example_ranges import label_ranges_for_examples
-from learning_engine.training.manifest import build_training_manifest
-from learning_engine.training.run_manifest import write_full_run_manifest
-from shared_py.model_contracts import MODEL_TARGET_SCHEMA_HASH, normalize_market_regime, stable_json_hash
-from shared_py.training_dataset_builder import training_row_metadata
 from shared_py.take_trade_model import (
     MARKET_REGIME_CLASSIFIER_MODEL_NAME,
     MARKET_REGIME_TARGET_FIELD,
@@ -35,6 +22,25 @@ from shared_py.take_trade_model import (
     build_regime_model_feature_vector_from_evaluation,
     regime_model_feature_contract_descriptor,
 )
+from shared_py.training_dataset_builder import training_row_metadata
+from sklearn.ensemble import HistGradientBoostingClassifier
+from sklearn.metrics import accuracy_score, log_loss
+from sklearn.preprocessing import LabelEncoder
+
+from learning_engine.config import LearningEngineSettings
+from learning_engine.storage import repo_model_runs
+from learning_engine.training.cv_leakage_family import (
+    build_cv_report_with_leakage_family_audit,
+)
+from learning_engine.training.cv_runner import (
+    mean_fold_metric,
+    run_purged_kfold_multiclass_classification,
+    run_walk_forward_multiclass_classification,
+)
+from learning_engine.training.data_version import compute_data_version_hash
+from learning_engine.training.example_ranges import label_ranges_for_examples
+from learning_engine.training.manifest import build_training_manifest
+from learning_engine.training.run_manifest import write_full_run_manifest
 
 _MIN_TEST_ROWS = 16
 
@@ -59,7 +65,9 @@ def train_market_regime_classifier(
     for ex in examples:
         r = str(ex["regime"])
         counts[r] = counts.get(r, 0) + 1
-    sparse = [r for r, c in counts.items() if c < settings.regime_classifier_min_per_class]
+    sparse = [
+        r for r, c in counts.items() if c < settings.regime_classifier_min_per_class
+    ]
     if sparse:
         raise ValueError(
             "Regime-Klassen unter Mindestanzahl: "
@@ -76,13 +84,16 @@ def train_market_regime_classifier(
     k_cv = settings.train_cv_kfolds
     emb = settings.train_cv_embargo_pct
     rs = settings.train_random_state
-    make_est = lambda: HistGradientBoostingClassifier(
-        learning_rate=0.05,
-        max_depth=3,
-        max_iter=200,
-        min_samples_leaf=10,
-        random_state=rs,
-    )
+
+    def make_est():
+        return HistGradientBoostingClassifier(
+            learning_rate=0.05,
+            max_depth=3,
+            max_iter=200,
+            min_samples_leaf=10,
+            random_state=rs,
+        )
+
     cv_wf = run_walk_forward_multiclass_classification(
         X=X_full,
         y=list(y_enc_full),
@@ -146,7 +157,9 @@ def train_market_regime_classifier(
         }
         try:
             prob = model.predict_proba(test_X)
-            metrics["log_loss"] = float(log_loss(test_y, prob, labels=list(model.classes_)))
+            metrics["log_loss"] = float(
+                log_loss(test_y, prob, labels=list(model.classes_))
+            )
         except ValueError:
             metrics["log_loss"] = None
     else:
@@ -277,7 +290,9 @@ def train_market_regime_classifier(
     )
 
     if promote:
-        repo_model_runs.clear_promoted_model(conn, model_name=MARKET_REGIME_CLASSIFIER_MODEL_NAME)
+        repo_model_runs.clear_promoted_model(
+            conn, model_name=MARKET_REGIME_CLASSIFIER_MODEL_NAME
+        )
     repo_model_runs.insert_model_run(
         conn,
         run_id=run_id,
@@ -337,7 +352,8 @@ def _matrix_and_targets(
     examples: list[dict[str, Any]],
 ) -> tuple[list[list[float]], list[str]]:
     X = [
-        [float(ex["features"][field]) for field in REGIME_MODEL_FEATURE_FIELDS] for ex in examples
+        [float(ex["features"][field]) for field in REGIME_MODEL_FEATURE_FIELDS]
+        for ex in examples
     ]
     y = [str(ex["regime"]) for ex in examples]
     return X, y
@@ -355,7 +371,9 @@ def _holdout_start(total_rows: int) -> int:
     test_rows = max(_MIN_TEST_ROWS, int(total_rows * 0.2))
     train_rows = total_rows - test_rows
     if train_rows < _MIN_TEST_ROWS:
-        raise ValueError("chronologischer Holdout fuer Regime-Klassifikator nicht moeglich")
+        raise ValueError(
+            "chronologischer Holdout fuer Regime-Klassifikator nicht moeglich"
+        )
     return train_rows
 
 

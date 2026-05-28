@@ -5,10 +5,11 @@ import json
 import logging
 import re
 import time
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, TypeVar
+from typing import Any, TypeVar
 
 from llm_orchestrator.knowledge.onchain_macro import build_readonly_onchain_text
 
@@ -26,9 +27,7 @@ PLACEHOLDER_NO_NEWS = "[KEINE AKTUELLEN NEWS VERFÜGBAR]"
 PLACEHOLDER_NO_ORDERBOOK = "[KEIN AKTUELLES ORDERBUCH VERFÜGBAR]"
 PLACEHOLDER_NO_SIGNALS = "[KEINE AKTUELLEN SIGNAL-DATEN VERFÜGBAR]"
 PLACEHOLDER_NO_CHART = "[KEIN AKTUELLER CHART-/KERZENSNAPSHOT VERFÜGBAR]"
-PLACEHOLDER_NO_ONCHAIN_MACRO = (
-    "[KEINE ON-CHAIN-MAKRO-EVENTS VERFÜGBAR — Sniffer-Stream leer oder Redis nicht erreichbar]"
-)
+PLACEHOLDER_NO_ONCHAIN_MACRO = "[KEINE ON-CHAIN-MAKRO-EVENTS VERFÜGBAR — Sniffer-Stream leer oder Redis nicht erreichbar]"
 PLACEHOLDER_SECTION_ERROR = "[ABSCHNITT VORLAEUFIG NICHT LESBAR]"
 
 
@@ -61,7 +60,7 @@ def _is_empty_value(v: Any) -> bool:
         return False
     if isinstance(v, str) and not v.strip():
         return True
-    if isinstance(v, (list, tuple, dict, set)) and len(v) == 0:
+    if isinstance(v, list | tuple | dict | set) and len(v) == 0:
         return True
     return False
 
@@ -79,7 +78,7 @@ def _serialize_block(label: str, data: Any, empty_placeholder: str) -> str:
         if _is_empty_value(data):
             return f"{label}:\n{empty_placeholder}"
         try:
-            if isinstance(data, (dict, list)):
+            if isinstance(data, dict | list):
                 text = json.dumps(data, ensure_ascii=False, default=str, indent=2)
             else:
                 text = str(data)
@@ -301,8 +300,9 @@ def format_operator_readonly_pro_symbol(
 
     out = "\n\n".join(parts)
     if len(out) > max_total_chars:
-        out = out[: max_total_chars] + "\n…"
+        out = out[:max_total_chars] + "\n…"
     return out
+
 
 # Task -> erlaubte Manifest-Tags (kuratiert, keine freie Websuche)
 TASK_TAG_ALLOWLIST: dict[str, frozenset[str]] = {
@@ -313,9 +313,7 @@ TASK_TAG_ALLOWLIST: dict[str, frozenset[str]] = {
     ),
     "post_trade_review": frozenset({"runbook", "playbook"}),
     "operator_explain": frozenset({"runbook", "playbook", "operator_explain"}),
-    "safety_incident_diagnosis": frozenset(
-        {"runbook", "playbook", "operator_explain"}
-    ),
+    "safety_incident_diagnosis": frozenset({"runbook", "playbook", "operator_explain"}),
     "strategy_signal_explain": frozenset({"playbook", "instrument", "runbook"}),
     "ai_strategy_proposal_draft": frozenset({"playbook", "instrument", "runbook"}),
     "strategy_journal_summary": frozenset({"playbook", "instrument", "journal"}),
@@ -433,5 +431,7 @@ class KnowledgeRetriever:
             return "(keine Retrieval-Ausschnitte)"
         parts: list[str] = []
         for c in chunks:
-            parts.append(f"--- chunk_id={c.id} sha256={c.content_sha256} ---\n{c.excerpt}")
+            parts.append(
+                f"--- chunk_id={c.id} sha256={c.content_sha256} ---\n{c.excerpt}"
+            )
         return "\n\n".join(parts)

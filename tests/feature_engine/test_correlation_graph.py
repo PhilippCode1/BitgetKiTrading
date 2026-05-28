@@ -6,7 +6,9 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-SERVICE_SRC = Path(__file__).resolve().parents[2] / "services" / "feature-engine" / "src"
+SERVICE_SRC = (
+    Path(__file__).resolve().parents[2] / "services" / "feature-engine" / "src"
+)
 SHARED_SRC = Path(__file__).resolve().parents[2] / "shared" / "python" / "src"
 for p in (SERVICE_SRC, SHARED_SRC):
     s = str(p)

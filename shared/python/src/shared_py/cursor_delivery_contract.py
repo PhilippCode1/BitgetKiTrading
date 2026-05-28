@@ -53,7 +53,9 @@ class ImplementationPhaseId(str, Enum):
     BA11_E2E_HARDENING = "ba11_e2e_hardening"
 
 
-IMPLEMENTATION_PHASE_ORDER: Final[tuple[ImplementationPhaseId, ...]] = tuple(ImplementationPhaseId)
+IMPLEMENTATION_PHASE_ORDER: Final[tuple[ImplementationPhaseId, ...]] = tuple(
+    ImplementationPhaseId
+)
 
 
 def phase_index(phase: ImplementationPhaseId) -> int:

@@ -58,7 +58,9 @@ class PaperRuntime:
         )
         self.metadata_service = BitgetInstrumentMetadataService(self.catalog)
         self.catalog_block_reason: str | None = None
-        self.broker = PaperBrokerService(settings=settings, bus=self.bus, catalog=self.catalog)
+        self.broker = PaperBrokerService(
+            settings=settings, bus=self.bus, catalog=self.catalog
+        )
         self.strategy_engine = StrategyExecutionEngine(settings, self.broker)
         self.broker.strategy_engine = self.strategy_engine
         self._stop = threading.Event()
@@ -85,7 +87,9 @@ class PaperRuntime:
             self.catalog_block_reason = None
         except Exception as exc:
             self.catalog_block_reason = str(exc)
-            logging.getLogger("paper_broker").warning("instrument catalog refresh failed: %s", exc)
+            logging.getLogger("paper_broker").warning(
+                "instrument catalog refresh failed: %s", exc
+            )
 
     def start_background(self) -> None:
         need_consumer = (

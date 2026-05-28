@@ -130,7 +130,11 @@ def paper_metrics_summary() -> dict[str, Any]:
                     )
                 except Exception:
                     ledger_recent = []
-        payload = {**summary, "equity_curve": equity_curve, "account_ledger_recent": ledger_recent}
+        payload = {
+            **summary,
+            "equity_curve": equity_curve,
+            "account_ledger_recent": ledger_recent,
+        }
         return merge_read_envelope(
             payload,
             status="ok",

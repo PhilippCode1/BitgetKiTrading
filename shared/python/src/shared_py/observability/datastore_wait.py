@@ -16,6 +16,7 @@ from typing import Any
 
 import psycopg
 import redis
+
 from shared_py.redis_client import create_sync_connection_pool, sync_redis_from_pool
 
 
@@ -38,14 +39,20 @@ def wait_for_postgres(
 ) -> None:
     """Blockiert bis `select 1` oder Timeout."""
     log = logger or logging.getLogger("datastore_wait")
-    limit = timeout_sec if timeout_sec is not None else _env_int("DATASTORE_WAIT_TIMEOUT_SEC", 120)
+    limit = (
+        timeout_sec
+        if timeout_sec is not None
+        else _env_int("DATASTORE_WAIT_TIMEOUT_SEC", 120)
+    )
     deadline = time.monotonic() + float(limit)
     attempt = 0
     last_err: str | None = None
     while time.monotonic() < deadline:
         attempt += 1
         try:
-            with psycopg.connect(dsn.strip(), connect_timeout=5, autocommit=True) as conn:
+            with psycopg.connect(
+                dsn.strip(), connect_timeout=5, autocommit=True
+            ) as conn:
                 conn.execute("select 1")
             log.info("%s ready after %s attempt(s)", label, attempt)
             return
@@ -71,7 +78,11 @@ def wait_for_redis(
     label: str = "redis",
 ) -> None:
     log = logger or logging.getLogger("datastore_wait")
-    limit = timeout_sec if timeout_sec is not None else _env_int("DATASTORE_WAIT_TIMEOUT_SEC", 120)
+    limit = (
+        timeout_sec
+        if timeout_sec is not None
+        else _env_int("DATASTORE_WAIT_TIMEOUT_SEC", 120)
+    )
     deadline = time.monotonic() + float(limit)
     attempt = 0
     last_err: str | None = None
@@ -127,7 +138,11 @@ def wait_for_datastores(
     """
     Wartet sequentiell auf Postgres und Redis. Aktivierbar per SKIP_DATASTORE_WAIT=1 (Tests/Notfall).
     """
-    if (os.environ.get("SKIP_DATASTORE_WAIT") or "").strip().lower() in ("1", "true", "yes"):
+    if (os.environ.get("SKIP_DATASTORE_WAIT") or "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    ):
         return
     log = logger or logging.getLogger("datastore_wait")
     log.info("datastore_wait start service=%s", service_name)

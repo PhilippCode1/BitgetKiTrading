@@ -17,7 +17,9 @@ def _hash_embedding_fallback(texts: list[str]) -> list[list[float]]:
     """Deterministischer Fallback ohne vollstaendiges HF-Modell (CI / Notstart)."""
     out: list[list[float]] = []
     for t in texts:
-        seed = int.from_bytes(hashlib.sha256(t.encode("utf-8")).digest()[:8], "big", signed=False)
+        seed = int.from_bytes(
+            hashlib.sha256(t.encode("utf-8")).digest()[:8], "big", signed=False
+        )
         x = seed % (2**31 - 1) or 1
         vec = np.empty(_DIM, dtype=np.float64)
         for i in range(_DIM):
@@ -62,7 +64,9 @@ class EmbeddingEngine:
             logger.warning("CUDA nicht verfuegbar — Embeddings laufen auf CPU")
         self._device = device
         self._model = SentenceTransformer(self._model_id, device=device)
-        logger.info("EmbeddingEngine geladen model=%s device=%s", self._model_id, device)
+        logger.info(
+            "EmbeddingEngine geladen model=%s device=%s", self._model_id, device
+        )
 
     def encode(self, texts: list[str], *, normalize: bool = True) -> list[list[float]]:
         if not texts:

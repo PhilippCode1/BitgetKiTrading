@@ -12,7 +12,9 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 DE_MESSAGES = ROOT / "apps" / "dashboard" / "src" / "messages" / "de.json"
-NAV_FILE = ROOT / "apps" / "dashboard" / "src" / "lib" / "main-console" / "navigation.ts"
+NAV_FILE = (
+    ROOT / "apps" / "dashboard" / "src" / "lib" / "main-console" / "navigation.ts"
+)
 STATUS_DOC = ROOT / "docs" / "production_10_10" / "german_ui_status_language.md"
 OP_STATUS_DOC = ROOT / "docs" / "operator_status_language.md"
 
@@ -56,8 +58,21 @@ class Issue:
     path: str | None = None
 
 
-def _add(issues: list[Issue], severity: str, code: str, message: str, path: Path | None = None) -> None:
-    issues.append(Issue(severity=severity, code=code, message=message, path=str(path) if path else None))
+def _add(
+    issues: list[Issue],
+    severity: str,
+    code: str,
+    message: str,
+    path: Path | None = None,
+) -> None:
+    issues.append(
+        Issue(
+            severity=severity,
+            code=code,
+            message=message,
+            path=str(path) if path else None,
+        )
+    )
 
 
 def _read(path: Path) -> str:
@@ -69,29 +84,61 @@ def analyze() -> dict[str, Any]:
 
     for required in (DE_MESSAGES, NAV_FILE, STATUS_DOC, OP_STATUS_DOC):
         if not required.is_file():
-            _add(issues, "error", "required_file_missing", f"Pflichtdatei fehlt: {required}", required)
+            _add(
+                issues,
+                "error",
+                "required_file_missing",
+                f"Pflichtdatei fehlt: {required}",
+                required,
+            )
 
     if DE_MESSAGES.is_file():
         try:
             payload = json.loads(_read(DE_MESSAGES))
         except Exception:
             payload = {}
-            _add(issues, "error", "de_json_invalid", "de.json ist nicht parsebar.", DE_MESSAGES)
+            _add(
+                issues,
+                "error",
+                "de_json_invalid",
+                "de.json ist nicht parsebar.",
+                DE_MESSAGES,
+            )
         nav_values = list((((payload.get("console") or {}).get("nav")) or {}).values())
         nav_values_text = "\n".join(str(v) for v in nav_values)
         for required in REQUIRED_DE_NAV_LABELS:
             if required not in nav_values_text:
-                _add(issues, "error", "required_german_nav_label_missing", f"Pflichtlabel fehlt: {required}", DE_MESSAGES)
+                _add(
+                    issues,
+                    "error",
+                    "required_german_nav_label_missing",
+                    f"Pflichtlabel fehlt: {required}",
+                    DE_MESSAGES,
+                )
         for token in FORBIDDEN_NAV_TERMS:
-            if re.search(rf"\b{re.escape(token)}\b", nav_values_text, flags=re.IGNORECASE):
-                _add(issues, "error", "forbidden_term_in_visible_nav", f"Verbotener Begriff in sichtbarer Navigation: {token}", DE_MESSAGES)
+            if re.search(
+                rf"\b{re.escape(token)}\b", nav_values_text, flags=re.IGNORECASE
+            ):
+                _add(
+                    issues,
+                    "error",
+                    "forbidden_term_in_visible_nav",
+                    f"Verbotener Begriff in sichtbarer Navigation: {token}",
+                    DE_MESSAGES,
+                )
 
     if NAV_FILE.is_file():
         nav_text = _read(NAV_FILE).lower()
         href_literals = re.findall(r'href:\s*"([^"]+)"', nav_text)
         for token in FORBIDDEN_NAV_TERMS:
             if any(token in href for href in href_literals):
-                _add(issues, "error", "forbidden_route_in_primary_nav", f"Verbotener Hauptnavigationspfad gefunden: {token}", NAV_FILE)
+                _add(
+                    issues,
+                    "error",
+                    "forbidden_route_in_primary_nav",
+                    f"Verbotener Hauptnavigationspfad gefunden: {token}",
+                    NAV_FILE,
+                )
 
     for scan_path in (DE_MESSAGES, OP_STATUS_DOC):
         if not scan_path.is_file():
@@ -99,7 +146,13 @@ def analyze() -> dict[str, Any]:
         low = _read(scan_path).lower()
         for phrase in FORBIDDEN_PROMISES:
             if phrase in low:
-                _add(issues, "error", "forbidden_profit_promise", f"Verbotenes Gewinnversprechen gefunden: {phrase}", scan_path)
+                _add(
+                    issues,
+                    "error",
+                    "forbidden_profit_promise",
+                    f"Verbotenes Gewinnversprechen gefunden: {phrase}",
+                    scan_path,
+                )
 
     if STATUS_DOC.is_file():
         status_text = _read(STATUS_DOC).lower()
@@ -114,7 +167,13 @@ def analyze() -> dict[str, Any]:
         )
         for topic in required_status_topics:
             if topic not in status_text:
-                _add(issues, "error", "status_doc_topic_missing", f"Statussprach-Doku unvollstaendig: {topic}", STATUS_DOC)
+                _add(
+                    issues,
+                    "error",
+                    "status_doc_topic_missing",
+                    f"Statussprach-Doku unvollstaendig: {topic}",
+                    STATUS_DOC,
+                )
 
     errors = [i for i in issues if i.severity == "error"]
     warnings = [i for i in issues if i.severity == "warning"]
@@ -141,7 +200,9 @@ def main(argv: list[str] | None = None) -> int:
         )
         for issue in summary["issues"]:
             where = f" [{issue['path']}]" if issue.get("path") else ""
-            print(f"{issue['severity'].upper()} {issue['code']}: {issue['message']}{where}")
+            print(
+                f"{issue['severity'].upper()} {issue['code']}: {issue['message']}{where}"
+            )
 
     if not args.strict:
         return 0

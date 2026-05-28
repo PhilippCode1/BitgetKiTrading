@@ -15,8 +15,13 @@ export async function CustomerTrustBanner() {
         marginBottom: 20,
       }}
     >
-      <h2 style={{ marginTop: 0, fontSize: "1rem" }}>{t("customerPortal.safety.title")}</h2>
-      <ul className="muted" style={{ margin: 0, paddingLeft: "1.25rem", lineHeight: 1.6 }}>
+      <h2 style={{ marginTop: 0, fontSize: "1rem" }}>
+        {t("customerPortal.safety.title")}
+      </h2>
+      <ul
+        className="muted"
+        style={{ margin: 0, paddingLeft: "1.25rem", lineHeight: 1.6 }}
+      >
         <li>{t("customerPortal.safety.liveGated")}</li>
         <li>{t("customerPortal.safety.keysNeverInBrowser")}</li>
         <li>{t("customerPortal.safety.modesShadowPaperLive")}</li>

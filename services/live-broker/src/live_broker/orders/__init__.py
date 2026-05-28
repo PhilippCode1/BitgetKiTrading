@@ -7,7 +7,10 @@ from live_broker.orders.models import (
     OrderReplaceRequest,
     ReduceOnlyOrderRequest,
 )
-from live_broker.orders.service import LiveBrokerOrderService, client_oid_for_internal_order
+from live_broker.orders.service import (
+    LiveBrokerOrderService,
+    client_oid_for_internal_order,
+)
 
 __all__ = [
     "LiveBrokerOrderService",

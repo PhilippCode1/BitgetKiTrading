@@ -8,7 +8,9 @@ from signal_engine.news_compat import news_sentiment_as_float
 from signal_engine.scoring.risk_score import _first_geometry
 
 
-def build_risk_warnings(inp: ExplainInput, settings: SignalEngineSettings) -> list[dict[str, Any]]:
+def build_risk_warnings(
+    inp: ExplainInput, settings: SignalEngineSettings
+) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     s = inp.signal_row
     direction = str(s.get("direction", "neutral"))
@@ -95,7 +97,10 @@ def build_risk_warnings(inp: ExplainInput, settings: SignalEngineSettings) -> li
                     "code": "BREAKOUT_FALSE_RISK",
                     "severity": "medium",
                     "message": "Struktur-Modul meldete zuletzt FALSE_BREAKOUT.",
-                    "evidence": {"event_id": str(ev.get("event_id", "")), "ts_ms": ev.get("ts_ms")},
+                    "evidence": {
+                        "event_id": str(ev.get("event_id", "")),
+                        "ts_ms": ev.get("ts_ms"),
+                    },
                 }
             )
             break
@@ -107,7 +112,10 @@ def build_risk_warnings(inp: ExplainInput, settings: SignalEngineSettings) -> li
                 "code": "LOW_RR",
                 "severity": "medium",
                 "message": "Reward/Risk unter SIGNAL_MIN_REWARD_RISK.",
-                "evidence": {"reward_risk_ratio": float(rr), "min": settings.signal_min_reward_risk},
+                "evidence": {
+                    "reward_risk_ratio": float(rr),
+                    "min": settings.signal_min_reward_risk,
+                },
             }
         )
 
@@ -174,7 +182,8 @@ def build_risk_warnings(inp: ExplainInput, settings: SignalEngineSettings) -> li
                         "model_uncertainty_0_1": s.get("model_uncertainty_0_1"),
                         "model_ood_score_0_1": s.get("model_ood_score_0_1"),
                         "model_ood_alert": s.get("model_ood_alert"),
-                        "uncertainty_reasons_json": s.get("uncertainty_reasons_json") or [],
+                        "uncertainty_reasons_json": s.get("uncertainty_reasons_json")
+                        or [],
                         "ood_reasons_json": s.get("ood_reasons_json") or [],
                     },
                 }

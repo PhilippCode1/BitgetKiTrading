@@ -256,7 +256,9 @@ def build_base_model_proposal(*, signal_row: dict[str, Any]) -> SpecialistPropos
         p["reasons"].append("stop_budget_from_reward_risk")
     else:
         p["stop_budget_0_1"] = 0.48
-    p["uncertainty_0_1"] = clamp01(_coerce_float(signal_row.get("model_uncertainty_0_1")) or 0.5)
+    p["uncertainty_0_1"] = clamp01(
+        _coerce_float(signal_row.get("model_uncertainty_0_1")) or 0.5
+    )
     allowed = _coerce_float(signal_row.get("allowed_leverage"))
     if allowed is not None and allowed > 0:
         rec = _coerce_float(signal_row.get("recommended_leverage"))
@@ -286,7 +288,9 @@ def build_family_proposal(
     instrument: BitgetInstrumentIdentity,
     family_blockers: list[str],
 ) -> SpecialistProposalV1:
-    p = empty_proposal(role="family", specialist_id=f"family:{instrument.market_family}")
+    p = empty_proposal(
+        role="family", specialist_id=f"family:{instrument.market_family}"
+    )
     direction = str(signal_row.get("direction") or "").strip().lower()
     if direction not in ("long", "short"):
         direction = "neutral"
@@ -318,16 +322,23 @@ def build_family_proposal(
     else:
         p["stop_budget_0_1"] = 0.45
         p["leverage_band"] = {"min_fraction_0_1": 0.4, "max_fraction_0_1": 1.0}
-    p["uncertainty_0_1"] = clamp01(_coerce_float(signal_row.get("model_uncertainty_0_1")) or 0.5)
-    p["exit_family_primary"] = "liquidity_target" if instrument.market_family == "spot" else None
+    p["uncertainty_0_1"] = clamp01(
+        _coerce_float(signal_row.get("model_uncertainty_0_1")) or 0.5
+    )
+    p["exit_family_primary"] = (
+        "liquidity_target" if instrument.market_family == "spot" else None
+    )
     return finalize_proposal_audit_fields(p, signal_row=signal_row)
 
 
 def build_regime_proposal(*, signal_row: dict[str, Any]) -> SpecialistProposalV1:
-    regime_state = str(signal_row.get("regime_state") or "").strip().lower() or str(
-        signal_row.get("market_regime") or ""
-    ).strip().lower()
-    p = empty_proposal(role="regime", specialist_id=f"regime:{regime_state or 'unknown'}")
+    regime_state = (
+        str(signal_row.get("regime_state") or "").strip().lower()
+        or str(signal_row.get("market_regime") or "").strip().lower()
+    )
+    p = empty_proposal(
+        role="regime", specialist_id=f"regime:{regime_state or 'unknown'}"
+    )
     bias = str(signal_row.get("regime_bias") or "").strip().lower()
     sig_dir = str(signal_row.get("direction") or "").strip().lower()
     if bias in ("long", "short"):
@@ -335,7 +346,12 @@ def build_regime_proposal(*, signal_row: dict[str, Any]) -> SpecialistProposalV1
     elif sig_dir in ("long", "short"):
         p["direction"] = sig_dir  # type: ignore[assignment]
     rc = _coerce_float(signal_row.get("regime_confidence_0_1")) or 0.0
-    if sig_dir in ("long", "short") and bias in ("long", "short") and bias != sig_dir and rc >= 0.58:
+    if (
+        sig_dir in ("long", "short")
+        and bias in ("long", "short")
+        and bias != sig_dir
+        and rc >= 0.58
+    ):
         p["no_trade_probability_0_1"] = clamp01(0.42 + rc * 0.45)
         p["reasons"].append("regime_bias_conflicts_with_signal_direction")
     elif regime_state in {"shock", "low_liquidity", "delivery_sensitive"}:
@@ -352,13 +368,20 @@ def build_regime_proposal(*, signal_row: dict[str, Any]) -> SpecialistProposalV1
         p["reasons"].append("regime_exit_hint_mean_reversion")
     elif regime_state in {"trend", "expansion"}:
         p["exit_family_primary"] = "trend_follow_runner"
-        p["exit_families_ranked"] = ["trend_follow_runner", "trend_hold", "scale_out", "runner"]
+        p["exit_families_ranked"] = [
+            "trend_follow_runner",
+            "trend_hold",
+            "scale_out",
+            "runner",
+        ]
         p["reasons"].append("regime_exit_hint_trend")
     elif regime_state == "compression":
         p["exit_family_primary"] = "event_exit"
         p["exit_families_ranked"] = ["event_exit", "scale_out"]
         p["reasons"].append("regime_exit_hint_compression")
-    p["stop_budget_0_1"] = 0.46 if regime_state in {"shock", "dislocation", "low_liquidity"} else 0.5
+    p["stop_budget_0_1"] = (
+        0.46 if regime_state in {"shock", "dislocation", "low_liquidity"} else 0.5
+    )
     return finalize_proposal_audit_fields(p, signal_row=signal_row)
 
 
@@ -379,13 +402,17 @@ def build_playbook_proposal(
         p["no_trade_probability_0_1"] = 0.88
         p["reasons"].append("playbookless_high_abstention_prior")
     else:
-        p["no_trade_probability_0_1"] = clamp01(0.22 + (1.0 - clamp01(selection_score)) * 0.62)
+        p["no_trade_probability_0_1"] = clamp01(
+            0.22 + (1.0 - clamp01(selection_score)) * 0.62
+        )
         p["reasons"].append("playbook_score_to_no_trade")
     p["expected_edge_bps"] = round(clamp01(selection_score) * 42.0 - 6.0, 4)
     p["exit_families_ranked"] = list(exit_families)
     p["exit_family_primary"] = exit_families[0] if exit_families else None
     p["uncertainty_0_1"] = clamp01(0.35 + (1.0 - clamp01(selection_score)) * 0.5)
-    p["stop_budget_0_1"] = 0.44 if playbook_family in {"breakout", "trend_continuation"} else 0.52
+    p["stop_budget_0_1"] = (
+        0.44 if playbook_family in {"breakout", "trend_continuation"} else 0.52
+    )
     return finalize_proposal_audit_fields(p, signal_row=signal_row)
 
 
@@ -402,9 +429,10 @@ def run_adversary_check(
     reasons: list[str] = []
     signal_dir = str(signal_row.get("direction") or "").strip().lower()
     regime_bias = str(signal_row.get("regime_bias") or "").strip().lower()
-    regime_state = str(signal_row.get("regime_state") or "").strip().lower() or str(
-        signal_row.get("market_regime") or ""
-    ).strip().lower()
+    regime_state = (
+        str(signal_row.get("regime_state") or "").strip().lower()
+        or str(signal_row.get("market_regime") or "").strip().lower()
+    )
 
     long_s = 0.0
     short_s = 0.0
@@ -414,7 +442,11 @@ def run_adversary_check(
         role = pr.get("specialist_role")
         sid = str(pr.get("specialist_id") or "")
         if role == "symbol":
-            w = _WEIGHT_SYMBOL_ACTIVE if sid.startswith("symbol:") else _WEIGHT_SYMBOL_CLUSTER
+            w = (
+                _WEIGHT_SYMBOL_ACTIVE
+                if sid.startswith("symbol:")
+                else _WEIGHT_SYMBOL_CLUSTER
+            )
         else:
             w = {
                 "base": _WEIGHT_BASE,
@@ -460,7 +492,9 @@ def run_adversary_check(
     sc = short_s / total_mass
     nc = neutral_s / total_mass
     tri_way_veto = (
-        lc > _THREE_WAY_CAMP_MIN and sc > _THREE_WAY_CAMP_MIN and nc > _THREE_WAY_CAMP_MIN
+        lc > _THREE_WAY_CAMP_MIN
+        and sc > _THREE_WAY_CAMP_MIN
+        and nc > _THREE_WAY_CAMP_MIN
     )
     if tri_way_veto:
         reasons.append("adversary_three_way_conviction_split")
@@ -506,7 +540,12 @@ def run_adversary_check(
         reasons.append("adversary_ood_score_hard")
 
     hard_veto = ood_escalation == "hard_veto"
-    directional_veto = dissent >= 0.66 and not hard_veto and not tri_way_veto and not edge_dispersion_veto
+    directional_veto = (
+        dissent >= 0.66
+        and not hard_veto
+        and not tri_way_veto
+        and not edge_dispersion_veto
+    )
 
     regime_bias_conflict_veto = False
     if (
@@ -526,7 +565,9 @@ def run_adversary_check(
         "dissent_score_0_1": round(dissent, 6),
         "long_vote_strength_0_1": round(long_s / total_dir, 6),
         "short_vote_strength_0_1": round(short_s / total_dir, 6),
-        "neutral_vote_strength_0_1": round(neutral_s / (long_s + short_s + neutral_s + 1e-9), 6),
+        "neutral_vote_strength_0_1": round(
+            neutral_s / (long_s + short_s + neutral_s + 1e-9), 6
+        ),
         "ood_escalation": ood_escalation,
         "ood_score_0_1": round(ood, 6),
         "hard_veto_recommended": hard_veto,

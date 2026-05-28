@@ -181,7 +181,10 @@ export function DiagnosticsCenterClient() {
 
   return (
     <div className="diagnostics-center">
-      <section className="panel diagnostics-center__summary" aria-labelledby="diag-summary-h">
+      <section
+        className="panel diagnostics-center__summary"
+        aria-labelledby="diag-summary-h"
+      >
         <h2 id="diag-summary-h">{t("pages.diagnostics.sectionSummary")}</h2>
         <p className="muted small">{t("pages.diagnostics.summaryLead")}</p>
         {loading ? (
@@ -273,7 +276,10 @@ export function DiagnosticsCenterClient() {
         </div>
       ) : null}
 
-      <section className="panel diagnostics-center__filters" aria-labelledby="diag-filters-h">
+      <section
+        className="panel diagnostics-center__filters"
+        aria-labelledby="diag-filters-h"
+      >
         <h2 id="diag-filters-h">{t("pages.diagnostics.sectionFilters")}</h2>
         <p className="muted small">{t("pages.diagnostics.filtersLead")}</p>
         <div className="diagnostics-filter-chips" role="group">
@@ -291,7 +297,10 @@ export function DiagnosticsCenterClient() {
         </div>
       </section>
 
-      <section className="panel diagnostics-center__table" aria-labelledby="diag-table-h">
+      <section
+        className="panel diagnostics-center__table"
+        aria-labelledby="diag-table-h"
+      >
         <h2 id="diag-table-h">{t("pages.diagnostics.sectionChecks")}</h2>
         <p className="muted small">{t("pages.diagnostics.checksLead")}</p>
         <div className="diagnostics-table-wrap">
@@ -328,7 +337,10 @@ export function DiagnosticsCenterClient() {
         ) : null}
       </section>
 
-      <section className="panel diagnostics-center__incidents" aria-labelledby="diag-inc-h">
+      <section
+        className="panel diagnostics-center__incidents"
+        aria-labelledby="diag-inc-h"
+      >
         <h2 id="diag-inc-h">{t("pages.diagnostics.sectionCrossIncidents")}</h2>
         <p className="muted small">{t("pages.diagnostics.crossLead")}</p>
         {extraIncidents.length === 0 ? (
@@ -338,15 +350,19 @@ export function DiagnosticsCenterClient() {
             {extraIncidents.map((i) => (
               <li key={i.id} className="diagnostics-incident-card">
                 <strong>{i.headline}</strong>
-                <span className={`diagnostics-sev diagnostics-sev--${i.severity}`}>
+                <span
+                  className={`diagnostics-sev diagnostics-sev--${i.severity}`}
+                >
                   {i.severity}
                 </span>
                 <p className="muted small">{i.suspectedCause}</p>
                 <p className="muted small">
-                  <strong>{t("pages.diagnostics.colImpact")}:</strong> {i.impact}
+                  <strong>{t("pages.diagnostics.colImpact")}:</strong>{" "}
+                  {i.impact}
                 </p>
                 <p className="muted small">
-                  <strong>{t("pages.diagnostics.colAction")}:</strong> {i.nextStep}
+                  <strong>{t("pages.diagnostics.colAction")}:</strong>{" "}
+                  {i.nextStep}
                 </p>
                 <details className="diagnostics-tech">
                   <summary>{t("pages.diagnostics.technical")}</summary>
@@ -358,7 +374,10 @@ export function DiagnosticsCenterClient() {
         )}
       </section>
 
-      <section className="panel diagnostics-center__healing" aria-labelledby="diag-heal-h">
+      <section
+        className="panel diagnostics-center__healing"
+        aria-labelledby="diag-heal-h"
+      >
         <h2 id="diag-heal-h">{t("pages.diagnostics.sectionHealing")}</h2>
         <p className="muted small">{t("pages.diagnostics.healingLead")}</p>
         {healingHints.length === 0 ? (
@@ -377,7 +396,10 @@ export function DiagnosticsCenterClient() {
         )}
       </section>
 
-      <section className="panel diagnostics-center__history" aria-labelledby="diag-hist-h">
+      <section
+        className="panel diagnostics-center__history"
+        aria-labelledby="diag-hist-h"
+      >
         <h2 id="diag-hist-h">{t("pages.diagnostics.sectionHistory")}</h2>
         <p className="muted small">{t("pages.diagnostics.historyLead")}</p>
         <p className="muted small">{t("pages.diagnostics.historyShared")}</p>
@@ -424,7 +446,9 @@ function DiagnosticsComponentRow({
       <td>
         <strong>{name}</strong>
         {row.manualRemediationRequired ? (
-          <span className="diagnostics-manual">{t("pages.diagnostics.manualBadge")}</span>
+          <span className="diagnostics-manual">
+            {t("pages.diagnostics.manualBadge")}
+          </span>
         ) : null}
       </td>
       <td className="muted small">{t(row.categoryKey)}</td>
@@ -433,9 +457,7 @@ function DiagnosticsComponentRow({
       </td>
       <td className="mono-small muted">{fmtTs(row.lastSeenMs)}</td>
       <td className="small">{row.suspectedCause}</td>
-      <td className="small muted diagnostics-td--cause">
-        {causeSnippet}
-      </td>
+      <td className="small muted diagnostics-td--cause">{causeSnippet}</td>
       <td className="small">{row.impact}</td>
       <td className="small">
         {row.nextStep}

@@ -7,7 +7,11 @@ from typing import Any
 
 from monitor_engine.alerts.publisher import publish_system_alert
 from monitor_engine.checks.services_http import ServiceCheckResult
-from monitor_engine.storage.repo_self_healing import get_state, set_phase, try_begin_restart
+from monitor_engine.storage.repo_self_healing import (
+    get_state,
+    set_phase,
+    try_begin_restart,
+)
 from monitor_engine.self_healing.service_restarter import ServiceRestarter
 from shared_py.eventbus import RedisStreamBus
 
@@ -16,7 +20,9 @@ logger = logging.getLogger("monitor_engine.self_healing.coordinator")
 RECOVERY_EVENT = "RECOVERY_REQUESTED"
 
 
-def _group_checks(rows: list[ServiceCheckResult]) -> dict[str, list[ServiceCheckResult]]:
+def _group_checks(
+    rows: list[ServiceCheckResult],
+) -> dict[str, list[ServiceCheckResult]]:
     g: dict[str, list[ServiceCheckResult]] = defaultdict(list)
     for r in rows:
         g[r.service_name].append(r)
@@ -76,7 +82,9 @@ def run_self_healing_coordinator(
     targets = {x.strip() for x in raw.split(",") if x.strip()}
     if not targets:
         return
-    crit_sec = float(getattr(settings, "monitor_self_healing_heartbeat_crit_sec", 300.0))
+    crit_sec = float(
+        getattr(settings, "monitor_self_healing_heartbeat_crit_sec", 300.0)
+    )
     max_h = int(getattr(settings, "monitor_self_healing_max_restarts_per_hour", 3) or 3)
     grouped = _group_checks(svc_results)
 
@@ -132,7 +140,9 @@ def run_self_healing_coordinator(
         rr = restarter.restart(name)
         publish_recovery_requested(bus, name, restarter=rr)
         if isinstance(rr, dict) and (rr or {}).get("ok"):
-            logger.info("self-healing restart ok service=%r mode=%r", name, rr.get("mode"))
+            logger.info(
+                "self-healing restart ok service=%r mode=%r", name, rr.get("mode")
+            )
 
 
 def publish_recovery_requested(

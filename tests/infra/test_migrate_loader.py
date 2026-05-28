@@ -21,7 +21,9 @@ def test_iter_migration_sql_paths_sorted_and_filters(tmp_path: Path) -> None:
     assert names == ["010_a.sql", "020_b.sql"]
 
 
-def test_iter_migration_sql_paths_orders_by_numeric_prefix_not_lex(tmp_path: Path) -> None:
+def test_iter_migration_sql_paths_orders_by_numeric_prefix_not_lex(
+    tmp_path: Path,
+) -> None:
     """Unpadded 20_ muss vor 100_ laufen (nicht lexikographisch 100 vor 20)."""
     (tmp_path / "100_later.sql").write_text("SELECT 1;", encoding="utf-8")
     (tmp_path / "20_early.sql").write_text("SELECT 1;", encoding="utf-8")

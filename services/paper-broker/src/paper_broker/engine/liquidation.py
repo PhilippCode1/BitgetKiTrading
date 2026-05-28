@@ -3,7 +3,9 @@ from __future__ import annotations
 from decimal import Decimal
 
 
-def unrealized_pnl(side: str, qty: Decimal, entry_avg: Decimal, mark: Decimal) -> Decimal:
+def unrealized_pnl(
+    side: str, qty: Decimal, entry_avg: Decimal, mark: Decimal
+) -> Decimal:
     s = side.lower()
     if s == "long":
         return (mark - entry_avg) * qty

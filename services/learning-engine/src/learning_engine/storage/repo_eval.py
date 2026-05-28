@@ -104,7 +104,11 @@ def upsert_trade_evaluation(conn: psycopg.Connection[Any], row: dict[str, Any]) 
             row["side"],
             str(row["qty_base"]),
             str(row["entry_price_avg"]),
-            str(row["exit_price_avg"]) if row.get("exit_price_avg") is not None else None,
+            (
+                str(row["exit_price_avg"])
+                if row.get("exit_price_avg") is not None
+                else None
+            ),
             str(row["pnl_gross_usdt"]),
             str(row["fees_total_usdt"]),
             str(row["funding_total_usdt"]),
@@ -117,17 +121,57 @@ def upsert_trade_evaluation(conn: psycopg.Connection[Any], row: dict[str, Any]) 
             row.get("time_to_tp1_ms"),
             row.get("time_to_stop_ms"),
             row.get("stop_quality_score"),
-            str(row["stop_distance_atr_mult"]) if row.get("stop_distance_atr_mult") is not None else None,
-            str(row["slippage_bps_entry"]) if row.get("slippage_bps_entry") is not None else None,
-            str(row["slippage_bps_exit"]) if row.get("slippage_bps_exit") is not None else None,
+            (
+                str(row["stop_distance_atr_mult"])
+                if row.get("stop_distance_atr_mult") is not None
+                else None
+            ),
+            (
+                str(row["slippage_bps_entry"])
+                if row.get("slippage_bps_entry") is not None
+                else None
+            ),
+            (
+                str(row["slippage_bps_exit"])
+                if row.get("slippage_bps_exit") is not None
+                else None
+            ),
             row.get("market_regime"),
-            bool(row["take_trade_label"]) if row.get("take_trade_label") is not None else None,
-            str(row["expected_return_bps"]) if row.get("expected_return_bps") is not None else None,
-            str(row["expected_return_gross_bps"]) if row.get("expected_return_gross_bps") is not None else None,
-            str(row["expected_mae_bps"]) if row.get("expected_mae_bps") is not None else None,
-            str(row["expected_mfe_bps"]) if row.get("expected_mfe_bps") is not None else None,
-            str(row["liquidation_proximity_bps"]) if row.get("liquidation_proximity_bps") is not None else None,
-            bool(row["liquidation_risk"]) if row.get("liquidation_risk") is not None else None,
+            (
+                bool(row["take_trade_label"])
+                if row.get("take_trade_label") is not None
+                else None
+            ),
+            (
+                str(row["expected_return_bps"])
+                if row.get("expected_return_bps") is not None
+                else None
+            ),
+            (
+                str(row["expected_return_gross_bps"])
+                if row.get("expected_return_gross_bps") is not None
+                else None
+            ),
+            (
+                str(row["expected_mae_bps"])
+                if row.get("expected_mae_bps") is not None
+                else None
+            ),
+            (
+                str(row["expected_mfe_bps"])
+                if row.get("expected_mfe_bps") is not None
+                else None
+            ),
+            (
+                str(row["liquidation_proximity_bps"])
+                if row.get("liquidation_proximity_bps") is not None
+                else None
+            ),
+            (
+                bool(row["liquidation_risk"])
+                if row.get("liquidation_risk") is not None
+                else None
+            ),
             ja(row.get("news_context_json")),
             j(row.get("signal_snapshot_json")),
             j(row.get("feature_snapshot_json")),
@@ -143,7 +187,9 @@ def upsert_trade_evaluation(conn: psycopg.Connection[Any], row: dict[str, Any]) 
     return UUID(str(out["evaluation_id"])) if out else pid
 
 
-def list_recent_evaluations(conn: psycopg.Connection[Any], *, limit: int) -> list[dict[str, Any]]:
+def list_recent_evaluations(
+    conn: psycopg.Connection[Any], *, limit: int
+) -> list[dict[str, Any]]:
     rows = conn.execute(
         """
         SELECT * FROM learn.trade_evaluations
@@ -165,7 +211,9 @@ def get_evaluation_by_trade_id(
     return dict(row) if row else None
 
 
-def summary_window(conn: psycopg.Connection[Any], *, window_days: int) -> dict[str, Any]:
+def summary_window(
+    conn: psycopg.Connection[Any], *, window_days: int
+) -> dict[str, Any]:
     row = conn.execute(
         """
         SELECT
@@ -179,7 +227,12 @@ def summary_window(conn: psycopg.Connection[Any], *, window_days: int) -> dict[s
         (f"{int(window_days)} days",),
     ).fetchone()
     if not row:
-        return {"count": 0, "wins": 0, "avg_pnl_net": Decimal("0"), "sum_pnl_net": Decimal("0")}
+        return {
+            "count": 0,
+            "wins": 0,
+            "avg_pnl_net": Decimal("0"),
+            "sum_pnl_net": Decimal("0"),
+        }
     n = int(row["n"])
     wins = int(row["wins"])
     return {

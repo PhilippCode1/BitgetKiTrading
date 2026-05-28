@@ -11,7 +11,10 @@ import psycopg
 from learning_engine.analytics import error_patterns, recommendations, strategy_metrics
 from learning_engine.config import LearningEngineSettings
 from learning_engine.drift.adwin_detector import SimpleAdwin
-from learning_engine.meta_models import train_expected_bps_models, train_take_trade_prob_model
+from learning_engine.meta_models import (
+    train_expected_bps_models,
+    train_take_trade_prob_model,
+)
 from learning_engine.mlflow_tracking.tracker import log_learning_run
 from learning_engine.storage import repo_learning_v1
 
@@ -69,7 +72,9 @@ def _adwin_insert_drifts(
     return n
 
 
-def run_learning_analytics(conn: psycopg.Connection[Any], settings: LearningEngineSettings) -> dict[str, Any]:
+def run_learning_analytics(
+    conn: psycopg.Connection[Any], settings: LearningEngineSettings
+) -> dict[str, Any]:
     now_ms = int(time.time() * 1000)
     windows = parse_windows(settings)
     report: dict[str, Any] = {"windows": {}, "drift_events": 0, "recommendations": 0}
@@ -79,7 +84,9 @@ def run_learning_analytics(conn: psycopg.Connection[Any], settings: LearningEngi
     for window in windows:
         wms = repo_learning_v1.window_to_ms(window)
         since = now_ms - wms
-        rows = repo_learning_v1.fetch_evaluations_since_ms(conn, since_closed_ts_ms=since)
+        rows = repo_learning_v1.fetch_evaluations_since_ms(
+            conn, since_closed_ts_ms=since
+        )
 
         repo_learning_v1.clear_error_patterns_for_window(conn, window=window)
         for p in error_patterns.aggregate_error_patterns(rows)[:50]:
@@ -112,7 +119,9 @@ def run_learning_analytics(conn: psycopg.Connection[Any], settings: LearningEngi
                 window=window,
                 metrics_json={**m, "strategy_name": name, "window": window},
             )
-            win_block["strategies"].append({"strategy_id": str(sid), "strategy_name": name, "metrics": m})
+            win_block["strategies"].append(
+                {"strategy_id": str(sid), "strategy_name": name, "metrics": m}
+            )
 
             for pr in recommendations.build_promotion_recommendations(
                 str(sid), name, m, settings
@@ -138,7 +147,9 @@ def run_learning_analytics(conn: psycopg.Connection[Any], settings: LearningEngi
                 except Exception as exc:
                     logger.warning("adwin strategy=%s: %s", name, exc)
 
-        for rec in recommendations.build_signal_and_risk_recommendations(rows, settings):
+        for rec in recommendations.build_signal_and_risk_recommendations(
+            rows, settings
+        ):
             repo_learning_v1.insert_recommendation(
                 conn,
                 rec_type=rec["type"],
@@ -180,7 +191,9 @@ def run_learning_analytics(conn: psycopg.Connection[Any], settings: LearningEngi
         logger.warning("mlflow: %s", exc)
     if settings.online_drift_evaluate_on_analytics_run:
         try:
-            from learning_engine.drift.online_evaluator import run_online_drift_evaluation
+            from learning_engine.drift.online_evaluator import (
+                run_online_drift_evaluation,
+            )
 
             report["online_drift"] = run_online_drift_evaluation(conn, settings)
         except Exception as exc:

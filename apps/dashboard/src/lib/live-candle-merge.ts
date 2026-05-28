@@ -29,7 +29,8 @@ export function mergeRestCandlesWithSseBuffer(
   rest: readonly LiveCandle[],
   sseBuffer: readonly LiveCandle[],
 ): LiveCandle[] {
-  const lastTime = rest.length > 0 ? rest[rest.length - 1]!.time_s : -Number.MAX_SAFE_INTEGER;
+  const lastTime =
+    rest.length > 0 ? rest[rest.length - 1]!.time_s : -Number.MAX_SAFE_INTEGER;
   let out: LiveCandle[] = rest.length > 0 ? [...rest] : [];
   for (const b of sseBuffer) {
     if (b.time_s < lastTime) {

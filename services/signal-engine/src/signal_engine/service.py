@@ -9,46 +9,13 @@ import math
 from typing import Any
 from uuid import uuid4
 
-from signal_engine.config import SignalEngineSettings, normalize_timeframe
-from signal_engine.models import ScoringContext
-from signal_engine.scoring.classification import classify_signal
-from signal_engine.scoring.composite_score import (
-    apply_microstructure_confluence,
-    weighted_composite,
-)
-from signal_engine.scoring.history_score import score_history
-from signal_engine.scoring.momentum_score import score_momentum
-from signal_engine.scoring.multi_timeframe_score import score_multi_timeframe
-from signal_engine.scoring.news_score import score_news
-from signal_engine.scoring.regime_classifier import classify_market_regime
-from signal_engine.scoring.rejection_rules import apply_rejections
-from signal_engine.scoring.risk_score import _first_geometry, _reward_risk_ratio, score_risk
-from signal_engine.explain.builder import build_explanation_bundle
-from signal_engine.explain.schemas import ExplainInput
-from signal_engine.decision_control_flow import attach_decision_control_flow_to_bundle
-from signal_engine.meta_decision_kernel import apply_meta_decision_kernel
-from signal_engine.hybrid_decision import assess_hybrid_decision
-from signal_engine.specialists import build_specialist_stack
-from signal_engine.scoring.structure_score import score_structure
-from signal_engine.take_trade_model import TakeTradeModelScorer
-from signal_engine.target_bps_models import TargetBpsModelScorer
-from signal_engine.uncertainty import assess_model_uncertainty
-from signal_engine.product_family_risk import effective_min_leverage, market_family_from_signal_row
-from signal_engine.stop_budget_policy import STOP_BUDGET_POLICY_VERSION, assess_stop_budget_policy
-from shared_py.structured_market_context import (
-    assess_structured_market_context,
-    merge_live_reasons_into_risk_governor,
-    refine_structured_market_context_for_playbook,
-)
-from shared_py.unified_leverage_allocator import refresh_unified_leverage_allocation_in_snapshot
-from signal_engine.storage.explanations_repo import ExplanationRepository
-from signal_engine.storage.repo import SignalRepository, all_timeframes
 from shared_py.bitget import (
     BitgetInstrumentCatalog,
     BitgetInstrumentMetadataService,
     BitgetSettings,
 )
 from shared_py.bitget.instruments import BitgetInstrumentIdentity
+from shared_py.inference_governance import merge_governance_into_source_snapshot
 from shared_py.model_contracts import (
     MODEL_OUTPUT_SCHEMA_HASH,
     MODEL_OUTPUT_SCHEMA_VERSION,
@@ -64,10 +31,56 @@ from shared_py.replay_determinism import (
     stable_signal_row_id,
     trace_implies_replay_determinism,
 )
-from shared_py.inference_governance import merge_governance_into_source_snapshot
 from shared_py.signal_contracts import SIGNAL_EVENT_SCHEMA_VERSION
-from shared_py.unified_exit_plan import build_unified_exit_plan
+from shared_py.structured_market_context import (
+    assess_structured_market_context,
+    merge_live_reasons_into_risk_governor,
+    refine_structured_market_context_for_playbook,
+)
 from shared_py.uncertainty_gates import merge_meta_trade_lanes
+from shared_py.unified_exit_plan import build_unified_exit_plan
+from shared_py.unified_leverage_allocator import (
+    refresh_unified_leverage_allocation_in_snapshot,
+)
+
+from signal_engine.config import SignalEngineSettings, normalize_timeframe
+from signal_engine.decision_control_flow import attach_decision_control_flow_to_bundle
+from signal_engine.explain.builder import build_explanation_bundle
+from signal_engine.explain.schemas import ExplainInput
+from signal_engine.hybrid_decision import assess_hybrid_decision
+from signal_engine.meta_decision_kernel import apply_meta_decision_kernel
+from signal_engine.models import ScoringContext
+from signal_engine.product_family_risk import (
+    effective_min_leverage,
+    market_family_from_signal_row,
+)
+from signal_engine.scoring.classification import classify_signal
+from signal_engine.scoring.composite_score import (
+    apply_microstructure_confluence,
+    weighted_composite,
+)
+from signal_engine.scoring.history_score import score_history
+from signal_engine.scoring.momentum_score import score_momentum
+from signal_engine.scoring.multi_timeframe_score import score_multi_timeframe
+from signal_engine.scoring.news_score import score_news
+from signal_engine.scoring.regime_classifier import classify_market_regime
+from signal_engine.scoring.rejection_rules import apply_rejections
+from signal_engine.scoring.risk_score import (
+    _first_geometry,
+    _reward_risk_ratio,
+    score_risk,
+)
+from signal_engine.scoring.structure_score import score_structure
+from signal_engine.specialists import build_specialist_stack
+from signal_engine.stop_budget_policy import (
+    STOP_BUDGET_POLICY_VERSION,
+    assess_stop_budget_policy,
+)
+from signal_engine.storage.explanations_repo import ExplanationRepository
+from signal_engine.storage.repo import SignalRepository, all_timeframes
+from signal_engine.take_trade_model import TakeTradeModelScorer
+from signal_engine.target_bps_models import TargetBpsModelScorer
+from signal_engine.uncertainty import assess_model_uncertainty
 
 
 def _replay_session_id_from_trace(trace: dict[str, Any] | None) -> str | None:
@@ -228,11 +241,17 @@ def _feature_quality_labels(
 ) -> list[str]:
     issues: list[str] = []
     if row is None:
-        issues.append("missing_primary_features" if primary else f"missing_feature_tf_{timeframe}")
+        issues.append(
+            "missing_primary_features" if primary else f"missing_feature_tf_{timeframe}"
+        )
         return issues
     _, contract_issues = normalize_feature_row(row)
     if contract_issues:
-        issues.append("invalid_primary_feature_contract" if primary else f"invalid_feature_tf_{timeframe}")
+        issues.append(
+            "invalid_primary_feature_contract"
+            if primary
+            else f"invalid_feature_tf_{timeframe}"
+        )
         if any(item.endswith("schema_hash_mismatch") for item in contract_issues):
             issues.append(
                 "primary_feature_schema_mismatch"
@@ -241,11 +260,21 @@ def _feature_quality_labels(
             )
     computed_ts_ms = int(row.get("computed_ts_ms") or 0)
     if computed_ts_ms <= 0:
-        issues.append("invalid_primary_feature_contract" if primary else f"invalid_feature_tf_{timeframe}")
+        issues.append(
+            "invalid_primary_feature_contract"
+            if primary
+            else f"invalid_feature_tf_{timeframe}"
+        )
     elif computed_ts_ms > analysis_ts_ms:
-        issues.append("feature_data_from_future" if primary else f"feature_from_future_{timeframe}")
+        issues.append(
+            "feature_data_from_future"
+            if primary
+            else f"feature_from_future_{timeframe}"
+        )
     elif analysis_ts_ms - computed_ts_ms > max_age_ms:
-        issues.append("stale_feature_data" if primary else f"stale_feature_tf_{timeframe}")
+        issues.append(
+            "stale_feature_data" if primary else f"stale_feature_tf_{timeframe}"
+        )
     return issues
 
 
@@ -284,7 +313,10 @@ def _collect_primary_market_feature_issues(
         issues.append("missing_liquidity_context")
     elif liquidity_source != "orderbook_levels":
         issues.append("liquidity_context_fallback")
-    if orderbook_age_ms is not None and orderbook_age_ms > settings.signal_max_orderbook_age_ms:
+    if (
+        orderbook_age_ms is not None
+        and orderbook_age_ms > settings.signal_max_orderbook_age_ms
+    ):
         issues.append("stale_orderbook_feature_data")
     if _feature_float(row, "spread_bps") is None:
         issues.append("missing_spread_feature")
@@ -300,7 +332,10 @@ def _collect_primary_market_feature_issues(
     funding_age_ms = _feature_float(row, "funding_age_ms")
     if funding_source in (None, "missing"):
         issues.append("missing_funding_context")
-    if funding_age_ms is not None and funding_age_ms > settings.signal_max_funding_feature_age_ms:
+    if (
+        funding_age_ms is not None
+        and funding_age_ms > settings.signal_max_funding_feature_age_ms
+    ):
         issues.append("stale_funding_feature_data")
     if _feature_float(row, "funding_rate_bps") is None:
         issues.append("missing_funding_feature")
@@ -309,7 +344,10 @@ def _collect_primary_market_feature_issues(
     open_interest_age_ms = _feature_float(row, "open_interest_age_ms")
     if open_interest_source in (None, "missing"):
         issues.append("missing_open_interest_context")
-    if open_interest_age_ms is not None and open_interest_age_ms > settings.signal_max_open_interest_age_ms:
+    if (
+        open_interest_age_ms is not None
+        and open_interest_age_ms > settings.signal_max_open_interest_age_ms
+    ):
         issues.append("stale_open_interest_feature_data")
     if _feature_float(row, "open_interest") is None:
         issues.append("missing_open_interest_feature")
@@ -366,7 +404,11 @@ def _collect_data_quality_issues(
         trend_dir = str(structure_state.get("trend_dir") or "")
         if trend_dir not in ("UP", "DOWN", "RANGE"):
             issues.append("invalid_structure_state")
-        ref_ts_ms = int(structure_state.get("updated_ts_ms") or structure_state.get("last_ts_ms") or 0)
+        ref_ts_ms = int(
+            structure_state.get("updated_ts_ms")
+            or structure_state.get("last_ts_ms")
+            or 0
+        )
         if ref_ts_ms <= 0:
             issues.append("invalid_structure_state_timestamp")
         elif ref_ts_ms > analysis_ts_ms:
@@ -382,16 +424,24 @@ def _collect_data_quality_issues(
     if not drawings:
         issues.append("missing_drawings")
     else:
-        latest_draw_ts = max(int(d.get("updated_ts_ms") or d.get("created_ts_ms") or 0) for d in drawings)
+        latest_draw_ts = max(
+            int(d.get("updated_ts_ms") or d.get("created_ts_ms") or 0) for d in drawings
+        )
         if latest_draw_ts <= 0:
             issues.append("invalid_drawing_timestamp")
         elif latest_draw_ts > analysis_ts_ms:
             issues.append("drawing_state_from_future")
         elif analysis_ts_ms - latest_draw_ts > settings.signal_max_drawing_age_ms:
             issues.append("stale_drawing_data")
-        if not any(d.get("type") == "stop_zone" and isinstance(d.get("geometry"), dict) for d in drawings):
+        if not any(
+            d.get("type") == "stop_zone" and isinstance(d.get("geometry"), dict)
+            for d in drawings
+        ):
             issues.append("missing_stop_zone")
-        if not any(d.get("type") == "target_zone" and isinstance(d.get("geometry"), dict) for d in drawings):
+        if not any(
+            d.get("type") == "target_zone" and isinstance(d.get("geometry"), dict)
+            for d in drawings
+        ):
             issues.append("missing_target_zone")
         if any(
             not 0 <= float(d.get("confidence")) <= 100
@@ -477,7 +527,9 @@ def run_scoring_pipeline(
         momentum_flags=lm.flags,
     )
 
-    instrument_for_smc = ctx.instrument or settings.instrument_identity(symbol=ctx.symbol)
+    instrument_for_smc = ctx.instrument or settings.instrument_identity(
+        symbol=ctx.symbol
+    )
     smc = assess_structured_market_context(
         news_row=ctx.news_row,
         symbol=ctx.symbol,
@@ -498,8 +550,12 @@ def run_scoring_pipeline(
         risk_score=lr.score,
         proposed_direction=direction,
         layer_flags=layer_flags,
-        structured_rejection_soft=list(smc.get("deterministic_rejection_soft_json") or []),
-        structured_rejection_hard=list(smc.get("deterministic_rejection_hard_json") or []),
+        structured_rejection_soft=list(
+            smc.get("deterministic_rejection_soft_json") or []
+        ),
+        structured_rejection_hard=list(
+            smc.get("deterministic_rejection_hard_json") or []
+        ),
         ask_pressure_0_1=micro.ask_pressure_0_1,
         bid_pressure_0_1=micro.bid_pressure_0_1,
     )
@@ -552,7 +608,7 @@ def run_scoring_pipeline(
         ),
         f"decision={rej.decision_state}",
         f"class={signal_class}",
-        f"direction_rule=structure_plus_mtf_gates",
+        "direction_rule=structure_plus_mtf_gates",
     ]
     reasons_json = build_reasons_object(
         direction=direction,
@@ -677,7 +733,9 @@ def run_scoring_pipeline(
             "upstream_drawing_updated_event_id": upstream_event_id,
             "replay_session_id": _replay_session_id_from_trace(causal_trace),
             "candle_close_event_id": (causal_trace or {}).get("candle_close_event_id"),
-            "structure_updated_event_id": (causal_trace or {}).get("structure_updated_event_id"),
+            "structure_updated_event_id": (causal_trace or {}).get(
+                "structure_updated_event_id"
+            ),
         },
         "instrument_execution": ctx.instrument_execution_meta or {},
         "structured_market_context": smc,
@@ -732,7 +790,9 @@ def run_scoring_pipeline(
         "model_ood_alert": False,
         "uncertainty_reasons_json": [],
         "ood_reasons_json": [],
-        "abstention_reasons_json": list(rej.rejection_reasons) if rej.rejection_state else [],
+        "abstention_reasons_json": (
+            list(rej.rejection_reasons) if rej.rejection_state else []
+        ),
         "trade_action": "do_not_trade" if rej.rejection_state else "allow_trade",
         "meta_trade_lane": None,
         "decision_confidence_0_1": None,
@@ -809,7 +869,9 @@ def run_scoring_pipeline(
         "model_ood_alert": False,
         "uncertainty_reasons_json": [],
         "ood_reasons_json": [],
-        "abstention_reasons_json": list(rej.rejection_reasons) if rej.rejection_state else [],
+        "abstention_reasons_json": (
+            list(rej.rejection_reasons) if rej.rejection_state else []
+        ),
         "trade_action": "do_not_trade" if rej.rejection_state else "allow_trade",
         "meta_trade_lane": None,
         "decision_confidence_0_1": None,
@@ -891,7 +953,9 @@ class SignalEngineService:
             logger=self._logger,
         )
 
-    def load_context(self, symbol: str, timeframe: str, analysis_ts_ms: int) -> ScoringContext:
+    def load_context(
+        self, symbol: str, timeframe: str, analysis_ts_ms: int
+    ) -> ScoringContext:
         tf = normalize_timeframe(timeframe)
         (
             instrument,
@@ -1003,6 +1067,7 @@ class SignalEngineService:
             causal_trace=causal_trace,
             upstream_event_id=upstream_event_id,
         )
+        bundle["ctx"] = ctx
         self._apply_catalog_resolution(bundle, ctx.symbol)
         take_trade_prediction = self._apply_take_trade_model(bundle, ctx)
         target_projection = self._apply_target_bps_models(bundle, ctx)
@@ -1051,67 +1116,99 @@ class SignalEngineService:
         )
         return bundle
 
-    def _apply_take_trade_model(self, bundle: dict[str, Any], ctx: ScoringContext) -> dict[str, Any]:
+    def _apply_take_trade_model(
+        self, bundle: dict[str, Any], ctx: ScoringContext
+    ) -> dict[str, Any]:
         db_row = bundle["db_row"]
         source_snapshot = db_row.get("source_snapshot_json") or {}
         feature_snapshot = source_snapshot.get("feature_snapshot")
         prediction = self._take_trade_model.predict(
             signal_row=db_row,
-            feature_snapshot=feature_snapshot if isinstance(feature_snapshot, dict) else None,
+            feature_snapshot=(
+                feature_snapshot if isinstance(feature_snapshot, dict) else None
+            ),
         )
         db_row["take_trade_prob"] = prediction.get("take_trade_prob")
         db_row["take_trade_model_version"] = prediction.get("take_trade_model_version")
         db_row["take_trade_model_run_id"] = prediction.get("take_trade_model_run_id")
-        db_row["take_trade_calibration_method"] = prediction.get("take_trade_calibration_method")
+        db_row["take_trade_calibration_method"] = prediction.get(
+            "take_trade_calibration_method"
+        )
         if isinstance(source_snapshot, dict):
-            source_snapshot["take_trade_model"] = prediction.get("take_trade_model_info")
+            source_snapshot["take_trade_model"] = prediction.get(
+                "take_trade_model_info"
+            )
             source_snapshot["model_contract"] = build_model_contract_bundle(
                 quality_issues=ctx.data_issues,
                 active_models=extract_active_models_from_signal_row(db_row),
             )
         comp_hist = db_row.get("signal_components_history_json")
-        if isinstance(comp_hist, list) and prediction.get("take_trade_prob") is not None:
+        if (
+            isinstance(comp_hist, list)
+            and prediction.get("take_trade_prob") is not None
+        ):
             comp_hist.append(
                 {
                     "layer": "take_trade_meta_model",
                     "probability": prediction.get("take_trade_prob"),
                     "model_version": prediction.get("take_trade_model_version"),
                     "run_id": prediction.get("take_trade_model_run_id"),
-                    "calibration_method": prediction.get("take_trade_calibration_method"),
+                    "calibration_method": prediction.get(
+                        "take_trade_calibration_method"
+                    ),
                 }
             )
         event_payload = bundle.get("event_payload")
         if isinstance(event_payload, dict):
             event_payload["take_trade_prob"] = prediction.get("take_trade_prob")
-            event_payload["take_trade_model_version"] = prediction.get("take_trade_model_version")
-            event_payload["take_trade_model_run_id"] = prediction.get("take_trade_model_run_id")
+            event_payload["take_trade_model_version"] = prediction.get(
+                "take_trade_model_version"
+            )
+            event_payload["take_trade_model_run_id"] = prediction.get(
+                "take_trade_model_run_id"
+            )
             event_payload["take_trade_calibration_method"] = prediction.get(
                 "take_trade_calibration_method"
             )
         return prediction
 
-    def _apply_target_bps_models(self, bundle: dict[str, Any], ctx: ScoringContext) -> dict[str, Any]:
+    def _apply_target_bps_models(
+        self, bundle: dict[str, Any], ctx: ScoringContext
+    ) -> dict[str, Any]:
         db_row = bundle["db_row"]
         source_snapshot = db_row.get("source_snapshot_json") or {}
         feature_snapshot = source_snapshot.get("feature_snapshot")
         prediction = self._target_bps_models.predict(
             signal_row=db_row,
-            feature_snapshot=feature_snapshot if isinstance(feature_snapshot, dict) else None,
+            feature_snapshot=(
+                feature_snapshot if isinstance(feature_snapshot, dict) else None
+            ),
         )
         db_row["expected_return_bps"] = prediction.get("expected_return_bps")
         db_row["expected_mae_bps"] = prediction.get("expected_mae_bps")
         db_row["expected_mfe_bps"] = prediction.get("expected_mfe_bps")
-        db_row["target_projection_models_json"] = prediction.get("target_projection_models_json") or []
+        db_row["target_projection_models_json"] = (
+            prediction.get("target_projection_models_json") or []
+        )
         if isinstance(source_snapshot, dict):
-            source_snapshot["target_projection_summary"] = prediction.get("target_projection_summary")
-            source_snapshot["target_projection_adjusted"] = prediction.get("target_projection_adjusted")
-            source_snapshot["target_projection_models"] = prediction.get("target_projection_models_json") or []
+            source_snapshot["target_projection_summary"] = prediction.get(
+                "target_projection_summary"
+            )
+            source_snapshot["target_projection_adjusted"] = prediction.get(
+                "target_projection_adjusted"
+            )
+            source_snapshot["target_projection_models"] = (
+                prediction.get("target_projection_models_json") or []
+            )
             source_snapshot["model_contract"] = build_model_contract_bundle(
                 quality_issues=ctx.data_issues,
                 active_models=extract_active_models_from_signal_row(db_row),
             )
         comp_hist = db_row.get("signal_components_history_json")
-        if isinstance(comp_hist, list) and prediction.get("target_projection_summary") is not None:
+        if (
+            isinstance(comp_hist, list)
+            and prediction.get("target_projection_summary") is not None
+        ):
             comp_hist.append(
                 {
                     "layer": "target_projection_models",
@@ -1147,9 +1244,10 @@ class SignalEngineService:
             take_trade_prediction=take_trade_prediction,
             target_projection=target_projection,
         )
-        prior_do_not_trade = bool(db_row.get("rejection_state")) or str(
-            db_row.get("trade_action") or ""
-        ).strip().lower() == "do_not_trade"
+        prior_do_not_trade = (
+            bool(db_row.get("rejection_state"))
+            or str(db_row.get("trade_action") or "").strip().lower() == "do_not_trade"
+        )
         unc_lane = assessment["uncertainty_execution_lane"]
         unc_phase = assessment["uncertainty_gate_phase"]
         unc_lane_reasons = list(assessment.get("uncertainty_lane_reasons_json") or [])
@@ -1172,7 +1270,9 @@ class SignalEngineService:
         rj_unc = db_row.get("reasons_json")
         if isinstance(rj_unc, dict):
             rj_unc["uncertainty_components"] = assessment["uncertainty_components"]
-            rj_unc["uncertainty_exit_execution_bias"] = assessment["exit_execution_bias"]
+            rj_unc["uncertainty_exit_execution_bias"] = assessment[
+                "exit_execution_bias"
+            ]
         db_row["trade_action"] = (
             "do_not_trade"
             if prior_do_not_trade or assessment["trade_action"] == "do_not_trade"
@@ -1194,7 +1294,9 @@ class SignalEngineService:
                     existing_rejections.append(reason)
             db_row["rejection_reasons_json"] = existing_rejections
         if isinstance(source_snapshot, dict):
-            source_snapshot["uncertainty_assessment"] = assessment["uncertainty_assessment"]
+            source_snapshot["uncertainty_assessment"] = assessment[
+                "uncertainty_assessment"
+            ]
             if not prior_do_not_trade:
                 source_snapshot["uncertainty_gate"] = {
                     "policy_version": assessment.get("policy_version"),
@@ -1238,7 +1340,9 @@ class SignalEngineService:
             event_payload["uncertainty_execution_lane"] = unc_lane
             event_payload["uncertainty_gate_phase"] = event_phase
             event_payload["uncertainty_lane_reasons_json"] = unc_lane_reasons
-            event_payload["uncertainty_reasons_json"] = assessment["uncertainty_reasons_json"]
+            event_payload["uncertainty_reasons_json"] = assessment[
+                "uncertainty_reasons_json"
+            ]
             event_payload["ood_reasons_json"] = assessment["ood_reasons_json"]
             event_payload["abstention_reasons_json"] = db_row["abstention_reasons_json"]
             event_payload["trade_action"] = db_row["trade_action"]
@@ -1264,7 +1368,8 @@ class SignalEngineService:
         merged_lane = merge_meta_trade_lanes(
             db_row.get("uncertainty_execution_lane"),
             hybrid_lane,
-            trade_action_blocked=str(summary["trade_action"]).strip().lower() == "do_not_trade",
+            trade_action_blocked=str(summary["trade_action"]).strip().lower()
+            == "do_not_trade",
         )
         db_row["meta_trade_lane"] = merged_lane
         db_row["signal_class"] = summary["signal_class"]
@@ -1282,7 +1387,9 @@ class SignalEngineService:
             db_row["rejection_reasons_json"] = merged_rejections
         if isinstance(source_snapshot, dict):
             source_snapshot["hybrid_decision"] = summary["hybrid_decision"]
-            source_snapshot["hybrid_decision"]["meta_trade_lane_hybrid_raw"] = hybrid_lane
+            source_snapshot["hybrid_decision"][
+                "meta_trade_lane_hybrid_raw"
+            ] = hybrid_lane
             source_snapshot["hybrid_decision"]["meta_trade_lane"] = merged_lane
             decision_trace_id = stable_decision_trace_id(
                 signal_id=str(db_row["signal_id"]),
@@ -1312,7 +1419,9 @@ class SignalEngineService:
                 "abstention_reasons_json": summary["abstention_reasons_json"],
                 "risk_governor_version": rg.get("version"),
                 "max_risk_exposure_fraction_0_1": rg.get("max_exposure_fraction_0_1"),
-                "risk_exit_strategies_allowed_json": rg.get("exit_strategies_allowed_json"),
+                "risk_exit_strategies_allowed_json": rg.get(
+                    "exit_strategies_allowed_json"
+                ),
                 "risk_governor_universal_hard_block_reasons_json": rg.get(
                     "universal_hard_block_reasons_json"
                 )
@@ -1321,7 +1430,9 @@ class SignalEngineService:
                     "live_execution_block_reasons_json"
                 )
                 or [],
-                "portfolio_risk_synthesis_json": summary.get("portfolio_risk_synthesis_json"),
+                "portfolio_risk_synthesis_json": summary.get(
+                    "portfolio_risk_synthesis_json"
+                ),
                 "execution_policy_scope_note_de": (
                     "Universal-Hard-Blocks gelten fuer Paper/Shadow/Live; "
                     "live_execution_block_reasons_json blockiert nur Echtgeld-Submit im Live-Broker "
@@ -1333,17 +1444,27 @@ class SignalEngineService:
             comp_hist.append({"layer": "hybrid_decision", **summary["hybrid_decision"]})
         event_payload = bundle.get("event_payload")
         if isinstance(event_payload, dict):
-            event_payload["decision_confidence_0_1"] = summary["decision_confidence_0_1"]
-            event_payload["decision_policy_version"] = summary["decision_policy_version"]
+            event_payload["decision_confidence_0_1"] = summary[
+                "decision_confidence_0_1"
+            ]
+            event_payload["decision_policy_version"] = summary[
+                "decision_policy_version"
+            ]
             event_payload["allowed_leverage"] = summary["allowed_leverage"]
             event_payload["recommended_leverage"] = summary["recommended_leverage"]
-            event_payload["execution_leverage_cap"] = summary.get("execution_leverage_cap")
+            event_payload["execution_leverage_cap"] = summary.get(
+                "execution_leverage_cap"
+            )
             event_payload["mirror_leverage"] = summary.get("mirror_leverage")
             event_payload["unified_leverage_allocator_version"] = summary.get(
                 "unified_leverage_allocator_version"
             )
-            event_payload["leverage_policy_version"] = summary["leverage_policy_version"]
-            event_payload["leverage_cap_reasons_json"] = summary["leverage_cap_reasons_json"]
+            event_payload["leverage_policy_version"] = summary[
+                "leverage_policy_version"
+            ]
+            event_payload["leverage_cap_reasons_json"] = summary[
+                "leverage_cap_reasons_json"
+            ]
             event_payload["decision_state"] = summary["decision_state"]
             event_payload["trade_action"] = summary["trade_action"]
             event_payload["meta_trade_lane"] = merged_lane
@@ -1352,11 +1473,15 @@ class SignalEngineService:
             event_payload["abstention_reasons_json"] = db_row["abstention_reasons_json"]
             event_payload["rejection_state"] = db_row["rejection_state"]
             event_payload["rejection_reasons_json"] = db_row["rejection_reasons_json"]
-            event_payload["decision_trace_id"] = source_snapshot.get("decision_trace_id")
-            event_payload["correlation_chain"] = source_snapshot.get("correlation_chain")
-            event_payload["live_execution_block_reasons_json"] = summary.get(
-                "live_execution_block_reasons_json"
-            ) or []
+            event_payload["decision_trace_id"] = source_snapshot.get(
+                "decision_trace_id"
+            )
+            event_payload["correlation_chain"] = source_snapshot.get(
+                "correlation_chain"
+            )
+            event_payload["live_execution_block_reasons_json"] = (
+                summary.get("live_execution_block_reasons_json") or []
+            )
             event_payload["portfolio_risk_synthesis_json"] = summary.get(
                 "portfolio_risk_synthesis_json"
             )
@@ -1381,12 +1506,16 @@ class SignalEngineService:
         if isinstance(event_payload, dict):
             event_payload["online_drift_effective_action"] = action
             event_payload["online_drift_computed_at"] = state.get("computed_at")
-            event_payload["online_drift_live_forbidden"] = action in ("shadow_only", "hard_block")
+            event_payload["online_drift_live_forbidden"] = action in (
+                "shadow_only",
+                "hard_block",
+            )
         if not self._settings.enable_online_drift_block:
             return
         block_hard = action == "hard_block"
         block_shadow_too = (
-            action == "shadow_only" and self._settings.enable_online_drift_shadow_only_signal_hard_block
+            action == "shadow_only"
+            and self._settings.enable_online_drift_shadow_only_signal_hard_block
         )
         if not block_hard and not block_shadow_too:
             return
@@ -1395,7 +1524,11 @@ class SignalEngineService:
         db_row["rejection_state"] = True
         db_row["signal_class"] = "warnung"
         merged = list(db_row.get("rejection_reasons_json") or [])
-        tag = "online_drift_hard_block" if block_hard else "online_drift_shadow_only_signal_hard_block"
+        tag = (
+            "online_drift_hard_block"
+            if block_hard
+            else "online_drift_shadow_only_signal_hard_block"
+        )
         if tag not in merged:
             merged.append(tag)
         db_row["rejection_reasons_json"] = merged
@@ -1433,10 +1566,14 @@ class SignalEngineService:
             instrument = self._settings.instrument_identity(symbol=symbol)
         else:
             instrument = BitgetInstrumentIdentity.model_validate(instrument_raw)
-        specialist_stack = build_specialist_stack(signal_row=db_row, instrument=instrument)
+        specialist_stack = build_specialist_stack(
+            signal_row=db_row, instrument=instrument
+        )
         source_snapshot["specialists"] = specialist_stack
         router_arb = specialist_stack.get("router_arbitration") or {}
-        routed_action = str(router_arb.get("selected_trade_action") or "").strip().lower()
+        routed_action = (
+            str(router_arb.get("selected_trade_action") or "").strip().lower()
+        )
         prior_action = str(db_row.get("trade_action") or "").strip().lower()
         ensemble_mult = router_arb.get("ensemble_confidence_multiplier_0_1")
         try:
@@ -1453,7 +1590,9 @@ class SignalEngineService:
             for r in router_arb.get("reasons") or []:
                 if isinstance(r, str) and r.startswith("ensemble_") and r not in abst:
                     abst.append(r)
-            for r in (specialist_stack.get("adversary_check") or {}).get("reasons") or []:
+            for r in (specialist_stack.get("adversary_check") or {}).get(
+                "reasons"
+            ) or []:
                 if isinstance(r, str) and r.startswith("adversary_") and r not in abst:
                     abst.append(r)
             db_row["abstention_reasons_json"] = abst
@@ -1463,7 +1602,9 @@ class SignalEngineService:
                 dc = float(dc_raw) if dc_raw is not None else 0.6
             except (TypeError, ValueError):
                 dc = 0.6
-            db_row["decision_confidence_0_1"] = round(max(0.45, min(0.98, dc * ensemble_mult_f)), 6)
+            db_row["decision_confidence_0_1"] = round(
+                max(0.45, min(0.98, dc * ensemble_mult_f)), 6
+            )
             abst = list(db_row.get("abstention_reasons_json") or [])
             tag = "ensemble_dissent_confidence_shrink"
             if tag not in abst:
@@ -1474,10 +1615,16 @@ class SignalEngineService:
             source_snapshot["playbook_context"] = playbook_context
             db_row["playbook_id"] = playbook_context.get("selected_playbook_id")
             db_row["playbook_family"] = playbook_context.get("selected_playbook_family")
-            db_row["playbook_decision_mode"] = playbook_context.get("decision_mode") or "playbookless"
-            db_row["playbook_registry_version"] = playbook_context.get("registry_version")
+            db_row["playbook_decision_mode"] = (
+                playbook_context.get("decision_mode") or "playbookless"
+            )
+            db_row["playbook_registry_version"] = playbook_context.get(
+                "registry_version"
+            )
             if not db_row.get("strategy_name"):
-                db_row["strategy_name"] = playbook_context.get("recommended_strategy_name")
+                db_row["strategy_name"] = playbook_context.get(
+                    "recommended_strategy_name"
+                )
         self._logger.info(
             (
                 "specialist_stack signal_id=%s router_id=%s routed_action=%s prior_action=%s "
@@ -1489,9 +1636,11 @@ class SignalEngineService:
             prior_action,
             db_row.get("playbook_id"),
             router_arb.get("selected_meta_trade_lane"),
-            (specialist_stack.get("adversary_check") or {}).get("dissent_score_0_1")
-            if isinstance(specialist_stack.get("adversary_check"), dict)
-            else None,
+            (
+                (specialist_stack.get("adversary_check") or {}).get("dissent_score_0_1")
+                if isinstance(specialist_stack.get("adversary_check"), dict)
+                else None
+            ),
             router_arb.get("operator_gate_required"),
             db_row.get("stop_fragility_0_1"),
         )
@@ -1503,11 +1652,19 @@ class SignalEngineService:
                 "playbook_family": db_row.get("playbook_family"),
                 "playbook_decision_mode": db_row.get("playbook_decision_mode"),
                 "playbook_registry_version": db_row.get("playbook_registry_version"),
-                "selection_reasons": list(playbook_context.get("selection_reasons") or []),
-                "invalid_context_hits": list(playbook_context.get("invalid_context_hits") or []),
-                "anti_pattern_hits": list(playbook_context.get("anti_pattern_hits") or []),
+                "selection_reasons": list(
+                    playbook_context.get("selection_reasons") or []
+                ),
+                "invalid_context_hits": list(
+                    playbook_context.get("invalid_context_hits") or []
+                ),
+                "anti_pattern_hits": list(
+                    playbook_context.get("anti_pattern_hits") or []
+                ),
                 "blacklist_hits": list(playbook_context.get("blacklist_hits") or []),
-                "benchmark_rule_ids": list(playbook_context.get("benchmark_rule_ids") or []),
+                "benchmark_rule_ids": list(
+                    playbook_context.get("benchmark_rule_ids") or []
+                ),
                 "counterfactual_candidates": list(
                     playbook_context.get("counterfactual_candidates") or []
                 ),
@@ -1520,10 +1677,14 @@ class SignalEngineService:
                     "layer": "specialist_router",
                     "ensemble_contract": specialist_stack.get("ensemble_contract"),
                     "ensemble_hierarchy": specialist_stack.get("ensemble_hierarchy"),
-                    "specialist_proposals_all": specialist_stack.get("specialist_proposals_all"),
+                    "specialist_proposals_all": specialist_stack.get(
+                        "specialist_proposals_all"
+                    ),
                     "base_model": specialist_stack.get("base_model"),
                     "family_specialist": specialist_stack["family_specialist"],
-                    "product_margin_specialist": specialist_stack.get("product_margin_specialist"),
+                    "product_margin_specialist": specialist_stack.get(
+                        "product_margin_specialist"
+                    ),
                     "liquidity_vol_cluster_specialist": specialist_stack.get(
                         "liquidity_vol_cluster_specialist"
                     ),
@@ -1539,17 +1700,25 @@ class SignalEngineService:
             event_payload["specialists"] = specialist_stack
             event_payload["playbook_id"] = db_row.get("playbook_id")
             event_payload["playbook_family"] = db_row.get("playbook_family")
-            event_payload["playbook_decision_mode"] = db_row.get("playbook_decision_mode")
-            event_payload["playbook_registry_version"] = db_row.get("playbook_registry_version")
+            event_payload["playbook_decision_mode"] = db_row.get(
+                "playbook_decision_mode"
+            )
+            event_payload["playbook_registry_version"] = db_row.get(
+                "playbook_registry_version"
+            )
             event_payload["strategy_name"] = db_row.get("strategy_name")
             event_payload["market_family"] = instrument.market_family
             event_payload["margin_account_mode"] = instrument.margin_account_mode
             event_payload["instrument"] = instrument.model_dump(mode="json")
             event_payload["trade_action"] = db_row.get("trade_action")
             event_payload["decision_state"] = db_row.get("decision_state")
-            event_payload["decision_confidence_0_1"] = db_row.get("decision_confidence_0_1")
+            event_payload["decision_confidence_0_1"] = db_row.get(
+                "decision_confidence_0_1"
+            )
             event_payload["signal_class"] = db_row.get("signal_class")
-            event_payload["abstention_reasons_json"] = db_row.get("abstention_reasons_json")
+            event_payload["abstention_reasons_json"] = db_row.get(
+                "abstention_reasons_json"
+            )
             event_payload["recommended_leverage"] = db_row.get("recommended_leverage")
 
         smc0 = source_snapshot.get("structured_market_context")
@@ -1581,7 +1750,9 @@ class SignalEngineService:
             if isinstance(smc_ep, dict):
                 extra = smc_ep.get("live_execution_block_reasons_json") or []
                 if isinstance(extra, list) and extra:
-                    cur = list(event_payload.get("live_execution_block_reasons_json") or [])
+                    cur = list(
+                        event_payload.get("live_execution_block_reasons_json") or []
+                    )
                     for t in extra:
                         if isinstance(t, str) and t.strip() and t not in cur:
                             cur.append(t.strip())
@@ -1598,11 +1769,38 @@ class SignalEngineService:
 
     def _apply_meta_decision_kernel(self, bundle: dict[str, Any]) -> None:
         db_row = bundle["db_row"]
+        ctx = bundle.get("ctx")
+        
+        # Kopiere die Gitter- und Bot-Parameter aus structure_state in db_row, damit der Kernel sie lesen kann
+        if ctx and ctx.structure_state:
+            for k in (
+                "bot_trading_supported",
+                "grid_lower_bound",
+                "grid_upper_bound",
+                "grid_count",
+                "trend_breakout_detected",
+                "trend_strength_0_1",
+            ):
+                if k in ctx.structure_state:
+                    db_row[k] = ctx.structure_state[k]
+
         out = apply_meta_decision_kernel(settings=self._settings, db_row=db_row)
         db_row["meta_decision_action"] = out["meta_decision_action"]
         db_row["meta_decision_kernel_version"] = out["meta_decision_kernel_version"]
         db_row["meta_decision_bundle_json"] = out["meta_decision_bundle_json"]
-        db_row["operator_override_audit_json"] = db_row.get("operator_override_audit_json")
+        db_row["operator_override_audit_json"] = db_row.get(
+            "operator_override_audit_json"
+        )
+
+        # Sende den ermittelten execution_mode und die bot_params mit
+        db_row["execution_mode"] = out.get("execution_mode", "STANDARD_FUTURES")
+        db_row["bot_params"] = out.get("bot_params")
+
+        event_payload = bundle.get("event_payload")
+        if isinstance(event_payload, dict):
+            event_payload["execution_mode"] = db_row["execution_mode"]
+            event_payload["bot_params"] = db_row["bot_params"]
+            event_payload["leverage_cap_applied"] = db_row.get("leverage_cap_applied", False)
 
         if out["kernel_forces_do_not_trade"]:
             db_row["trade_action"] = "do_not_trade"
@@ -1623,7 +1821,9 @@ class SignalEngineService:
 
         source_snapshot = db_row.get("source_snapshot_json")
         if isinstance(source_snapshot, dict):
-            source_snapshot["meta_decision_kernel"] = dict(out["meta_decision_bundle_json"])
+            source_snapshot["meta_decision_kernel"] = dict(
+                out["meta_decision_bundle_json"]
+            )
         reasons_json = db_row.get("reasons_json")
         if isinstance(reasons_json, dict):
             reasons_json["meta_decision_kernel"] = {
@@ -1644,12 +1844,16 @@ class SignalEngineService:
         event_payload = bundle.get("event_payload")
         if isinstance(event_payload, dict):
             event_payload["meta_decision_action"] = out["meta_decision_action"]
-            event_payload["meta_decision_kernel_version"] = out["meta_decision_kernel_version"]
+            event_payload["meta_decision_kernel_version"] = out[
+                "meta_decision_kernel_version"
+            ]
             event_payload["trade_action"] = db_row["trade_action"]
             event_payload["meta_trade_lane"] = db_row.get("meta_trade_lane")
             event_payload["decision_state"] = db_row.get("decision_state")
             event_payload["signal_class"] = db_row.get("signal_class")
-            event_payload["abstention_reasons_json"] = db_row.get("abstention_reasons_json")
+            event_payload["abstention_reasons_json"] = db_row.get(
+                "abstention_reasons_json"
+            )
 
     def _apply_unified_exit_plan(self, bundle: dict[str, Any]) -> None:
         """Gleicher Exit-Plan fuer Paper/Shadow/Live (serialisiert, broker-agnostisch)."""
@@ -1707,7 +1911,9 @@ class SignalEngineService:
                     self._settings.bitget_product_type if family == "futures" else None
                 ),
                 margin_account_mode=(
-                    self._settings.bitget_margin_account_mode if family == "margin" else None
+                    self._settings.bitget_margin_account_mode
+                    if family == "margin"
+                    else None
                 ),
                 refresh_if_missing=False,
             )
@@ -1719,7 +1925,10 @@ class SignalEngineService:
                 reasons.append("instrument_unknown")
             db_row["rejection_reasons_json"] = reasons
             db_row["abstention_reasons_json"] = list(
-                dict.fromkeys(list(db_row.get("abstention_reasons_json") or []) + ["instrument_unknown"])
+                dict.fromkeys(
+                    list(db_row.get("abstention_reasons_json") or [])
+                    + ["instrument_unknown"]
+                )
             )
             db_row["trade_action"] = "do_not_trade"
             db_row["decision_state"] = "rejected"
@@ -1733,7 +1942,9 @@ class SignalEngineService:
             source_snapshot["instrument"] = metadata.entry.model_dump(mode="json")
             source_snapshot["instrument_metadata_snapshot_id"] = metadata.snapshot_id
             source_snapshot["instrument_metadata"] = metadata.model_dump(mode="json")
-            source_snapshot["canonical_instrument_id"] = metadata.canonical_instrument_id
+            source_snapshot["canonical_instrument_id"] = (
+                metadata.canonical_instrument_id
+            )
         db_row["market_family"] = instrument.market_family
         if isinstance(event_payload, dict):
             event_payload["market_family"] = instrument.market_family
@@ -1774,7 +1985,12 @@ class SignalEngineService:
             "leverage_max_catalog": entry.leverage_max,
             "min_notional_quote": entry.min_notional_quote,
         }
-        return metadata.entry.identity(), metadata.canonical_instrument_id, [], exec_meta
+        return (
+            metadata.entry.identity(),
+            metadata.canonical_instrument_id,
+            [],
+            exec_meta,
+        )
 
     def _sync_event_unified_leverage(self, bundle: dict[str, Any]) -> None:
         ep = bundle.get("event_payload")
@@ -1793,7 +2009,9 @@ class SignalEngineService:
             ep["mirror_leverage"] = u.get("mirror_leverage")
             ep["unified_leverage_allocator_version"] = u.get("version")
 
-    def _apply_stop_budget_policy(self, bundle: dict[str, Any], ctx: ScoringContext) -> None:
+    def _apply_stop_budget_policy(
+        self, bundle: dict[str, Any], ctx: ScoringContext
+    ) -> None:
         db_row = bundle["db_row"]
         source_snapshot = db_row.get("source_snapshot_json") or {}
         if not isinstance(source_snapshot, dict):
@@ -1812,7 +2030,9 @@ class SignalEngineService:
         if isinstance(reasons_json, dict):
             reasons_json["stop_budget_assessment"] = assessment
         db_row["stop_distance_pct"] = assessment.get("stop_distance_pct")
-        db_row["stop_budget_max_pct_allowed"] = assessment.get("stop_budget_max_pct_allowed")
+        db_row["stop_budget_max_pct_allowed"] = assessment.get(
+            "stop_budget_max_pct_allowed"
+        )
         db_row["stop_min_executable_pct"] = assessment.get("stop_min_executable_pct")
         db_row["stop_to_spread_ratio"] = assessment.get("stop_to_spread_ratio")
         db_row["stop_quality_0_1"] = assessment.get("stop_quality_0_1")
@@ -1831,7 +2051,8 @@ class SignalEngineService:
             except (TypeError, ValueError):
                 nl = None
             if nl is not None and nl >= effective_min_leverage(
-                market_family_from_signal_row(db_row), self._settings.risk_allowed_leverage_min
+                market_family_from_signal_row(db_row),
+                self._settings.risk_allowed_leverage_min,
             ):
                 db_row["allowed_leverage"] = nl
                 rec = db_row.get("recommended_leverage")
@@ -1858,7 +2079,10 @@ class SignalEngineService:
                         hd["leverage_allocator"] = la
                     source_snapshot["hybrid_decision"] = hd
 
-        if outcome == "blocked" and str(db_row.get("trade_action") or "") == "allow_trade":
+        if (
+            outcome == "blocked"
+            and str(db_row.get("trade_action") or "") == "allow_trade"
+        ):
             db_row["trade_action"] = "do_not_trade"
             grx = [str(x) for x in (assessment.get("gate_reasons_json") or [])]
             structural = any("stop_zone_not_protective" in x for x in grx)
@@ -1869,7 +2093,10 @@ class SignalEngineService:
                 db_row["decision_state"] = "downgraded"
             db_row["signal_class"] = "warnung"
             abst = list(db_row.get("abstention_reasons_json") or [])
-            for tag in ("stop_budget_blocked", *(assessment.get("gate_reasons_json") or [])):
+            for tag in (
+                "stop_budget_blocked",
+                *(assessment.get("gate_reasons_json") or []),
+            ):
                 if tag not in abst:
                     abst.append(tag)
             db_row["abstention_reasons_json"] = abst
@@ -1890,15 +2117,27 @@ class SignalEngineService:
             event_payload["stop_budget_max_pct_allowed"] = assessment.get(
                 "stop_budget_max_pct_allowed"
             )
-            event_payload["stop_min_executable_pct"] = assessment.get("stop_min_executable_pct")
-            event_payload["stop_to_spread_ratio"] = assessment.get("stop_to_spread_ratio")
+            event_payload["stop_min_executable_pct"] = assessment.get(
+                "stop_min_executable_pct"
+            )
+            event_payload["stop_to_spread_ratio"] = assessment.get(
+                "stop_to_spread_ratio"
+            )
             event_payload["stop_quality_0_1"] = assessment.get("stop_quality_0_1")
-            event_payload["stop_executability_0_1"] = assessment.get("stop_executability_0_1")
+            event_payload["stop_executability_0_1"] = assessment.get(
+                "stop_executability_0_1"
+            )
             event_payload["stop_fragility_0_1"] = assessment.get("stop_fragility_0_1")
-            event_payload["stop_budget_policy_version"] = db_row.get("stop_budget_policy_version")
+            event_payload["stop_budget_policy_version"] = db_row.get(
+                "stop_budget_policy_version"
+            )
             event_payload["allowed_leverage"] = db_row.get("allowed_leverage")
             event_payload["recommended_leverage"] = db_row.get("recommended_leverage")
             event_payload["trade_action"] = db_row.get("trade_action")
-            event_payload["abstention_reasons_json"] = db_row.get("abstention_reasons_json")
-        refresh_unified_leverage_allocation_in_snapshot(db_row=db_row, settings=self._settings)
+            event_payload["abstention_reasons_json"] = db_row.get(
+                "abstention_reasons_json"
+            )
+        refresh_unified_leverage_allocation_in_snapshot(
+            db_row=db_row, settings=self._settings
+        )
         self._sync_event_unified_leverage(bundle)

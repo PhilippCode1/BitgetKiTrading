@@ -47,7 +47,9 @@ def compute_spread_bps(*, bid: float | None, ask: float | None) -> float | None:
     return ((ask - bid) / mid) * 10_000.0
 
 
-def compute_vwap_slippage_bps(*, side: str, levels: list[dict], order_qty: float, reference_price: float) -> float | None:
+def compute_vwap_slippage_bps(
+    *, side: str, levels: list[dict], order_qty: float, reference_price: float  # type: ignore
+) -> float | None:
     if order_qty <= 0 or reference_price <= 0:
         return None
     remaining = order_qty
@@ -98,7 +100,9 @@ def classify_liquidity_tier(
     return "TIER_4"
 
 
-def recommended_max_order_notional(*, liquidity_tier: LiquidityTier, depth_notional_top5: float) -> float:
+def recommended_max_order_notional(
+    *, liquidity_tier: LiquidityTier, depth_notional_top5: float
+) -> float:
     base = max(depth_notional_top5, 0.0)
     if liquidity_tier == "TIER_1":
         return min(base * 0.25, 25_000.0)
@@ -164,11 +168,16 @@ def build_liquidity_block_reasons_de(reasons: list[str]) -> list[str]:
         "slippage_unbekannt": "Slippage ist unbekannt; Live-Ausfuehrung ist gesperrt.",
         "slippage_zu_hoch": "Erwartete VWAP-Slippage ist zu hoch.",
         "depth_unzureichend": "Top-N-Tiefe ist unzureichend fuer die geplante Ordergroesse.",
-        "ordergroesse_ueber_liquiditaetsgrenze": "Geplante Ordergroesse ueberschreitet die empfohlene Liquiditaetsgrenze.",
+        "ordergroesse_ueber_liquiditaetsgrenze": (
+            "Geplante Ordergroesse ueberschreitet die empfohlene Liquiditaetsgrenze."
+        ),
         "liquiditaetstier_blockiert_live": "Liquiditaets-Tier blockiert Live-Opening.",
         "tier3_ohne_owner_kleingroessenfreigabe": "Tier-3-Asset braucht Owner-Freigabe fuer sehr kleine Live-Groessen.",
     }
-    return [mapping.get(reason, f"Unbekannter Liquiditaetsblockgrund: {reason}") for reason in reasons]
+    return [
+        mapping.get(reason, f"Unbekannter Liquiditaetsblockgrund: {reason}")
+        for reason in reasons
+    ]
 
 
 def build_liquidity_assessment(
@@ -176,8 +185,8 @@ def build_liquidity_assessment(
     symbol: str,
     bid: float | None,
     ask: float | None,
-    bids: list[dict],
-    asks: list[dict],
+    bids: list[dict],  # type: ignore
+    asks: list[dict],  # type: ignore
     orderbook_age_ms: int,
     max_orderbook_age_ms: int,
     planned_qty: float,
@@ -201,7 +210,7 @@ def build_liquidity_assessment(
         reference_price=ref_sell,
     )
     depth_top5 = 0.0
-    for row in (bids[:5] + asks[:5]):
+    for row in bids[:5] + asks[:5]:
         depth_top5 += float(row.get("price", 0.0)) * float(row.get("qty", 0.0))
     stale = orderbook_age_ms > max_orderbook_age_ms
     tier = classify_liquidity_tier(
@@ -212,7 +221,9 @@ def build_liquidity_assessment(
         stale_orderbook=stale,
         status=status,
     )
-    max_notional = recommended_max_order_notional(liquidity_tier=tier, depth_notional_top5=depth_top5)
+    max_notional = recommended_max_order_notional(
+        liquidity_tier=tier, depth_notional_top5=depth_top5
+    )
     reasons = liquidity_blocks_live(
         liquidity_tier=tier,
         stale_orderbook=stale,
@@ -247,15 +258,24 @@ def evaluate_liquidity_gate(payload: dict[str, Any]) -> LiquidityScoreResult:
         ask=payload.get("best_ask", payload.get("ask")),
         bids=list(payload.get("bids") or []),
         asks=list(payload.get("asks") or []),
-        orderbook_age_ms=int(payload.get("timestamp_age_ms", payload.get("orderbook_age_ms", 0)) or 0),
+        orderbook_age_ms=int(
+            payload.get("timestamp_age_ms", payload.get("orderbook_age_ms", 0)) or 0
+        ),
         max_orderbook_age_ms=int(payload.get("max_orderbook_age_ms", 0) or 0),
-        planned_qty=float(payload.get("requested_size", payload.get("planned_qty", 0.0)) or 0.0),
+        planned_qty=float(
+            payload.get("requested_size", payload.get("planned_qty", 0.0)) or 0.0
+        ),
         requested_notional=float(payload.get("requested_notional", 0.0) or 0.0),
-        status=str(payload.get("instrument_status") or payload.get("status") or "active"),
+        status=str(
+            payload.get("instrument_status") or payload.get("status") or "active"
+        ),
         owner_approved_small_size=bool(payload.get("owner_approved_small_size")),
     )
     reason_set = set(assessment.block_reasons)
-    if payload.get("order_type") == "market" and payload.get("estimated_slippage_bps") is None:
+    if (
+        payload.get("order_type") == "market"
+        and payload.get("estimated_slippage_bps") is None
+    ):
         reason_set.add("market_order_slippage_missing")
     for required in ("tick_size", "lot_size", "min_qty", "min_notional", "precision"):
         if payload.get(required) in (None, "", {}):
@@ -269,10 +289,20 @@ def evaluate_liquidity_gate(payload: dict[str, Any]) -> LiquidityScoreResult:
 
     spread = assessment.spread_bps
     est_slip = payload.get("estimated_slippage_bps")
-    estimated_slippage_bps = float(est_slip) if est_slip is not None else assessment.slippage_buy_bps
-    depth_score = min(1.0, max(0.0, depth_top10 / max(req_notional, 1.0))) if req_notional > 0 else 1.0
-    staleness_ms = int(payload.get("timestamp_age_ms", payload.get("orderbook_age_ms", 0)) or 0)
-    evidence_level: LiquidityEvidenceLevel = "runtime" if bool(payload.get("runtime_data")) else "synthetic"
+    estimated_slippage_bps = (
+        float(est_slip) if est_slip is not None else assessment.slippage_buy_bps
+    )
+    depth_score = (
+        min(1.0, max(0.0, depth_top10 / max(req_notional, 1.0)))
+        if req_notional > 0
+        else 1.0
+    )
+    staleness_ms = int(
+        payload.get("timestamp_age_ms", payload.get("orderbook_age_ms", 0)) or 0
+    )
+    evidence_level: LiquidityEvidenceLevel = (
+        "runtime" if bool(payload.get("runtime_data")) else "synthetic"
+    )
     reasons = list(dict.fromkeys(sorted(reason_set)))
     if reasons:
         status: Literal["pass", "warn", "fail", "not_enough_evidence"] = "fail"

@@ -19,7 +19,6 @@ from shared_py.health_warnings_display import build_warnings_display
 
 from api_gateway.auth import GatewayAuthContext, require_operator_aggregate_auth
 from api_gateway.config import get_gateway_settings
-from api_gateway.gateway_readiness_core import gateway_readiness_core_snapshot
 from api_gateway.db import DatabaseHealthError, get_database_url, get_db_health
 from api_gateway.db_dashboard_queries import fetch_data_freshness
 from api_gateway.db_integration_connectivity import (
@@ -31,6 +30,7 @@ from api_gateway.db_ops_queries import (
     fetch_monitor_open_alerts,
     fetch_ops_summary,
 )
+from api_gateway.gateway_readiness_core import gateway_readiness_core_snapshot
 from api_gateway.integrations_matrix import (
     build_integrations_matrix_payload,
     finalize_integrations_matrix_for_health,
@@ -38,7 +38,10 @@ from api_gateway.integrations_matrix import (
 from api_gateway.operator_health_pdf import build_operator_health_pdf
 from api_gateway.provider_ops_summary import build_provider_ops_summary
 from api_gateway.routes_live import STREAMS
-from api_gateway.system_health_truth_layer import compute_aggregate_status, truth_layer_meta
+from api_gateway.system_health_truth_layer import (
+    compute_aggregate_status,
+    truth_layer_meta,
+)
 
 logger = logging.getLogger("api_gateway.system_health")
 
@@ -72,10 +75,14 @@ def _normalize_probe_payload(payload: dict[str, Any]) -> dict[str, Any]:
         checks = payload.get("checks") or {}
         if isinstance(checks, dict):
             for key, value in checks.items():
-                if isinstance(value, dict) and "ok" in value and not bool(value.get("ok")):
+                if (
+                    isinstance(value, dict)
+                    and "ok" in value
+                    and not bool(value.get("ok"))
+                ):
                     detail = str(value.get("detail") or "failed")
                     failed_checks.append(f"{key}:{detail}")
-                elif isinstance(value, (list, tuple)) and value and not bool(value[0]):
+                elif isinstance(value, list | tuple) and value and not bool(value[0]):
                     detail = value[1] if len(value) > 1 else "failed"
                     failed_checks.append(f"{key}:{detail}")
         result = {
@@ -100,7 +107,9 @@ def _normalize_probe_payload(payload: dict[str, Any]) -> dict[str, Any]:
 def _probe_http(url: str) -> dict[str, Any]:
     t0 = time.monotonic()
     try:
-        req = urllib.request.Request(url, method="GET", headers={"User-Agent": "api-gateway-health/1.0"})
+        req = urllib.request.Request(
+            url, method="GET", headers={"User-Agent": "api-gateway-health/1.0"}
+        )
         with urllib.request.urlopen(req, timeout=5) as resp:
             raw_body = resp.read(4096)
             ms = int((time.monotonic() - t0) * 1000)
@@ -156,7 +165,9 @@ def _redis_streams_length() -> dict[str, Any]:
                 ln = int(r.xlen(key))
                 lens.append({"name": key, "length": ln})
             except redis.ResponseError:
-                lens.append({"name": key, "length": None, "error": "not_a_stream_or_missing"})
+                lens.append(
+                    {"name": key, "length": None, "error": "not_a_stream_or_missing"}
+                )
         lens.sort(key=lambda x: -(x.get("length") or 0))
         out["streams"] = lens[:10]
         # optional: discover more events:* streams
@@ -228,9 +239,10 @@ def compute_system_health_payload() -> dict[str, Any]:
     g = get_gateway_settings()
     watchlist = g.dashboard_watchlist_symbols_list()
     symbol = (
-        (g.dashboard_default_symbol or g.next_public_default_symbol or (watchlist[0] if watchlist else "")).strip()
-        or ""
-    )
+        g.dashboard_default_symbol
+        or g.next_public_default_symbol
+        or (watchlist[0] if watchlist else "")
+    ).strip() or ""
     server_ts_ms = int(time.time() * 1000)
     db_status = "error"
     freshness: dict[str, Any] = {}
@@ -320,7 +332,9 @@ def compute_system_health_payload() -> dict[str, Any]:
             )
             continue
         if not url:
-            services.append({"name": name, "status": "not_configured", "configured": False})
+            services.append(
+                {"name": name, "status": "not_configured", "configured": False}
+            )
             continue
         probe = _probe_http(url)
         services.append({"name": name, "url": url, "configured": True, **probe})
@@ -356,7 +370,9 @@ def compute_system_health_payload() -> dict[str, Any]:
 
     live_ops = ops_summary.get("live_broker") if isinstance(ops_summary, dict) else {}
     if isinstance(live_ops, dict):
-        latest_reconcile_status = str(live_ops.get("latest_reconcile_status") or "").strip().lower()
+        latest_reconcile_status = (
+            str(live_ops.get("latest_reconcile_status") or "").strip().lower()
+        )
         if latest_reconcile_status and latest_reconcile_status != "ok":
             stale_warnings.append(f"live_broker_reconcile_{latest_reconcile_status}")
         if int(live_ops.get("active_kill_switch_count") or 0) > 0:
@@ -366,7 +382,10 @@ def compute_system_health_payload() -> dict[str, Any]:
         if int(live_ops.get("critical_audit_count_24h") or 0) > 0:
             stale_warnings.append("live_broker_critical_audits_open")
     monitor_ops = ops_summary.get("monitor") if isinstance(ops_summary, dict) else {}
-    if isinstance(monitor_ops, dict) and int(monitor_ops.get("open_alert_count") or 0) > 0:
+    if (
+        isinstance(monitor_ops, dict)
+        and int(monitor_ops.get("open_alert_count") or 0) > 0
+    ):
         stale_warnings.append("monitor_alerts_open")
     alert_ops = ops_summary.get("alert_engine") if isinstance(ops_summary, dict) else {}
     if isinstance(alert_ops, dict) and int(alert_ops.get("outbox_failed") or 0) > 0:

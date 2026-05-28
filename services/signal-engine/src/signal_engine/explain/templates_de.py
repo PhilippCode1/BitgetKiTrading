@@ -22,6 +22,4 @@ STOP_MARK = (
 STOP_FILL = (
     "Stop triggert auf Fill/Trade-Preis (reagiert schneller, aber noise-anfaelliger)."
 )
-STOP_UNKNOWN = (
-    "Stop-Trigger-Typ ist in den Signalmetadaten nicht gesetzt; Default-Kontext siehe Konfiguration."
-)
+STOP_UNKNOWN = "Stop-Trigger-Typ ist in den Signalmetadaten nicht gesetzt; Default-Kontext siehe Konfiguration."

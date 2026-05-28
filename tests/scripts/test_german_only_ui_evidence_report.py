@@ -72,7 +72,13 @@ def test_cli(tmp_path: Path) -> None:
     )
     assert r1.returncode == 1
     r2 = subprocess.run(
-        [sys.executable, str(SCRIPT), "--strict", "--strict-external", f"--uat-json={u}"],
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--strict",
+            "--strict-external",
+            f"--uat-json={u}",
+        ],
         cwd=ROOT,
         capture_output=True,
         text=True,

@@ -29,9 +29,8 @@ async function collectRaw(): Promise<SelfHealingRawInputs> {
     health_load_error = e instanceof Error ? e.message : "health_fetch_failed";
   }
 
-  let open_alerts: Awaited<
-    ReturnType<typeof fetchMonitorAlertsOpen>
-  >["items"] = [];
+  let open_alerts: Awaited<ReturnType<typeof fetchMonitorAlertsOpen>>["items"] =
+    [];
   try {
     const a = await fetchMonitorAlertsOpen();
     open_alerts = a.items;
@@ -63,7 +62,8 @@ async function collectRaw(): Promise<SelfHealingRawInputs> {
       timeline: [...(i.timeline ?? [])],
     }));
   } catch (e) {
-    self_healing_error = e instanceof Error ? e.message : "self_healing_status_failed";
+    self_healing_error =
+      e instanceof Error ? e.message : "self_healing_status_failed";
   }
 
   return {
@@ -79,8 +79,8 @@ async function collectRaw(): Promise<SelfHealingRawInputs> {
   };
 }
 
-export async function GET() {
-  const auth = requireOperatorGatewayAuth();
+export async function GET(req: Request) {
+  const auth = requireOperatorGatewayAuth(req.headers);
   if (!auth.ok) return auth.response;
 
   const t = await getServerTranslator();

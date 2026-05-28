@@ -89,7 +89,9 @@ class InMemoryJournalRepo:
                 continue
             if product_type and item.get("product_type") != product_type:
                 continue
-            if internal_order_id and str(item.get("internal_order_id")) != str(internal_order_id):
+            if internal_order_id and str(item.get("internal_order_id")) != str(
+                internal_order_id
+            ):
                 continue
             out.append(item)
         return out
@@ -112,7 +114,11 @@ class InMemoryJournalRepo:
         if symbol:
             items = [item for item in items if item.get("symbol") == symbol]
         if internal_order_id:
-            items = [item for item in items if str(item.get("internal_order_id")) == str(internal_order_id)]
+            items = [
+                item
+                for item in items
+                if str(item.get("internal_order_id")) == str(internal_order_id)
+            ]
         return list(reversed(items))[:limit]
 
     def record_exchange_snapshot(self, record: dict):
@@ -138,7 +144,9 @@ class InMemoryJournalRepo:
         symbol: str | None = None,
     ):
         active_states = {"pending", "active", "closing"}
-        rows = [p for p in self.exit_plans if str(p.get("state") or "") in active_states]
+        rows = [
+            p for p in self.exit_plans if str(p.get("state") or "") in active_states
+        ]
         if symbol is not None:
             rows = [p for p in rows if str(p.get("symbol") or "") == symbol]
         return rows[:limit]
@@ -168,9 +176,15 @@ class InMemoryJournalRepo:
         exit_plan_limit: int = 200,
     ):
         open_orders = self.list_active_orders(limit=order_limit)
-        order_snapshots = self.list_latest_exchange_snapshots("orders", limit=order_limit)
-        position_snapshots = self.list_latest_exchange_snapshots("positions", limit=order_limit)
-        account_snapshots = self.list_latest_exchange_snapshots("account", limit=order_limit)
+        order_snapshots = self.list_latest_exchange_snapshots(
+            "orders", limit=order_limit
+        )
+        position_snapshots = self.list_latest_exchange_snapshots(
+            "positions", limit=order_limit
+        )
+        account_snapshots = self.list_latest_exchange_snapshots(
+            "account", limit=order_limit
+        )
         recent_fills = self.list_recent_fills(fill_limit)
         journal_recent = self.list_recent_execution_journal(journal_limit)
         exit_plans = self.list_active_exit_plans(limit=exit_plan_limit)
@@ -186,7 +200,10 @@ class InMemoryJournalRepo:
             "recent_fills": recent_fills,
             "execution_journal_recent": journal_recent,
             "active_exit_plans": exit_plans,
-            "active_exit_plans_summary": {"total": len(exit_plans), "by_state": by_state},
+            "active_exit_plans_summary": {
+                "total": len(exit_plans),
+                "by_state": by_state,
+            },
             "open_order_count": len(open_orders),
             "exchange_order_snapshot_count": len(order_snapshots),
             "exchange_position_snapshot_count": len(position_snapshots),
@@ -195,7 +212,9 @@ class InMemoryJournalRepo:
             "execution_journal_recent_count": len(journal_recent),
         }
 
-    def begin_reconcile_run(self, trigger_reason: str, meta_json: dict | None = None) -> dict:
+    def begin_reconcile_run(
+        self, trigger_reason: str, meta_json: dict | None = None
+    ) -> dict:
         rid = str(uuid4())
         row = {
             "reconcile_run_id": rid,
@@ -456,7 +475,12 @@ def test_exchange_state_sync_persists_orders_fills_and_snapshots(
 def test_reconcile_marks_drift_and_returns_restartable_state(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    settings = _settings(monkeypatch, EXECUTION_MODE="live", SHADOW_TRADE_ENABLE="false", LIVE_TRADE_ENABLE="true")
+    settings = _settings(
+        monkeypatch,
+        EXECUTION_MODE="live",
+        SHADOW_TRADE_ENABLE="false",
+        LIVE_TRADE_ENABLE="true",
+    )
     repo = InMemoryJournalRepo()
     repo.upsert_order(
         {
@@ -587,7 +611,8 @@ def test_reconcile_fail_live_arms_safety_latch(
     assert result["status"] == "fail"
     assert repo.safety_latch_is_active() is True
     assert any(
-        a.get("category") == "safety_latch" and a.get("action") == "arm" for a in repo.audit_trails
+        a.get("category") == "safety_latch" and a.get("action") == "arm"
+        for a in repo.audit_trails
     )
 
 

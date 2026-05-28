@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-04-26T09:54:30Z",
-  "git_sha": "339dd15",
+  "generated_at": "2026-05-28T18:18:03Z",
+  "git_sha": "3f1d5f5",
   "status": "implemented",
   "decision": "NOT_ENOUGH_EVIDENCE",
   "verified": false,
@@ -16,7 +16,7 @@
       "audit_fields": {
         "gate": "live_broker_fail_closed",
         "decision": "block_live",
-        "checked_at": "2026-04-26T09:54:30Z"
+        "checked_at": "2026-05-28T18:18:03Z"
       },
       "evidence_level": "synthetic",
       "live_allowed": false
@@ -30,7 +30,7 @@
       "audit_fields": {
         "gate": "live_broker_fail_closed",
         "decision": "block_live",
-        "checked_at": "2026-04-26T09:54:30Z"
+        "checked_at": "2026-05-28T18:18:03Z"
       },
       "evidence_level": "synthetic",
       "live_allowed": false
@@ -44,7 +44,7 @@
       "audit_fields": {
         "gate": "live_broker_fail_closed",
         "decision": "block_live",
-        "checked_at": "2026-04-26T09:54:30Z"
+        "checked_at": "2026-05-28T18:18:03Z"
       },
       "evidence_level": "synthetic",
       "live_allowed": false
@@ -58,7 +58,7 @@
       "audit_fields": {
         "gate": "live_broker_fail_closed",
         "decision": "block_live",
-        "checked_at": "2026-04-26T09:54:30Z"
+        "checked_at": "2026-05-28T18:18:03Z"
       },
       "evidence_level": "synthetic",
       "live_allowed": false
@@ -72,7 +72,7 @@
       "audit_fields": {
         "gate": "live_broker_fail_closed",
         "decision": "block_live",
-        "checked_at": "2026-04-26T09:54:30Z"
+        "checked_at": "2026-05-28T18:18:03Z"
       },
       "evidence_level": "synthetic",
       "live_allowed": false
@@ -86,7 +86,7 @@
       "audit_fields": {
         "gate": "live_broker_fail_closed",
         "decision": "block_live",
-        "checked_at": "2026-04-26T09:54:30Z"
+        "checked_at": "2026-05-28T18:18:03Z"
       },
       "evidence_level": "synthetic",
       "live_allowed": false
@@ -100,7 +100,7 @@
       "audit_fields": {
         "gate": "live_broker_fail_closed",
         "decision": "block_live",
-        "checked_at": "2026-04-26T09:54:30Z"
+        "checked_at": "2026-05-28T18:18:03Z"
       },
       "evidence_level": "synthetic",
       "live_allowed": false
@@ -114,7 +114,7 @@
       "audit_fields": {
         "gate": "live_broker_fail_closed",
         "decision": "block_live",
-        "checked_at": "2026-04-26T09:54:30Z"
+        "checked_at": "2026-05-28T18:18:03Z"
       },
       "evidence_level": "synthetic",
       "live_allowed": false
@@ -128,7 +128,7 @@
       "audit_fields": {
         "gate": "live_broker_fail_closed",
         "decision": "block_live",
-        "checked_at": "2026-04-26T09:54:30Z"
+        "checked_at": "2026-05-28T18:18:03Z"
       },
       "evidence_level": "synthetic",
       "live_allowed": false
@@ -142,7 +142,7 @@
       "audit_fields": {
         "gate": "live_broker_fail_closed",
         "decision": "block_live",
-        "checked_at": "2026-04-26T09:54:30Z"
+        "checked_at": "2026-05-28T18:18:03Z"
       },
       "evidence_level": "synthetic",
       "live_allowed": false
@@ -156,7 +156,7 @@
       "audit_fields": {
         "gate": "live_broker_fail_closed",
         "decision": "block_live",
-        "checked_at": "2026-04-26T09:54:30Z"
+        "checked_at": "2026-05-28T18:18:03Z"
       },
       "evidence_level": "synthetic",
       "live_allowed": false
@@ -170,7 +170,7 @@
       "audit_fields": {
         "gate": "live_broker_fail_closed",
         "decision": "block_live",
-        "checked_at": "2026-04-26T09:54:30Z"
+        "checked_at": "2026-05-28T18:18:03Z"
       },
       "evidence_level": "synthetic",
       "live_allowed": false
@@ -184,7 +184,7 @@
       "audit_fields": {
         "gate": "live_broker_fail_closed",
         "decision": "block_live",
-        "checked_at": "2026-04-26T09:54:30Z"
+        "checked_at": "2026-05-28T18:18:03Z"
       },
       "evidence_level": "synthetic",
       "live_allowed": false
@@ -198,7 +198,7 @@
       "audit_fields": {
         "gate": "live_broker_fail_closed",
         "decision": "block_live",
-        "checked_at": "2026-04-26T09:54:30Z"
+        "checked_at": "2026-05-28T18:18:03Z"
       },
       "evidence_level": "synthetic",
       "live_allowed": false
@@ -212,7 +212,7 @@
       "audit_fields": {
         "gate": "live_broker_fail_closed",
         "decision": "block_live",
-        "checked_at": "2026-04-26T09:54:30Z"
+        "checked_at": "2026-05-28T18:18:03Z"
       },
       "evidence_level": "synthetic",
       "live_allowed": false
@@ -226,7 +226,7 @@
       "audit_fields": {
         "gate": "live_broker_fail_closed",
         "decision": "block_live",
-        "checked_at": "2026-04-26T09:54:30Z"
+        "checked_at": "2026-05-28T18:18:03Z"
       },
       "evidence_level": "synthetic",
       "live_allowed": false
@@ -240,7 +240,7 @@
       "audit_fields": {
         "gate": "live_broker_fail_closed",
         "decision": "block_live",
-        "checked_at": "2026-04-26T09:54:30Z"
+        "checked_at": "2026-05-28T18:18:03Z"
       },
       "evidence_level": "synthetic",
       "live_allowed": false
@@ -254,7 +254,7 @@
       "audit_fields": {
         "gate": "live_broker_fail_closed",
         "decision": "block_live",
-        "checked_at": "2026-04-26T09:54:30Z"
+        "checked_at": "2026-05-28T18:18:03Z"
       },
       "evidence_level": "synthetic",
       "live_allowed": false
@@ -268,7 +268,7 @@
       "audit_fields": {
         "gate": "live_broker_fail_closed",
         "decision": "block_live",
-        "checked_at": "2026-04-26T09:54:30Z"
+        "checked_at": "2026-05-28T18:18:03Z"
       },
       "evidence_level": "synthetic",
       "live_allowed": false
@@ -282,7 +282,7 @@
       "audit_fields": {
         "gate": "live_broker_fail_closed",
         "decision": "block_live",
-        "checked_at": "2026-04-26T09:54:30Z"
+        "checked_at": "2026-05-28T18:18:03Z"
       },
       "evidence_level": "synthetic",
       "live_allowed": false

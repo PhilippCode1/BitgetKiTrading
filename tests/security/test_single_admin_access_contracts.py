@@ -20,7 +20,9 @@ from shared_py.single_admin_access import (
 def _load_checker():
     root = Path(__file__).resolve().parents[2]
     checker_path = root / "tools" / "check_single_admin_access.py"
-    spec = importlib.util.spec_from_file_location("check_single_admin_access", checker_path)
+    spec = importlib.util.spec_from_file_location(
+        "check_single_admin_access", checker_path
+    )
     if spec is None or spec.loader is None:
         raise AssertionError("checker import failed")
     mod = importlib.util.module_from_spec(spec)
@@ -34,7 +36,10 @@ def _write(p: Path, content: str) -> None:
 
 
 def _minimal_repo(tmp_path: Path) -> Path:
-    _write(tmp_path / "docs/production_10_10/single_admin_access_control.md", "Philipp Crljic")
+    _write(
+        tmp_path / "docs/production_10_10/single_admin_access_control.md",
+        "Philipp Crljic",
+    )
     _write(tmp_path / "docs/api_gateway_security.md", "DASHBOARD_GATEWAY_AUTHORIZATION")
     _write(tmp_path / "tests/tools/test_check_single_admin_access.py", "x=1")
     _write(tmp_path / "tests/security/test_single_admin_access_contracts.py", "x=1")
@@ -43,7 +48,9 @@ def _minimal_repo(tmp_path: Path) -> Path:
         tmp_path / "apps/dashboard/src/lib/gateway-bff.ts",
         'const msg = "DASHBOARD_GATEWAY_AUTHORIZATION fehlt";',
     )
-    _write(tmp_path / "apps/dashboard/src/lib/server-env.ts", "gatewayAuthorizationHeader")
+    _write(
+        tmp_path / "apps/dashboard/src/lib/server-env.ts", "gatewayAuthorizationHeader"
+    )
     _write(
         tmp_path / "config/gateway_settings.py",
         "GATEWAY_ALLOW_LEGACY_ADMIN_TOKEN=False\ngateway_super_admin_subject='philipp'",
@@ -52,13 +59,21 @@ def _minimal_repo(tmp_path: Path) -> Path:
         tmp_path / "apps/dashboard/src/app/api/dashboard/admin/rules/route.ts",
         "import { requireOperatorGatewayAuth } from '@/lib/gateway-bff';\nrequireOperatorGatewayAuth();",
     )
-    _write(tmp_path / ".env.production.example", "GATEWAY_ALLOW_LEGACY_ADMIN_TOKEN=false\nDASHBOARD_GATEWAY_AUTHORIZATION=Bearer <gateway_jwt>\n")
+    _write(
+        tmp_path / ".env.production.example",
+        "GATEWAY_ALLOW_LEGACY_ADMIN_TOKEN=false\nDASHBOARD_GATEWAY_AUTHORIZATION=Bearer <gateway_jwt>\n",
+    )
     _write(tmp_path / ".env.local.example", "GATEWAY_ALLOW_LEGACY_ADMIN_TOKEN=true\n")
     return tmp_path
 
 
 def test_sensitive_route_without_auth_blocked() -> None:
-    assert private_console_access_blocks_sensitive_action(has_auth=False, is_single_admin_ok=True) is True
+    assert (
+        private_console_access_blocks_sensitive_action(
+            has_auth=False, is_single_admin_ok=True
+        )
+        is True
+    )
 
 
 def test_browser_env_with_secret_detected() -> None:
@@ -92,8 +107,18 @@ def test_internal_service_key_not_exposed_in_client_payload() -> None:
 
 
 def test_local_dev_demo_allowed_but_production_not() -> None:
-    assert private_console_access_blocks_sensitive_action(has_auth=True, is_single_admin_ok=True) is False
-    assert private_console_access_blocks_sensitive_action(has_auth=True, is_single_admin_ok=False) is True
+    assert (
+        private_console_access_blocks_sensitive_action(
+            has_auth=True, is_single_admin_ok=True
+        )
+        is False
+    )
+    assert (
+        private_console_access_blocks_sensitive_action(
+            has_auth=True, is_single_admin_ok=False
+        )
+        is True
+    )
 
 
 def test_auth_error_redacts_secrets() -> None:
@@ -119,7 +144,11 @@ def test_single_admin_context_missing_blocks_sensitive_action() -> None:
 
 
 def test_no_customer_billing_roles_required_in_single_admin_helper() -> None:
-    helper = Path("shared/python/src/shared_py/single_admin_access.py").read_text(encoding="utf-8").lower()
+    helper = (
+        Path("shared/python/src/shared_py/single_admin_access.py")
+        .read_text(encoding="utf-8")
+        .lower()
+    )
     assert "billing:admin" not in helper
     assert "customer_role_required" not in helper
 
@@ -128,7 +157,10 @@ def test_checker_detects_missing_doc_and_dangerous_env_names(tmp_path: Path) -> 
     mod = _load_checker()
     root = _minimal_repo(tmp_path)
     (root / "docs/production_10_10/single_admin_access_control.md").unlink()
-    _write(root / ".env.production.example", "NEXT_PUBLIC_AUTH_TOKEN=abc\nGATEWAY_ALLOW_LEGACY_ADMIN_TOKEN=true\n")
+    _write(
+        root / ".env.production.example",
+        "NEXT_PUBLIC_AUTH_TOKEN=abc\nGATEWAY_ALLOW_LEGACY_ADMIN_TOKEN=true\n",
+    )
     out = mod.analyze(root, strict=True)
     codes = {i["code"] for i in out["issues"]}
     assert "doc_missing" in codes
@@ -138,7 +170,11 @@ def test_checker_detects_missing_doc_and_dangerous_env_names(tmp_path: Path) -> 
 def test_checker_json_parseable() -> None:
     root = Path(__file__).resolve().parents[2]
     proc = subprocess.run(
-        [sys.executable, str(root / "tools" / "check_single_admin_access.py"), "--json"],
+        [
+            sys.executable,
+            str(root / "tools" / "check_single_admin_access.py"),
+            "--json",
+        ],
         cwd=str(root),
         capture_output=True,
         text=True,

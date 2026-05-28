@@ -1,4 +1,7 @@
-import { gatewayAbsoluteUrl } from "@/lib/gateway-bff";
+import { gatewayAbsoluteUrl } from "@/lib/gateway-upstream";
+import {
+  isRetryableGatewayGetStatus,
+} from "@/lib/gateway-get-retry-policy";
 import { applyGatewayTraceHeaders } from "@/lib/gateway-trace-headers";
 
 /** Standard-Timeout fuer idempotente GET- und JSON-Proxys zum API-Gateway. */
@@ -7,8 +10,7 @@ export const GATEWAY_UPSTREAM_TIMEOUT_DEFAULT_MS = 60_000;
 /** Kurze Timeouts fuer Commerce- und Admin-Proxys. */
 export const GATEWAY_UPSTREAM_TIMEOUT_COMMERCE_MS = 12_000;
 
-/** HTTP-Status, bei denen ein idempotenter GET nach kurzem Backoff wiederholt werden darf. */
-const GET_RETRYABLE_HTTP_STATUS = new Set([408, 429, 502, 503, 504]);
+export { isRetryableGatewayGetStatus } from "@/lib/gateway-get-retry-policy";
 
 /** Backoff nach Versuch i (ms) — max. drei Versuche insgesamt. */
 const GET_RETRY_BACKOFF_MS = [320, 960] as const;
@@ -30,10 +32,6 @@ function isTransientNetworkError(e: unknown): boolean {
   );
 }
 
-export function isRetryableGatewayGetStatus(status: number): boolean {
-  return GET_RETRYABLE_HTTP_STATUS.has(status);
-}
-
 /** Tab-/Client-Abort (BFF) mit optionalem Server-Timeout kombinieren. */
 function mergeWithClientAbort(
   base: AbortSignal,
@@ -41,7 +39,9 @@ function mergeWithClientAbort(
 ): AbortSignal {
   if (client == null) return base;
   const any = (
-    AbortSignal as unknown as { any?: (signals: readonly AbortSignal[]) => AbortSignal }
+    AbortSignal as unknown as {
+      any?: (signals: readonly AbortSignal[]) => AbortSignal;
+    }
   ).any;
   if (typeof any === "function") {
     return any([base, client]);

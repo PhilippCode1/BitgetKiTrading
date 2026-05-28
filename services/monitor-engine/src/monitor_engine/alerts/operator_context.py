@@ -85,7 +85,7 @@ def merge_operator_guidance(
         ]
         first_steps = [
             f"`docker compose ps {svc}` und Logs des Dienstes pruefen.",
-            f"Manuell `GET <base>/ready` und `/health` (URL steht in details.url falls gesetzt).",
+            "Manuell `GET <base>/ready` und `/health` (URL steht in details.url falls gesetzt).",
             "Vergleich mit `GET /v1/system/health` (Gateway, JWT) fuer aggregierte Sicht.",
         ]
         stack_entry = f"Worker {svc} → Ursache in dessen Logs und READINESS_REQUIRE_URLS; dann Gateway-Health."
@@ -105,7 +105,9 @@ def merge_operator_guidance(
             downstream = "Live-Order-Submission blockiert bis Freigabe — Paper/Shadow weiter moeglich je nach Modus."
         elif svc == "live-broker" and chk == "reconcile":
             causes.append("Reconcile-Lauf fehlgeschlagen oder Exchange-Probe negativ.")
-            first_steps.insert(0, "live-broker Logs: reconcile, exchange_probe, Bitget-Erreichbarkeit.")
+            first_steps.insert(
+                0, "live-broker Logs: reconcile, exchange_probe, Bitget-Erreichbarkeit."
+            )
 
     elif fam == "redis_stream":
         stream, group = _parse_stream(alert_key)
@@ -122,9 +124,7 @@ def merge_operator_guidance(
             f"Siehe {_DOC_OBS} (Stream-Lag, SLIs).",
         ]
         stack_entry = "Redis zuerst, dann der Worker, der diese Gruppe konsumiert."
-        downstream = (
-            "Signale/Events stauen sich — verzoegerte Verarbeitung, ggf. veraltete UI und Drift in nachgelagerten Schritten."
-        )
+        downstream = "Signale/Events stauen sich — verzoegerte Verarbeitung, ggf. veraltete UI und Drift in nachgelagerten Schritten."
         out.setdefault("stream", stream)
         out.setdefault("group", group)
 
@@ -153,17 +153,13 @@ def merge_operator_guidance(
             stack_entry = "llm-orchestrator, Redis, ggf. OpenAI-Quota"
         else:
             stack_entry = "Zuerst Postgres-Zeitstempel pruefen, dann zugehoerigen Producer laut Doku."
-        downstream = (
-            "Charts, Signale oder KI-Panels koennen leer oder veraltet sein; Live-Risiko steigt wenn Kerzen/Signale ausbleiben."
-        )
+        downstream = "Charts, Signale oder KI-Panels koennen leer oder veraltet sein; Live-Risiko steigt wenn Kerzen/Signale ausbleiben."
         out.setdefault("datapoint", dp)
 
     elif fam == "stream_stalled":
         stream = _parse_stalled(alert_key)
         affected = ["market-stream", "redis", stream or "events-stream"]
-        summary = (
-            f"Stream-Laenge von '{stream}' hat sich nicht erhoeht, waehrend 1m-Kerzen kritisch stale sind."
-        )
+        summary = f"Stream-Laenge von '{stream}' hat sich nicht erhoeht, waehrend 1m-Kerzen kritisch stale sind."
         causes = [
             "Keine neuen Events trotz erwarteter Pipeline-Aktivitaet — oft market-stream oder Bitget.",
             "Kritischer Block vor dem Stream (vorherige Stufe schreibt nicht).",
@@ -174,9 +170,7 @@ def merge_operator_guidance(
             f"Runbook: Redis-Streams / Backlog pruefen ({_DOC_OBS}, {_DOC_INCIDENTS}).",
         ]
         stack_entry = "market-stream und Bitget-Verbindung zuerst, dann Redis-Stream."
-        downstream = (
-            "Kritisch: Pipeline wirkt eingefroren — Signale und nachgelagerte Automation koennen ausbleiben."
-        )
+        downstream = "Kritisch: Pipeline wirkt eingefroren — Signale und nachgelagerte Automation koennen ausbleiben."
         out.setdefault("stream", stream)
 
     elif fam == "trading_sql":
@@ -187,7 +181,7 @@ def merge_operator_guidance(
             "Konfiguration oder Marktregime geaendert — nicht automatisch Bug.",
         ]
         first_steps = [
-            f"Metrik/Query in `monitor_engine/alerts/trading_sql_alerts.py` zum alert_key zuordnen.",
+            "Metrik/Query in `monitor_engine/alerts/trading_sql_alerts.py` zum alert_key zuordnen.",
             f"Vergleich mit Prometheus-Regeln in `infra/observability/prometheus-alerts.yml` und {_DOC_OBS_SLO}.",
             "Stichprobe in app.signals_v1 bzw. live.* per SQL.",
         ]
@@ -201,7 +195,9 @@ def merge_operator_guidance(
 
     else:
         summary = f"Monitor-Alert {alert_key} (Severity {severity})."
-        causes = ["Siehe title/message und details; Familie nicht speziell klassifiziert."]
+        causes = [
+            "Siehe title/message und details; Familie nicht speziell klassifiziert."
+        ]
         first_steps = [
             "`GET /v1/monitor/alerts/open` und `GET /v1/system/health` (JWT).",
             f"monitor-engine Logs; Referenz {_DOC_INCIDENTS}.",

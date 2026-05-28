@@ -25,6 +25,25 @@ def _base(**overrides: object) -> StrategyAssetEvidence:
         "shadow_available": True,
         "shadow_passed": True,
         "expires_at": "2027-01-01T00:00:00Z",
+        "fees_included": True,
+        "spread_included": True,
+        "slippage_included": True,
+        "funding_included": True,
+        "max_drawdown": 0.12,
+        "number_of_trades": 42,
+        "profit_factor": 1.35,
+        "out_of_sample_result": "passed",
+        "walk_forward_result": "passed",
+        "paper_result": "passed",
+        "shadow_result": "passed",
+        "market_phases_tested": ["trend", "range"],
+        "longest_loss_streak": 4,
+        "risk_per_trade": 0.01,
+        "parameter_hash": "sha256:test-hash",
+        "model_parameters_reproducible": True,
+        "evidence_level": "shadow",
+        "checked_at": "2026-01-01T00:00:00Z",
+        "git_sha": "deadbeef",
         "scope_asset_symbols": ["BTCUSDT"],
         "scope_asset_classes": ["top_liquid_futures"],
         "allowed_market_families": ["futures"],
@@ -40,12 +59,18 @@ def test_missing_evidence_blocks_live() -> None:
 
 
 def test_backtest_only_blocks_live() -> None:
-    e = _base(evidence_status="backtest_available", shadow_available=False, shadow_passed=False)
+    e = _base(
+        evidence_status="backtest_available",
+        shadow_available=False,
+        shadow_passed=False,
+    )
     assert "evidence_status_nicht_live_faehig" in validate_strategy_asset_evidence(e)
 
 
 def test_paper_only_blocks_live() -> None:
-    e = _base(evidence_status="paper_available", shadow_available=False, shadow_passed=False)
+    e = _base(
+        evidence_status="paper_available", shadow_available=False, shadow_passed=False
+    )
     assert strategy_evidence_blocks_live(e) is True
 
 

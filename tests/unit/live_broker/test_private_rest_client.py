@@ -20,6 +20,7 @@ for candidate in (REPO_ROOT, LIVE_BROKER_SRC):
         sys.path.insert(0, candidate_str)
 
 from live_broker.config import LiveBrokerSettings
+from live_broker.exceptions import ShadowDivergenceError
 from live_broker.orders.models import (
     EmergencyFlattenRequest,
     KillSwitchRequest,
@@ -34,8 +35,147 @@ from live_broker.orders.service import (
     LiveBrokerOrderService,
     client_oid_for_internal_order,
 )
-from live_broker.exceptions import ShadowDivergenceError
 from live_broker.private_rest import BitgetPrivateRestClient, BitgetRestError
+from shared_py.bitget.instruments import BitgetInstrumentCatalogEntry
+from shared_py.bitget.metadata import (
+    BitgetInstrumentResolvedMetadata,
+    InstrumentSessionState,
+    OrderPreflightResult,
+)
+
+
+class UnitTestInstrumentCatalogStub:
+    """
+    Deterministischer Katalog fuer Live-Broker-Unit-Tests ohne Postgres/Redis.
+    Produktiver Pfad nutzt BitgetInstrumentCatalog; bei live_order_submission_enabled
+    verlangt der Order-Service sonst einen echten Katalog (fail-closed).
+    """
+
+    def resolve_for_trading(
+        self,
+        *,
+        symbol: str,
+        market_family: str | None = None,
+        product_type: str | None = None,
+        margin_account_mode: str | None = None,
+        refresh_if_missing: bool = False,  # noqa: ARG002
+    ) -> BitgetInstrumentCatalogEntry:
+        fam = str(market_family or "futures").strip().lower()
+        sym = str(symbol).strip().upper()
+        if fam == "spot":
+            return BitgetInstrumentCatalogEntry(
+                market_family="spot",
+                symbol=sym,
+                public_ws_inst_type="SPOT",
+                trading_enabled=True,
+                subscribe_enabled=True,
+                supports_reduce_only=True,
+                inventory_visible=True,
+                analytics_eligible=True,
+                paper_shadow_eligible=True,
+                live_execution_enabled=True,
+            )
+        pt = str(product_type or "USDT-FUTURES").strip().upper()
+        mmode_raw = str(margin_account_mode or "isolated").strip().lower()
+        mmode = (
+            mmode_raw if mmode_raw in ("cash", "isolated", "crossed") else "isolated"
+        )
+        return BitgetInstrumentCatalogEntry(
+            market_family="futures",
+            symbol=sym,
+            product_type=pt,
+            margin_coin="USDT",
+            margin_account_mode=mmode,  # type: ignore[arg-type]
+            public_ws_inst_type="UMCBL",
+            private_ws_inst_type="UMCBL",
+            trading_enabled=True,
+            subscribe_enabled=True,
+            supports_reduce_only=True,
+            supports_long_short=True,
+            supports_shorting=True,
+            inventory_visible=True,
+            analytics_eligible=True,
+            paper_shadow_eligible=True,
+            live_execution_enabled=True,
+        )
+
+
+_UNIT_TEST_CATALOG = UnitTestInstrumentCatalogStub()
+
+
+class UnitTestMetadataServiceStub:
+    """Minimaler Metadata-Service fuer Unit-Tests (kein Postgres-Katalog)."""
+
+    def __init__(self, catalog: UnitTestInstrumentCatalogStub) -> None:
+        self._c = catalog
+
+    def resolve_for_trading(
+        self,
+        *,
+        symbol: str,
+        market_family: str | None = None,
+        product_type: str | None = None,
+        margin_account_mode: str | None = None,
+        refresh_if_missing: bool = False,
+    ) -> BitgetInstrumentResolvedMetadata:
+        entry = self._c.resolve_for_trading(
+            symbol=symbol,
+            market_family=market_family,
+            product_type=product_type,
+            margin_account_mode=margin_account_mode,
+            refresh_if_missing=refresh_if_missing,
+        )
+        return BitgetInstrumentResolvedMetadata(
+            snapshot_id="unit-test-metadata-snapshot",
+            entry=entry,
+            session_state=InstrumentSessionState(
+                trade_allowed_now=True,
+                subscribe_allowed_now=True,
+                open_new_positions_allowed_now=True,
+            ),
+            health_status="ok",
+        )
+
+    def preflight_order(
+        self,
+        *,
+        metadata: BitgetInstrumentResolvedMetadata,
+        side: str,
+        order_type: str,
+        size: str,
+        price: str | None,
+        reduce_only: bool,
+        quote_size_order: bool,
+        max_metadata_age_sec: int | None = None,
+        now_ms: int | None = None,
+        account_margin_coin: str | None = None,
+    ) -> OrderPreflightResult:
+        del (
+            side,
+            order_type,
+            reduce_only,
+            quote_size_order,
+            max_metadata_age_sec,
+            now_ms,
+            account_margin_coin,
+        )
+        return OrderPreflightResult(
+            metadata=metadata,
+            normalized_price=str(price) if price not in (None, "") else None,
+            normalized_size=str(size),
+            computed_notional_quote=None,
+            reasons=[],
+        )
+
+
+_UNIT_TEST_METADATA = UnitTestMetadataServiceStub(_UNIT_TEST_CATALOG)
+
+# Portfolio-Gate: Unit-Tests ohne echten Risk-Governor liefern deterministische Trace-Felder.
+_UNIT_PORTFOLIO_OPENING_TRACE = {
+    "portfolio_risk_check_fresh": True,
+    "portfolio_opening_orders_allowed": True,
+    "portfolio_risk_state": "nominal",
+}
 
 
 class InMemoryOrderRepo:
@@ -69,7 +209,9 @@ class InMemoryOrderRepo:
         self.journal.append(row)
         return row
 
-    def seed_execution_candidate(self, execution_id: UUID, *, symbol: str = "BTCUSDT") -> None:
+    def seed_execution_candidate(
+        self, execution_id: UUID, *, symbol: str = "BTCUSDT"
+    ) -> None:
         self.executions[str(execution_id)] = {
             "execution_id": str(execution_id),
             "decision_action": "live_candidate_recorded",
@@ -140,7 +282,9 @@ class InMemoryOrderRepo:
                 continue
             if product_type and item.get("product_type") != product_type:
                 continue
-            if internal_order_id and str(item.get("internal_order_id")) != str(internal_order_id):
+            if internal_order_id and str(item.get("internal_order_id")) != str(
+                internal_order_id
+            ):
                 continue
             out.append(item)
         return out
@@ -253,9 +397,15 @@ def test_order_service_blocks_open_when_execution_binding_required(
         BitgetPrivateRestClient(
             settings,
             transport=httpx.MockTransport(
-                lambda r: _server_time_response() if r.url.path == "/api/v2/public/time" else httpx.Response(500)
+                lambda r: (
+                    _server_time_response()
+                    if r.url.path == "/api/v2/public/time"
+                    else httpx.Response(500)
+                )
             ),
         ),
+        catalog=_UNIT_TEST_CATALOG,
+        metadata_service=_UNIT_TEST_METADATA,
     )
     with pytest.raises(BitgetRestError) as exc:
         service.create_order(
@@ -290,11 +440,15 @@ def test_order_service_blocks_open_without_operator_release(
         BitgetPrivateRestClient(
             settings,
             transport=httpx.MockTransport(
-                lambda r: _server_time_response()
-                if r.url.path == "/api/v2/public/time"
-                else httpx.Response(500)
+                lambda r: (
+                    _server_time_response()
+                    if r.url.path == "/api/v2/public/time"
+                    else httpx.Response(500)
+                )
             ),
         ),
+        catalog=_UNIT_TEST_CATALOG,
+        metadata_service=_UNIT_TEST_METADATA,
     )
     with pytest.raises(BitgetRestError) as exc:
         service.create_order(
@@ -331,11 +485,15 @@ def test_order_service_blocks_open_without_shadow_match_latch(
         BitgetPrivateRestClient(
             settings,
             transport=httpx.MockTransport(
-                lambda r: _server_time_response()
-                if r.url.path == "/api/v2/public/time"
-                else httpx.Response(500)
+                lambda r: (
+                    _server_time_response()
+                    if r.url.path == "/api/v2/public/time"
+                    else httpx.Response(500)
+                )
             ),
         ),
+        catalog=_UNIT_TEST_CATALOG,
+        metadata_service=_UNIT_TEST_METADATA,
     )
     with patch(
         "live_broker.orders.service.get_shadow_match_latch_read_status",
@@ -384,6 +542,8 @@ def test_order_service_open_hits_spot_endpoint_when_request_family_spot(
         settings,
         repo,  # type: ignore[arg-type]
         BitgetPrivateRestClient(settings, transport=httpx.MockTransport(handler)),
+        catalog=_UNIT_TEST_CATALOG,
+        metadata_service=_UNIT_TEST_METADATA,
     )
     service.create_order(
         OrderCreateRequest(
@@ -394,6 +554,7 @@ def test_order_service_open_hits_spot_endpoint_when_request_family_spot(
             order_type="limit",
             size="0.001",
             price="50000",
+            trace=dict(_UNIT_PORTFOLIO_OPENING_TRACE),
         )
     )
     assert "/api/v2/spot/trade/place-order" in seen_paths
@@ -491,7 +652,9 @@ def test_private_client_retries_rate_limit_then_succeeds(
         if request.url.path == "/api/v2/mix/order/place-order":
             order_calls["count"] += 1
             if order_calls["count"] == 1:
-                return httpx.Response(429, json={"code": "429", "msg": "Too many requests"})
+                return httpx.Response(
+                    429, json={"code": "429", "msg": "Too many requests"}
+                )
             return httpx.Response(
                 200,
                 json={
@@ -685,6 +848,8 @@ def test_order_service_recovers_duplicate_create_via_client_oid_query(
         settings,
         repo,  # type: ignore[arg-type]
         BitgetPrivateRestClient(settings, transport=httpx.MockTransport(handler)),
+        catalog=_UNIT_TEST_CATALOG,
+        metadata_service=_UNIT_TEST_METADATA,
     )
     result = service.create_order(
         OrderCreateRequest(
@@ -695,6 +860,7 @@ def test_order_service_recovers_duplicate_create_via_client_oid_query(
             order_type="limit",
             size="0.01",
             price="65000",
+            trace=dict(_UNIT_PORTFOLIO_OPENING_TRACE),
         )
     )
     assert result["idempotent"] is True
@@ -731,6 +897,8 @@ def test_order_service_reuses_existing_internal_order_without_second_submit(
         settings,
         repo,  # type: ignore[arg-type]
         BitgetPrivateRestClient(settings, transport=httpx.MockTransport(handler)),
+        catalog=_UNIT_TEST_CATALOG,
+        metadata_service=_UNIT_TEST_METADATA,
     )
     request = OrderCreateRequest(
         internal_order_id=internal_order_id,
@@ -740,6 +908,7 @@ def test_order_service_reuses_existing_internal_order_without_second_submit(
         order_type="limit",
         size="0.01",
         price="65000",
+        trace=dict(_UNIT_PORTFOLIO_OPENING_TRACE),
     )
     first = service.create_order(request)
     second = service.create_order(request)
@@ -787,6 +956,8 @@ def test_kill_switch_blocks_normal_orders_but_allows_reduce_only(
         settings,
         repo,  # type: ignore[arg-type]
         BitgetPrivateRestClient(settings, transport=httpx.MockTransport(handler)),
+        catalog=_UNIT_TEST_CATALOG,
+        metadata_service=_UNIT_TEST_METADATA,
     )
     service.arm_kill_switch(
         KillSwitchRequest(scope="service", reason="ops_stop", source="operator")
@@ -800,6 +971,7 @@ def test_kill_switch_blocks_normal_orders_but_allows_reduce_only(
                 order_type="limit",
                 size="0.01",
                 price="65000",
+                trace=dict(_UNIT_PORTFOLIO_OPENING_TRACE),
             )
         )
     assert exc_info.value.classification == "kill_switch"
@@ -862,7 +1034,15 @@ def test_kill_switch_arm_auto_cancels_existing_orders(
                     "code": "00000",
                     "msg": "success",
                     "requestTime": int(time.time() * 1000),
-                    "data": {"successList": [{"orderId": "order-1", "clientOid": "bgai-test-crt-existing"}], "failureList": []},
+                    "data": {
+                        "successList": [
+                            {
+                                "orderId": "order-1",
+                                "clientOid": "bgai-test-crt-existing",
+                            }
+                        ],
+                        "failureList": [],
+                    },
                 },
             )
         if request.url.path == "/api/v2/mix/order/cancel-order":
@@ -872,7 +1052,10 @@ def test_kill_switch_arm_auto_cancels_existing_orders(
                     "code": "00000",
                     "msg": "success",
                     "requestTime": int(time.time() * 1000),
-                    "data": {"orderId": "order-1", "clientOid": "bgai-test-crt-existing"},
+                    "data": {
+                        "orderId": "order-1",
+                        "clientOid": "bgai-test-crt-existing",
+                    },
                 },
             )
         raise AssertionError(f"unexpected path: {request.url.path}")
@@ -881,6 +1064,8 @@ def test_kill_switch_arm_auto_cancels_existing_orders(
         settings,
         repo,  # type: ignore[arg-type]
         BitgetPrivateRestClient(settings, transport=httpx.MockTransport(handler)),
+        catalog=_UNIT_TEST_CATALOG,
+        metadata_service=_UNIT_TEST_METADATA,
     )
     result = service.arm_kill_switch(
         KillSwitchRequest(
@@ -926,6 +1111,8 @@ def test_emergency_flatten_bypasses_submit_gate_in_live_mode(
         settings,
         repo,  # type: ignore[arg-type]
         BitgetPrivateRestClient(settings, transport=httpx.MockTransport(handler)),
+        catalog=_UNIT_TEST_CATALOG,
+        metadata_service=_UNIT_TEST_METADATA,
     )
     result = service.emergency_flatten(
         EmergencyFlattenRequest(
@@ -988,7 +1175,10 @@ def test_trade_kill_switch_blocks_replace_across_replace_chain(
                     "code": "00000",
                     "msg": "success",
                     "requestTime": int(time.time() * 1000),
-                    "data": {"clientOid": body["newClientOid"], "orderId": "replace-order-2"},
+                    "data": {
+                        "clientOid": body["newClientOid"],
+                        "orderId": "replace-order-2",
+                    },
                 },
             )
         if request.url.path == "/api/v2/mix/order/detail":
@@ -1012,6 +1202,8 @@ def test_trade_kill_switch_blocks_replace_across_replace_chain(
         settings,
         repo,  # type: ignore[arg-type]
         BitgetPrivateRestClient(settings, transport=httpx.MockTransport(handler)),
+        catalog=_UNIT_TEST_CATALOG,
+        metadata_service=_UNIT_TEST_METADATA,
     )
     replaced = service.replace_order(
         OrderReplaceRequest(
@@ -1057,7 +1249,10 @@ def test_cancel_and_query_support_exchange_only_order_identity(
                     "code": "00000",
                     "msg": "success",
                     "requestTime": int(time.time() * 1000),
-                    "data": {"orderId": "remote-order-1", "clientOid": "remote-client-1"},
+                    "data": {
+                        "orderId": "remote-order-1",
+                        "clientOid": "remote-client-1",
+                    },
                 },
             )
         if request.url.path == "/api/v2/mix/order/detail":
@@ -1086,6 +1281,8 @@ def test_cancel_and_query_support_exchange_only_order_identity(
         settings,
         repo,  # type: ignore[arg-type]
         BitgetPrivateRestClient(settings, transport=httpx.MockTransport(handler)),
+        catalog=_UNIT_TEST_CATALOG,
+        metadata_service=_UNIT_TEST_METADATA,
     )
     cancelled = service.cancel_order(
         OrderCancelRequest(
@@ -1164,6 +1361,8 @@ def test_emergency_flatten_resolves_position_from_exchange_snapshot(
         settings,
         repo,  # type: ignore[arg-type]
         BitgetPrivateRestClient(settings, transport=httpx.MockTransport(handler)),
+        catalog=_UNIT_TEST_CATALOG,
+        metadata_service=_UNIT_TEST_METADATA,
     )
     result = service.emergency_flatten(
         EmergencyFlattenRequest(
@@ -1216,6 +1415,8 @@ def test_release_kill_switch_preserves_active_state_through_flatten_events(
         settings,
         repo,  # type: ignore[arg-type]
         BitgetPrivateRestClient(settings, transport=httpx.MockTransport(handler)),
+        catalog=_UNIT_TEST_CATALOG,
+        metadata_service=_UNIT_TEST_METADATA,
     )
     service.arm_kill_switch(
         KillSwitchRequest(scope="service", reason="ops_stop", source="operator")
@@ -1258,7 +1459,9 @@ def test_emergency_flatten_bypasses_open_circuit_with_priority(
         if request.url.path == "/api/v2/mix/order/place-order":
             order_calls["count"] += 1
             if order_calls["count"] == 1:
-                return httpx.Response(429, json={"code": "429", "msg": "Too many requests"})
+                return httpx.Response(
+                    429, json={"code": "429", "msg": "Too many requests"}
+                )
             body = json.loads(request.content.decode("utf-8"))
             return httpx.Response(
                 200,
@@ -1276,6 +1479,8 @@ def test_emergency_flatten_bypasses_open_circuit_with_priority(
         settings,
         repo,  # type: ignore[arg-type]
         client,
+        catalog=_UNIT_TEST_CATALOG,
+        metadata_service=_UNIT_TEST_METADATA,
     )
     with pytest.raises(BitgetRestError):
         client.place_order(
@@ -1353,7 +1558,10 @@ def test_order_timeout_cancels_stale_orders(
                     "code": "00000",
                     "msg": "success",
                     "requestTime": int(time.time() * 1000),
-                    "data": {"orderId": "timeout-order", "clientOid": "bgai-test-crt-timeout"},
+                    "data": {
+                        "orderId": "timeout-order",
+                        "clientOid": "bgai-test-crt-timeout",
+                    },
                 },
             )
         raise AssertionError(f"unexpected path: {request.url.path}")
@@ -1362,6 +1570,8 @@ def test_order_timeout_cancels_stale_orders(
         settings,
         repo,  # type: ignore[arg-type]
         BitgetPrivateRestClient(settings, transport=httpx.MockTransport(handler)),
+        catalog=_UNIT_TEST_CATALOG,
+        metadata_service=_UNIT_TEST_METADATA,
     )
     result = service.run_order_timeouts()
     assert result["timed_out"] == 1
@@ -1400,6 +1610,8 @@ def test_safety_latch_blocks_create_order_allows_reduce_only(
         settings,
         repo,  # type: ignore[arg-type]
         BitgetPrivateRestClient(settings, transport=httpx.MockTransport(handler)),
+        catalog=_UNIT_TEST_CATALOG,
+        metadata_service=_UNIT_TEST_METADATA,
     )
     with pytest.raises(BitgetRestError) as exc_info:
         service.create_order(
@@ -1410,6 +1622,7 @@ def test_safety_latch_blocks_create_order_allows_reduce_only(
                 order_type="limit",
                 size="0.01",
                 price="65000",
+                trace=dict(_UNIT_PORTFOLIO_OPENING_TRACE),
             )
         )
     assert exc_info.value.classification == "kill_switch"
@@ -1442,8 +1655,12 @@ def test_release_safety_latch_idempotent_when_inactive(
         settings,
         repo,  # type: ignore[arg-type]
         BitgetPrivateRestClient(settings, transport=httpx.MockTransport(handler)),
+        catalog=_UNIT_TEST_CATALOG,
+        metadata_service=_UNIT_TEST_METADATA,
     )
-    out = service.release_safety_latch(SafetyLatchReleaseRequest(reason="restart_smoke"))
+    out = service.release_safety_latch(
+        SafetyLatchReleaseRequest(reason="restart_smoke")
+    )
     assert out == {"ok": True, "idempotent": True}
 
 
@@ -1474,6 +1691,8 @@ def test_arm_kill_switch_second_call_idempotent_skips_extra_cancel_all(
         settings,
         repo,  # type: ignore[arg-type]
         BitgetPrivateRestClient(settings, transport=httpx.MockTransport(handler)),
+        catalog=_UNIT_TEST_CATALOG,
+        metadata_service=_UNIT_TEST_METADATA,
     )
     req = KillSwitchRequest(scope="service", reason="unit_idem", source="operator")
     first = service.arm_kill_switch(req)
@@ -1499,6 +1718,8 @@ def test_release_kill_switch_idempotent_when_not_armed(
         settings,
         repo,  # type: ignore[arg-type]
         BitgetPrivateRestClient(settings, transport=httpx.MockTransport(handler)),
+        catalog=_UNIT_TEST_CATALOG,
+        metadata_service=_UNIT_TEST_METADATA,
     )
     out = service.release_kill_switch(
         KillSwitchRequest(scope="service", reason="noop", source="operator")

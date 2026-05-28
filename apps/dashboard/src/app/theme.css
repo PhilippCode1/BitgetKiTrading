@@ -77,33 +77,45 @@
   --panel-padding-sm: var(--space-4);
 
   /* Radien — etwas großzügiger */
-  --r-sm: 8px;
-  --r-md: 12px;
-  --r-lg: 16px;
+  --r-xs: 6px;
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 20px;
   --r-pill: 999px;
+
+  /* Glassmorphism & Effects */
+  --glass-bg: rgba(12, 12, 15, 0.75);
+  --glass-bg-elevated: rgba(26, 26, 31, 0.85);
+  --glass-blur: blur(12px) saturate(160%);
+  --glass-border: 1px solid rgba(212, 188, 106, 0.08);
+  
+  /* Gradients */
+  --grad-premium: linear-gradient(135deg, #1a1a1f 0%, #070708 100%);
+  --grad-gold: linear-gradient(135deg, #d4bc6a 0%, #8f7528 100%);
+  --grad-gold-soft: linear-gradient(135deg, rgba(212, 188, 106, 0.1) 0%, rgba(143, 117, 40, 0.05) 100%);
+  --grad-surface: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 100%);
 
   /* Schatten — weiche Tiefe, dezente Kontur */
   --shadow-inset-soft: inset 0 1px 0 rgba(255, 255, 255, 0.05);
   --shadow-inset-deep: inset 0 2px 8px rgba(0, 0, 0, 0.32);
   --shadow-card:
-    var(--shadow-inset-soft), 0 0 0 1px rgba(255, 255, 255, 0.055),
-    0 0 0 1px rgba(212, 188, 106, 0.08), 0 18px 48px rgba(0, 0, 0, 0.48);
+    var(--shadow-inset-soft), 0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 4px 24px rgba(0, 0, 0, 0.4);
   --shadow-card-hover:
-    inset 0 1px 0 rgba(255, 255, 255, 0.065),
-    0 0 0 1px rgba(255, 255, 255, 0.07), 0 0 0 1px rgba(232, 209, 138, 0.16),
-    0 22px 56px rgba(0, 0, 0, 0.55);
-  --shadow-elevated: 0 10px 36px rgba(0, 0, 0, 0.45);
-  --shadow-nav: 0 1px 0 var(--border-hairline);
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 0 1px rgba(212, 188, 106, 0.15), 0 12px 48px rgba(0, 0, 0, 0.6);
+  --shadow-elevated: 0 20px 40px rgba(0, 0, 0, 0.5);
+  --shadow-nav: 0 4px 12px rgba(0, 0, 0, 0.2);
 
-  --focus-ring: 0 0 0 2px var(--bg-base), 0 0 0 4px rgba(212, 188, 106, 0.42);
+  --focus-ring: 0 0 0 2px var(--bg-base), 0 0 0 4px rgba(212, 188, 106, 0.4);
 
-  --transition-fast:
-    border-color 0.18s ease, box-shadow 0.18s ease, color 0.18s ease,
-    background-color 0.18s ease, transform 0.18s ease;
+  --transition-fast: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-smooth: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @media (prefers-reduced-motion: reduce) {
   :root {
     --transition-fast: none;
+    --transition-smooth: none;
   }
 }

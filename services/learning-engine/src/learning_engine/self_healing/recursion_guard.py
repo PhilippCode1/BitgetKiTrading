@@ -17,7 +17,11 @@ def _payload_origin(details: dict[str, Any]) -> str:
 
 def should_skip_for_recursion(details: dict[str, Any]) -> bool:
     o = _payload_origin(details)
-    if o in ("self_healing_pipeline", "self_healing_apply", "learning_engine_self_healing"):
+    if o in (
+        "self_healing_pipeline",
+        "self_healing_apply",
+        "learning_engine_self_healing",
+    ):
         return True
     if details.get("self_healing_depth") is not None:
         try:

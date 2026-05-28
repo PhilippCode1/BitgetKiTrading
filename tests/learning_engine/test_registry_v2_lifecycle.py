@@ -94,7 +94,11 @@ def test_try_auto_rollback_no_checkpoint(monkeypatch: pytest.MonkeyPatch) -> Non
         previous_effective_action="warn",
         new_effective_action="hard_block",
     )
-    assert out == {"attempted": True, "applied": False, "detail": "no_stable_checkpoint"}
+    assert out == {
+        "attempted": True,
+        "applied": False,
+        "detail": "no_stable_checkpoint",
+    }
 
 
 def test_try_auto_rollback_skips_same_state(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -146,8 +150,12 @@ def test_assign_champion_override_passes_weak_cv(
             "calibration_status": kwargs["calibration_status"],
         },
     )
-    monkeypatch.setattr(registry_v2_service, "_close_champion_history_safe", lambda *a, **k: None)
-    monkeypatch.setattr(registry_v2_service, "_insert_champion_history_safe", lambda *a, **k: None)
+    monkeypatch.setattr(
+        registry_v2_service, "_close_champion_history_safe", lambda *a, **k: None
+    )
+    monkeypatch.setattr(
+        registry_v2_service, "_insert_champion_history_safe", lambda *a, **k: None
+    )
     monkeypatch.setattr(registry_v2_service, "_audit", lambda *a, **k: None)
 
     conn = MagicMock()

@@ -75,7 +75,7 @@ def assert_internal_service_auth(
     )
 
 
-def build_internal_service_dependency(settings: Any):
+def build_internal_service_dependency(settings: Any):  # type: ignore
     def _require(
         x_internal_service_key: str | None = Header(
             default=None,

@@ -82,7 +82,9 @@ def test_bearish_macro_vs_long_soft_conflict_at_lower_threshold() -> None:
     )
     assert "macro" in (out.get("facets_active_json") or [])
     assert "context_event_bearish_vs_long" in (out.get("conflict_codes_json") or [])
-    assert "context_technical_vs_event_long" in (out.get("deterministic_rejection_soft_json") or [])
+    assert "context_technical_vs_event_long" in (
+        out.get("deterministic_rejection_soft_json") or []
+    )
     assert float(out.get("composite_effective_factor_0_1") or 1.0) < 1.0
 
 
@@ -164,7 +166,9 @@ def test_optional_hard_veto_long_bearish() -> None:
             smc_hard_event_veto_surprise_0_1=0.35,
         ),
     )
-    assert "context_hard_event_veto_long" in (out.get("deterministic_rejection_hard_json") or [])
+    assert "context_hard_event_veto_long" in (
+        out.get("deterministic_rejection_hard_json") or []
+    )
 
 
 def test_playbook_news_shock_adds_live_escalation() -> None:
@@ -200,7 +204,12 @@ def test_playbook_news_shock_adds_live_escalation() -> None:
 
 def test_merge_live_reasons_into_risk_governor_appends_unique() -> None:
     rg: dict = {"live_execution_block_reasons_json": ["existing"]}
-    smc = {"live_execution_block_reasons_json": ["context_live_event_surprise_escalation", "existing"]}
+    smc = {
+        "live_execution_block_reasons_json": [
+            "context_live_event_surprise_escalation",
+            "existing",
+        ]
+    }
     merge_live_reasons_into_risk_governor(rg, smc)
     assert rg["live_execution_block_reasons_json"] == [
         "existing",

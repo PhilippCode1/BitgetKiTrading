@@ -15,7 +15,12 @@ from api_gateway.db_market_universe_queries import fetch_market_universe_status
 
 
 class _FakeCursor:
-    def __init__(self, *, one: dict[str, object] | None = None, many: list[dict[str, object]] | None = None):
+    def __init__(
+        self,
+        *,
+        one: dict[str, object] | None = None,
+        many: list[dict[str, object]] | None = None,
+    ):
         self._one = one
         self._many = many or []
 
@@ -27,7 +32,12 @@ class _FakeCursor:
 
 
 class _FakeConn:
-    def __init__(self, *, snapshot_row: dict[str, object] | None, entry_rows: list[dict[str, object]]):
+    def __init__(
+        self,
+        *,
+        snapshot_row: dict[str, object] | None,
+        entry_rows: list[dict[str, object]],
+    ):
         self._snapshot_row = snapshot_row
         self._entry_rows = entry_rows
 
@@ -165,6 +175,9 @@ def test_fetch_market_universe_status_returns_matrix_and_registry() -> None:
     assert payload["snapshot"]["status"] == "ok"
     assert payload["categories"][0]["category_key"] == "bitget:futures:USDT-FUTURES"
     assert payload["categories"][0]["supports_shorting"] is True
-    assert payload["instruments"][0]["canonical_instrument_id"] == "bitget:futures:USDT-FUTURES:BTCUSDT"
+    assert (
+        payload["instruments"][0]["canonical_instrument_id"]
+        == "bitget:futures:USDT-FUTURES:BTCUSDT"
+    )
     assert payload["instruments"][0]["live_execution_enabled"] is True
     assert payload["summary"]["live_execution_enabled_category_count"] == 1

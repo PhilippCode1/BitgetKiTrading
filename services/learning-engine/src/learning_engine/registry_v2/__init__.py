@@ -1,6 +1,6 @@
 from learning_engine.registry_v2.service import (
-    assign_champion,
     assign_challenger,
+    assign_champion,
     clear_registry_slot,
     list_registry_snapshot,
 )

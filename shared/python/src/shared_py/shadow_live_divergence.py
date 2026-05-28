@@ -282,7 +282,11 @@ def get_shadow_match_latch_read_status(redis_url: str, execution_id: str) -> str
             u, decode_responses=True, socket_connect_timeout=2, socket_timeout=2
         )
         v = r.get(key)
-    except (OSError, _redis.exceptions.ConnectionError, _redis.exceptions.TimeoutError) as exc:
+    except (
+        OSError,
+        _redis.exceptions.ConnectionError,
+        _redis.exceptions.TimeoutError,
+    ) as exc:
         logger.warning("shadow_match_latch: redis read failed: %s", exc)
         return "redis_unavailable"
     except Exception as exc:  # noqa: BLE001

@@ -9,7 +9,11 @@ from pathlib import Path
 def test_check_multi_asset_strategy_evidence_strict_ok() -> None:
     root = Path(__file__).resolve().parents[2]
     proc = subprocess.run(
-        [sys.executable, str(root / "tools" / "check_multi_asset_strategy_evidence.py"), "--strict"],
+        [
+            sys.executable,
+            str(root / "tools" / "check_multi_asset_strategy_evidence.py"),
+            "--strict",
+        ],
         cwd=root,
         capture_output=True,
         text=True,
@@ -22,7 +26,11 @@ def test_check_multi_asset_strategy_evidence_strict_ok() -> None:
 def test_check_multi_asset_strategy_evidence_json_parseable() -> None:
     root = Path(__file__).resolve().parents[2]
     proc = subprocess.run(
-        [sys.executable, str(root / "tools" / "check_multi_asset_strategy_evidence.py"), "--json"],
+        [
+            sys.executable,
+            str(root / "tools" / "check_multi_asset_strategy_evidence.py"),
+            "--json",
+        ],
         cwd=root,
         capture_output=True,
         text=True,

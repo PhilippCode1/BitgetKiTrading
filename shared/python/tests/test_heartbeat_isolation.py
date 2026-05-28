@@ -18,7 +18,9 @@ def test_isolated_heartbeat_continues_when_main_awaits_sleep_5s() -> None:
         calls.append(int(time.time() * 1000))
 
     async def _run() -> None:
-        with patch("shared_py.observability.metrics.touch_worker_heartbeat", side_effect=_track):
+        with patch(
+            "shared_py.observability.metrics.touch_worker_heartbeat", side_effect=_track
+        ):
             stop = asyncio.Event()
             task = create_isolated_heartbeat_task("test_hb", 1.0, stop)
             await asyncio.sleep(5.0)

@@ -5,8 +5,8 @@ from llm_orchestrator.knowledge.onchain_macro import (
     merge_fetched_onchain_into_context,
 )
 from llm_orchestrator.knowledge.retrieval import (
-    format_operator_readonly_pro_symbol,
     PLACEHOLDER_NO_ONCHAIN_MACRO,
+    format_operator_readonly_pro_symbol,
 )
 
 

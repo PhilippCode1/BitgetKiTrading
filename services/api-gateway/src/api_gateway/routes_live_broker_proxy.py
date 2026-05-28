@@ -20,10 +20,8 @@ from psycopg.rows import dict_row
 from api_gateway.auth import GatewayAuthContext
 from api_gateway.config import get_gateway_settings
 from api_gateway.db import DatabaseHealthError, get_database_url
-from api_gateway.deps import audited_sensitive
 from api_gateway.db_live_broker_queries import (
     fetch_execution_forensic_timeline,
-    fetch_ops_risk_assist_context,
     fetch_live_broker_audit_trails,
     fetch_live_broker_decisions,
     fetch_live_broker_fills,
@@ -32,8 +30,14 @@ from api_gateway.db_live_broker_queries import (
     fetch_live_broker_orders,
     fetch_live_broker_paper_reference,
     fetch_live_broker_runtime,
+    fetch_ops_risk_assist_context,
 )
-from api_gateway.gateway_read_envelope import NEXT_STEP_DB, merge_read_envelope, safe_db_items
+from api_gateway.deps import audited_sensitive
+from api_gateway.gateway_read_envelope import (
+    NEXT_STEP_DB,
+    merge_read_envelope,
+    safe_db_items,
+)
 
 logger = logging.getLogger("api_gateway.live_broker_proxy")
 
@@ -50,7 +54,9 @@ def _lim(default: int = 20, cap: int = 200) -> int:
 
 @router.get("/runtime", response_model=None)
 def live_broker_runtime(
-    _auth: Annotated[GatewayAuthContext, Depends(audited_sensitive("live_broker_runtime_view"))],
+    _auth: Annotated[
+        GatewayAuthContext, Depends(audited_sensitive("live_broker_runtime_view"))
+    ],
 ) -> dict[str, Any]:
     try:
         dsn = get_database_url()
@@ -91,14 +97,17 @@ def live_broker_runtime(
 def live_broker_execution_forensic_timeline(
     execution_id: UUID,
     _auth: Annotated[
-        GatewayAuthContext, Depends(audited_sensitive("live_broker_forensic_timeline_view"))
+        GatewayAuthContext,
+        Depends(audited_sensitive("live_broker_forensic_timeline_view")),
     ],
 ) -> dict[str, Any]:
     """Aggregierte Trade-/Execution-Forensik (keine Roh-Secrets; verschachtelte JSON redacted)."""
     try:
         dsn = get_database_url()
         with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
-            row = fetch_execution_forensic_timeline(conn, execution_id=str(execution_id))
+            row = fetch_execution_forensic_timeline(
+                conn, execution_id=str(execution_id)
+            )
     except DatabaseHealthError as exc:
         logger.warning("live_broker forensic: %s", exc)
         return merge_read_envelope(
@@ -135,7 +144,8 @@ def live_broker_execution_forensic_timeline(
 def live_broker_ops_risk_assist_context(
     execution_id: UUID,
     _auth: Annotated[
-        GatewayAuthContext, Depends(audited_sensitive("live_broker_forensic_timeline_view"))
+        GatewayAuthContext,
+        Depends(audited_sensitive("live_broker_forensic_timeline_view")),
     ],
 ) -> dict[str, Any]:
     """Kompakter Assist-Kontext (Policy vs. Metrik, Golden Record) — gleiche Sichtbarkeit wie Forensik."""
@@ -177,7 +187,9 @@ def live_broker_ops_risk_assist_context(
 
 @router.get("/decisions/recent", response_model=None)
 def live_broker_decisions_recent(
-    _auth: Annotated[GatewayAuthContext, Depends(audited_sensitive("live_broker_decisions_view"))],
+    _auth: Annotated[
+        GatewayAuthContext, Depends(audited_sensitive("live_broker_decisions_view"))
+    ],
 ) -> dict[str, Any]:
     lim = _lim()
     return safe_db_items(
@@ -191,7 +203,10 @@ def live_broker_decisions_recent(
 
 @router.get("/reference/paper", response_model=None)
 def live_broker_paper_reference(
-    _auth: Annotated[GatewayAuthContext, Depends(audited_sensitive("live_broker_paper_reference_view"))],
+    _auth: Annotated[
+        GatewayAuthContext,
+        Depends(audited_sensitive("live_broker_paper_reference_view")),
+    ],
 ) -> dict[str, Any]:
     lim = _lim()
     return safe_db_items(
@@ -205,7 +220,9 @@ def live_broker_paper_reference(
 
 @router.get("/orders/recent", response_model=None)
 def live_broker_orders_recent(
-    _auth: Annotated[GatewayAuthContext, Depends(audited_sensitive("live_broker_orders_view"))],
+    _auth: Annotated[
+        GatewayAuthContext, Depends(audited_sensitive("live_broker_orders_view"))
+    ],
 ) -> dict[str, Any]:
     lim = _lim()
     return safe_db_items(
@@ -219,7 +236,9 @@ def live_broker_orders_recent(
 
 @router.get("/fills/recent", response_model=None)
 def live_broker_fills_recent(
-    _auth: Annotated[GatewayAuthContext, Depends(audited_sensitive("live_broker_fills_view"))],
+    _auth: Annotated[
+        GatewayAuthContext, Depends(audited_sensitive("live_broker_fills_view"))
+    ],
 ) -> dict[str, Any]:
     lim = _lim()
     return safe_db_items(
@@ -249,13 +268,17 @@ def live_broker_order_actions_recent(
 
 @router.get("/kill-switch/active", response_model=None)
 def live_broker_kill_switch_active(
-    _auth: Annotated[GatewayAuthContext, Depends(audited_sensitive("live_broker_kill_switch_view"))],
+    _auth: Annotated[
+        GatewayAuthContext, Depends(audited_sensitive("live_broker_kill_switch_view"))
+    ],
 ) -> dict[str, Any]:
     lim = _lim()
     return safe_db_items(
         route_tag="live_broker_kill_active",
         limit=lim,
-        fetch=lambda c: fetch_live_broker_kill_switch_events(c, limit=lim, active_only=True),
+        fetch=lambda c: fetch_live_broker_kill_switch_events(
+            c, limit=lim, active_only=True
+        ),
         empty_message=(
             "Kein aktiver Kill-Switch — Live wird hierdurch nicht blockiert. "
             "Weitere Sperren (Safety-Latch, Konfiguration, Reconcile) siehe GET /v1/live-broker/runtime "
@@ -269,14 +292,17 @@ def live_broker_kill_switch_active(
 @router.get("/kill-switch/events/recent", response_model=None)
 def live_broker_kill_switch_events_recent(
     _auth: Annotated[
-        GatewayAuthContext, Depends(audited_sensitive("live_broker_kill_switch_events_view"))
+        GatewayAuthContext,
+        Depends(audited_sensitive("live_broker_kill_switch_events_view")),
     ],
 ) -> dict[str, Any]:
     lim = _lim()
     return safe_db_items(
         route_tag="live_broker_kill_events",
         limit=lim,
-        fetch=lambda c: fetch_live_broker_kill_switch_events(c, limit=lim, active_only=False),
+        fetch=lambda c: fetch_live_broker_kill_switch_events(
+            c, limit=lim, active_only=False
+        ),
         empty_message="Keine Kill-Switch-Events.",
         degraded_message="Kill-Switch-Events nicht ladbar.",
     )
@@ -284,7 +310,9 @@ def live_broker_kill_switch_events_recent(
 
 @router.get("/audit/recent", response_model=None)
 def live_broker_audit_recent(
-    _auth: Annotated[GatewayAuthContext, Depends(audited_sensitive("live_broker_audit_trail_view"))],
+    _auth: Annotated[
+        GatewayAuthContext, Depends(audited_sensitive("live_broker_audit_trail_view"))
+    ],
     category: str | None = None,
 ) -> dict[str, Any]:
     lim = _lim()

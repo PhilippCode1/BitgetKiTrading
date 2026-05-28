@@ -1,4 +1,7 @@
-"""Aktive Positions-Drift: DB live.positions vs. Bitget GET all_positions (Reconcile-Zyklus)."""
+"""
+Aktive Positions-Drift: DB live.positions vs. Bitget GET all_positions
+(Reconcile-Zyklus).
+"""
 
 from __future__ import annotations
 
@@ -7,13 +10,14 @@ import time
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
+from shared_py.eventbus import RedisStreamBus
+
 from live_broker.config import LiveBrokerSettings
 from live_broker.events import publish_system_alert
 from live_broker.global_halt_latch import publish_global_halt_state
 from live_broker.persistence.repo import LiveBrokerRepository
 from live_broker.private_rest import BitgetPrivateRestClient
 from live_broker.reconcile.rest_catchup import _positions_items_from_payload
-from shared_py.eventbus import RedisStreamBus
 
 logger = logging.getLogger("live_broker.reconcile.position_drift")
 
@@ -28,9 +32,14 @@ def _to_decimal(value: Any) -> Decimal | None:
 
 
 def notional_from_bitget_item(item: dict[str, Any]) -> Decimal | None:
-    """Schaetzwert in Quote (z. B. USDT) fuer Prozent-Drift; linear futures: size * open."""
+    """
+    Schaetzwert in Quote (z. B. USDT) fuer Prozent-Drift;
+    linear futures: size * open.
+    """
     total = _to_decimal(item.get("total")) or _to_decimal(item.get("available"))
-    px = _to_decimal(item.get("openPriceAvg") or item.get("openAvgPrice") or item.get("markPrice"))
+    px = _to_decimal(
+        item.get("openPriceAvg") or item.get("openAvgPrice") or item.get("markPrice")
+    )
     if total is not None and px is not None and total != 0 and px != 0:
         return (total * px).copy_abs()
     margin = _to_decimal(item.get("margin") or item.get("marginSize"))
@@ -47,7 +56,9 @@ def position_key_from_bitget_item(item: dict[str, Any]) -> tuple[str, str, str] 
     side = str(item.get("holdSide") or item.get("posSide") or "").strip().lower()
     if side not in ("long", "short"):
         return None
-    ptype = str(item.get("productType") or item.get("product_type") or "").strip().upper()
+    ptype = (
+        str(item.get("productType") or item.get("product_type") or "").strip().upper()
+    )
     return (inst, ptype, side)
 
 
@@ -84,9 +95,9 @@ def run_position_drift_once(
 
     ex_map: dict[tuple[str, str, str], dict[str, Any]] = {}
     for it in ex_items:
-        k = position_key_from_bitget_item(it)
-        if k is not None:
-            ex_map[k] = it
+        ex_key = position_key_from_bitget_item(it)
+        if ex_key is not None:
+            ex_map[ex_key] = it
 
     ha_ratio = Decimal(str(settings.live_broker_position_notional_halt_ratio))
     ghosts: list[dict[str, str]] = []
@@ -118,16 +129,22 @@ def run_position_drift_once(
                         bus,
                         alert_key="live-broker:GHOST_POSITION_DETECTED",
                         severity="critical",
-                        title="GHOST position — exchange ja, DB nein (Shadow-Sync ausgefuehrt)",
+                        title=(
+                            "GHOST position — exchange ja, DB nein "
+                            "(Shadow-Sync ausgefuehrt)"
+                        ),
                         message=(
-                            f"Reconcile: Position {k[0]} {k[2]} (product={k[1] or 'n/a'}) auf Bitget, "
+                            f"Reconcile: Position {k[0]} {k[2]} "
+                            f"(product={k[1] or 'n/a'}) auf Bitget, "
                             "fehlte in live.positions — DB-Zeile angelegt."
                         ),
                         details={
                             "inst_id": k[0],
                             "product_type": k[1],
                             "hold_side": k[2],
-                            "notional_estimate": str(n_ex) if n_ex is not None else None,
+                            "notional_estimate": (
+                                str(n_ex) if n_ex is not None else None
+                            ),
                         },
                     )
                 except Exception as exc:  # noqa: BLE001
@@ -158,12 +175,20 @@ def run_position_drift_once(
                                 bus,
                                 alert_key="live-broker:POSITION_NOTIONAL_DIVERGENCE_HALT",
                                 severity="critical",
-                                title="Global halt — Positions-Notional-Drift > Schwellwert",
+                                title=(
+                                    "Global halt — Positions-Notional-Drift "
+                                    "> Schwellwert"
+                                ),
                                 message=(
-                                    f"Notional-Differenz > {float(ha_ratio) * 100:.1f}% fuer {k[0]} — "
+                                    "Notional-Differenz > "
+                                    f"{float(ha_ratio) * 100:.1f}% fuer {k[0]} — "
                                     "system:global_halt aktiviert."
                                 ),
-                                details=notional_mismatches[-1] if notional_mismatches else {},
+                                details=(
+                                    notional_mismatches[-1]
+                                    if notional_mismatches
+                                    else {}
+                                ),
                             )
                         except Exception as exc:  # noqa: BLE001
                             logger.warning("notional halt alert failed: %s", exc)

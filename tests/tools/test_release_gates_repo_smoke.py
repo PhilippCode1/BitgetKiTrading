@@ -18,7 +18,9 @@ def test_check_release_approval_gates_repo_exit_zero() -> None:
         check=False,
     )
     assert r.returncode == 0, (r.stdout, r.stderr)
-    assert "Evidence" in (r.stdout + r.stderr) or "release-approval" in (r.stdout + r.stderr)
+    assert "Evidence" in (r.stdout + r.stderr) or "release-approval" in (
+        r.stdout + r.stderr
+    )
 
 
 def test_release_sanity_checks_repo_exit_zero() -> None:

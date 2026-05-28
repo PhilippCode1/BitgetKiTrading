@@ -8,36 +8,13 @@ from uuid import UUID, uuid4
 
 import psycopg
 from joblib import dump
-from sklearn.ensemble import HistGradientBoostingClassifier
-from sklearn.isotonic import IsotonicRegression
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import average_precision_score, brier_score_loss, log_loss, roc_auc_score
-
-from learning_engine.config import LearningEngineSettings
-from learning_engine.consensus.tsfm_learning_feedback import enrich_trade_evaluations_with_apex_war_room
-from learning_engine.storage import repo_model_runs
-from learning_engine.training.cv_leakage_family import build_cv_report_with_leakage_family_audit
-from learning_engine.training.cv_runner import (
-    mean_fold_metric,
-    run_purged_kfold_binary_classification,
-    run_walk_forward_binary_classification,
-)
-from learning_engine.training.trade_relevance_metrics import (
-    execution_sensitivity_proxy,
-    stop_failure_mode_rates,
-    trade_relevance_binary_classification_report,
-)
-from learning_engine.training.data_version import compute_data_version_hash
-from learning_engine.training.example_ranges import label_ranges_for_examples
-from learning_engine.training.manifest import build_training_manifest
-from learning_engine.training.run_manifest import write_full_run_manifest
 from shared_py.model_contracts import MODEL_TARGET_SCHEMA_HASH, stable_json_hash
 from shared_py.model_layer_contract import canonical_model_layer_descriptor
 from shared_py.take_trade_model import (
-    CalibratedTakeTradeProbModel,
     TAKE_TRADE_MODEL_KIND,
     TAKE_TRADE_MODEL_NAME,
     TAKE_TRADE_TARGET_FIELD,
+    CalibratedTakeTradeProbModel,
     build_signal_model_feature_reference,
     take_trade_feature_contract_descriptor,
 )
@@ -45,6 +22,38 @@ from shared_py.training_dataset_builder import (
     TakeTradeDatasetBuildConfig,
     build_take_trade_training_dataset,
     training_feature_matrix,
+)
+from sklearn.ensemble import HistGradientBoostingClassifier
+from sklearn.isotonic import IsotonicRegression
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import (
+    average_precision_score,
+    brier_score_loss,
+    log_loss,
+    roc_auc_score,
+)
+
+from learning_engine.config import LearningEngineSettings
+from learning_engine.consensus.tsfm_learning_feedback import (
+    enrich_trade_evaluations_with_apex_war_room,
+)
+from learning_engine.storage import repo_model_runs
+from learning_engine.training.cv_leakage_family import (
+    build_cv_report_with_leakage_family_audit,
+)
+from learning_engine.training.cv_runner import (
+    mean_fold_metric,
+    run_purged_kfold_binary_classification,
+    run_walk_forward_binary_classification,
+)
+from learning_engine.training.data_version import compute_data_version_hash
+from learning_engine.training.example_ranges import label_ranges_for_examples
+from learning_engine.training.manifest import build_training_manifest
+from learning_engine.training.run_manifest import write_full_run_manifest
+from learning_engine.training.trade_relevance_metrics import (
+    execution_sensitivity_proxy,
+    stop_failure_mode_rates,
+    trade_relevance_binary_classification_report,
 )
 
 _MIN_SPLIT_ROWS = 8
@@ -96,13 +105,16 @@ def train_take_trade_prob_model(
     k_cv = settings.train_cv_kfolds
     emb = settings.train_cv_embargo_pct
     rs = settings.train_random_state
-    make_est = lambda: HistGradientBoostingClassifier(
-        learning_rate=0.05,
-        max_depth=3,
-        max_iter=180,
-        min_samples_leaf=10,
-        random_state=rs,
-    )
+
+    def make_est():
+        return HistGradientBoostingClassifier(
+            learning_rate=0.05,
+            max_depth=3,
+            max_iter=180,
+            min_samples_leaf=10,
+            random_state=rs,
+        )
+
     cv_wf = run_walk_forward_binary_classification(
         X=X_full,
         y=y_full,
@@ -184,11 +196,15 @@ def train_take_trade_prob_model(
         "abstention_precision_on_negative_class": tr_bin.get(
             "abstention_precision_on_negative_class"
         ),
-        "high_confidence_false_positive_rate": tr_bin.get("high_confidence_false_positive_rate"),
-        "top_decile_tail_false_positive_rate": tr_bin.get("top_decile_tail_false_positive_rate"),
-        "execution_sensitivity_available": trade_relevance_full["execution_sensitivity"].get(
-            "available"
+        "high_confidence_false_positive_rate": tr_bin.get(
+            "high_confidence_false_positive_rate"
         ),
+        "top_decile_tail_false_positive_rate": tr_bin.get(
+            "top_decile_tail_false_positive_rate"
+        ),
+        "execution_sensitivity_available": trade_relevance_full[
+            "execution_sensitivity"
+        ].get("available"),
         "report_file": "trade_relevance_report.json",
     }
     regime_metrics = _regime_metrics(test_examples, test_probs)
@@ -258,7 +274,9 @@ def train_take_trade_prob_model(
         "data_version_hash": data_version_hash,
         "trained_at_ms": trained_at_ms,
         "feature_contract": feat_contract,
-        "model_layer_contract": canonical_model_layer_descriptor(include_field_tiers=True),
+        "model_layer_contract": canonical_model_layer_descriptor(
+            include_field_tiers=True
+        ),
         "dataset_build_report": {
             "config_fingerprint": dataset_build_report.config_fingerprint,
             "kept_count": dataset_build_report.kept_count,
@@ -427,7 +445,9 @@ def _find_middle_start(labels: list[int], *, approx_start: int, min_start: int) 
             continue
         if _has_both_classes(train) and _has_both_classes(calibration):
             return start
-    raise ValueError("chronologischer Train/Calibration-Split ohne beide Klassen nicht moeglich")
+    raise ValueError(
+        "chronologischer Train/Calibration-Split ohne beide Klassen nicht moeglich"
+    )
 
 
 def _has_both_classes(labels: list[int]) -> bool:
@@ -467,7 +487,9 @@ def _classification_metrics(y_true: list[int], probs: list[float]) -> dict[str, 
     return metrics
 
 
-def _regime_metrics(examples: list[dict[str, Any]], probs: list[float]) -> list[dict[str, Any]]:
+def _regime_metrics(
+    examples: list[dict[str, Any]], probs: list[float]
+) -> list[dict[str, Any]]:
     grouped: dict[str, dict[str, Any]] = {}
     for example, prob in zip(examples, probs, strict=True):
         regime = str(example.get("market_regime") or "unknown")
@@ -491,7 +513,9 @@ def _regime_metrics(examples: list[dict[str, Any]], probs: list[float]) -> list[
     return out
 
 
-def _calibration_curve(y_true: list[int], probs: list[float], *, bins: int = 5) -> list[dict[str, Any]]:
+def _calibration_curve(
+    y_true: list[int], probs: list[float], *, bins: int = 5
+) -> list[dict[str, Any]]:
     buckets = [{"count": 0, "sum_prob": 0.0, "sum_target": 0.0} for _ in range(bins)]
     for truth, prob in zip(y_true, probs, strict=True):
         idx = min(bins - 1, int(prob * bins))
@@ -509,7 +533,9 @@ def _calibration_curve(y_true: list[int], probs: list[float], *, bins: int = 5) 
                 "bin_end": (idx + 1) / bins,
                 "count": count,
                 "avg_probability": bucket["sum_prob"] / count if count else None,
-                "empirical_positive_rate": bucket["sum_target"] / count if count else None,
+                "empirical_positive_rate": (
+                    bucket["sum_target"] / count if count else None
+                ),
             }
         )
     return out

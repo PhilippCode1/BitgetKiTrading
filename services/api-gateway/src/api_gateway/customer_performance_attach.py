@@ -75,7 +75,10 @@ def attach_customer_performance_routes(router: APIRouter) -> None:
                     },
                 }
         record_gateway_audit_line(
-            request, auth, "commerce_customer_performance_read", extra={"tenant_id": tid}
+            request,
+            auth,
+            "commerce_customer_performance_read",
+            extra={"tenant_id": tid},
         )
         return {
             "schema_version": "commerce-customer-performance-v1",
@@ -210,14 +213,28 @@ def attach_customer_performance_routes(router: APIRouter) -> None:
         pdf.set_font("Helvetica", "B", 11)
         pdf.cell(0, 6, "Account", ln=True)
         pdf.set_font("Helvetica", "", 9)
-        pdf.cell(0, 5, f"Equity: {acc.get('equity', 'n/a')}  Initial: {acc.get('initial_equity', 'n/a')}", ln=True)
-        pdf.cell(0, 5, f"Fees total (paper fee ledger): {demo.get('fees_total_usdt')}", ln=True)
+        pdf.cell(
+            0,
+            5,
+            f"Equity: {acc.get('equity', 'n/a')}  Initial: {acc.get('initial_equity', 'n/a')}",
+            ln=True,
+        )
+        pdf.cell(
+            0,
+            5,
+            f"Fees total (paper fee ledger): {demo.get('fees_total_usdt')}",
+            ln=True,
+        )
         pdf.cell(0, 5, f"Funding total: {demo.get('funding_total_usdt')}", ln=True)
         pdf.ln(2)
         pdf.set_font("Helvetica", "B", 11)
         pdf.cell(0, 6, "Periods (closed trades in export window)", ln=True)
         pdf.set_font("Helvetica", "", 9)
-        for label, key in (("7d", "last_7d"), ("30d", "last_30d"), ("window", "all_in_window")):
+        for label, key in (
+            ("7d", "last_7d"),
+            ("30d", "last_30d"),
+            ("window", "all_in_window"),
+        ):
             p = periods.get(key) or {}
             pdf.cell(
                 0,
@@ -230,7 +247,9 @@ def attach_customer_performance_routes(router: APIRouter) -> None:
         pdf.set_font("Helvetica", "B", 11)
         pdf.cell(0, 6, "Drawdown / streaks", ln=True)
         pdf.set_font("Helvetica", "", 9)
-        pdf.cell(0, 5, f"Max DD % (equity curve): {dd.get('max_drawdown_pct')}", ln=True)
+        pdf.cell(
+            0, 5, f"Max DD % (equity curve): {dd.get('max_drawdown_pct')}", ln=True
+        )
         pdf.cell(
             0,
             5,
@@ -248,7 +267,7 @@ def attach_customer_performance_routes(router: APIRouter) -> None:
             extra={"tenant_id": tid},
         )
         raw = pdf.output(dest="S")
-        if isinstance(raw, (bytes, bytearray)):
+        if isinstance(raw, bytes | bytearray):
             content = bytes(raw)
         elif isinstance(raw, str):
             content = raw.encode("latin-1")

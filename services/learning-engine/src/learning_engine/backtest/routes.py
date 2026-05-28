@@ -8,8 +8,8 @@ from pydantic import BaseModel, Field
 
 from learning_engine.backtest.runner_offline import run_offline_backtest
 from learning_engine.config import LearningEngineSettings
-from learning_engine.storage.connection import db_connect
 from learning_engine.storage import repo_backtest
+from learning_engine.storage.connection import db_connect
 from learning_engine.storage.repo_learning_v1 import jsonable_row
 
 

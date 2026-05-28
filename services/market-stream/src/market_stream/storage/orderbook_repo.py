@@ -115,7 +115,9 @@ class OrderBookRepository:
                         ingest_ts_ms,
                     )
                     if level_rows:
-                        await connection.executemany(INSERT_ORDERBOOK_LEVEL_SQL, level_rows)
+                        await connection.executemany(
+                            INSERT_ORDERBOOK_LEVEL_SQL, level_rows
+                        )
         except (InvalidOperation, ValueError, OSError, asyncpg.PostgresError) as exc:
             self._logger.warning("orderbook snapshot insert failed: %s", exc)
             return False

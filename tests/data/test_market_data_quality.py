@@ -68,7 +68,9 @@ def test_missing_bids_asks_fail() -> None:
 
 
 def test_unrealistic_ohlc_fail() -> None:
-    ok, reasons = validate_ohlc_sanity([{"ts_ms": 1, "open": 3, "high": 2, "low": 4, "close": 1, "volume": 1}])
+    ok, reasons = validate_ohlc_sanity(
+        [{"ts_ms": 1, "open": 3, "high": 2, "low": 4, "close": 1, "volume": 1}]
+    )
     assert ok is False
     assert "ohlc_high_below_low" in reasons or "ohlc_range_violation" in reasons
 
@@ -87,8 +89,16 @@ def test_stale_funding_warning_or_fail() -> None:
 
 
 def test_unknown_blocks_live() -> None:
-    assert asset_data_quality_blocks_live(quality_status="data_unknown", block_reasons=[]) is True
+    assert (
+        asset_data_quality_blocks_live(quality_status="data_unknown", block_reasons=[])
+        is True
+    )
 
 
 def test_fail_blocks_live() -> None:
-    assert asset_data_quality_blocks_live(quality_status="data_invalid", block_reasons=["x"]) is True
+    assert (
+        asset_data_quality_blocks_live(
+            quality_status="data_invalid", block_reasons=["x"]
+        )
+        is True
+    )

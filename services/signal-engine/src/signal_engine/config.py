@@ -7,10 +7,9 @@ from __future__ import annotations
 
 from typing import ClassVar
 
+from config.settings import BaseServiceSettings, TriggerType
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import SettingsConfigDict
-
-from config.settings import BaseServiceSettings, TriggerType
 from shared_py.bitget.instruments import (
     BitgetInstrumentIdentity,
     MarginAccountMode,
@@ -76,14 +75,26 @@ class SignalEngineSettings(BaseServiceSettings):
         description="Bei Replay-Trace: deterministische signal_id aus Session+upstream event",
     )
 
-    signal_min_score_for_micro: float = Field(default=35.0, alias="SIGNAL_MIN_SCORE_FOR_MICRO")
-    signal_min_score_for_core: float = Field(default=55.0, alias="SIGNAL_MIN_SCORE_FOR_CORE")
-    signal_min_score_for_gross: float = Field(default=72.0, alias="SIGNAL_MIN_SCORE_FOR_GROSS")
-    signal_rejection_enabled: bool = Field(default=True, alias="SIGNAL_REJECTION_ENABLED")
+    signal_min_score_for_micro: float = Field(
+        default=35.0, alias="SIGNAL_MIN_SCORE_FOR_MICRO"
+    )
+    signal_min_score_for_core: float = Field(
+        default=55.0, alias="SIGNAL_MIN_SCORE_FOR_CORE"
+    )
+    signal_min_score_for_gross: float = Field(
+        default=72.0, alias="SIGNAL_MIN_SCORE_FOR_GROSS"
+    )
+    signal_rejection_enabled: bool = Field(
+        default=True, alias="SIGNAL_REJECTION_ENABLED"
+    )
 
-    signal_weight_structure: float = Field(default=0.22, alias="SIGNAL_WEIGHT_STRUCTURE")
+    signal_weight_structure: float = Field(
+        default=0.22, alias="SIGNAL_WEIGHT_STRUCTURE"
+    )
     signal_weight_momentum: float = Field(default=0.20, alias="SIGNAL_WEIGHT_MOMENTUM")
-    signal_weight_multi_timeframe: float = Field(default=0.22, alias="SIGNAL_WEIGHT_MULTI_TIMEFRAME")
+    signal_weight_multi_timeframe: float = Field(
+        default=0.22, alias="SIGNAL_WEIGHT_MULTI_TIMEFRAME"
+    )
     signal_weight_news: float = Field(default=0.10, alias="SIGNAL_WEIGHT_NEWS")
     signal_weight_risk: float = Field(default=0.18, alias="SIGNAL_WEIGHT_RISK")
     signal_weight_history: float = Field(default=0.08, alias="SIGNAL_WEIGHT_HISTORY")
@@ -139,10 +150,18 @@ class SignalEngineSettings(BaseServiceSettings):
     )
 
     signal_max_data_age_ms: int = Field(default=300_000, alias="SIGNAL_MAX_DATA_AGE_MS")
-    signal_max_structure_age_ms: int = Field(default=300_000, alias="SIGNAL_MAX_STRUCTURE_AGE_MS")
-    signal_max_drawing_age_ms: int = Field(default=300_000, alias="SIGNAL_MAX_DRAWING_AGE_MS")
-    signal_max_news_age_ms: int = Field(default=3_600_000, alias="SIGNAL_MAX_NEWS_AGE_MS")
-    signal_max_orderbook_age_ms: int = Field(default=20_000, alias="SIGNAL_MAX_ORDERBOOK_AGE_MS")
+    signal_max_structure_age_ms: int = Field(
+        default=300_000, alias="SIGNAL_MAX_STRUCTURE_AGE_MS"
+    )
+    signal_max_drawing_age_ms: int = Field(
+        default=300_000, alias="SIGNAL_MAX_DRAWING_AGE_MS"
+    )
+    signal_max_news_age_ms: int = Field(
+        default=3_600_000, alias="SIGNAL_MAX_NEWS_AGE_MS"
+    )
+    signal_max_orderbook_age_ms: int = Field(
+        default=20_000, alias="SIGNAL_MAX_ORDERBOOK_AGE_MS"
+    )
     signal_max_funding_feature_age_ms: int = Field(
         default=900_000,
         alias="SIGNAL_MAX_FUNDING_FEATURE_AGE_MS",
@@ -181,9 +200,15 @@ class SignalEngineSettings(BaseServiceSettings):
         default=60_000,
         alias="TAKE_TRADE_MODEL_REFRESH_MS",
     )
-    model_registry_v2_enabled: bool = Field(default=False, alias="MODEL_REGISTRY_V2_ENABLED")
-    model_calibration_required: bool = Field(default=False, alias="MODEL_CALIBRATION_REQUIRED")
-    model_champion_name: str = Field(default="take_trade_prob", alias="MODEL_CHAMPION_NAME")
+    model_registry_v2_enabled: bool = Field(
+        default=False, alias="MODEL_REGISTRY_V2_ENABLED"
+    )
+    model_calibration_required: bool = Field(
+        default=False, alias="MODEL_CALIBRATION_REQUIRED"
+    )
+    model_champion_name: str = Field(
+        default="take_trade_prob", alias="MODEL_CHAMPION_NAME"
+    )
     model_registry_scoped_slots_enabled: bool = Field(
         default=False,
         alias="MODEL_REGISTRY_SCOPED_SLOTS_ENABLED",
@@ -323,28 +348,60 @@ class SignalEngineSettings(BaseServiceSettings):
     signal_default_stop_trigger_type: TriggerType = Field(
         default="mark_price", alias="SIGNAL_DEFAULT_STOP_TRIGGER_TYPE"
     )
-    stop_budget_policy_enabled: bool = Field(default=True, alias="STOP_BUDGET_POLICY_ENABLED")
-    stop_budget_anchor_leverage: int = Field(default=7, alias="STOP_BUDGET_ANCHOR_LEVERAGE")
-    stop_budget_max_pct_at_anchor: float = Field(default=0.01, alias="STOP_BUDGET_MAX_PCT_AT_ANCHOR")
-    stop_budget_high_leverage_floor: int = Field(default=50, alias="STOP_BUDGET_HIGH_LEVERAGE_FLOOR")
+    stop_budget_policy_enabled: bool = Field(
+        default=True, alias="STOP_BUDGET_POLICY_ENABLED"
+    )
+    stop_budget_anchor_leverage: int = Field(
+        default=7, alias="STOP_BUDGET_ANCHOR_LEVERAGE"
+    )
+    stop_budget_max_pct_at_anchor: float = Field(
+        default=0.01, alias="STOP_BUDGET_MAX_PCT_AT_ANCHOR"
+    )
+    stop_budget_high_leverage_floor: int = Field(
+        default=50, alias="STOP_BUDGET_HIGH_LEVERAGE_FLOOR"
+    )
     stop_budget_floor_pct: float = Field(default=0.001, alias="STOP_BUDGET_FLOOR_PCT")
-    stop_budget_tick_steps_min: int = Field(default=2, alias="STOP_BUDGET_TICK_STEPS_MIN")
-    stop_budget_spread_floor_mult: float = Field(default=2.5, alias="STOP_BUDGET_SPREAD_FLOOR_MULT")
-    stop_budget_atr_floor_mult: float = Field(default=0.12, alias="STOP_BUDGET_ATR_FLOOR_MULT")
-    stop_budget_impact_floor_mult: float = Field(default=0.35, alias="STOP_BUDGET_IMPACT_FLOOR_MULT")
-    stop_budget_slippage_floor_mult: float = Field(default=0.55, alias="STOP_BUDGET_SLIPPAGE_FLOOR_MULT")
-    stop_budget_mae_structure_mult: float = Field(default=0.55, alias="STOP_BUDGET_MAE_STRUCTURE_MULT")
-    stop_budget_family_spot_floor_scale: float = Field(default=1.0, alias="STOP_BUDGET_FAMILY_SPOT_FLOOR_SCALE")
-    stop_budget_family_margin_floor_scale: float = Field(default=1.04, alias="STOP_BUDGET_FAMILY_MARGIN_FLOOR_SCALE")
-    stop_budget_family_futures_floor_scale: float = Field(default=1.08, alias="STOP_BUDGET_FAMILY_FUTURES_FLOOR_SCALE")
-    stop_budget_regime_stress_floor_scale: float = Field(default=1.22, alias="STOP_BUDGET_REGIME_STRESS_FLOOR_SCALE")
-    stop_budget_regime_chop_floor_scale: float = Field(default=1.10, alias="STOP_BUDGET_REGIME_CHOP_FLOOR_SCALE")
+    stop_budget_tick_steps_min: int = Field(
+        default=2, alias="STOP_BUDGET_TICK_STEPS_MIN"
+    )
+    stop_budget_spread_floor_mult: float = Field(
+        default=2.5, alias="STOP_BUDGET_SPREAD_FLOOR_MULT"
+    )
+    stop_budget_atr_floor_mult: float = Field(
+        default=0.12, alias="STOP_BUDGET_ATR_FLOOR_MULT"
+    )
+    stop_budget_impact_floor_mult: float = Field(
+        default=0.35, alias="STOP_BUDGET_IMPACT_FLOOR_MULT"
+    )
+    stop_budget_slippage_floor_mult: float = Field(
+        default=0.55, alias="STOP_BUDGET_SLIPPAGE_FLOOR_MULT"
+    )
+    stop_budget_mae_structure_mult: float = Field(
+        default=0.55, alias="STOP_BUDGET_MAE_STRUCTURE_MULT"
+    )
+    stop_budget_family_spot_floor_scale: float = Field(
+        default=1.0, alias="STOP_BUDGET_FAMILY_SPOT_FLOOR_SCALE"
+    )
+    stop_budget_family_margin_floor_scale: float = Field(
+        default=1.04, alias="STOP_BUDGET_FAMILY_MARGIN_FLOOR_SCALE"
+    )
+    stop_budget_family_futures_floor_scale: float = Field(
+        default=1.08, alias="STOP_BUDGET_FAMILY_FUTURES_FLOOR_SCALE"
+    )
+    stop_budget_regime_stress_floor_scale: float = Field(
+        default=1.22, alias="STOP_BUDGET_REGIME_STRESS_FLOOR_SCALE"
+    )
+    stop_budget_regime_chop_floor_scale: float = Field(
+        default=1.10, alias="STOP_BUDGET_REGIME_CHOP_FLOOR_SCALE"
+    )
     stop_budget_min_executable_floor_pct: float = Field(
         default=0.00005,
         alias="STOP_BUDGET_MIN_EXECUTABLE_FLOOR_PCT",
         description="Absolutes Mindest-% fuer Ausfuehrbarkeit (Fallback ohne Tick)",
     )
-    stop_budget_hard_fragility_abstain: bool = Field(default=True, alias="STOP_BUDGET_HARD_FRAGILITY_ABSTAIN")
+    stop_budget_hard_fragility_abstain: bool = Field(
+        default=True, alias="STOP_BUDGET_HARD_FRAGILITY_ABSTAIN"
+    )
     stop_budget_liquidation_stress_block: float = Field(
         default=0.82,
         alias="STOP_BUDGET_LIQUIDATION_STRESS_BLOCK",
@@ -356,7 +413,9 @@ class SignalEngineSettings(BaseServiceSettings):
         description="Stop gilt als 'extrem eng' unterhalb dieses %-Abstands bei hohem Liq-Stress",
     )
 
-    eventbus_default_block_ms: int = Field(default=2000, alias="EVENTBUS_DEFAULT_BLOCK_MS")
+    eventbus_default_block_ms: int = Field(
+        default=2000, alias="EVENTBUS_DEFAULT_BLOCK_MS"
+    )
     eventbus_default_count: int = Field(default=50, alias="EVENTBUS_DEFAULT_COUNT")
     eventbus_dedupe_ttl_sec: int = Field(default=86400, alias="EVENTBUS_DEDUPE_TTL_SEC")
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
@@ -402,7 +461,9 @@ class SignalEngineSettings(BaseServiceSettings):
     @classmethod
     def _positive_age(cls, v: int) -> int:
         if v <= 0:
-            raise ValueError("SIGNAL_MAX_*_AGE_MS und TAKE_TRADE_MODEL_REFRESH_MS muessen > 0 sein")
+            raise ValueError(
+                "SIGNAL_MAX_*_AGE_MS und TAKE_TRADE_MODEL_REFRESH_MS muessen > 0 sein"
+            )
         return v
 
     @field_validator(
@@ -587,10 +648,12 @@ class SignalEngineSettings(BaseServiceSettings):
         return v
 
     @model_validator(mode="after")
-    def _weights_sum_one(self) -> "SignalEngineSettings":
+    def _weights_sum_one(self) -> SignalEngineSettings:
         if self.bitget_market_family is None:
             families = self.bitget_universe_market_families_list()
-            object.__setattr__(self, "bitget_market_family", families[0] if families else "spot")
+            object.__setattr__(
+                self, "bitget_market_family", families[0] if families else "spot"
+            )
         if self.bitget_market_family == "futures" and not self.bitget_product_type:
             object.__setattr__(
                 self,
@@ -603,7 +666,11 @@ class SignalEngineSettings(BaseServiceSettings):
             object.__setattr__(
                 self,
                 "bitget_margin_account_mode",
-                "isolated" if self.bitget_market_family == "futures" else self.bitget_margin_default_account_mode,
+                (
+                    "isolated"
+                    if self.bitget_market_family == "futures"
+                    else self.bitget_margin_default_account_mode
+                ),
             )
         s = (
             self.signal_weight_structure
@@ -614,13 +681,11 @@ class SignalEngineSettings(BaseServiceSettings):
             + self.signal_weight_history
         )
         if abs(s - 1.0) > 0.0001:
-            raise ValueError(
-                f"Summe der SIGNAL_WEIGHT_* muss 1.0 sein, ist {s:.6f}"
-            )
+            raise ValueError(f"Summe der SIGNAL_WEIGHT_* muss 1.0 sein, ist {s:.6f}")
         return self
 
     @model_validator(mode="after")
-    def _uncertainty_gate_ordering(self) -> "SignalEngineSettings":
+    def _uncertainty_gate_ordering(self) -> SignalEngineSettings:
         if not (
             self.model_uncertainty_paper_lane
             <= self.model_uncertainty_shadow_lane
@@ -637,26 +702,38 @@ class SignalEngineSettings(BaseServiceSettings):
             raise ValueError(
                 "MODEL_OOD_PAPER_LANE_SCORE <= MODEL_OOD_SHADOW_LANE_SCORE <= MODEL_OOD_HARD_ABSTAIN_SCORE"
             )
-        if self.model_shadow_divergence_shadow_lane > self.model_shadow_divergence_hard_abstain:
+        if (
+            self.model_shadow_divergence_shadow_lane
+            > self.model_shadow_divergence_hard_abstain
+        ):
             raise ValueError(
                 "MODEL_SHADOW_DIVERGENCE_SHADOW_LANE darf nicht groesser sein als HARD_ABSTAIN"
             )
         return self
 
     @model_validator(mode="after")
-    def _stop_budget_curve_valid(self) -> "SignalEngineSettings":
+    def _stop_budget_curve_valid(self) -> SignalEngineSettings:
         if self.stop_budget_anchor_leverage < 1:
             raise ValueError("STOP_BUDGET_ANCHOR_LEVERAGE muss >= 1 sein")
         if self.stop_budget_high_leverage_floor <= self.stop_budget_anchor_leverage:
-            raise ValueError("STOP_BUDGET_HIGH_LEVERAGE_FLOOR muss > STOP_BUDGET_ANCHOR_LEVERAGE sein")
-        if not 0 < self.stop_budget_floor_pct < self.stop_budget_max_pct_at_anchor <= 0.2:
+            raise ValueError(
+                "STOP_BUDGET_HIGH_LEVERAGE_FLOOR muss > STOP_BUDGET_ANCHOR_LEVERAGE sein"
+            )
+        if (
+            not 0
+            < self.stop_budget_floor_pct
+            < self.stop_budget_max_pct_at_anchor
+            <= 0.2
+        ):
             raise ValueError(
                 "STOP_BUDGET_FLOOR_PCT < STOP_BUDGET_MAX_PCT_AT_ANCHOR <= 0.2 und > 0 erforderlich"
             )
         if self.stop_budget_tick_steps_min < 1:
             raise ValueError("STOP_BUDGET_TICK_STEPS_MIN muss >= 1 sein")
         if self.stop_budget_min_executable_floor_pct < 0:
-            raise ValueError("STOP_BUDGET_MIN_EXECUTABLE_FLOOR_PCT darf nicht negativ sein")
+            raise ValueError(
+                "STOP_BUDGET_MIN_EXECUTABLE_FLOOR_PCT darf nicht negativ sein"
+            )
         return self
 
     def weight_tuple(self) -> tuple[float, float, float, float, float, float]:
@@ -683,11 +760,17 @@ class SignalEngineSettings(BaseServiceSettings):
         return BitgetInstrumentIdentity(
             market_family=self.bitget_market_family,
             symbol=symbol,
-            product_type=self.bitget_product_type if self.bitget_market_family == "futures" else None,
+            product_type=(
+                self.bitget_product_type
+                if self.bitget_market_family == "futures"
+                else None
+            ),
             margin_coin=self.bitget_margin_coin,
             margin_account_mode=self.bitget_margin_account_mode,
             public_ws_inst_type=(
-                self.bitget_product_type if self.bitget_market_family == "futures" else "SPOT"
+                self.bitget_product_type
+                if self.bitget_market_family == "futures"
+                else "SPOT"
             ),
             private_ws_inst_type=(
                 self.bitget_product_type
@@ -702,7 +785,8 @@ class SignalEngineSettings(BaseServiceSettings):
             supports_shorting=self.bitget_market_family in {"futures", "margin"},
             supports_reduce_only=self.bitget_market_family == "futures",
             supports_leverage=self.bitget_market_family in {"futures", "margin"},
-            uses_spot_public_market_data=self.bitget_market_family in {"spot", "margin"},
+            uses_spot_public_market_data=self.bitget_market_family
+            in {"spot", "margin"},
         )
 
 

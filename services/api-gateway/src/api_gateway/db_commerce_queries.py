@@ -47,9 +47,7 @@ def fetch_tenant_state(
     return d
 
 
-def sum_ledger_usd_month(
-    conn: psycopg.Connection[Any], *, tenant_id: str
-) -> Decimal:
+def sum_ledger_usd_month(conn: psycopg.Connection[Any], *, tenant_id: str) -> Decimal:
     row = conn.execute(
         """
         SELECT COALESCE(SUM(line_total_list_usd), 0)::numeric AS s

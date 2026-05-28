@@ -28,9 +28,7 @@ def build_repair_user_prompt(
     broken = _trunc_json(invalid_json_object, max_invalid_chars)
     err = (error_text or "").strip() or "unbekannter Fehler"
     sch = (schema_for_repair or "").strip() or "(Schema-Text fehlt)"
-    head = (
-        f"Das JSON ist ungültig. Repariere es unter Einhaltung dieses Schemas: {sch}\n\n"
-    )
+    head = f"Das JSON ist ungültig. Repariere es unter Einhaltung dieses Schemas: {sch}\n\n"
     tail = (
         "Gib EIN repariertes JSON-Objekt (Schema-konform) aus. Kein Prosa davor/danach."
     )

@@ -7,7 +7,6 @@ from pathlib import Path
 
 from tools.check_private_audit_forensics import analyze_private_audit_forensics
 
-
 ROOT = Path(__file__).resolve().parents[2]
 TOOL = ROOT / "tools" / "check_private_audit_forensics.py"
 

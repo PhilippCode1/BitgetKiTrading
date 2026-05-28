@@ -35,7 +35,9 @@ def build_replay_summary(trace: dict[str, Any]) -> dict[str, Any]:
     if risk_step and not risk_step.get("reason_codes"):
         missing.append("risk.reason_codes")
 
-    exchange_step = steps.get("exchange") if isinstance(steps.get("exchange"), dict) else {}
+    exchange_step = (
+        steps.get("exchange") if isinstance(steps.get("exchange"), dict) else {}
+    )
     if exchange_step and not exchange_step.get("exchange_truth_status"):
         missing.append("exchange.exchange_truth_status")
 
@@ -46,7 +48,9 @@ def build_replay_summary(trace: dict[str, Any]) -> dict[str, Any]:
     if replay_sufficient:
         text = "Replay ist ausreichend: Signal-, Risk- und Exchange-Schritte sind vorhanden."
     else:
-        text = "Replay ist unvollstaendig: fehlende Schritte " + ", ".join(missing) + "."
+        text = (
+            "Replay ist unvollstaendig: fehlende Schritte " + ", ".join(missing) + "."
+        )
 
     summary = ReplaySummary(
         replay_sufficient=replay_sufficient,

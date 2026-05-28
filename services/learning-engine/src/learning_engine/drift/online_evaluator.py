@@ -7,11 +7,11 @@ import statistics
 from typing import Any
 
 import psycopg
+from shared_py.online_drift import merge_online_drift_actions
 
 from learning_engine.config import LearningEngineSettings
 from learning_engine.registry_v2.service import try_auto_rollback_on_drift_hard_block
 from learning_engine.storage import repo_learning_v1, repo_online_drift
-from shared_py.online_drift import merge_online_drift_actions
 
 logger = logging.getLogger("learning_engine.drift.online")
 
@@ -98,7 +98,12 @@ def _max_liquidity_age_ms(feature_snapshot: dict[str, Any] | None) -> float | No
 def _signal_health_fractions(rows: list[dict[str, Any]]) -> dict[str, Any]:
     n = len(rows)
     if n <= 0:
-        return {"n": 0, "ood_alert_frac": 0.0, "missing_take_trade_prob_frac": 0.0, "hard_drift_tag_frac": 0.0}
+        return {
+            "n": 0,
+            "ood_alert_frac": 0.0,
+            "missing_take_trade_prob_frac": 0.0,
+            "hard_drift_tag_frac": 0.0,
+        }
     ood_alerts = 0
     missing_prob = 0
     hard_tag = 0
@@ -384,7 +389,10 @@ def run_online_drift_evaluation(
             conn,
             previous_action=prev_action,
             new_action=effective,
-            payload={"breakdown": breakdown, "drift_event_ids": [str(x) for x in event_ids]},
+            payload={
+                "breakdown": breakdown,
+                "drift_event_ids": [str(x) for x in event_ids],
+            },
         )
 
     auto_rb = try_auto_rollback_on_drift_hard_block(

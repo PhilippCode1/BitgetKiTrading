@@ -54,7 +54,7 @@ def _load_event_streams_catalog() -> dict[str, Any]:
     for base in Path(__file__).resolve().parents:
         path = base / "shared" / "contracts" / "catalog" / "event_streams.json"
         if path.is_file():
-            return json.loads(path.read_text(encoding="utf-8"))
+            return json.loads(path.read_text(encoding="utf-8"))  # type: ignore
     raise FileNotFoundError(
         "shared/contracts/catalog/event_streams.json nicht gefunden (Monorepo-Root erwartet)."
     )
@@ -78,7 +78,9 @@ if set(EVENT_TYPE_TO_STREAM.keys()) != set(get_args(EventType)):
         "event_streams.json event_types stimmen nicht mit EventType-Literal ueberein (beides anpassen)."
     )
 if set(PAYLOAD_SCHEMA_MAP.keys()) != set(get_args(EventType)):
-    raise ValueError("payload_schema_map.json Keys != EventType-Literal (Katalog+Schema angleichen).")
+    raise ValueError(
+        "payload_schema_map.json Keys != EventType-Literal (Katalog+Schema angleichen)."
+    )
 
 STREAM_MARKET_TICK = EVENT_TYPE_TO_STREAM["market_tick"]
 STREAM_MARKET_FEED_HEALTH = EVENT_TYPE_TO_STREAM["market_feed_health"]
@@ -105,7 +107,9 @@ STREAM_ONCHAIN_WHALE_DETECTION = EVENT_TYPE_TO_STREAM["onchain_whale_detection"]
 STREAM_ORDERBOOK_INCONSISTENCY = EVENT_TYPE_TO_STREAM["orderbook_inconsistency"]
 STREAM_ORDERFLOW_TOXICITY = EVENT_TYPE_TO_STREAM["orderflow_toxicity"]
 STREAM_SOCIAL_SENTIMENT_UPDATE = EVENT_TYPE_TO_STREAM["social_sentiment_update"]
-STREAM_INTERMARKET_CORRELATION_UPDATE = EVENT_TYPE_TO_STREAM["intermarket_correlation_update"]
+STREAM_INTERMARKET_CORRELATION_UPDATE = EVENT_TYPE_TO_STREAM[
+    "intermarket_correlation_update"
+]
 STREAM_REGIME_DIVERGENCE_DETECTED = EVENT_TYPE_TO_STREAM["regime_divergence_detected"]
 STREAM_DRIFT_EVENT = EVENT_TYPE_TO_STREAM["drift_event"]
 
@@ -138,7 +142,9 @@ class EventEnvelope(BaseModel):
         if self.instrument is not None and not self.symbol:
             object.__setattr__(self, "symbol", self.instrument.symbol)
         if not self.symbol:
-            payload_symbol = self.payload.get("symbol") if isinstance(self.payload, dict) else None
+            payload_symbol = (
+                self.payload.get("symbol") if isinstance(self.payload, dict) else None
+            )
             if isinstance(payload_symbol, str) and payload_symbol.strip():
                 object.__setattr__(self, "symbol", payload_symbol.strip().upper())
         return self

@@ -7,7 +7,6 @@ from pathlib import Path
 
 from tools.check_bitget_exchange_readiness import validate
 
-
 ROOT = Path(__file__).resolve().parents[2]
 TOOL = ROOT / "tools" / "check_bitget_exchange_readiness.py"
 
@@ -47,7 +46,9 @@ def _write_minimal_repo(tmp_path: Path, doc_text: str) -> None:
     ):
         path = tmp_path / rel
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text("dry-run readonly demo-safe live_write_allowed", encoding="utf-8")
+        path.write_text(
+            "dry-run readonly demo-safe live_write_allowed", encoding="utf-8"
+        )
 
 
 def _valid_doc() -> str:

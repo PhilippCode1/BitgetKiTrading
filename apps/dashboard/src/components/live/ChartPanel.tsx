@@ -61,155 +61,159 @@ export type ChartPanelHandle = ProductCandleChartHandle;
  * Live-Terminal: Kerzen inkl. Volumen ueber {@link ProductCandleChart}, Zeichnungen/News als Overlays.
  * Overlay-Faehigkeiten folgen {@link CHART_SURFACE_ALLOWLIST.terminal} plus Nutzer-Toggles.
  */
-export const ChartPanel = forwardRef<ChartPanelHandle, Props>(function ChartPanel(
-  {
-    candles,
-    drawings,
-    news,
-    showDrawings,
-    showNewsMarkers,
-    strategyContext = null,
-  },
-  ref,
-) {
-  const { t } = useI18n();
-  const [chartCtx, setChartCtx] =
-    useState<ProductCandleChartReadyContext | null>(null);
-  const priceLinesRef = useRef<PriceLineHandle[]>([]);
-  const lineSeriesRef = useRef<ISeriesApi<"Line">[]>([]);
-  const [strategyMaster, setStrategyMaster] = useState(true);
-  const [layerVisible, setLayerVisible] = useState(
-    defaultStrategyLayerVisibility,
-  );
-  const [crosshairHint, setCrosshairHint] = useState<string | null>(null);
-  const chartImperativeRef = useRef<ProductCandleChartHandle | null>(null);
-  const onReady = useCallback((ctx: ProductCandleChartReadyContext) => {
-    setChartCtx(ctx);
-  }, []);
-  useImperativeHandle(
-    ref,
-    () => ({
-      applyCandleClose: (raw: unknown) => {
-        chartImperativeRef.current?.applyCandleClose(raw);
-      },
-    }),
-    [],
-  );
-
-  const lastClose = candles.length ? candles[candles.length - 1]!.close : null;
-
-  const strategyBundle = useMemo(() => {
-    if (!strategyContext || !TERMINAL_OVERLAY_ALLOW.strategyPriceLevels) {
-      return null;
-    }
-    return buildStrategyMarkerOverlayBundle({
-      signal: strategyContext.signal,
-      markPrice: strategyContext.markPrice,
-      tickerLast: strategyContext.tickerLast,
-      lastCandleClose: lastClose,
-      t,
-    });
-  }, [strategyContext, lastClose, t]);
-
-  const overlayModel = strategyBundle?.overlayModel ?? null;
-
-  const chartLines = strategyBundle?.chartLines ?? [];
-
-  const strategyPriceOverlay: ProductStrategyPriceOverlayProps | null =
-    useMemo(() => {
-      if (!strategyContext || chartLines.length === 0) return null;
-      return {
-        lines: chartLines,
-        visible: layerVisible,
-        enabled: strategyMaster,
-      };
-    }, [strategyContext, chartLines, layerVisible, strategyMaster]);
-
-  const onLayerChange = useCallback(
-    (id: StrategyOverlayLayerId, v: boolean) => {
-      setLayerVisible((prev) => ({ ...prev, [id]: v }));
+export const ChartPanel = forwardRef<ChartPanelHandle, Props>(
+  function ChartPanel(
+    {
+      candles,
+      drawings,
+      news,
+      showDrawings,
+      showNewsMarkers,
+      strategyContext = null,
     },
-    [],
-  );
+    ref,
+  ) {
+    const { t } = useI18n();
+    const [chartCtx, setChartCtx] =
+      useState<ProductCandleChartReadyContext | null>(null);
+    const priceLinesRef = useRef<PriceLineHandle[]>([]);
+    const lineSeriesRef = useRef<ISeriesApi<"Line">[]>([]);
+    const [strategyMaster, setStrategyMaster] = useState(true);
+    const [layerVisible, setLayerVisible] = useState(
+      defaultStrategyLayerVisibility,
+    );
+    const [crosshairHint, setCrosshairHint] = useState<string | null>(null);
+    const chartImperativeRef = useRef<ProductCandleChartHandle | null>(null);
+    const onReady = useCallback((ctx: ProductCandleChartReadyContext) => {
+      setChartCtx(ctx);
+    }, []);
+    useImperativeHandle(
+      ref,
+      () => ({
+        applyCandleClose: (raw: unknown) => {
+          chartImperativeRef.current?.applyCandleClose(raw);
+        },
+      }),
+      [],
+    );
 
-  const drawingsAllowed =
-    TERMINAL_OVERLAY_ALLOW.structuralDrawings && showDrawings;
-  const newsAllowed = TERMINAL_OVERLAY_ALLOW.newsMarkers && showNewsMarkers;
+    const lastClose = candles.length
+      ? candles[candles.length - 1]!.close
+      : null;
 
-  useEffect(() => {
-    const series = chartCtx?.candleSeries;
-    const chart = chartCtx?.chart;
-    if (!series || !chart) return;
-    clearPriceLines(series, priceLinesRef.current);
-    for (const ls of lineSeriesRef.current) {
-      try {
-        chart.removeSeries(ls);
-      } catch {
-        /* ignore */
+    const strategyBundle = useMemo(() => {
+      if (!strategyContext || !TERMINAL_OVERLAY_ALLOW.strategyPriceLevels) {
+        return null;
       }
-    }
-    lineSeriesRef.current = [];
-    if (drawingsAllowed) {
-      applyPriceLines(series, drawings, priceLinesRef.current);
-      for (const d of drawings) {
-        if (!d.trendline) continue;
-        const ls = chart.addLineSeries({
-          color: d.trendline.color,
-          lineWidth: 2,
-          priceLineVisible: false,
-          lastValueVisible: true,
-        });
-        ls.setData([
-          {
-            time: Math.floor(d.trendline.t0_ms / 1000) as Time,
-            value: d.trendline.p0,
-          },
-          {
-            time: Math.floor(d.trendline.t1_ms / 1000) as Time,
-            value: d.trendline.p1,
-          },
-        ]);
-        lineSeriesRef.current.push(ls);
+      return buildStrategyMarkerOverlayBundle({
+        signal: strategyContext.signal,
+        markPrice: strategyContext.markPrice,
+        tickerLast: strategyContext.tickerLast,
+        lastCandleClose: lastClose,
+        t,
+      });
+    }, [strategyContext, lastClose, t]);
+
+    const overlayModel = strategyBundle?.overlayModel ?? null;
+
+    const chartLines = strategyBundle?.chartLines ?? [];
+
+    const strategyPriceOverlay: ProductStrategyPriceOverlayProps | null =
+      useMemo(() => {
+        if (!strategyContext || chartLines.length === 0) return null;
+        return {
+          lines: chartLines,
+          visible: layerVisible,
+          enabled: strategyMaster,
+        };
+      }, [strategyContext, chartLines, layerVisible, strategyMaster]);
+
+    const onLayerChange = useCallback(
+      (id: StrategyOverlayLayerId, v: boolean) => {
+        setLayerVisible((prev) => ({ ...prev, [id]: v }));
+      },
+      [],
+    );
+
+    const drawingsAllowed =
+      TERMINAL_OVERLAY_ALLOW.structuralDrawings && showDrawings;
+    const newsAllowed = TERMINAL_OVERLAY_ALLOW.newsMarkers && showNewsMarkers;
+
+    useEffect(() => {
+      const series = chartCtx?.candleSeries;
+      const chart = chartCtx?.chart;
+      if (!series || !chart) return;
+      clearPriceLines(series, priceLinesRef.current);
+      for (const ls of lineSeriesRef.current) {
+        try {
+          chart.removeSeries(ls);
+        } catch {
+          /* ignore */
+        }
       }
-    }
-  }, [chartCtx, drawings, drawingsAllowed]);
+      lineSeriesRef.current = [];
+      if (drawingsAllowed) {
+        applyPriceLines(series, drawings, priceLinesRef.current);
+        for (const d of drawings) {
+          if (!d.trendline) continue;
+          const ls = chart.addLineSeries({
+            color: d.trendline.color,
+            lineWidth: 2,
+            priceLineVisible: false,
+            lastValueVisible: true,
+          });
+          ls.setData([
+            {
+              time: Math.floor(d.trendline.t0_ms / 1000) as Time,
+              value: d.trendline.p0,
+            },
+            {
+              time: Math.floor(d.trendline.t1_ms / 1000) as Time,
+              value: d.trendline.p1,
+            },
+          ]);
+          lineSeriesRef.current.push(ls);
+        }
+      }
+    }, [chartCtx, drawings, drawingsAllowed]);
 
-  useEffect(() => {
-    const series = chartCtx?.candleSeries;
-    if (!series) return;
-    applyNewsMarkers(series, news, newsAllowed);
-  }, [chartCtx, news, newsAllowed]);
+    useEffect(() => {
+      const series = chartCtx?.candleSeries;
+      if (!series) return;
+      applyNewsMarkers(series, news, newsAllowed);
+    }, [chartCtx, news, newsAllowed]);
 
-  return (
-    <div className="terminal-chart-stack">
-      <ProductCandleChart
-        ref={chartImperativeRef}
-        candles={candles}
-        showVolume
-        showThrottledLastClosePill
-        hideEmptyOverlay
-        height={420}
-        fitContentOnData={false}
-        className="terminal-main-chart"
-        onReady={onReady}
-        strategyPriceOverlay={strategyPriceOverlay}
-        onStrategyCrosshairHint={setCrosshairHint}
-        llmChartIntegration={false}
-      />
-      {strategyContext ? (
-        <StrategyOverlayLegendBar
-          model={overlayModel}
-          masterEnabled={strategyMaster}
-          onMasterChange={setStrategyMaster}
-          layerVisible={layerVisible}
-          onLayerChange={onLayerChange}
+    return (
+      <div className="terminal-chart-stack">
+        <ProductCandleChart
+          ref={chartImperativeRef}
+          candles={candles}
+          showVolume
+          showThrottledLastClosePill
+          hideEmptyOverlay
+          height={420}
+          fitContentOnData={false}
+          className="terminal-main-chart"
+          onReady={onReady}
+          strategyPriceOverlay={strategyPriceOverlay}
+          onStrategyCrosshairHint={setCrosshairHint}
+          llmChartIntegration={false}
         />
-      ) : null}
-      {crosshairHint ? (
-        <p className="muted small strategy-crosshair-hint" role="status">
-          {crosshairHint}
-        </p>
-      ) : null}
-    </div>
-  );
-});
+        {strategyContext ? (
+          <StrategyOverlayLegendBar
+            model={overlayModel}
+            masterEnabled={strategyMaster}
+            onMasterChange={setStrategyMaster}
+            layerVisible={layerVisible}
+            onLayerChange={onLayerChange}
+          />
+        ) : null}
+        {crosshairHint ? (
+          <p className="muted small strategy-crosshair-hint" role="status">
+            {crosshairHint}
+          </p>
+        ) : null}
+      </div>
+    );
+  },
+);

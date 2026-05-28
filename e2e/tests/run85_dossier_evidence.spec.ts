@@ -24,7 +24,7 @@ test.describe("Run 85 Dossier — UI-Evidenz (P85)", () => {
   });
 
   test("Operator: /console/health (Health-Grid) Screenshot", async ({ page, baseURL }) => {
-    await page.goto(new URL("/console/health", baseURL).toString(), { waitUntil: "networkidle" });
+    await page.goto(new URL("/console/health", baseURL).toString(), { waitUntil: "domcontentloaded" });
     const title = page.locator("h1, h2").first();
     await expect(title).toBeVisible({ timeout: 60_000 });
     await page.screenshot({ path: path.join(DOSSIER_DIR, "operator_console_health.png"), fullPage: true });

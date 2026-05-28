@@ -18,7 +18,10 @@ def test_lifecycle_detects_full_verified(tmp_path, monkeypatch) -> None:  # type
     )
     _write(
         tmp_path / "demo_reconcile_evidence_CLOSE_VERIFIED.json",
-        {"reconcile_status": "CLOSE_VERIFIED", "checks": {"detected_position_side": "long"}},
+        {
+            "reconcile_status": "CLOSE_VERIFIED",
+            "checks": {"detected_position_side": "long"},
+        },
     )
     _write(
         tmp_path / "demo_reconcile_evidence_CLEAN.json",
@@ -53,7 +56,10 @@ def test_lifecycle_not_enough_evidence_when_clean_missing(tmp_path, monkeypatch)
     )
     _write(
         tmp_path / "demo_reconcile_evidence_CLOSE_VERIFIED.json",
-        {"reconcile_status": "CLOSE_VERIFIED", "checks": {"detected_position_side": "long"}},
+        {
+            "reconcile_status": "CLOSE_VERIFIED",
+            "checks": {"detected_position_side": "long"},
+        },
     )
     rep = mod.build_lifecycle_evidence()
     assert rep.lifecycle_status in ("NOT_ENOUGH_EVIDENCE", "DEMO_PARTIAL")
@@ -64,7 +70,10 @@ def test_lifecycle_report_contains_no_secret(tmp_path, monkeypatch) -> None:  # 
     monkeypatch.setattr(mod, "REPORTS", tmp_path)
     _write(
         tmp_path / "demo_trading_evidence_DEMO_VERIFIED.json",
-        {"result": "DEMO_VERIFIED", "checks": {"private_readonly_result": "PASS", "token": "set_redacted"}},
+        {
+            "result": "DEMO_VERIFIED",
+            "checks": {"private_readonly_result": "PASS", "token": "set_redacted"},
+        },
     )
     rep = mod.build_lifecycle_evidence()
     md = mod.to_markdown(rep)
@@ -79,7 +88,10 @@ def test_lifecycle_verified_when_trading_archive_missing_but_close_and_clean_his
     )
     _write(
         tmp_path / "demo_reconcile_evidence_CLOSE_VERIFIED.json",
-        {"reconcile_status": "CLOSE_VERIFIED", "checks": {"detected_position_side": "long"}},
+        {
+            "reconcile_status": "CLOSE_VERIFIED",
+            "checks": {"detected_position_side": "long"},
+        },
     )
     _write(
         tmp_path / "demo_reconcile_evidence_CLEAN.json",
@@ -99,14 +111,20 @@ def test_lifecycle_verified_when_trading_archive_missing_but_close_and_clean_his
     assert rep.private_live_allowed is False
     assert rep.live_verified is False
     assert rep.checks["demo_trading_archive_missing"] == "true"
-    assert rep.checks["demo_order_verified_source"] == "inferred_from_close_verified_and_clean_history"
+    assert (
+        rep.checks["demo_order_verified_source"]
+        == "inferred_from_close_verified_and_clean_history"
+    )
 
 
 def test_cli_json_output_works(tmp_path, monkeypatch, capsys) -> None:  # type: ignore[no-untyped-def]
     monkeypatch.setattr(mod, "REPORTS", tmp_path)
     _write(
         tmp_path / "demo_reconcile_evidence_CLOSE_VERIFIED.json",
-        {"reconcile_status": "CLOSE_VERIFIED", "checks": {"detected_position_side": "short"}},
+        {
+            "reconcile_status": "CLOSE_VERIFIED",
+            "checks": {"detected_position_side": "short"},
+        },
     )
     _write(
         tmp_path / "demo_reconcile_evidence_CLEAN.json",
@@ -123,7 +141,9 @@ def test_cli_json_output_works(tmp_path, monkeypatch, capsys) -> None:  # type: 
     )
     out_md = tmp_path / "out.md"
     out_json = tmp_path / "out.json"
-    rc = mod.main(["--output-md", str(out_md), "--output-json", str(out_json), "--json"])
+    rc = mod.main(
+        ["--output-md", str(out_md), "--output-json", str(out_json), "--json"]
+    )
     captured = capsys.readouterr()
     assert rc == 0
     parsed = json.loads(captured.out)

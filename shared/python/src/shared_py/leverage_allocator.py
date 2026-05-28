@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from math import floor
-from typing import Any, Mapping
+from typing import Any
 
 LEVERAGE_ALLOCATOR_VERSION = "int-leverage-v1"
 MIN_LEVERAGE = 7

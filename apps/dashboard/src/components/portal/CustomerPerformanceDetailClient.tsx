@@ -26,15 +26,9 @@ export function CustomerPerformanceDetailClient({ periodId }: Props) {
   );
 
   return (
-    <div
-      className="panel"
-      data-testid="customer-performance-detail"
-    >
+    <div className="panel" data-testid="customer-performance-detail">
       <p className="muted" style={{ marginTop: 0 }}>
-        <Link
-          className="public-btn ghost"
-          href={portalPath("performance")}
-        >
+        <Link className="public-btn ghost" href={portalPath("performance")}>
           {t("customerPortal.performanceDetail.back")}
         </Link>
       </p>
@@ -53,10 +47,7 @@ export function CustomerPerformanceDetailClient({ periodId }: Props) {
         ariaLabel={t("customerPortal.performanceDetail.chartAria")}
         className="customer-perf-line-chart"
       />
-      <p
-        className="muted small"
-        style={{ marginTop: 12, marginBottom: 0 }}
-      >
+      <p className="muted small" style={{ marginTop: 12, marginBottom: 0 }}>
         {t("customerPortal.performanceDetail.demoNote")}
       </p>
     </div>

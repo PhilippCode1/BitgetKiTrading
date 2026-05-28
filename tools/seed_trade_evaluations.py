@@ -22,8 +22,9 @@ LE_SRC = REPO / "services" / "learning-engine" / "src"
 sys.path.insert(0, str(LE_SRC))
 
 import psycopg
-from learning_engine.storage.repo_eval import upsert_trade_evaluation
 from psycopg.rows import dict_row
+
+from learning_engine.storage.repo_eval import upsert_trade_evaluation
 
 STRATEGIES = (
     "TrendContinuationStrategy",
@@ -111,7 +112,9 @@ def main() -> int:
                         "multi_timeframe_score_0_100": random.randint(20, 90),
                         "structure_score_0_100": random.randint(30, 80),
                     },
-                    "feature_snapshot_json": {"atrp_14": round(random.uniform(0.001, 0.01), 6)},
+                    "feature_snapshot_json": {
+                        "atrp_14": round(random.uniform(0.001, 0.01), 6)
+                    },
                     "structure_snapshot_json": {},
                     "error_labels_json": labels,
                 }

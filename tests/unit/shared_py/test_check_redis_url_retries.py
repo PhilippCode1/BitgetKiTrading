@@ -42,14 +42,17 @@ def test_check_redis_url_retries_then_ok(check_redis_url) -> None:
 
     with (
         patch(
-            "shared_py.observability.health.create_sync_connection_pool", return_value=MagicMock()
+            "shared_py.observability.health.create_sync_connection_pool",
+            return_value=MagicMock(),
         ),
         patch(
             "shared_py.observability.health.sync_redis_from_pool",
             side_effect=fake_from_pool,
         ),
     ):
-        ok, detail = check_redis_url("redis://127.0.0.1:6379/0", timeout_sec=1.0, retries=2)
+        ok, detail = check_redis_url(
+            "redis://127.0.0.1:6379/0", timeout_sec=1.0, retries=2
+        )
     assert ok is True
     assert detail == "ok"
     assert calls["n"] == 2
@@ -66,9 +69,13 @@ def test_check_redis_url_no_retry_on_first_success(check_redis_url) -> None:
 
     with (
         patch(
-            "shared_py.observability.health.create_sync_connection_pool", return_value=MagicMock()
+            "shared_py.observability.health.create_sync_connection_pool",
+            return_value=MagicMock(),
         ),
-        patch("shared_py.observability.health.sync_redis_from_pool", side_effect=fake_from_pool),
+        patch(
+            "shared_py.observability.health.sync_redis_from_pool",
+            side_effect=fake_from_pool,
+        ),
     ):
         ok, detail = check_redis_url("redis://127.0.0.1:6379/0", retries=2)
     assert ok is True
@@ -100,14 +107,17 @@ def test_check_redis_url_readiness_retries_then_ok() -> None:
 
     with (
         patch(
-            "shared_py.observability.health.create_sync_connection_pool", return_value=MagicMock()
+            "shared_py.observability.health.create_sync_connection_pool",
+            return_value=MagicMock(),
         ),
         patch(
             "shared_py.observability.health.sync_redis_from_pool",
             side_effect=fake_from_pool,
         ),
     ):
-        ok, detail = check_redis_url_readiness("redis://127.0.0.1:6379/0", max_attempts=3)
+        ok, detail = check_redis_url_readiness(
+            "redis://127.0.0.1:6379/0", max_attempts=3
+        )
     assert ok is True
     assert calls["n"] == 2
 
@@ -120,10 +130,16 @@ def test_check_redis_url_all_fail_returns_last_error(check_redis_url) -> None:
 
     with (
         patch(
-            "shared_py.observability.health.create_sync_connection_pool", return_value=MagicMock()
+            "shared_py.observability.health.create_sync_connection_pool",
+            return_value=MagicMock(),
         ),
-        patch("shared_py.observability.health.sync_redis_from_pool", side_effect=fake_from_pool),
+        patch(
+            "shared_py.observability.health.sync_redis_from_pool",
+            side_effect=fake_from_pool,
+        ),
     ):
-        ok, detail = check_redis_url("redis://127.0.0.1:6379/0", timeout_sec=0.1, retries=1)
+        ok, detail = check_redis_url(
+            "redis://127.0.0.1:6379/0", timeout_sec=0.1, retries=1
+        )
     assert ok is False
     assert "Timeout" in detail

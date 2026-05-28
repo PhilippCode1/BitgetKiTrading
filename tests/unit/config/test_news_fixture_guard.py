@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import pytest
+
 from config.settings import BaseServiceSettings
 
 
-def test_news_fixture_mode_forbidden_when_app_env_shadow(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_news_fixture_mode_forbidden_when_app_env_shadow(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setenv("PRODUCTION", "false")
     monkeypatch.setenv("APP_ENV", "shadow")
     monkeypatch.setenv("NEWS_FIXTURE_MODE", "true")

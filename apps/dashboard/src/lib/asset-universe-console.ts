@@ -66,7 +66,8 @@ function mapStatus(item: MarketUniverseInstrumentItem): AssetStatus {
 function riskTier(item: MarketUniverseInstrumentItem): string {
   const raw = (item.raw_metadata || {}) as Record<string, unknown>;
   const value = raw.risk_tier;
-  if (typeof value === "string" && value.trim()) return value.trim().toUpperCase();
+  if (typeof value === "string" && value.trim())
+    return value.trim().toUpperCase();
   return "TIER_0";
 }
 
@@ -115,15 +116,27 @@ function blockReasons(item: MarketUniverseInstrumentItem): string[] {
   const slippage = asNum(raw.slippage_bps_estimate);
   const hasEvidence = raw.strategy_evidence_ready === true;
 
-  if (status === "unbekannt") reasons.push("Asset-Status ist unbekannt, Live bleibt blockiert.");
-  if (status === "delisted") reasons.push("Asset ist delisted, Live ist gesperrt.");
-  if (status === "suspended") reasons.push("Asset ist suspended, Live ist gesperrt.");
-  if (status === "stale") reasons.push("Asset-Daten sind stale, Live bleibt blockiert.");
-  if (status === "quarantined") reasons.push("Asset ist in Quarantaene, Live bleibt blockiert.");
+  if (status === "unbekannt")
+    reasons.push("Asset-Status ist unbekannt, Live bleibt blockiert.");
+  if (status === "delisted")
+    reasons.push("Asset ist delisted, Live ist gesperrt.");
+  if (status === "suspended")
+    reasons.push("Asset ist suspended, Live ist gesperrt.");
+  if (status === "stale")
+    reasons.push("Asset-Daten sind stale, Live bleibt blockiert.");
+  if (status === "quarantined")
+    reasons.push("Asset ist in Quarantaene, Live bleibt blockiert.");
   if (family === "Futures" && !item.product_type)
     reasons.push("Futures ohne ProductType sind fuer Live blockiert.");
-  if (!item.price_tick_size || !item.quantity_step || item.price_precision == null || item.quantity_precision == null)
-    reasons.push("Praezisionsdaten fehlen (Tick/Lot/Precision), Live bleibt blockiert.");
+  if (
+    !item.price_tick_size ||
+    !item.quantity_step ||
+    item.price_precision == null ||
+    item.quantity_precision == null
+  )
+    reasons.push(
+      "Praezisionsdaten fehlen (Tick/Lot/Precision), Live bleibt blockiert.",
+    );
   if (dataQualityLabel(item) !== "ok")
     reasons.push("Datenqualitaet ist nicht ausreichend fuer Live.");
   if (liquidityLabel(item) === "niedrig")
@@ -136,7 +149,10 @@ function blockReasons(item: MarketUniverseInstrumentItem): string[] {
   return Array.from(new Set(reasons));
 }
 
-function assetTier(item: MarketUniverseInstrumentItem, reasons: string[]): AssetTier {
+function assetTier(
+  item: MarketUniverseInstrumentItem,
+  reasons: string[],
+): AssetTier {
   const status = mapStatus(item);
   if (status === "delisted" || status === "suspended") return 5;
   if (status === "unbekannt" || status === "quarantined") return 0;
@@ -147,7 +163,10 @@ function assetTier(item: MarketUniverseInstrumentItem, reasons: string[]): Asset
   return 3;
 }
 
-function modeAllowed(item: MarketUniverseInstrumentItem, reasons: string[]): AssetModeLabel {
+function modeAllowed(
+  item: MarketUniverseInstrumentItem,
+  reasons: string[],
+): AssetModeLabel {
   if (reasons.length === 0 && item.live_execution_enabled) return "Live bereit";
   if (item.paper_shadow_eligible) return "Shadow";
   if (item.analytics_eligible) return "Paper";

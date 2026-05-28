@@ -6,7 +6,9 @@ from uuid import UUID
 import psycopg
 
 
-def fetch_model_run_by_id(conn: psycopg.Connection[Any], *, run_id: UUID) -> dict[str, Any] | None:
+def fetch_model_run_by_id(
+    conn: psycopg.Connection[Any], *, run_id: UUID
+) -> dict[str, Any] | None:
     row = conn.execute(
         """
         SELECT run_id, model_name, version, dataset_hash, metrics_json, promoted_bool,
@@ -45,7 +47,15 @@ def upsert_registry_slot(
         RETURNING registry_id, model_name, role, run_id, calibration_status, activated_ts, notes,
                   created_ts, updated_ts, scope_type, scope_key
         """,
-        (model_name, role, str(run_id), calibration_status, notes, scope_type, scope_key),
+        (
+            model_name,
+            role,
+            str(run_id),
+            calibration_status,
+            notes,
+            scope_type,
+            scope_key,
+        ),
     ).fetchone()
     assert row is not None
     return dict(row)

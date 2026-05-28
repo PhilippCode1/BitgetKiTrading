@@ -80,9 +80,14 @@ def _is_allowed_placeholder_value(val_u: str) -> bool:
         return True  # <SET_*_FROM_DISCOVERY> etc.
     if s.startswith("<") and s.endswith(">") and "JWT" in su:
         return True  # <jwt_mit_gateway_roles> o.a.
-    if su.startswith((
-        "HTTP://", "HTTPS://", "WS://", "WSS://",
-    )):
+    if su.startswith(
+        (
+            "HTTP://",
+            "HTTPS://",
+            "WS://",
+            "WSS://",
+        )
+    ):
         return True
     if s.startswith("postgresql://") and "<" in s and ">" in s:
         return True
@@ -244,24 +249,46 @@ def _check_secrets_in_templates(path: Path) -> list[str]:
             continue
         env_key, _, val = line.partition("=")
         parsed[env_key.strip()] = val.strip()
-        if path.name == ".env.production.example" and env_key.strip().upper().endswith("_URL"):
+        if path.name == ".env.production.example" and env_key.strip().upper().endswith(
+            "_URL"
+        ):
             lowered = val.strip().lower()
             if "localhost" in lowered or "127.0.0.1" in lowered:
-                if "fixture" not in env_key.strip().lower() and "fixture" not in lowered:
+                if (
+                    "fixture" not in env_key.strip().lower()
+                    and "fixture" not in lowered
+                ):
                     errors.append(
-                        f"{path.name}:{lineno}: localhost/127.0.0.1 in Production-URL ohne expliziten Fixture-Kontext"
+                        f"{path.name}:{lineno}: localhost/127.0.0.1 in "
+                        "Production-URL ohne expliziten Fixture-Kontext"
                     )
         if env_key.strip().upper().startswith("NEXT_PUBLIC_"):
             ukey = env_key.strip().upper()
-            if any(item in ukey for item in ("SECRET", "TOKEN", "API_KEY", "JWT", "PASSPHRASE", "INTERNAL")):
-                errors.append(f"{path.name}:{lineno}: NEXT_PUBLIC mit Secret-Muster im Namen: {env_key.strip()}")
+            if any(
+                item in ukey
+                for item in (
+                    "SECRET",
+                    "TOKEN",
+                    "API_KEY",
+                    "JWT",
+                    "PASSPHRASE",
+                    "INTERNAL",
+                )
+            ):
+                errors.append(
+                    f"{path.name}:{lineno}: NEXT_PUBLIC mit Secret-Muster im "
+                    f"Namen: {env_key.strip()}"
+                )
         v = val.strip()
         for submsg in _forbidden_secrets_in_line(env_key, v):
-            errors.append(
-                f"{path.name}:{lineno}: {submsg} — Wert beginnt: {v[:32]!r}…"
-            )
+            errors.append(f"{path.name}:{lineno}: {submsg} — Wert beginnt: {v[:32]!r}…")
     # Demo/Live-Mix als Template-Contract (Namebasierte Heuristik)
-    demo_enabled = parsed.get("BITGET_DEMO_ENABLED", "").strip().lower() in {"true", "1", "yes", "on"}
+    demo_enabled = parsed.get("BITGET_DEMO_ENABLED", "").strip().lower() in {
+        "true",
+        "1",
+        "yes",
+        "on",
+    }
     live_values = [
         parsed.get("BITGET_API_KEY", ""),
         parsed.get("BITGET_API_SECRET", ""),
@@ -269,7 +296,10 @@ def _check_secrets_in_templates(path: Path) -> list[str]:
     ]
     has_real_live = any(v and not _is_allowed_placeholder_value(v) for v in live_values)
     if demo_enabled and has_real_live:
-        errors.append(f"{path.name}: Demo/Live-Credential-Mix erkannt (BITGET_DEMO_ENABLED=true + BITGET_API_* gesetzt)")
+        errors.append(
+            f"{path.name}: Demo/Live-Credential-Mix erkannt "
+            "(BITGET_DEMO_ENABLED=true + BITGET_API_* gesetzt)"
+        )
     return errors
 
 
@@ -278,11 +308,7 @@ def main(argv: list[str] | None = None) -> int:
     files_strict: tuple[Path, ...] = (
         tuple(Path(a).resolve() for a in args) if args else _TEMPLATES_STRICT
     )
-    files_secret: tuple[Path, ...] = (
-        files_strict
-        if args
-        else _TEMPLATES_SECRET_SCAN
-    )
+    files_secret: tuple[Path, ...] = files_strict if args else _TEMPLATES_SECRET_SCAN
 
     all_err: list[str] = []
     for p in files_strict:

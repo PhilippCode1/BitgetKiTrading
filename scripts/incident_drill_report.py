@@ -104,7 +104,9 @@ def main(argv: list[str] | None = None) -> int:
         args.output_md.write_text(render_markdown(payload), encoding="utf-8")
     if args.output_json:
         args.output_json.parent.mkdir(parents=True, exist_ok=True)
-        args.output_json.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+        args.output_json.write_text(
+            json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
     print(
         "incident_drill_report: "
         f"status={payload['status']} scenarios={len(payload['scenarios'])} private_live={payload['private_live_allowed']}"

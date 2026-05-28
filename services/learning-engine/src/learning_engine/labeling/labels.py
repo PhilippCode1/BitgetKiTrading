@@ -4,13 +4,17 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any
 
+from shared_py.model_contracts import (
+    build_feature_snapshot,
+    build_model_output_snapshot,
+)
+
 from learning_engine.labeling.target_windows import (
     TARGET_EVALUATION_CONTRACT_VERSION,
     clip_candles_to_evaluation_window,
     regime_target_stratification_hints,
 )
 from learning_engine.storage.repo_context import _parse_jsonb
-from shared_py.model_contracts import build_feature_snapshot, build_model_output_snapshot
 
 
 def _dec(x: Any) -> Decimal:
@@ -123,11 +127,17 @@ def compute_trade_targets(
     )
 
     qty = abs(qty_base)
-    entry_ref = entry_reference_price if entry_reference_price and entry_reference_price > 0 else entry_price_avg
+    entry_ref = (
+        entry_reference_price
+        if entry_reference_price and entry_reference_price > 0
+        else entry_price_avg
+    )
     exit_ref = (
         exit_reference_price
         if exit_reference_price and exit_reference_price > 0
-        else (exit_price_avg if exit_price_avg and exit_price_avg > 0 else entry_price_avg)
+        else (
+            exit_price_avg if exit_price_avg and exit_price_avg > 0 else entry_price_avg
+        )
     )
 
     notional_ref = qty * entry_ref if qty > 0 and entry_ref > 0 else Decimal("0")
@@ -164,13 +174,23 @@ def compute_trade_targets(
         liq_fee_buffer_usdt=liq_fee_buffer_usdt,
     )
     liquidation_risk = str(state).lower().strip() == "liquidated"
-    liquidation_proximity_bps: Decimal | None = Decimal("0") if liquidation_risk else None
+    liquidation_proximity_bps: Decimal | None = (
+        Decimal("0") if liquidation_risk else None
+    )
     if not liquidation_risk and liq_price is not None and entry_price_avg > 0:
         post_open = [
-            candle for candle in clipped if int(candle.get("start_ts_ms") or 0) >= int(opened_ts_ms)
+            candle
+            for candle in clipped
+            if int(candle.get("start_ts_ms") or 0) >= int(opened_ts_ms)
         ]
         adverse_price = (
-            exit_ref if exit_ref > 0 else (exit_price_avg if exit_price_avg and exit_price_avg > 0 else entry_price_avg)
+            exit_ref
+            if exit_ref > 0
+            else (
+                exit_price_avg
+                if exit_price_avg and exit_price_avg > 0
+                else entry_price_avg
+            )
         )
         if s == "long":
             adverse_price = min(entry_price_avg, adverse_price)
@@ -178,14 +198,18 @@ def compute_trade_targets(
                 low = _positive_decimal(candle.get("low"))
                 if low is not None and low < adverse_price:
                     adverse_price = low
-            cushion_bps = (adverse_price - liq_price) / entry_price_avg * Decimal("10000")
+            cushion_bps = (
+                (adverse_price - liq_price) / entry_price_avg * Decimal("10000")
+            )
         else:
             adverse_price = max(entry_price_avg, adverse_price)
             for candle in post_open:
                 high = _positive_decimal(candle.get("high"))
                 if high is not None and high > adverse_price:
                     adverse_price = high
-            cushion_bps = (liq_price - adverse_price) / entry_price_avg * Decimal("10000")
+            cushion_bps = (
+                (liq_price - adverse_price) / entry_price_avg * Decimal("10000")
+            )
         if cushion_bps <= 0:
             liquidation_proximity_bps = Decimal("0")
             liquidation_risk = True
@@ -210,7 +234,9 @@ def compute_trade_targets(
         expected_mfe_bps=expected_mfe_bps,
         liquidation_proximity_bps=liquidation_proximity_bps,
         liquidation_risk=liquidation_risk,
-        slippage_bps_entry=_adverse_slippage_bps(entry_ref, entry_price_avg, side=s, leg="entry"),
+        slippage_bps_entry=_adverse_slippage_bps(
+            entry_ref, entry_price_avg, side=s, leg="entry"
+        ),
         slippage_bps_exit=_adverse_slippage_bps(
             exit_ref,
             exit_price_avg if exit_price_avg is not None else exit_ref,
@@ -243,12 +269,16 @@ def compute_trade_targets(
         "window_issues": window_issues,
         "regime_stratification": regime_target_stratification_hints(market_regime),
         "risk_proximity": {
-            "liquidation_proximity_bps": str(liquidation_proximity_bps)
-            if liquidation_proximity_bps is not None
-            else None,
-            "policy_stop_proximity_bps": str(policy_stop_proximity_bps)
-            if policy_stop_proximity_bps is not None
-            else None,
+            "liquidation_proximity_bps": (
+                str(liquidation_proximity_bps)
+                if liquidation_proximity_bps is not None
+                else None
+            ),
+            "policy_stop_proximity_bps": (
+                str(policy_stop_proximity_bps)
+                if policy_stop_proximity_bps is not None
+                else None
+            ),
         },
     }
     return TradeTargetComputation(labels=labels, audit=audit)

@@ -244,11 +244,11 @@ def instrument_fastapi(app: Any, service_name: str) -> None:
     """
     sn = service_name.replace("-", "_")
 
-    @app.middleware("http")
+    @app.middleware("http")  # type: ignore[misc]
     async def _metrics_middleware(
         request: Request,
         call_next: Callable[[Request], Awaitable[Any]],
-    ):
+    ) -> Any:
         t0 = time.perf_counter()
         err: Exception | None = None
         try:

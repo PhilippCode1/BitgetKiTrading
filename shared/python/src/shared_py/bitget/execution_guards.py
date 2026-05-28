@@ -45,7 +45,9 @@ def market_spread_slippage_cap_reasons(
     if sh is None:
         return ["execution_guard_spread_snapshot_incomplete"]
     if sh > max_spread_half_bps:
-        return [f"execution_guard_spread_half_bps_exceeds_cap:{sh:.4f}>{max_spread_half_bps}"]
+        return [
+            f"execution_guard_spread_half_bps_exceeds_cap:{sh:.4f}>{max_spread_half_bps}"
+        ]
     return []
 
 
@@ -58,11 +60,18 @@ def preset_stop_distance_floor_reasons(
     """Mindestabstand Stop zu Referenz (Mark/Mid) in bps — gap-to-stop / zu enger Stop."""
     if min_distance_bps is None or min_distance_bps <= 0:
         return []
-    if stop_price is None or reference_price is None or reference_price <= 0 or stop_price <= 0:
+    if (
+        stop_price is None
+        or reference_price is None
+        or reference_price <= 0
+        or stop_price <= 0
+    ):
         return []
     dist_bps = abs(reference_price - stop_price) / reference_price * Decimal("10000")
     if dist_bps < min_distance_bps:
-        return [f"execution_guard_preset_stop_distance_bps_below_floor:{dist_bps:.4f}<{min_distance_bps}"]
+        return [
+            f"execution_guard_preset_stop_distance_bps_below_floor:{dist_bps:.4f}<{min_distance_bps}"
+        ]
     return []
 
 
@@ -90,8 +99,7 @@ def preset_stop_vs_spread_reasons(
     need = spread * min_stop_to_spread_mult
     if dist < need:
         return [
-            "execution_guard_preset_stop_too_close_to_spread:"
-            f"dist={dist} need>={need} mult={min_stop_to_spread_mult}"
+            f"execution_guard_preset_stop_too_close_to_spread:dist={dist} need>={need} mult={min_stop_to_spread_mult}"
         ]
     return []
 
@@ -134,8 +142,3 @@ def replace_size_safety_reasons(
 
 
 # P75: Runtime-Safety-Oracle (Axiom-Pruefung) — re-export fuer einheitlichen Import
-from shared_py.bitget.runtime_safety_oracle import (  # noqa: E402
-    RuntimeSafetyConfig,
-    RuntimeSafetyOracle,
-    SafetyAxiom,
-)

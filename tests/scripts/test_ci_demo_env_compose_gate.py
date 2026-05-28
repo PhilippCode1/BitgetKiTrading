@@ -42,13 +42,29 @@ def _patch_commands(monkeypatch, *, compose_available: bool = True) -> None:  # 
         if cmd.startswith("git ls-files"):
             return type("R", (), {"returncode": 1, "stdout": "", "stderr": ""})()
         if cmd == "docker compose version":
-            return type("R", (), {"returncode": 0 if compose_available else 1, "stdout": "", "stderr": ""})()
+            return type(
+                "R",
+                (),
+                {
+                    "returncode": 0 if compose_available else 1,
+                    "stdout": "",
+                    "stderr": "",
+                },
+            )()
         if "config --services" in cmd:
-            return type("R", (), {"returncode": 0, "stdout": "api-gateway\n", "stderr": ""})()
-        if cmd.endswith("docker compose --env-file " + str(cwd / ".env.demo.example") + " config"):
-            return type("R", (), {"returncode": 0, "stdout": "services:\n", "stderr": ""})()
+            return type(
+                "R", (), {"returncode": 0, "stdout": "api-gateway\n", "stderr": ""}
+            )()
+        if cmd.endswith(
+            "docker compose --env-file " + str(cwd / ".env.demo.example") + " config"
+        ):
+            return type(
+                "R", (), {"returncode": 0, "stdout": "services:\n", "stderr": ""}
+            )()
         if "docker compose" in cmd and " config" in cmd:
-            return type("R", (), {"returncode": 0, "stdout": "services:\n", "stderr": ""})()
+            return type(
+                "R", (), {"returncode": 0, "stdout": "services:\n", "stderr": ""}
+            )()
         return type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})()
 
     monkeypatch.setattr(mod, "_run_command", fake_run)

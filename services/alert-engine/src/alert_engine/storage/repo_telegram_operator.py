@@ -7,7 +7,6 @@ from typing import Any, Literal
 
 import psycopg
 from psycopg.rows import dict_row
-
 from shared_py.telegram_chat_contract import TELEGRAM_CHAT_CONTRACT_VERSION
 
 Outcome = Literal[

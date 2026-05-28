@@ -9,7 +9,6 @@ import psycopg
 from psycopg import errors as pg_errors
 from psycopg.types.json import Json
 
-
 DEFAULT_PREFS: dict[str, Any] = {
     "notify_orders_demo": True,
     "notify_orders_live": True,
@@ -34,9 +33,7 @@ _PREF_BOOL_KEYS = frozenset(
 )
 
 # Bot /get-prefs: nur skalare Schalter; JSON-Map (Signaltypen) nur im Web/API.
-NOTIFY_PREFS_ORDERED_BOOL_KEYS: tuple[str, ...] = tuple(
-    sorted(_PREF_BOOL_KEYS)
-)
+NOTIFY_PREFS_ORDERED_BOOL_KEYS: tuple[str, ...] = tuple(sorted(_PREF_BOOL_KEYS))
 
 
 def _parse_signal_type_prefs(raw: object) -> dict[str, bool]:
@@ -77,7 +74,10 @@ def fetch_notify_prefs_merged(
             (tenant_id,),
         ).fetchone()
     except (pg_errors.UndefinedTable, pg_errors.UndefinedColumn):
-        return {k: (v.copy() if isinstance(v, dict) else v) for k, v in DEFAULT_PREFS.items()}
+        return {
+            k: (v.copy() if isinstance(v, dict) else v)
+            for k, v in DEFAULT_PREFS.items()
+        }
     if row is None:
         d = {k: v for k, v in DEFAULT_PREFS.items()}
     else:

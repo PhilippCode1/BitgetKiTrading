@@ -7,9 +7,9 @@ from typing import Any
 
 import httpx
 from fastapi import HTTPException
+from shared_py.service_auth import INTERNAL_SERVICE_HEADER
 
 from llm_orchestrator.config import LLMOrchestratorSettings
-from shared_py.service_auth import INTERNAL_SERVICE_HEADER
 
 logger = logging.getLogger("llm_orchestrator.audit_ledger")
 

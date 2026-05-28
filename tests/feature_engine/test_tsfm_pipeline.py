@@ -76,7 +76,9 @@ def test_prepare_context_budget_smoke_for_full_buffer() -> None:
 
 def test_build_context_and_confidence() -> None:
     p = np.linspace(100.0, 101.0, 1025).astype(np.float64)
-    v = build_timesfm_context_vector(p, context_len=1024, rolling_z_window=64, use_numba=False)
+    v = build_timesfm_context_vector(
+        p, context_len=1024, rolling_z_window=64, use_numba=False
+    )
     assert v.shape == (1024,)
     m = forecast_confidence_metrics(np.linspace(1.0, 1.5, 80))
     assert 0.0 <= m["confidence_0_1"] <= 1.0

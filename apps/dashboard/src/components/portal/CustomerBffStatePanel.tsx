@@ -1,5 +1,8 @@
+import Link from "next/link";
+
 import { getServerTranslator } from "@/lib/i18n/server-translate";
 import type { CustomerPortalSummary } from "@/lib/customer-portal-summary";
+import { portalPath } from "@/lib/console-paths";
 
 type Props = Readonly<{
   summary: CustomerPortalSummary;
@@ -31,7 +34,9 @@ export async function CustomerBffStatePanel({ summary }: Props) {
       data-e2e="customer-bff-state"
       style={{ fontSize: "0.95rem", lineHeight: 1.55 }}
     >
-      <h2 style={{ marginTop: 0, fontSize: "1.05rem" }}>{t("customerPortal.bffState.title")}</h2>
+      <h2 style={{ marginTop: 0, fontSize: "1.05rem" }}>
+        {t("customerPortal.bffState.title")}
+      </h2>
       <p>
         <strong>{t("customerPortal.bffState.aggregate")}</strong>{" "}
         {t(dataStateKey(summary.dataState))}
@@ -42,10 +47,10 @@ export async function CustomerBffStatePanel({ summary }: Props) {
           {t("customerPortal.bffState.reasons.apiGatewayUrlMissing")}
         </p>
       )}
-      {summary.notConfiguredReason === "gateway_bff_auth_missing" && (
+      {summary.notConfiguredReason === "portal_session_required" && (
         <p>
           <strong>{t("customerPortal.bffState.reason")}</strong>{" "}
-          {t("customerPortal.bffState.reasons.gatewayBffAuthMissing")}
+          {t("customerPortal.bffState.reasons.portalSessionRequired")}
         </p>
       )}
       {summary.commerceCustomerMe && (
@@ -58,12 +63,19 @@ export async function CustomerBffStatePanel({ summary }: Props) {
         </p>
       )}
       {summary.errorHint && (
-        <p data-e2e="customer-bff-hint" className="small" style={{ opacity: 0.9 }}>
+        <p
+          data-e2e="customer-bff-hint"
+          className="small"
+          style={{ opacity: 0.9 }}
+        >
           {t("customerPortal.bffState.hintPrefix")} {summary.errorHint}
         </p>
       )}
       <p className="small" style={{ marginTop: 12, opacity: 0.85 }}>
-        {t("customerPortal.bffState.tradingStub")}
+        {t("customerPortal.bffState.tradingHint")}{" "}
+        <Link href={portalPath("trading")} className="dash-inline-link">
+          {t("customerPortal.nav.trading")}
+        </Link>
       </p>
     </div>
   );

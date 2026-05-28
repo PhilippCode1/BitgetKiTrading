@@ -23,10 +23,10 @@ class MeanReversionMicroStrategy:
         d = str(signal.get("direction", "neutral")).lower()
         return d in ("long", "short")
 
-    def build_order_intent(self, signal: dict[str, Any], context: dict[str, Any]) -> OrderIntent:
+    def build_order_intent(
+        self, signal: dict[str, Any], context: dict[str, Any]
+    ) -> OrderIntent:
         side = str(signal["direction"]).lower()
-        qty = qty_with_stop_budget(
-            self._settings, signal, "mikro", context=context
-        )
+        qty = qty_with_stop_budget(self._settings, signal, "mikro", context=context)
         lev = leverage_for_signal(self._settings, signal)
         return OrderIntent(side=side, qty_base=qty, leverage=lev, entry_type="market")

@@ -151,7 +151,9 @@ def test_evaluate_intent_no_exchange_calls_when_tenant_contract_missing(
             }
         },
     )
-    with patch("live_broker.execution.service.psycopg.connect", return_value=_pg_context(conn)):
+    with patch(
+        "live_broker.execution.service.psycopg.connect", return_value=_pg_context(conn)
+    ):
         with pytest.raises(SecurityException) as ei:
             service.evaluate_intent(intent, probe_exchange=True)
     assert ei.value.reason == "no_active_commercial_contract"
@@ -206,7 +208,9 @@ def test_evaluate_intent_proceeds_when_contract_and_gates_ok(
             }
         },
     )
-    with patch("live_broker.execution.service.psycopg.connect", return_value=_pg_context(conn)):
+    with patch(
+        "live_broker.execution.service.psycopg.connect", return_value=_pg_context(conn)
+    ):
         service.evaluate_intent(intent, probe_exchange=True)
     assert "build_order_preview" in ex.calls
 
@@ -261,7 +265,9 @@ def test_evaluate_intent_no_bitget_when_live_trading_forbidden_in_db(
             }
         },
     )
-    with patch("live_broker.execution.service.psycopg.connect", return_value=_pg_context(conn)):
+    with patch(
+        "live_broker.execution.service.psycopg.connect", return_value=_pg_context(conn)
+    ):
         with pytest.raises(SecurityException) as ei:
             service.evaluate_intent(intent, probe_exchange=True)
     assert ei.value.reason == "live_trading_not_permitted"

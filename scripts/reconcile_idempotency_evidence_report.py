@@ -22,6 +22,8 @@ from scripts.reconcile_truth_drill import (  # noqa: E402
 )
 from scripts.risk_execution_evidence_report import (  # noqa: E402
     REQUIRED_LIVE_PREFLIGHT_REASONS,
+)
+from scripts.risk_execution_evidence_report import (
     build_report_payload as build_risk_execution_payload,
 )
 
@@ -134,7 +136,9 @@ def build_report_payload() -> dict[str, Any]:
     secret_issues = secret_surface_issues(template)
     risk_payload = build_risk_execution_payload()
     missing_external_blockers = sorted(set(REQUIRED_EXTERNAL_BLOCKERS) - set(blockers))
-    missing_live_preflight = list(risk_payload["missing_required_live_preflight_reasons"])
+    missing_live_preflight = list(
+        risk_payload["missing_required_live_preflight_reasons"]
+    )
     order_assertions = _order_scenario_assertions(risk_payload)
     reconcile_assertions = _reconcile_scenario_assertions(risk_payload)
 
@@ -167,7 +171,9 @@ def build_report_payload() -> dict[str, Any]:
         },
         "risk_execution": {
             "scenario_counts": risk_payload["scenario_counts"],
-            "covered_live_preflight_reasons": risk_payload["covered_live_preflight_reasons"],
+            "covered_live_preflight_reasons": risk_payload[
+                "covered_live_preflight_reasons"
+            ],
             "required_live_preflight_reasons": list(REQUIRED_LIVE_PREFLIGHT_REASONS),
             "missing_required_live_preflight_reasons": missing_live_preflight,
             "private_live_decision": risk_payload["private_live_decision"],
@@ -211,13 +217,19 @@ def render_markdown(payload: dict[str, Any]) -> str:
         "",
         "- Abgedeckt: "
         + (
-            ", ".join(f"`{item}`" for item in payload["risk_execution"]["covered_live_preflight_reasons"])
+            ", ".join(
+                f"`{item}`"
+                for item in payload["risk_execution"]["covered_live_preflight_reasons"]
+            )
             or "-"
         ),
         "- Fehlend: "
         + (
             ", ".join(
-                f"`{item}`" for item in payload["risk_execution"]["missing_required_live_preflight_reasons"]
+                f"`{item}`"
+                for item in payload["risk_execution"][
+                    "missing_required_live_preflight_reasons"
+                ]
             )
             or "-"
         ),
@@ -249,7 +261,9 @@ def main(argv: list[str] | None = None) -> int:
     payload = build_report_payload()
     if args.output_json:
         args.output_json.parent.mkdir(parents=True, exist_ok=True)
-        args.output_json.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+        args.output_json.write_text(
+            json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
     if args.output_md:
         args.output_md.parent.mkdir(parents=True, exist_ok=True)
         args.output_md.write_text(render_markdown(payload), encoding="utf-8")

@@ -24,14 +24,22 @@ def main() -> int:
     p.add_argument("--symbol", default="BTCUSDT")
     p.add_argument("--from", dest="from_ts", type=int, required=True)
     p.add_argument("--to", dest="to_ts", type=int, required=True)
-    p.add_argument("--tf", default="5m", help="Komma-separierte Timeframes (DB-Schreibweise z. B. 1H)")
+    p.add_argument(
+        "--tf",
+        default="5m",
+        help="Komma-separierte Timeframes (DB-Schreibweise z. B. 1H)",
+    )
     p.add_argument(
         "--speed",
         type=float,
         default=None,
         help="Default: REPLAY_SPEED_FACTOR aus ENV",
     )
-    p.add_argument("--ticks", action="store_true", help="Zusaetzlich market_tick aus Close approximieren")
+    p.add_argument(
+        "--ticks",
+        action="store_true",
+        help="Zusaetzlich market_tick aus Close approximieren",
+    )
     p.add_argument(
         "--ephemeral-session",
         action="store_true",

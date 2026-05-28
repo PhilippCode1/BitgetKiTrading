@@ -30,7 +30,8 @@ class GlobalHaltException(RuntimeError):
 class ShadowDivergenceError(RuntimeError):
     """
     Echtgeld-Submit ohne erfolgreiche Shadow-Redis-Latch-Quittung
-    (``REQUIRE_SHADOW_MATCH_BEFORE_LIVE`` + ``shadow:match:{execution_id}`` fehlt/abgelaufen).
+    (``REQUIRE_SHADOW_MATCH_BEFORE_LIVE`` + ``shadow:match:{execution_id}``
+    fehlt/abgelaufen).
     """
 
     def __init__(self, message: str, *, reason: str = "shadow_match_latch") -> None:

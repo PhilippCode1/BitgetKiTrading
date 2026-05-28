@@ -1,6 +1,11 @@
 from __future__ import annotations
 
-from shared_py.portfolio_risk_controls import ExposureItem, PortfolioRiskLimits, PortfolioSnapshot, evaluate_portfolio_risk
+from shared_py.portfolio_risk_controls import (
+    ExposureItem,
+    PortfolioRiskLimits,
+    PortfolioSnapshot,
+    evaluate_portfolio_risk,
+)
 
 
 def test_owner_limits_missing_blocks_private_live_opening() -> None:

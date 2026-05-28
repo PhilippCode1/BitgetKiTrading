@@ -47,7 +47,10 @@ def test_extract_exit_execution_hints_from_nested_dcf() -> None:
     trace = {
         "decision_control_flow": {
             "exit_family_resolution": {
-                "execution_hints": {"take_pct_profile": "runner_heavy", "runner_enabled": True}
+                "execution_hints": {
+                    "take_pct_profile": "runner_heavy",
+                    "runner_enabled": True,
+                }
             }
         }
     }

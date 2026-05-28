@@ -11,12 +11,52 @@ from typing import Any
 
 from shared_py.observability.apex_trace import merge_gateway_response_apex
 from shared_py.observability.request_context import get_outbound_trace_headers
-from shared_py.service_auth import INTERNAL_SERVICE_HEADER, internal_service_auth_required
+from shared_py.service_auth import (
+    INTERNAL_SERVICE_HEADER,
+    internal_service_auth_required,
+)
 
 from api_gateway.config import GatewaySettings
+from api_gateway.provider_ops_summary import tenant_exchange_credentials_from_vault
 from api_gateway.gateway_metrics import observe_live_broker_forward
 
 logger = logging.getLogger("api_gateway.live_broker_forward")
+
+
+def merge_tenant_into_live_broker_body(
+    body: dict[str, Any],
+    *,
+    tenant_id: str | None,
+) -> dict[str, Any]:
+    """Reichert Safety-/Order-Bodies mit tenant_id im trace an (Vault-Credentials)."""
+    tid = (tenant_id or "").strip()
+    if not tid:
+        return body
+    out = dict(body)
+    trace = out.get("trace")
+    merged_trace = dict(trace) if isinstance(trace, dict) else {}
+    merged_trace.setdefault("tenant_id", tid)
+    out["trace"] = merged_trace
+    return out
+
+
+def effective_tenant_for_live_broker_forward(
+    settings: GatewaySettings,
+    auth_tenant_id: str | None,
+) -> str | None:
+    """
+    JWT-Mandant priorisiert.
+
+    In Production mit Vault-Mandanten-Credentials kein Fallback auf
+    COMMERCIAL_DEFAULT_TENANT_ID (Multi-Tenant fail-closed).
+    """
+    tid = (auth_tenant_id or "").strip()
+    if tid:
+        return tid
+    if bool(getattr(settings, "production", False)) and tenant_exchange_credentials_from_vault():
+        return None
+    dft = str(getattr(settings, "commercial_default_tenant_id", "") or "").strip()
+    return dft or None
 
 
 class LiveBrokerForwardHttpError(Exception):
@@ -74,7 +114,9 @@ def post_live_broker_json(
             body = json.loads(raw.decode("utf-8"))
             observe_live_broker_forward(result="success", elapsed_sec=elapsed)
             if isinstance(body, dict):
-                body = merge_gateway_response_apex(body, t_gw0_ns=t_gw0_ns, t_gw1_ns=t_gw1_ns)
+                body = merge_gateway_response_apex(
+                    body, t_gw0_ns=t_gw0_ns, t_gw1_ns=t_gw1_ns
+                )
                 try:
                     logger.info(
                         "apex_gateway forward path=%s deltas_ms=%s",

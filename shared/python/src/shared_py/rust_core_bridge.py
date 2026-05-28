@@ -33,11 +33,11 @@ from __future__ import annotations
 import logging
 import time
 from types import ModuleType
-from typing import Any, Final, Optional
+from typing import Any, Final
 
 logger = logging.getLogger(__name__)
 
-_apex_core: Optional[ModuleType] = None
+_apex_core: ModuleType | None = None
 try:
     import apex_core as _native_apex_core  # type: ignore[import-not-found]
 except ImportError:
@@ -68,10 +68,12 @@ def assert_float64_c_contiguous(name: str, arr: object) -> None:
     if arr.dtype != np.float64:
         raise ValueError(f"{name}: dtype float64 erforderlich, ist {arr.dtype}")
     if not arr.flags.c_contiguous:
-        raise ValueError(f"{name}: C-contiguous ndarray erforderlich (np.ascontiguousarray)")
+        raise ValueError(
+            f"{name}: C-contiguous ndarray erforderlich (np.ascontiguousarray)"
+        )
 
 
-def get_apex_core() -> Optional[ModuleType]:
+def get_apex_core() -> ModuleType | None:
     """Gibt das importierte ``apex_core``-Modul zurück oder ``None``, falls nicht gebaut."""
     return _apex_core
 

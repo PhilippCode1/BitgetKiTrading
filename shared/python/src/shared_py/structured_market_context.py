@@ -11,7 +11,8 @@ from __future__ import annotations
 
 import json
 import math
-from typing import Any, Mapping
+from collections.abc import Mapping
+from typing import Any
 
 STRUCTURED_MARKET_CONTEXT_VERSION = "smc-v1"
 
@@ -150,9 +151,14 @@ def _detect_facets(text: str) -> list[str]:
         )
     ):
         facets.append("macro")
-    if any(k in text for k in ("btc dominance", "eth/btc", "correlation", "risk-off", "risk on")):
+    if any(
+        k in text
+        for k in ("btc dominance", "eth/btc", "correlation", "risk-off", "risk on")
+    ):
         facets.append("benchmark_correlation")
-    if any(k in text for k in ("outage", "maintenance", "degraded", "withdrawal suspend")):
+    if any(
+        k in text for k in ("outage", "maintenance", "degraded", "withdrawal suspend")
+    ):
         facets.append("exchange_status")
     return facets
 
@@ -235,8 +241,12 @@ def assess_structured_market_context(
 
     half_life_min = float(getattr(settings, "smc_news_decay_half_life_minutes", 120.0))
     half_life_min = max(5.0, half_life_min)
-    thr_surprise_dir = float(getattr(settings, "smc_surprise_directional_threshold_0_1", 0.58))
-    thr_live = float(getattr(settings, "smc_surprise_live_throttle_threshold_0_1", 0.52))
+    thr_surprise_dir = float(
+        getattr(settings, "smc_surprise_directional_threshold_0_1", 0.58)
+    )
+    thr_live = float(
+        getattr(settings, "smc_surprise_live_throttle_threshold_0_1", 0.52)
+    )
     shrink_floor = float(getattr(settings, "smc_composite_shrink_min_0_1", 0.88))
     shrink_floor = max(0.5, min(1.0, shrink_floor))
     hard_veto = bool(getattr(settings, "smc_hard_event_veto_enabled", False))
@@ -244,9 +254,9 @@ def assess_structured_market_context(
 
     text = _norm_text(news_row)
     facets = _detect_facets(text)
-    if bool(getattr(settings, "smc_enable_structural_break_boost", True)) and _structure_break_hint(
-        structure_events
-    ):
+    if bool(
+        getattr(settings, "smc_enable_structural_break_boost", True)
+    ) and _structure_break_hint(structure_events):
         facets.append("structure_break")
 
     raw_tags: list[str] = []
@@ -258,7 +268,9 @@ def assess_structured_market_context(
             except json.JSONDecodeError:
                 raw = None
         if isinstance(raw, dict) and isinstance(raw.get("topic_tags"), list):
-            raw_tags = [str(x).strip().lower() for x in raw["topic_tags"] if str(x).strip()]
+            raw_tags = [
+                str(x).strip().lower() for x in raw["topic_tags"] if str(x).strip()
+            ]
     for t in raw_tags:
         if t in ("macro", "regulatory", "security_incident", "listing"):
             if t == "macro" and "macro" not in facets:
@@ -284,14 +296,18 @@ def assess_structured_market_context(
     if pub is not None and analysis_ts_ms >= pub:
         age_min = max(0.0, (analysis_ts_ms - pub) / 60_000.0)
         decay = 0.5 ** (age_min / half_life_min)
-    impact_w = str(news_row.get("impact_window") or "unknown") if news_row else "unknown"
+    impact_w = (
+        str(news_row.get("impact_window") or "unknown") if news_row else "unknown"
+    )
     immediate = _impact_immediate(impact_w)
     window_boost = 1.22 if immediate else 1.0
 
     sent = _sentiment_0_1(news_row)
     sent_abs = abs(sent) if sent is not None else 0.0
 
-    surprise = rel_0_1 * decay * sent_abs * window_boost * (0.55 + 0.45 * facet_density_0_1)
+    surprise = (
+        rel_0_1 * decay * sent_abs * window_boost * (0.55 + 0.45 * facet_density_0_1)
+    )
     surprise = max(0.0, min(1.0, float(surprise)))
 
     annotation_only: list[str] = []
@@ -306,7 +322,12 @@ def assess_structured_market_context(
     live_extra: list[str] = []
     d = proposed_direction.strip().lower()
 
-    if news_row and d in ("long", "short") and sent is not None and surprise >= thr_surprise_dir:
+    if (
+        news_row
+        and d in ("long", "short")
+        and sent is not None
+        and surprise >= thr_surprise_dir
+    ):
         if sent < -0.25 and d == "long":
             conflict_codes.append("context_event_bearish_vs_long")
             soft_reject.append("context_technical_vs_event_long")
@@ -334,7 +355,13 @@ def assess_structured_market_context(
     if surprise >= thr_live and rel_0_1 >= 0.42:
         live_extra.append("context_live_event_surprise_escalation")
 
-    if hard_veto and immediate and rel_0_1 >= 0.72 and surprise >= thr_hard and d in ("long", "short"):
+    if (
+        hard_veto
+        and immediate
+        and rel_0_1 >= 0.72
+        and surprise >= thr_hard
+        and d in ("long", "short")
+    ):
         if sent is not None and sent < -0.4 and d == "long":
             hard_reject.append("context_hard_event_veto_long")
         if sent is not None and sent > 0.4 and d == "short":
@@ -387,16 +414,23 @@ def refine_structured_market_context_for_playbook(
     fam = str(playbook_family or "").strip().lower()
     mult = 1.0
     if fam in ("news_shock", "time_window_effect"):
-        mult = float(getattr(settings, "smc_playbook_news_sensitive_surprise_mult", 1.1))
+        mult = float(
+            getattr(settings, "smc_playbook_news_sensitive_surprise_mult", 1.1)
+        )
     elif fam in ("trend_continuation", "trend"):
         mult = float(getattr(settings, "smc_playbook_trend_surprise_mult", 0.96))
     mult = max(0.5, min(1.35, mult))
     surprise = float(out.get("surprise_score_0_1") or 0.0) * mult
     surprise = max(0.0, min(1.0, surprise))
     out["surprise_score_playbook_adjusted_0_1"] = round(surprise, 6)
-    out["playbook_overlay"] = {"playbook_family": fam or None, "surprise_multiplier": mult}
+    out["playbook_overlay"] = {
+        "playbook_family": fam or None,
+        "surprise_multiplier": mult,
+    }
 
-    thr_live = float(getattr(settings, "smc_surprise_live_throttle_threshold_0_1", 0.52))
+    thr_live = float(
+        getattr(settings, "smc_surprise_live_throttle_threshold_0_1", 0.52)
+    )
     live = list(out.get("live_execution_block_reasons_json") or [])
     if fam == "news_shock" and surprise >= thr_live:
         tag = "context_playbook_news_shock_live_escalation"
@@ -406,7 +440,9 @@ def refine_structured_market_context_for_playbook(
     return out
 
 
-def merge_live_reasons_into_risk_governor(risk_governor: dict[str, Any], smc: Mapping[str, Any]) -> None:
+def merge_live_reasons_into_risk_governor(
+    risk_governor: dict[str, Any], smc: Mapping[str, Any]
+) -> None:
     """Mutiert risk_governor: haengt strukturierte Live-Gruende an live_execution_block_reasons_json an."""
     extra = smc.get("live_execution_block_reasons_json") or []
     if not isinstance(extra, list) or not extra:

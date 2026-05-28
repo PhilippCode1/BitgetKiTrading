@@ -9,7 +9,7 @@ import numpy as np
 
 def feature_vector_from_context(context: dict[str, Any]) -> np.ndarray | None:
     raw = context.get("ams_toxicity_feature_vector")
-    if isinstance(raw, (list, tuple)) and len(raw) == 6:
+    if isinstance(raw, list | tuple) and len(raw) == 6:
         try:
             return np.asarray([float(x) for x in raw], dtype=np.float64).reshape(1, -1)
         except (TypeError, ValueError):

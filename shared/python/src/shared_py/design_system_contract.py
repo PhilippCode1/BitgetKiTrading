@@ -84,7 +84,9 @@ BREAKPOINT_MIN_WIDTH_PX: Final[dict[str, int]] = {
 CARD_PADDING_X_PX: Final[int] = 24
 CARD_PADDING_Y_PX: Final[int] = 22
 TABLE_ROW_HEIGHT_MIN_PX: Final[int] = 48
-ELEVATION_CARD_CSS: Final[str] = "0 1px 3px rgba(26, 35, 50, 0.08), 0 1px 2px rgba(26, 35, 50, 0.06)"
+ELEVATION_CARD_CSS: Final[str] = (
+    "0 1px 3px rgba(26, 35, 50, 0.08), 0 1px 2px rgba(26, 35, 50, 0.06)"
+)
 
 
 class ButtonVariant(str, Enum):

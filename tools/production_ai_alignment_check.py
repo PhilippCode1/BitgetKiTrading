@@ -172,9 +172,13 @@ def main() -> int:
         pnl_s = f"{pnl:.6f}" if pnl is not None else _pna
         loss_s = "ja" if loss else "nein" if pnl is not None else "n/a"
         bcs = (
-            "ja" if before_close is True
-            else "nein" if before_close is False
-            else "n/a (kein closed_ts_ms / kein P&L-Pfad)"
+            "ja"
+            if before_close is True
+            else (
+                "nein"
+                if before_close is False
+                else "n/a (kein closed_ts_ms / kein P&L-Pfad)"
+            )
         )
         eid = str(r.get("execution_id") or "")
         lines.append(

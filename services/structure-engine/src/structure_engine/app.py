@@ -6,10 +6,6 @@ from contextlib import asynccontextmanager
 
 import psycopg
 from fastapi import FastAPI, HTTPException, Query
-
-from structure_engine.settings import StructureEngineSettings, normalize_timeframe
-from structure_engine.storage.repo import StructureRepository
-from structure_engine.worker import StructureWorker
 from shared_py.eventbus import STREAM_STRUCTURE_UPDATED
 from shared_py.observability import (
     append_peer_readiness_checks,
@@ -18,6 +14,10 @@ from shared_py.observability import (
     instrument_fastapi,
     merge_ready_details,
 )
+
+from structure_engine.settings import StructureEngineSettings, normalize_timeframe
+from structure_engine.storage.repo import StructureRepository
+from structure_engine.worker import StructureWorker
 
 
 class StructureEngineRuntime:
@@ -66,7 +66,10 @@ class StructureEngineRuntime:
                     "app.swings",
                 ],
                 "publishes_stream": STREAM_STRUCTURE_UPDATED,
-                "upstream": ["tsdb.candles", "features.candle_features (ATR, optional Fallback)"],
+                "upstream": [
+                    "tsdb.candles",
+                    "features.candle_features (ATR, optional Fallback)",
+                ],
                 "note_de": (
                     "last_structure_skip erklaert letzten Skip (z. B. insufficient_candles). "
                     "Redis-Lag: XREADGROUP auf ingress_stream pruefen."
@@ -119,7 +122,9 @@ def create_app() -> FastAPI:
         tf = normalize_timeframe(timeframe)
         try:
             state = runtime.repo.get_latest_structure_state(symbol=symbol, timeframe=tf)
-            swings = runtime.repo.fetch_recent_swing_ids(symbol=symbol, timeframe=tf, limit=12)
+            swings = runtime.repo.fetch_recent_swing_ids(
+                symbol=symbol, timeframe=tf, limit=12
+            )
             events = runtime.repo.fetch_recent_structure_events(
                 symbol=symbol, timeframe=tf, limit=15
             )

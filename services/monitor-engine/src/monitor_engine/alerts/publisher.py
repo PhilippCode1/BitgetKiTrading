@@ -74,7 +74,9 @@ def process_alerts(
                 exc,
             )
             continue
-        logger.info("ops alert upsert alert_key=%s severity=%s", spec.alert_key, spec.severity)
+        logger.info(
+            "ops alert upsert alert_key=%s severity=%s", spec.alert_key, spec.severity
+        )
         if dedupe.allow_publish(spec.alert_key, dedupe_sec):
             try:
                 publish_system_alert(

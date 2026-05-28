@@ -33,7 +33,15 @@ def test_learning_engine_online_state_empty_row() -> None:
 
 
 def test_drift_recent_non_empty_no_seed_flag() -> None:
-    items = [{"drift_id": "x", "metric_name": "m", "severity": "s", "details_json": {}, "detected_ts": None}]
+    items = [
+        {
+            "drift_id": "x",
+            "metric_name": "m",
+            "severity": "s",
+            "details_json": {},
+            "detected_ts": None,
+        }
+    ]
     out = drift_recent_response(items=items, limit=10)
     assert out["items"] == items
     assert out["seeded"] is False

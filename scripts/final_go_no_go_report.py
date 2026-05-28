@@ -66,7 +66,9 @@ def _existing_report(name: str) -> bool:
     return (REPORTS / name).is_file()
 
 
-def _score_from_counts(*, verified: int, implemented: int, external_required: int, total: int, p0: int) -> int:
+def _score_from_counts(
+    *, verified: int, implemented: int, external_required: int, total: int, p0: int
+) -> int:
     if total <= 0:
         return 1
     base = int(round((verified / total) * 10))
@@ -81,8 +83,14 @@ def _score_from_counts(*, verified: int, implemented: int, external_required: in
 
 def build_payload() -> dict[str, Any]:
     categories = _load_matrix()
-    by_id = {str(item.get("id")): item for item in categories}
-    status_counts = {"verified": 0, "implemented": 0, "external_required": 0, "missing": 0, "partial": 0}
+    {str(item.get("id")): item for item in categories}
+    status_counts = {
+        "verified": 0,
+        "implemented": 0,
+        "external_required": 0,
+        "missing": 0,
+        "partial": 0,
+    }
     open_p0: list[str] = []
     open_p1: list[str] = []
     external_points: list[str] = []
@@ -126,7 +134,17 @@ def build_payload() -> dict[str, Any]:
         "observability_alert_evidence.json",
         "incident_drill.json",
     ]
-    missing_runtime_reports = [name for name in required_report_files if not _existing_report(name)]
+    missing_runtime_reports = [
+        name for name in required_report_files if not _existing_report(name)
+    ]
+    demo_lifecycle = None
+    if _existing_report("demo_lifecycle_evidence.json"):
+        try:
+            demo_lifecycle = json.loads(
+                (REPORTS / "demo_lifecycle_evidence.json").read_text(encoding="utf-8")
+            )
+        except Exception:
+            demo_lifecycle = None
 
     owner = _load_owner_release()
     owner_missing = []
@@ -149,12 +167,33 @@ def build_payload() -> dict[str, Any]:
         total=total,
         p0=len(open_p0),
     )
+    if (
+        isinstance(demo_lifecycle, dict)
+        and str(demo_lifecycle.get("lifecycle_status") or "")
+        == "DEMO_LIFECYCLE_VERIFIED"
+    ):
+        evidence_score = min(10, evidence_score + 1)
     private_live_score = 2 if open_p0 else (4 if owner_missing else 8)
     autonomous_score = 1
-    overall_score = max(1, round((software_score + evidence_score + private_live_score + autonomous_score) / 4))
+    overall_score = max(
+        1,
+        round(
+            (software_score + evidence_score + private_live_score + autonomous_score)
+            / 4
+        ),
+    )
 
     private_candidate = "NO" if open_p0 else "YES"
-    private_allowed = "YES" if (not open_p0 and not open_p1 and not owner_missing and not missing_runtime_reports) else "NO"
+    private_allowed = (
+        "YES"
+        if (
+            not open_p0
+            and not open_p1
+            and not owner_missing
+            and not missing_runtime_reports
+        )
+        else "NO"
+    )
     full_auto = "NO"
     allowed_next_mode = "shadow" if open_p0 else "private_live_candidate"
 
@@ -190,6 +229,7 @@ def build_payload() -> dict[str, Any]:
             "external_required wird nie als verified gezaehlt",
             "private_live_allowed bleibt NO bei offenen P0/P1 oder fehlendem Owner-Signoff",
             "full_autonomous_live bleibt NO ohne lange echte Live-Historie",
+            "demo_lifecycle_verified verbessert nur Demo-Evidence, nicht private_live_allowed oder live_verified",
         ],
         "next_steps": [
             "Offene P0/P1 Kategorien mit Runtime-Evidence auf verified bringen",
@@ -256,7 +296,9 @@ def main(argv: list[str] | None = None) -> int:
         args.output_md.write_text(render_markdown(payload), encoding="utf-8")
     if args.output_json:
         args.output_json.parent.mkdir(parents=True, exist_ok=True)
-        args.output_json.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+        args.output_json.write_text(
+            json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
     print(
         "final_go_no_go_report: "
         f"score={payload['overall_score_1_10']} "

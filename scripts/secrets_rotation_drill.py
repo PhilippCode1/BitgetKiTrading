@@ -116,7 +116,9 @@ def _write_report(path: Path, content: str) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--dry-run", action="store_true", help="Print a safe drill summary.")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Print a safe drill summary."
+    )
     parser.add_argument(
         "--mode",
         choices=("simulated",),

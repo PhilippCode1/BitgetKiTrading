@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from shared_py.bitget.instruments import BitgetInstrumentIdentity
@@ -11,7 +11,10 @@ from shared_py.playbook_registry import (
     PLAYBOOK_REGISTRY_VERSION,
     PlaybookDefinition,
 )
-from shared_py.regime_policy import REGIME_ROUTING_POLICY_VERSION, get_regime_playbook_policy
+from shared_py.regime_policy import (
+    REGIME_ROUTING_POLICY_VERSION,
+    get_regime_playbook_policy,
+)
 from shared_py.specialist_ensemble_contract import ENSEMBLE_ROUTER_VERSION
 
 from signal_engine.product_family_risk import risk_dispatch_lane
@@ -36,14 +39,26 @@ def build_specialist_stack(
     instrument: BitgetInstrumentIdentity,
 ) -> dict[str, Any]:
     direction = str(signal_row.get("direction") or "").strip().lower()
-    market_regime = str(signal_row.get("market_regime") or "").strip().lower() or "unknown"
-    regime_state = str(signal_row.get("regime_state") or "").strip().lower() or market_regime
-    signal_class = str(signal_row.get("signal_class") or "").strip().lower() or "warnung"
-    trade_action = str(signal_row.get("trade_action") or "").strip().lower() or "do_not_trade"
-    meta_trade_lane = str(signal_row.get("meta_trade_lane") or "").strip().lower() or None
+    market_regime = (
+        str(signal_row.get("market_regime") or "").strip().lower() or "unknown"
+    )
+    regime_state = (
+        str(signal_row.get("regime_state") or "").strip().lower() or market_regime
+    )
+    signal_class = (
+        str(signal_row.get("signal_class") or "").strip().lower() or "warnung"
+    )
+    trade_action = (
+        str(signal_row.get("trade_action") or "").strip().lower() or "do_not_trade"
+    )
+    meta_trade_lane = (
+        str(signal_row.get("meta_trade_lane") or "").strip().lower() or None
+    )
     source_snapshot = signal_row.get("source_snapshot_json") or {}
     primary_feature = extract_primary_feature_snapshot(
-        source_snapshot.get("feature_snapshot") if isinstance(source_snapshot, dict) else {}
+        source_snapshot.get("feature_snapshot")
+        if isinstance(source_snapshot, dict)
+        else {}
     )
     regime_policy = get_regime_playbook_policy(regime_state)
 
@@ -64,7 +79,11 @@ def build_specialist_stack(
     selected = ranked_candidates[0] if ranked_candidates else None
     if selected and selected.get("policy_blockers"):
         selected = None
-    playbook = selected["playbook"] if selected and selected["score"] >= _PLAYBOOK_SELECTION_MIN_SCORE else None
+    playbook = (
+        selected["playbook"]
+        if selected and selected["score"] >= _PLAYBOOK_SELECTION_MIN_SCORE
+        else None
+    )
     playbook_decision_mode = "selected" if playbook is not None else "playbookless"
     playbook_id = playbook.playbook_id if playbook is not None else None
     playbook_family = playbook.playbook_family if playbook is not None else None
@@ -73,9 +92,12 @@ def build_specialist_stack(
     invalid_context_hits = list(selected["invalid_context_hits"]) if selected else []
     policy_blockers = list(selected["policy_blockers"]) if selected else []
     router_action = trade_action
-    if family_blockers or blacklist_hits or (
-        playbook_decision_mode == "playbookless" and trade_action == "allow_trade"
-    ) or policy_blockers:
+    if (
+        family_blockers
+        or blacklist_hits
+        or (playbook_decision_mode == "playbookless" and trade_action == "allow_trade")
+        or policy_blockers
+    ):
         router_action = "do_not_trade"
     router_reasons = list(family_blockers)
     router_reasons.extend(f"playbook_blacklist:{item}" for item in blacklist_hits)
@@ -126,7 +148,11 @@ def build_specialist_stack(
         symbol_proposal,
     ]
     ensemble_hierarchy = [
-        {"layer": i, "role": pr.get("specialist_role"), "specialist_id": pr.get("specialist_id")}
+        {
+            "layer": i,
+            "role": pr.get("specialist_role"),
+            "specialist_id": pr.get("specialist_id"),
+        }
         for i, pr in enumerate(proposals_ordered)
     ]
     adversary_check = run_adversary_check(
@@ -135,8 +161,13 @@ def build_specialist_stack(
         playbook=playbook,
         primary_feature=primary_feature,
     )
-    router_action, adversary_router_reasons, _ensemble_shrink_flag, ensemble_conf_mult = (
-        apply_adversary_to_router(pre_trade_action=pre_adversary_trade_action, adversary=adversary_check)
+    (
+        router_action,
+        adversary_router_reasons,
+        _ensemble_shrink_flag,
+        ensemble_conf_mult,
+    ) = apply_adversary_to_router(
+        pre_trade_action=pre_adversary_trade_action, adversary=adversary_check
     )
     router_reasons.extend(adversary_router_reasons)
 
@@ -164,10 +195,16 @@ def build_specialist_stack(
         "anti_pattern_hits": anti_pattern_hits,
         "blacklist_hits": blacklist_hits,
         "policy_blockers": policy_blockers,
-        "allowed_playbook_families": list(regime_policy.allowed_playbook_families) if regime_policy else [],
-        "blocked_playbook_families": list(regime_policy.blocked_playbook_families) if regime_policy else [],
+        "allowed_playbook_families": (
+            list(regime_policy.allowed_playbook_families) if regime_policy else []
+        ),
+        "blocked_playbook_families": (
+            list(regime_policy.blocked_playbook_families) if regime_policy else []
+        ),
         "regime_policy_version": REGIME_ROUTING_POLICY_VERSION,
-        "preferred_stop_families": list(playbook.preferred_stop_families) if playbook else [],
+        "preferred_stop_families": (
+            list(playbook.preferred_stop_families) if playbook else []
+        ),
         "exit_families": list(playbook.exit_families) if playbook else [],
         "preferred_timeframes": list(playbook.preferred_timeframes) if playbook else [],
         "benchmark_rule_ids": (
@@ -223,7 +260,9 @@ def build_specialist_stack(
         },
         "liquidity_vol_cluster_specialist": {
             "specialist_id": liquidity_vol_proposal.get("specialist_id"),
-            "cluster_key": str(liquidity_vol_proposal.get("specialist_id") or "").replace("liqvol:", ""),
+            "cluster_key": str(
+                liquidity_vol_proposal.get("specialist_id") or ""
+            ).replace("liqvol:", ""),
             "proposal": dict(liquidity_vol_proposal),
         },
         "regime_specialist": {
@@ -286,15 +325,19 @@ def _rank_playbooks(
     primary_feature: dict[str, Any],
 ) -> list[dict[str, Any]]:
     ranked: list[dict[str, Any]] = []
-    regime_state = str(signal_row.get("regime_state") or "").strip().lower() or str(
-        signal_row.get("market_regime") or ""
-    ).strip().lower()
+    regime_state = (
+        str(signal_row.get("regime_state") or "").strip().lower()
+        or str(signal_row.get("market_regime") or "").strip().lower()
+    )
     regime_policy = get_regime_playbook_policy(regime_state)
     for playbook in PLAYBOOK_REGISTRY:
         if instrument.market_family not in playbook.target_market_families:
             continue
         policy_blockers: list[str] = []
-        if regime_policy and playbook.playbook_family in regime_policy.blocked_playbook_families:
+        if (
+            regime_policy
+            and playbook.playbook_family in regime_policy.blocked_playbook_families
+        ):
             policy_blockers.append(f"blocked_family:{playbook.playbook_family}")
         if (
             regime_policy
@@ -326,8 +369,10 @@ def _rank_playbooks(
             instrument=instrument,
             primary_feature=primary_feature,
         )
-        penalty = (0.18 * len(anti_pattern_hits)) + (0.35 * len(blacklist_hits)) + (
-            0.22 * len(invalid_context_hits)
+        penalty = (
+            (0.18 * len(anti_pattern_hits))
+            + (0.35 * len(blacklist_hits))
+            + (0.22 * len(invalid_context_hits))
         )
         if policy_blockers:
             penalty += 0.55 * len(policy_blockers)
@@ -361,7 +406,9 @@ def _score_playbook(
     primary_feature: dict[str, Any],
 ) -> tuple[float, list[str]]:
     market_regime = str(signal_row.get("market_regime") or "").strip().lower()
-    regime_state = str(signal_row.get("regime_state") or "").strip().lower() or market_regime
+    regime_state = (
+        str(signal_row.get("regime_state") or "").strip().lower() or market_regime
+    )
     direction = str(signal_row.get("direction") or "").strip().lower()
     signal_class = str(signal_row.get("signal_class") or "").strip().lower()
     regime_bias = str(signal_row.get("regime_bias") or "").strip().lower()
@@ -372,7 +419,9 @@ def _score_playbook(
     range_score = _coerce_float(primary_feature.get("range_score"))
     mean_reversion = _coerce_float(primary_feature.get("mean_reversion_pressure_0_100"))
     compression = _coerce_float(primary_feature.get("breakout_compression_score_0_100"))
-    realized_vol_cluster = _coerce_float(primary_feature.get("realized_vol_cluster_0_100"))
+    realized_vol_cluster = _coerce_float(
+        primary_feature.get("realized_vol_cluster_0_100")
+    )
     funding_rate_bps = _coerce_float(primary_feature.get("funding_rate_bps"))
     basis_bps = _coerce_float(primary_feature.get("basis_bps"))
     event_distance_ms = _coerce_float(primary_feature.get("event_distance_ms"))
@@ -405,11 +454,20 @@ def _score_playbook(
     if direction in {"long", "short"} and regime_bias in {"neutral", direction}:
         score += 0.08
         reasons.append("regime_bias_aligned")
-    if confluence is not None and playbook.playbook_family in {"trend_continuation", "pullback"}:
+    if confluence is not None and playbook.playbook_family in {
+        "trend_continuation",
+        "pullback",
+    }:
         score += min(0.14, max(0.0, confluence / 100.0) * 0.14)
         reasons.append("mtf_confluence_support")
-    if playbook.playbook_family == "trend_continuation" and trend_dir is not None and direction in {"long", "short"}:
-        if (direction == "long" and trend_dir >= 0) or (direction == "short" and trend_dir <= 0):
+    if (
+        playbook.playbook_family == "trend_continuation"
+        and trend_dir is not None
+        and direction in {"long", "short"}
+    ):
+        if (direction == "long" and trend_dir >= 0) or (
+            direction == "short" and trend_dir <= 0
+        ):
             score += 0.12
             reasons.append("trend_continuation_alignment")
     if compression is not None and playbook.playbook_family in {
@@ -428,7 +486,10 @@ def _score_playbook(
     if range_score is not None and playbook.playbook_family == "range_rotation":
         score += min(0.16, max(0.0, range_score / 100.0) * 0.16)
         reasons.append("range_balance_present")
-    if realized_vol_cluster is not None and playbook.playbook_family == "volatility_compression_expansion":
+    if (
+        realized_vol_cluster is not None
+        and playbook.playbook_family == "volatility_compression_expansion"
+    ):
         score += min(0.10, max(0.0, realized_vol_cluster / 100.0) * 0.10)
         reasons.append("realized_vol_cluster_support")
     if playbook.playbook_family == "carry_funding":
@@ -451,7 +512,9 @@ def _score_playbook(
         if news_score is not None and news_score >= 55.0:
             score += 0.16
             reasons.append("news_layer_support")
-    if playbook.playbook_family == "session_open" and _session_window_label(signal_row.get("analysis_ts_ms")):
+    if playbook.playbook_family == "session_open" and _session_window_label(
+        signal_row.get("analysis_ts_ms")
+    ):
         score += 0.22
         reasons.append("session_window_match")
     if playbook.playbook_family == "time_window_effect":
@@ -469,10 +532,19 @@ def _score_playbook(
         ):
             score += 0.16
             reasons.append("wick_dislocation_present")
-    if playbook.playbook_family == "pullback" and trend_dir is not None and direction in {"long", "short"}:
+    if (
+        playbook.playbook_family == "pullback"
+        and trend_dir is not None
+        and direction in {"long", "short"}
+    ):
         if (
-            (direction == "long" and trend_dir >= 0) or (direction == "short" and trend_dir <= 0)
-        ) and mean_reversion is not None and 25.0 <= mean_reversion <= 80.0:
+            (
+                (direction == "long" and trend_dir >= 0)
+                or (direction == "short" and trend_dir <= 0)
+            )
+            and mean_reversion is not None
+            and 25.0 <= mean_reversion <= 80.0
+        ):
             score += 0.10
             reasons.append("trend_dir_alignment")
     return max(0.0, min(score, 1.0)), reasons
@@ -486,7 +558,9 @@ def _invalid_context_hits(
     primary_feature: dict[str, Any],
 ) -> list[str]:
     market_regime = str(signal_row.get("market_regime") or "").strip().lower()
-    regime_state = str(signal_row.get("regime_state") or "").strip().lower() or market_regime
+    regime_state = (
+        str(signal_row.get("regime_state") or "").strip().lower() or market_regime
+    )
     direction = str(signal_row.get("direction") or "").strip().lower()
     regime_bias = str(signal_row.get("regime_bias") or "").strip().lower()
     regime_confidence = _coerce_float(signal_row.get("regime_confidence_0_1")) or 0.0
@@ -497,19 +571,38 @@ def _invalid_context_hits(
         elif item == regime_state:
             hits.append(item)
         elif item == "counter_regime_high_confidence":
-            if direction in {"long", "short"} and regime_bias not in {"", "neutral", direction} and regime_confidence >= 0.65:
+            if (
+                direction in {"long", "short"}
+                and regime_bias not in {"", "neutral", direction}
+                and regime_confidence >= 0.65
+            ):
                 hits.append(item)
         elif item == "trend_acceleration":
-            if market_regime in {"trend", "breakout"} and (_coerce_float(primary_feature.get("confluence_score_0_100")) or 0.0) >= 70.0:
+            if (
+                market_regime in {"trend", "breakout"}
+                and (
+                    _coerce_float(primary_feature.get("confluence_score_0_100")) or 0.0
+                )
+                >= 70.0
+            ):
                 hits.append(item)
         elif item == "range_rotation_without_compression":
-            if (_coerce_float(primary_feature.get("breakout_compression_score_0_100")) or 0.0) < 45.0:
+            if (
+                _coerce_float(primary_feature.get("breakout_compression_score_0_100"))
+                or 0.0
+            ) < 45.0:
                 hits.append(item)
         elif item == "shock_without_event":
-            if market_regime == "shock" and _coerce_float(primary_feature.get("event_distance_ms")) is None:
+            if (
+                market_regime == "shock"
+                and _coerce_float(primary_feature.get("event_distance_ms")) is None
+            ):
                 hits.append(item)
         elif item == "funding_missing":
-            if instrument.market_family == "futures" and _coerce_float(primary_feature.get("funding_rate_bps")) is None:
+            if (
+                instrument.market_family == "futures"
+                and _coerce_float(primary_feature.get("funding_rate_bps")) is None
+            ):
                 hits.append(item)
         elif item == "news_context_missing":
             if (_coerce_float(signal_row.get("news_score_0_100")) or 0.0) < 55.0:
@@ -518,10 +611,9 @@ def _invalid_context_hits(
             if not _session_window_label(signal_row.get("analysis_ts_ms")):
                 hits.append(item)
         elif item == "time_window_absent":
-            if (
-                _coerce_float(primary_feature.get("event_distance_ms")) is None
-                and not _near_hourly_boundary(signal_row.get("analysis_ts_ms"))
-            ):
+            if _coerce_float(
+                primary_feature.get("event_distance_ms")
+            ) is None and not _near_hourly_boundary(signal_row.get("analysis_ts_ms")):
                 hits.append(item)
         elif item == "trend_broken":
             trend_dir = _coerce_float(primary_feature.get("trend_dir"))
@@ -541,8 +633,12 @@ def _anti_pattern_hits(
 ) -> list[str]:
     hits: list[str] = []
     confluence = _coerce_float(primary_feature.get("confluence_score_0_100")) or 0.0
-    mean_reversion = _coerce_float(primary_feature.get("mean_reversion_pressure_0_100")) or 0.0
-    compression = _coerce_float(primary_feature.get("breakout_compression_score_0_100")) or 0.0
+    mean_reversion = (
+        _coerce_float(primary_feature.get("mean_reversion_pressure_0_100")) or 0.0
+    )
+    compression = (
+        _coerce_float(primary_feature.get("breakout_compression_score_0_100")) or 0.0
+    )
     news_score = _coerce_float(signal_row.get("news_score_0_100")) or 0.0
     event_distance_ms = _coerce_float(primary_feature.get("event_distance_ms"))
     for item in playbook.anti_patterns:
@@ -550,37 +646,60 @@ def _anti_pattern_hits(
             hits.append(item)
         elif item == "mtf_confluence_missing" and confluence < 60.0:
             hits.append(item)
-        elif item == "event_too_close" and event_distance_ms is not None and event_distance_ms < 300_000:
+        elif (
+            item == "event_too_close"
+            and event_distance_ms is not None
+            and event_distance_ms < 300_000
+        ):
             hits.append(item)
         elif item == "breakout_without_compression" and compression < 55.0:
             hits.append(item)
-        elif item == "breakout_into_thin_book" and _liquidity_below_hard_floor(playbook, primary_feature):
+        elif item == "breakout_into_thin_book" and _liquidity_below_hard_floor(
+            playbook, primary_feature
+        ):
             hits.append(item)
-        elif item == "fade_strong_trend" and str(signal_row.get("regime_state") or "").strip().lower() == "trend":
+        elif (
+            item == "fade_strong_trend"
+            and str(signal_row.get("regime_state") or "").strip().lower() == "trend"
+        ):
             hits.append(item)
         elif item == "mean_reversion_without_pressure" and mean_reversion < 55.0:
             hits.append(item)
         elif item == "compression_absent" and compression < 60.0:
             hits.append(item)
-        elif item == "depth_imbalance_missing" and _coerce_float(primary_feature.get("orderbook_imbalance")) is None:
+        elif (
+            item == "depth_imbalance_missing"
+            and _coerce_float(primary_feature.get("orderbook_imbalance")) is None
+        ):
             hits.append(item)
         elif item == "sweep_without_reclaim":
-            upper = _coerce_float(primary_feature.get("impulse_upper_wick_ratio")) or 0.0
-            lower = _coerce_float(primary_feature.get("impulse_lower_wick_ratio")) or 0.0
+            upper = (
+                _coerce_float(primary_feature.get("impulse_upper_wick_ratio")) or 0.0
+            )
+            lower = (
+                _coerce_float(primary_feature.get("impulse_lower_wick_ratio")) or 0.0
+            )
             if max(upper, lower) < 0.28:
                 hits.append(item)
-        elif item == "book_depth_missing" and _coerce_float(primary_feature.get("depth_to_bar_volume_ratio")) is None:
+        elif (
+            item == "book_depth_missing"
+            and _coerce_float(primary_feature.get("depth_to_bar_volume_ratio")) is None
+        ):
             hits.append(item)
         elif item == "pullback_too_deep" and mean_reversion > 80.0:
             hits.append(item)
-        elif item == "range_boundary_missing" and (_coerce_float(primary_feature.get("range_score")) or 0.0) < 60.0:
+        elif (
+            item == "range_boundary_missing"
+            and (_coerce_float(primary_feature.get("range_score")) or 0.0) < 60.0
+        ):
             hits.append(item)
         elif item == "breakout_pressure_high" and compression > 60.0:
             hits.append(item)
         elif item == "carry_without_edge":
-            if abs(_coerce_float(primary_feature.get("funding_rate_bps")) or 0.0) < 0.8 and abs(
-                _coerce_float(primary_feature.get("basis_bps")) or 0.0
-            ) < 1.0:
+            if (
+                abs(_coerce_float(primary_feature.get("funding_rate_bps")) or 0.0) < 0.8
+                and abs(_coerce_float(primary_feature.get("basis_bps")) or 0.0) < 1.0
+            ):
                 hits.append(item)
         elif item == "funding_event_too_far" and (
             event_distance_ms is None or event_distance_ms > 14_400_000
@@ -592,12 +711,17 @@ def _anti_pattern_hits(
             event_distance_ms is None or event_distance_ms > 7_200_000
         ):
             hits.append(item)
-        elif item == "session_open_without_liquidity" and _liquidity_below_hard_floor(playbook, primary_feature):
+        elif item == "session_open_without_liquidity" and _liquidity_below_hard_floor(
+            playbook, primary_feature
+        ):
             hits.append(item)
-        elif item == "open_drive_after_delay" and not _session_window_label(signal_row.get("analysis_ts_ms")):
+        elif item == "open_drive_after_delay" and not _session_window_label(
+            signal_row.get("analysis_ts_ms")
+        ):
             hits.append(item)
         elif item == "window_absent" and (
-            event_distance_ms is None and not _near_hourly_boundary(signal_row.get("analysis_ts_ms"))
+            event_distance_ms is None
+            and not _near_hourly_boundary(signal_row.get("analysis_ts_ms"))
         ):
             hits.append(item)
     return sorted(set(hits))
@@ -613,26 +737,44 @@ def _blacklist_hits(
     hits: list[str] = []
     for item in playbook.blacklist_criteria:
         if item == "feature_quality_degraded":
-            if str(primary_feature.get("feature_quality_status") or "").strip().lower() not in {"", "ok"}:
+            if str(
+                primary_feature.get("feature_quality_status") or ""
+            ).strip().lower() not in {"", "ok"}:
                 hits.append(item)
-            if (_coerce_float(primary_feature.get("staleness_score_0_1")) or 0.0) > playbook.minimum_liquidity.max_staleness_score_0_1:
+            if (
+                _coerce_float(primary_feature.get("staleness_score_0_1")) or 0.0
+            ) > playbook.minimum_liquidity.max_staleness_score_0_1:
                 hits.append(item)
-            if (_coerce_float(primary_feature.get("data_completeness_0_1")) or 0.0) < playbook.minimum_liquidity.min_data_completeness_0_1:
+            if (
+                _coerce_float(primary_feature.get("data_completeness_0_1")) or 0.0
+            ) < playbook.minimum_liquidity.min_data_completeness_0_1:
                 hits.append(item)
-        elif item == "liquidity_below_hard_floor" and _liquidity_below_hard_floor(playbook, primary_feature):
+        elif item == "liquidity_below_hard_floor" and _liquidity_below_hard_floor(
+            playbook, primary_feature
+        ):
             hits.append(item)
-        elif item == "missing_futures_context" and instrument.market_family != "futures":
+        elif (
+            item == "missing_futures_context" and instrument.market_family != "futures"
+        ):
             hits.append(item)
     return sorted(set(hits))
 
 
-def _liquidity_below_hard_floor(playbook: PlaybookDefinition, primary_feature: dict[str, Any]) -> bool:
+def _liquidity_below_hard_floor(
+    playbook: PlaybookDefinition, primary_feature: dict[str, Any]
+) -> bool:
     spread_bps = _coerce_float(primary_feature.get("spread_bps"))
     execution_cost_bps = _coerce_float(primary_feature.get("execution_cost_bps"))
     depth_ratio = _coerce_float(primary_feature.get("depth_to_bar_volume_ratio"))
-    liquidity_source = str(primary_feature.get("liquidity_source") or "").strip().lower()
+    liquidity_source = (
+        str(primary_feature.get("liquidity_source") or "").strip().lower()
+    )
     constraints = playbook.minimum_liquidity
-    if constraints.max_spread_bps is not None and spread_bps is not None and spread_bps > constraints.max_spread_bps:
+    if (
+        constraints.max_spread_bps is not None
+        and spread_bps is not None
+        and spread_bps > constraints.max_spread_bps
+    ):
         return True
     if (
         constraints.max_execution_cost_bps is not None
@@ -646,7 +788,9 @@ def _liquidity_below_hard_floor(playbook: PlaybookDefinition, primary_feature: d
         and depth_ratio < constraints.min_depth_to_bar_volume_ratio
     ):
         return True
-    if constraints.require_orderbook_context and not liquidity_source.startswith("orderbook_levels"):
+    if constraints.require_orderbook_context and not liquidity_source.startswith(
+        "orderbook_levels"
+    ):
         return True
     return False
 
@@ -663,7 +807,7 @@ def _coerce_float(value: Any) -> float | None:
 def _session_window_label(analysis_ts_ms: Any) -> str | None:
     if analysis_ts_ms in (None, ""):
         return None
-    dt = datetime.fromtimestamp(int(analysis_ts_ms) / 1000.0, tz=timezone.utc)
+    dt = datetime.fromtimestamp(int(analysis_ts_ms) / 1000.0, tz=UTC)
     minute_of_day = dt.hour * 60 + dt.minute
     windows = {
         "asia_open": 0,
@@ -679,5 +823,5 @@ def _session_window_label(analysis_ts_ms: Any) -> str | None:
 def _near_hourly_boundary(analysis_ts_ms: Any) -> bool:
     if analysis_ts_ms in (None, ""):
         return False
-    dt = datetime.fromtimestamp(int(analysis_ts_ms) / 1000.0, tz=timezone.utc)
+    dt = datetime.fromtimestamp(int(analysis_ts_ms) / 1000.0, tz=UTC)
     return dt.minute <= 5 or dt.minute >= 55

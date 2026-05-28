@@ -31,6 +31,10 @@ class SmokeReport:
     submit_allowed: bool
     demo_money_used: bool
     blockers: list[str]
+    api_reachable: bool
+    dashboard_reachable: bool
+    failed_paths: list[str]
+    timeout_count: int
 
 
 def run(
@@ -45,33 +49,67 @@ def run(
     total = 0
     failed = 0
     blockers: list[str] = []
+    failed_paths: list[str] = []
+    timeout_count = 0
     submit_allowed = False
     demo_money_used = False
+    api_reachable = False
+    dashboard_reachable = False
     with httpx.Client(timeout=6.0) as client:
         while time.time() - start < max(1, duration_sec):
             for path in SAFE_PATHS:
                 total += 1
                 try:
                     r = client.get(f"{base_url.rstrip('/')}{path}")
+                    if r.status_code < 500:
+                        api_reachable = True
                     if r.status_code >= 500:
                         failed += 1
+                        failed_paths.append(path)
+                except httpx.ReadTimeout:
+                    timeout_count += 1
+                    failed += 1
+                    failed_paths.append(path)
                 except Exception:
                     failed += 1
+                    failed_paths.append(path)
             try:
                 d = client.get(dashboard_url)
                 total += 1
+                if d.status_code < 500:
+                    dashboard_reachable = True
                 if d.status_code >= 500:
                     failed += 1
+                    failed_paths.append("dashboard")
+            except httpx.ReadTimeout:
+                total += 1
+                timeout_count += 1
+                failed += 1
+                failed_paths.append("dashboard")
             except Exception:
                 total += 1
                 failed += 1
+                failed_paths.append("dashboard")
             time.sleep(1)
 
         if include_preview:
             total += 1
-            r = client.post(f"{base_url.rstrip('/')}/api/demo/order/preview")
-            if r.status_code >= 500:
+            try:
+                r = client.post(f"{base_url.rstrip('/')}/api/demo/order/preview")
+            except httpx.ReadTimeout:
+                timeout_count += 1
                 failed += 1
+                failed_paths.append("/api/demo/order/preview")
+                blockers.append("Demo-Preview Timeout.")
+                r = None
+            except Exception:
+                failed += 1
+                failed_paths.append("/api/demo/order/preview")
+                blockers.append("Demo-Preview nicht erreichbar.")
+                r = None
+            if r is not None and r.status_code >= 500:
+                failed += 1
+                failed_paths.append("/api/demo/order/preview")
                 blockers.append("Demo-Preview antwortet mit 5xx.")
         if include_submit:
             total += 1
@@ -80,15 +118,33 @@ def run(
                     "Demo-Submit wurde angefordert, aber Sicherheitsflag --i-understand-this-uses-demo-money fehlt."
                 )
             else:
-                r = client.post(f"{base_url.rstrip('/')}/api/demo/order/submit")
-                if r.status_code >= 500:
+                try:
+                    r = client.post(f"{base_url.rstrip('/')}/api/demo/order/submit")
+                except httpx.ReadTimeout:
+                    timeout_count += 1
                     failed += 1
+                    failed_paths.append("/api/demo/order/submit")
+                    blockers.append("Demo-Submit Timeout.")
+                    r = None
+                except Exception:
+                    failed += 1
+                    failed_paths.append("/api/demo/order/submit")
+                    blockers.append("Demo-Submit nicht erreichbar.")
+                    r = None
+                if r is not None and r.status_code >= 500:
+                    failed += 1
+                    failed_paths.append("/api/demo/order/submit")
                     blockers.append("Demo-Submit antwortet mit 5xx.")
                 else:
-                    body = r.json() if r.content else {}
-                    submit_allowed = bool(body.get("allowed"))
-                    demo_money_used = submit_allowed
+                    if r is not None:
+                        body = r.json() if r.content else {}
+                        submit_allowed = bool(body.get("allowed"))
+                        demo_money_used = submit_allowed
 
+    if not api_reachable:
+        blockers.append("api_gateway_unreachable")
+    if not dashboard_reachable:
+        blockers.append("dashboard_unreachable")
     if failed > 0 or blockers:
         result = "FAIL"
     else:
@@ -103,6 +159,10 @@ def run(
         submit_allowed=submit_allowed,
         demo_money_used=demo_money_used,
         blockers=blockers,
+        api_reachable=api_reachable,
+        dashboard_reachable=dashboard_reachable,
+        failed_paths=sorted(set(failed_paths)),
+        timeout_count=timeout_count,
     )
 
 
@@ -119,6 +179,9 @@ def to_md(rep: SmokeReport) -> str:
             f"- Submit getestet: `{str(rep.submit_tested).lower()}`",
             f"- Submit erlaubt: `{str(rep.submit_allowed).lower()}`",
             f"- Demo-Geld genutzt: `{str(rep.demo_money_used).lower()}`",
+            f"- API erreichbar: `{str(rep.api_reachable).lower()}`",
+            f"- Dashboard erreichbar: `{str(rep.dashboard_reachable).lower()}`",
+            f"- Timeout-Anzahl: `{rep.timeout_count}`",
             "- Echtes Live-Trading: `false`",
             "",
             "## Blocker",

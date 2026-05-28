@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pytest
+
 from paper_broker.config import PaperBrokerSettings
 from paper_broker.strategy.gating import (
     GateConfig,

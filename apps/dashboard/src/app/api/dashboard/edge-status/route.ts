@@ -2,6 +2,7 @@ import { randomUUID } from "crypto";
 
 import { NextResponse } from "next/server";
 
+import { requireOperatorGatewayAuth } from "@/lib/gateway-bff";
 import { runGatewayBootstrapProbe } from "@/lib/gateway-bootstrap-probe";
 import type { GatewayBootstrapRootCause } from "@/lib/gateway-bootstrap-probe";
 import { gatewayBaseUrl } from "@/lib/gateway-upstream";
@@ -93,7 +94,12 @@ function edgeHint(
  * Lokal/Operator: zentrale Diagnose (ein Lauf) — Gateway /health, /ready, Operator-JWT-Probe.
  * Keine Secrets im Response; `rootCause` ordnet den Zustand einer konkreten Ursache zu.
  */
-export async function GET() {
+export async function GET(req: Request) {
+  const auth = requireOperatorGatewayAuth(req.headers);
+  if (!auth.ok) {
+    return auth.response;
+  }
+
   const base = gatewayBaseUrl().replace(/\/$/, "");
   const hasAuth = Boolean(serverEnv.gatewayAuthorizationHeader);
   const probe = await runGatewayBootstrapProbe();

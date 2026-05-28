@@ -88,7 +88,9 @@ def render_markdown(payload: dict[str, Any]) -> str:
         "",
     ]
     for row in payload["checks"]:
-        lines.append(f"- `{row['scenario']}`: pass=`{row['pass']}`, actual=`{row['actual']}`")
+        lines.append(
+            f"- `{row['scenario']}`: pass=`{row['pass']}`, actual=`{row['actual']}`"
+        )
     lines.extend(["", "## External Required", ""])
     lines.extend(f"- `{item}`" for item in payload["external_required"])
     lines.append("")
@@ -108,7 +110,9 @@ def main(argv: list[str] | None = None) -> int:
         args.output_md.write_text(render_markdown(payload), encoding="utf-8")
     if args.output_json:
         args.output_json.parent.mkdir(parents=True, exist_ok=True)
-        args.output_json.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+        args.output_json.write_text(
+            json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
     print(
         "disaster_recovery_drill_report: "
         f"status={payload['status']} checks={len(payload['checks'])} private_live={payload['private_live_allowed']}"

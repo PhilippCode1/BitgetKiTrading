@@ -141,7 +141,13 @@ def test_script_dry_run_no_secrets(tmp_path: Path) -> None:
     )
     root = Path(__file__).resolve().parents[2]
     proc = subprocess.run(
-        [sys.executable, str(root / "scripts" / "private_bitget_credential_check.py"), "--dry-run", "--env-file", str(env_file)],
+        [
+            sys.executable,
+            str(root / "scripts" / "private_bitget_credential_check.py"),
+            "--dry-run",
+            "--env-file",
+            str(env_file),
+        ],
         cwd=str(root),
         capture_output=True,
         text=True,
@@ -178,7 +184,11 @@ def test_main_console_payload_only_masked_hints() -> None:
 def test_checker_detects_missing_doc_and_tests() -> None:
     root = Path(__file__).resolve().parents[2]
     proc = subprocess.run(
-        [sys.executable, str(root / "tools" / "check_private_credential_safety.py"), "--json"],
+        [
+            sys.executable,
+            str(root / "tools" / "check_private_credential_safety.py"),
+            "--json",
+        ],
         cwd=str(root),
         capture_output=True,
         text=True,

@@ -5,6 +5,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
+from scripts import deployment_supply_chain_evidence_report as mod
 from scripts.deployment_supply_chain_evidence_report import (
     assess_deployment_evidence,
     assess_supply_evidence,
@@ -13,8 +16,18 @@ from scripts.deployment_supply_chain_evidence_report import (
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts" / "deployment_supply_chain_evidence_report.py"
-DEP_T = ROOT / "docs" / "production_10_10" / "deployment_staging_parity_evidence.template.json"
-SUP_T = ROOT / "docs" / "production_10_10" / "supply_chain_release_audit_evidence.template.json"
+DEP_T = (
+    ROOT
+    / "docs"
+    / "production_10_10"
+    / "deployment_staging_parity_evidence.template.json"
+)
+SUP_T = (
+    ROOT
+    / "docs"
+    / "production_10_10"
+    / "supply_chain_release_audit_evidence.template.json"
+)
 
 
 def _verified_dep() -> dict:
@@ -77,7 +90,19 @@ def test_verified_assess_pass() -> None:
     assert assess_supply_evidence(_verified_sup())["status"] == "PASS"
 
 
-def test_build_payload_no_internal_when_repo_ok() -> None:
+def test_build_payload_no_internal_when_repo_ok(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(mod, "analyze_doc_surface", lambda: {"ok": True, "missing": []})
+    monkeypatch.setattr(
+        mod, "run_validate_env_examples", lambda: {"ok": True, "runs": []}
+    )
+    monkeypatch.setattr(
+        mod,
+        "run_docker_compose_config",
+        lambda: {"ok": True, "exit_code": 0, "stderr_tail": ""},
+    )
+    monkeypatch.setattr(mod, "run_release_sanity", lambda: {"ok": True, "exit_code": 0})
     p = build_report_payload()
     assert not p["internal_issues"]
 

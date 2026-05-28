@@ -21,7 +21,9 @@ def vat_rate_decimal_from_bps(vat_rate_bps: int) -> Decimal:
     return Decimal(vat_rate_bps) / Decimal(10000)
 
 
-def amounts_from_net_cents_and_vat_bps(net_cents: int, vat_rate_bps: int) -> dict[str, int]:
+def amounts_from_net_cents_and_vat_bps(
+    net_cents: int, vat_rate_bps: int
+) -> dict[str, int]:
     """Netto-Cent + USt in bps -> net/vat/gross Cent (ganzzahlig, Halbauf)."""
     rate = vat_rate_decimal_from_bps(vat_rate_bps)
     return vat_amounts_from_net_cents(net_cents, rate)

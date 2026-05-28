@@ -71,7 +71,10 @@ def evaluate_reconcile_truth(context: ReconcileTruthContext) -> ReconcileTruthDe
 
     if not context.reconcile_fresh or context.global_status == "stale":
         blocking.append("reconcile_stale")
-    if not context.exchange_reachable or context.global_status == "exchange_unreachable":
+    if (
+        not context.exchange_reachable
+        or context.global_status == "exchange_unreachable"
+    ):
         blocking.append("exchange_unreachable")
     if not context.auth_ok or context.global_status == "auth_failed":
         blocking.append("auth_failed")
@@ -83,7 +86,10 @@ def evaluate_reconcile_truth(context: ReconcileTruthContext) -> ReconcileTruthDe
         warning.append("fill_mismatch")
         safety_required = True
         blocking.append("fill_mismatch")
-    if context.exchange_order_missing or context.global_status == "exchange_order_missing":
+    if (
+        context.exchange_order_missing
+        or context.global_status == "exchange_order_missing"
+    ):
         warning.append("exchange_order_missing")
         reconcile_required = True
     if context.local_order_missing or context.global_status == "local_order_missing":
@@ -110,7 +116,9 @@ def evaluate_reconcile_truth(context: ReconcileTruthContext) -> ReconcileTruthDe
 
 
 def reconcile_requires_safety_latch(decision: ReconcileTruthDecision) -> bool:
-    return decision.safety_latch_required or "fill_mismatch" in decision.blocking_reasons
+    return (
+        decision.safety_latch_required or "fill_mismatch" in decision.blocking_reasons
+    )
 
 
 def reconcile_truth_blocks_live(decision: ReconcileTruthDecision) -> bool:
@@ -121,7 +129,9 @@ def build_reconcile_drift_reasons_de(decision: ReconcileTruthDecision) -> list[s
     reasons = decision.blocking_reasons or decision.warning_reasons
     if not reasons:
         return ["Reconcile OK: nur naechster Gate-Schritt erlaubt."]
-    return [_REASON_DE.get(code, f"Unbekannter Reconcile-Grund: {code}") for code in reasons]
+    return [
+        _REASON_DE.get(code, f"Unbekannter Reconcile-Grund: {code}") for code in reasons
+    ]
 
 
 def build_reconcile_audit_payload(

@@ -160,7 +160,9 @@ def score_risk(
     return LayerScore(score, notes, flags)
 
 
-def _first_geometry(drawings: list[dict[str, Any]], dtype: str) -> dict[str, Any] | None:
+def _first_geometry(
+    drawings: list[dict[str, Any]], dtype: str
+) -> dict[str, Any] | None:
     for d in drawings:
         if d.get("type") == dtype:
             g = d.get("geometry")
@@ -196,7 +198,9 @@ def _reward_risk_ratio(
     return reward / risk
 
 
-def _near_liquidity(close: float, liq_drawings: list[dict[str, Any]], bps: float = 12.0) -> bool:
+def _near_liquidity(
+    close: float, liq_drawings: list[dict[str, Any]], bps: float = 12.0
+) -> bool:
     for d in liq_drawings:
         g = d.get("geometry") or {}
         if g.get("kind") != "horizontal_zone":

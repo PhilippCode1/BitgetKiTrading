@@ -69,7 +69,9 @@ def test_post_mortem_completes_under_10s_with_mocks() -> None:
             patch(
                 "monitor_engine.incident_rca.post_mortem.collect_service_ready_snapshot",
                 new_callable=AsyncMock,
-                return_value=[{"service": "api-gateway", "http_status": 200, "status": "ok"}],
+                return_value=[
+                    {"service": "api-gateway", "http_status": 200, "status": "ok"}
+                ],
             ),
             patch("monitor_engine.incident_rca.post_mortem.httpx.AsyncClient", h_async),
             patch("monitor_engine.incident_rca.post_mortem.insert_post_mortem") as ins,

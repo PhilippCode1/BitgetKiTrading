@@ -1,7 +1,7 @@
 # Liquidity Spread Slippage Evidence
 
-- checked_at: `2026-04-26T09:28:04.007753+00:00`
-- git_sha: `339dd15`
+- checked_at: `2026-05-28T18:18:08.397593+00:00`
+- git_sha: `3f1d5f5`
 - assets_checked: `2`
 - live_allowed_count: `0`
 - status: `not_enough_evidence`

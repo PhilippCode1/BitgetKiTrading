@@ -24,5 +24,6 @@ module.exports = {
   },
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/src/$1",
+    "^server-only$": "<rootDir>/jest.server-only-stub.cjs",
   },
 };

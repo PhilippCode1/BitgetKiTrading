@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from shared_py.customer_lifecycle import (
     CustomerLifecycleStatus,
+    LifecyclePhase,
     TransitionActor,
     allowed_prompt11_targets,
     customer_commercial_gates_for_prompt11,
@@ -11,7 +12,6 @@ from shared_py.customer_lifecycle import (
     internal_snapshot_from_prompt11,
     is_prompt11_transition_allowed,
     lifecycle_phase_to_prompt11,
-    LifecyclePhase,
     trial_duration_days,
 )
 from shared_py.product_policy import live_trading_allowed, trial_period_days
@@ -105,7 +105,7 @@ def test_capabilities_trial_full_demo_no_live() -> None:
         email_verified=True,
         trial_clock_active=True,
     )
-    assert cap.demo_trading
+    assert cap.demo_trading is False
     assert cap.telegram_info_messages
     assert not cap.execute_live_orders
 

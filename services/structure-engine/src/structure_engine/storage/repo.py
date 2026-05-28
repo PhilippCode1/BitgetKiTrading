@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Sequence
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Any, Sequence
+from typing import Any
 from uuid import UUID
 
 import psycopg
@@ -58,7 +59,9 @@ VALUES (%s, %s, %s, %s, %s, %s::jsonb)
 
 
 class StructureRepository:
-    def __init__(self, database_url: str, *, logger: logging.Logger | None = None) -> None:
+    def __init__(
+        self, database_url: str, *, logger: logging.Logger | None = None
+    ) -> None:
         self._database_url = database_url
         self._logger = logger or logging.getLogger("structure_engine.repo")
 
@@ -79,7 +82,9 @@ class StructureRepository:
         LIMIT %s
         """
         with self._connect(row_factory=dict_row) as conn:
-            rows = conn.execute(sql, (symbol, timeframe, end_start_ts_ms, limit)).fetchall()
+            rows = conn.execute(
+                sql, (symbol, timeframe, end_start_ts_ms, limit)
+            ).fetchall()
         rows.reverse()
         return [self._row_to_stored(row) for row in rows]
 
@@ -283,8 +288,16 @@ class StructureRepository:
                         timeframe,
                         last_ts_ms,
                         trend_dir,
-                        None if last_swing_high_price is None else str(last_swing_high_price),
-                        None if last_swing_low_price is None else str(last_swing_low_price),
+                        (
+                            None
+                            if last_swing_high_price is None
+                            else str(last_swing_high_price)
+                        ),
+                        (
+                            None
+                            if last_swing_low_price is None
+                            else str(last_swing_low_price)
+                        ),
                         compression_flag,
                         payload,
                         updated_ts_ms,

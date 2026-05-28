@@ -1,16 +1,10 @@
 import {
   derivePaperClosedTradeStats,
-  paperSectionFetchErrorMessage,
   previewPaperJournalDetail,
 } from "@/lib/paper-console";
 import type { PaperTradeRow } from "@/lib/types";
 
 describe("paper-console", () => {
-  it("paperSectionFetchErrorMessage liefert Nachricht oder String", () => {
-    expect(paperSectionFetchErrorMessage(new Error("x"))).toBe("x");
-    expect(paperSectionFetchErrorMessage("timeout")).toBe("timeout");
-  });
-
   it("previewPaperJournalDetail kürzt lange JSON-Strings", () => {
     const long = { a: "x".repeat(300) };
     const s = previewPaperJournalDetail(long, 50);

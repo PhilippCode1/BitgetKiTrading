@@ -8,7 +8,10 @@ import uuid
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
-from alert_engine.telegram.governance import manual_confirm_token_verify, operator_user_allowed
+from alert_engine.telegram.governance import (
+    manual_confirm_token_verify,
+    operator_user_allowed,
+)
 from alert_engine.telegram.live_broker_client import LiveBrokerOpsClient
 
 if TYPE_CHECKING:
@@ -112,7 +115,10 @@ def dispatch_operator_command(
                 chat_id=chat_id,
                 user_id=user_id,
                 http_status=status or None,
-                details={"cmd": cmd, "body_keys": list(data.keys()) if isinstance(data, dict) else []},
+                details={
+                    "cmd": cmd,
+                    "body_keys": list(data.keys()) if isinstance(data, dict) else [],
+                },
             )
             api.send_message(chat_id, f"Upstream-Fehler decisions/recent http={status}")
             return

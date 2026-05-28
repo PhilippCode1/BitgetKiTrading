@@ -14,7 +14,12 @@ from structure_engine.algorithms.compression import (
     next_compression_state,
     range_20_ratio,
 )
-from structure_engine.algorithms.swings import Candle, Swing, detect_confirmed_swing, confirmed_ts_ms
+from structure_engine.algorithms.swings import (
+    Candle,
+    Swing,
+    confirmed_ts_ms,
+    detect_confirmed_swing,
+)
 from structure_engine.algorithms.trend import (
     SwingPrice,
     detect_bos_choch,

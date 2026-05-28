@@ -79,7 +79,9 @@ class TradesCollector:
             try:
                 trade = parse_trade_record(self._bitget_settings.symbol, item)
             except (InvalidOperation, ValueError) as exc:
-                self._logger.warning("failed to parse trade payload error=%s item=%s", exc, item)
+                self._logger.warning(
+                    "failed to parse trade payload error=%s item=%s", exc, item
+                )
                 continue
             trades.append(trade)
         if trades and self._on_trades_batch is not None:

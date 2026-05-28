@@ -2,7 +2,18 @@
 
 import "@testing-library/jest-dom";
 import { render, screen } from "@testing-library/react";
+import type { ReactElement } from "react";
 
+jest.mock("next/navigation", () => ({
+  usePathname: () => "/console/capabilities",
+  useRouter: () => ({
+    refresh: jest.fn(),
+    replace: jest.fn(),
+    push: jest.fn(),
+  }),
+}));
+
+import { I18nProvider } from "@/components/i18n/I18nProvider";
 import { MarketCapabilityMatrixTable } from "@/components/market/MarketCapabilityMatrixTable";
 import type { MarketUniverseCategoryRow } from "@/lib/types";
 
@@ -35,12 +46,16 @@ const baseRow = (): MarketUniverseCategoryRow => ({
   reasons: [],
 });
 
+function renderDe(ui: ReactElement) {
+  return render(<I18nProvider initialLocale="de">{ui}</I18nProvider>);
+}
+
 describe("MarketCapabilityMatrixTable", () => {
   it("rendert Kategorie-Key und Capability-Spalten fuer Futures", () => {
-    render(<MarketCapabilityMatrixTable categories={[baseRow()]} />);
+    renderDe(<MarketCapabilityMatrixTable categories={[baseRow()]} />);
     expect(screen.getByText("futures_usdt_m")).toBeInTheDocument();
     expect(screen.getByText(/futures \/ usdt-m/i)).toBeInTheDocument();
-    expect(screen.getByText("120 / tradeable 100")).toBeInTheDocument();
+    expect(screen.getByText(/120 gesamt, 100 handelbar/i)).toBeInTheDocument();
     expect(screen.getByText("BTCUSDT, ETHUSDT")).toBeInTheDocument();
   });
 
@@ -49,7 +64,7 @@ describe("MarketCapabilityMatrixTable", () => {
     row.market_family = "margin";
     row.margin_account_mode = "isolated";
     row.category_key = "margin_iso";
-    render(<MarketCapabilityMatrixTable categories={[row]} />);
+    renderDe(<MarketCapabilityMatrixTable categories={[row]} />);
     expect(screen.getByText(/margin \/ isolated/i)).toBeInTheDocument();
   });
 
@@ -57,7 +72,7 @@ describe("MarketCapabilityMatrixTable", () => {
     const row = baseRow();
     row.market_family = "spot";
     row.category_key = "spot_usdt";
-    render(<MarketCapabilityMatrixTable categories={[row]} />);
+    renderDe(<MarketCapabilityMatrixTable categories={[row]} />);
     expect(screen.getByText("spot")).toBeInTheDocument();
   });
 });

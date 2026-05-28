@@ -46,10 +46,14 @@ class SocialStreamWorker:
 
     async def start_background(self) -> None:
         if not self._settings.social_pipeline_enabled:
-            self._logger.info("SocialStreamWorker: deaktiviert (SOCIAL_PIPELINE_ENABLED=false)")
+            self._logger.info(
+                "SocialStreamWorker: deaktiviert (SOCIAL_PIPELINE_ENABLED=false)"
+            )
             return
         self._stats["social_pipeline_enabled"] = True
-        self._tasks.append(asyncio.create_task(self._bootstrap_and_run(), name="social-pipeline"))
+        self._tasks.append(
+            asyncio.create_task(self._bootstrap_and_run(), name="social-pipeline")
+        )
 
     async def stop(self) -> None:
         self._stop.set()
@@ -68,7 +72,9 @@ class SocialStreamWorker:
             panic = list(ref.get("panic_texts_en") or [])
             euph = list(ref.get("euphoria_texts_en") or [])
             if not panic or not euph:
-                raise ValueError("Referenz-JSON braucht panic_texts_en und euphoria_texts_en")
+                raise ValueError(
+                    "Referenz-JSON braucht panic_texts_en und euphoria_texts_en"
+                )
             all_t = panic + euph
             vecs, _, _ = await embed_texts(
                 base_url=self._settings.social_inference_base_url,
@@ -77,7 +83,9 @@ class SocialStreamWorker:
                 cache_ttl_sec=self._settings.social_embed_cache_ttl_sec,
             )
             if any(v is None for v in vecs):
-                raise RuntimeError("Referenz-Embeddings unvollstaendig (inference-server pruefen)")
+                raise RuntimeError(
+                    "Referenz-Embeddings unvollstaendig (inference-server pruefen)"
+                )
             n_p = len(panic)
             panic_vecs = [vecs[i] for i in range(n_p)]
             euph_vecs = [vecs[i] for i in range(n_p, len(vecs))]
@@ -86,27 +94,44 @@ class SocialStreamWorker:
                 euph_vecs,
                 roll_alpha=self._settings.social_roll_alpha,
             )
-            self._pipeline = SocialSentimentPipeline(self._settings, self._bus, redis, agg)
+            self._pipeline = SocialSentimentPipeline(
+                self._settings, self._bus, redis, agg
+            )
         except Exception as exc:
-            self._logger.exception("SocialStreamWorker: Bootstrap fehlgeschlagen: %s", exc)
+            self._logger.exception(
+                "SocialStreamWorker: Bootstrap fehlgeschlagen: %s", exc
+            )
             self._stats["social_last_error"] = str(exc)[:500]
             return
 
-        if self._settings.social_x_enabled and (self._settings.twitter_bearer_token or "").strip():
+        if (
+            self._settings.social_x_enabled
+            and (self._settings.twitter_bearer_token or "").strip()
+        ):
             x = XStreamAdapter(
                 bearer_token=self._settings.twitter_bearer_token or "",
                 rule_value=self._settings.social_x_rule_value,
                 replace_rules_on_start=self._settings.social_x_replace_rules_on_start,
             )
-            self._tasks.append(asyncio.create_task(x.run(self._queue, self._stop), name="social-x-stream"))
+            self._tasks.append(
+                asyncio.create_task(
+                    x.run(self._queue, self._stop), name="social-x-stream"
+                )
+            )
         elif self._settings.social_x_enabled:
-            self._logger.warning("SOCIAL_X_ENABLED ohne TWITTER_BEARER_TOKEN — X-Stream aus")
+            self._logger.warning(
+                "SOCIAL_X_ENABLED ohne TWITTER_BEARER_TOKEN — X-Stream aus"
+            )
 
         if self._settings.social_telegram_enabled:
             tid = self._settings.telegram_api_id
             th = (self._settings.telegram_api_hash or "").strip()
             ts = (self._settings.telegram_session_string or "").strip()
-            chans = [c.strip() for c in self._settings.telegram_alpha_channels.split(",") if c.strip()]
+            chans = [
+                c.strip()
+                for c in self._settings.telegram_alpha_channels.split(",")
+                if c.strip()
+            ]
             if tid and th and ts and chans:
                 tg = TelegramStreamAdapter(
                     api_id=int(tid),
@@ -115,14 +140,18 @@ class SocialStreamWorker:
                     channel_specs=chans,
                 )
                 self._tasks.append(
-                    asyncio.create_task(tg.run(self._queue, self._stop), name="social-telegram-stream")
+                    asyncio.create_task(
+                        tg.run(self._queue, self._stop), name="social-telegram-stream"
+                    )
                 )
             else:
                 self._logger.warning(
                     "SOCIAL_TELEGRAM_ENABLED aber API_ID/HASH/SESSION/Kanaele unvollstaendig — Telegram aus"
                 )
 
-        self._tasks.append(asyncio.create_task(self._consume_loop(), name="social-consume"))
+        self._tasks.append(
+            asyncio.create_task(self._consume_loop(), name="social-consume")
+        )
 
     async def _consume_loop(self) -> None:
         assert self._pipeline is not None

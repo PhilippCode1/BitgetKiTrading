@@ -52,5 +52,8 @@ def test_required_live_blocker_alerts_exist_with_severity_and_runbook() -> None:
         assert name in alerts, f"alert missing: {name}"
         labels = alerts[name].get("labels") or {}
         ann = alerts[name].get("annotations") or {}
-        assert str(labels.get("severity") or "").strip() in {"warning", "critical"}, f"missing severity: {name}"
+        assert str(labels.get("severity") or "").strip() in {
+            "warning",
+            "critical",
+        }, f"missing severity: {name}"
         assert str(ann.get("runbook") or "").strip(), f"missing runbook: {name}"

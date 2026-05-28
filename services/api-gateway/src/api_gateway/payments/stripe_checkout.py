@@ -7,9 +7,8 @@ from typing import Any
 from uuid import UUID
 
 import stripe
-from stripe import SignatureVerificationError, StripeError
-
 from config.gateway_settings import GatewaySettings
+from stripe import SignatureVerificationError, StripeError
 
 
 def stripe_session_create(
@@ -25,7 +24,9 @@ def stripe_session_create(
     if not secret:
         raise RuntimeError("stripe secret missing")
     stripe.api_key = secret
-    types = [x.strip() for x in settings.payment_stripe_method_types.split(",") if x.strip()]
+    types = [
+        x.strip() for x in settings.payment_stripe_method_types.split(",") if x.strip()
+    ]
     if not types:
         types = ["card"]
     cur = (currency or "USD").lower()
@@ -35,7 +36,9 @@ def stripe_session_create(
     success = settings.payment_stripe_success_url.strip()
     cancel = settings.payment_stripe_cancel_url.strip()
     if not success or not cancel:
-        raise ValueError("PAYMENT_STRIPE_SUCCESS_URL and PAYMENT_STRIPE_CANCEL_URL required")
+        raise ValueError(
+            "PAYMENT_STRIPE_SUCCESS_URL and PAYMENT_STRIPE_CANCEL_URL required"
+        )
     joiner = "&" if "?" in success else "?"
     success_url = f"{success}{joiner}session_id={{CHECKOUT_SESSION_ID}}"
     session = stripe.checkout.Session.create(
@@ -101,7 +104,9 @@ def retrieve_checkout_session_for_reconciliation(
     return None
 
 
-def stripe_session_retrieve_url(settings: GatewaySettings, session_id: str) -> str | None:
+def stripe_session_retrieve_url(
+    settings: GatewaySettings, session_id: str
+) -> str | None:
     secret = settings.payment_stripe_secret_key.strip()
     if not secret:
         return None

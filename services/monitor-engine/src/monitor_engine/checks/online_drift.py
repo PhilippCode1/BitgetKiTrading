@@ -10,7 +10,9 @@ from monitor_engine.checks.services_http import ServiceCheckResult
 
 def load_online_drift_service_check(database_url: str) -> list[ServiceCheckResult]:
     try:
-        with psycopg.connect(database_url, row_factory=dict_row, connect_timeout=5) as conn:
+        with psycopg.connect(
+            database_url, row_factory=dict_row, connect_timeout=5
+        ) as conn:
             row = conn.execute(
                 """
                 SELECT effective_action, computed_at, lookback_minutes, breakdown_json

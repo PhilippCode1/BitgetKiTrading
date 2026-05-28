@@ -25,13 +25,30 @@ def test_owner_admin_and_gateway_mutation_rules_are_visible() -> None:
     payload = build_report_payload()
     by_id = {row["id"]: row for row in payload["scenarios"]}
     assert by_id["missing_auth_blocks_admin"]["blocks_sensitive_action"] is True
-    assert by_id["single_admin_subject_mismatch_blocks"]["blocks_sensitive_action"] is True
-    assert by_id["legacy_admin_token_forbidden_in_production"]["blocks_sensitive_action"] is True
-    assert by_id["read_role_cannot_mutate_live_broker"]["blocks_sensitive_action"] is True
+    assert (
+        by_id["single_admin_subject_mismatch_blocks"]["blocks_sensitive_action"] is True
+    )
+    assert (
+        by_id["legacy_admin_token_forbidden_in_production"]["blocks_sensitive_action"]
+        is True
+    )
+    assert (
+        by_id["read_role_cannot_mutate_live_broker"]["blocks_sensitive_action"] is True
+    )
     assert by_id["customer_portal_cannot_admin"]["blocks_sensitive_action"] is True
     assert by_id["public_secret_env_blocked"]["blocks_sensitive_action"] is True
-    assert by_id["operator_role_requires_manual_action_for_release"]["manual_action_required"] is True
-    assert by_id["emergency_role_requires_manual_action_for_flatten"]["manual_action_required"] is True
+    assert (
+        by_id["operator_role_requires_manual_action_for_release"][
+            "manual_action_required"
+        ]
+        is True
+    )
+    assert (
+        by_id["emergency_role_requires_manual_action_for_flatten"][
+            "manual_action_required"
+        ]
+        is True
+    )
     assert by_id["auth_errors_are_redacted"]["secret_safe"] is True
 
 
@@ -55,7 +72,9 @@ def test_cli_writes_markdown_and_json(tmp_path: Path) -> None:
     )
     assert completed.returncode == 0
     assert "admin_gateway_security_report" in completed.stdout
-    assert "# Admin / API-Gateway Security Evidence Report" in out_md.read_text(encoding="utf-8")
+    assert "# Admin / API-Gateway Security Evidence Report" in out_md.read_text(
+        encoding="utf-8"
+    )
     payload = json.loads(out_json.read_text(encoding="utf-8"))
     assert payload["scenario_count"] == 9
     assert payload["missing_required_scenarios"] == []

@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -79,12 +80,21 @@ def build_evidence(
             allow_demo_money=allow_demo_money,
         )
 
-    blockers = _merge_blockers(readiness, private_readonly, order_dry_run, demo_order_smoke)
-    warnings = _merge_warnings(readiness, private_readonly, order_dry_run, demo_order_smoke)
-    demo_order_executed = bool(demo_order_smoke and demo_order_smoke.checks.get("demo_order_executed") == "true")
+    blockers = _merge_blockers(
+        readiness, private_readonly, order_dry_run, demo_order_smoke
+    )
+    warnings = _merge_warnings(
+        readiness, private_readonly, order_dry_run, demo_order_smoke
+    )
+    demo_order_executed = bool(
+        demo_order_smoke
+        and demo_order_smoke.checks.get("demo_order_executed") == "true"
+    )
     private_readonly_ok = bool(private_readonly and private_readonly.result != "FAIL")
     readiness_ok = readiness.result != "FAIL"
-    dry_run_ok = bool(order_dry_run and order_dry_run.result != "FAIL") or not run_order_dry_run
+    dry_run_ok = (
+        bool(order_dry_run and order_dry_run.result != "FAIL") or not run_order_dry_run
+    )
 
     if blockers:
         result = "FAILED"
@@ -95,6 +105,11 @@ def build_evidence(
     else:
         result = "NOT_ENOUGH_EVIDENCE"
 
+    demo_stage = "implemented"
+    if result == "DEMO_READY":
+        demo_stage = "demo_ready"
+    elif result == "DEMO_VERIFIED":
+        demo_stage = "demo_order_verified"
     return DemoTradingEvidence(
         result=result,
         live_trading_allowed=False,
@@ -103,12 +118,21 @@ def build_evidence(
         warnings=warnings,
         checks={
             "readonly_result": readiness.result,
-            "private_readonly_result": private_readonly.result if private_readonly else "not_run",
-            "order_dry_run_result": order_dry_run.result if order_dry_run else "not_run",
-            "demo_order_smoke_result": demo_order_smoke.result if demo_order_smoke else "not_run",
+            "private_readonly_result": (
+                private_readonly.result if private_readonly else "not_run"
+            ),
+            "order_dry_run_result": (
+                order_dry_run.result if order_dry_run else "not_run"
+            ),
+            "demo_order_smoke_result": (
+                demo_order_smoke.result if demo_order_smoke else "not_run"
+            ),
             "demo_order_executed": str(demo_order_executed).lower(),
             "live_trading_allowed": "false",
             "private_live_allowed": "false",
+            "full_autonomous_live": "false",
+            "live_verified": "false",
+            "demo_evidence_stage": demo_stage,
         },
         readiness=_report_dict(readiness),
         private_readonly=_report_dict(private_readonly) if private_readonly else None,
@@ -124,6 +148,7 @@ def to_markdown(rep: DemoTradingEvidence) -> str:
         f"- Ergebnis: `{rep.result}`",
         f"- Demo verifiziert: `{str(rep.demo_verified).lower()}`",
         f"- Echtes Live-Trading erlaubt: `{str(rep.live_trading_allowed).lower()}`",
+        f"- Demo-Evidence-Stufe: `{rep.checks.get('demo_evidence_stage', 'implemented')}`",
         "- Hinweis: Demo-Evidence ersetzt keine private_live_allowed-Freigabe.",
         "",
         "## Checks",
@@ -152,8 +177,13 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--order-dry-run", action="store_true")
     p.add_argument("--demo-order-smoke", action="store_true")
     p.add_argument("--i-understand-this-uses-demo-money", action="store_true")
-    p.add_argument("--output-md", type=Path, default=Path("reports/demo_trading_evidence.md"))
-    p.add_argument("--output-json", type=Path, default=Path("reports/demo_trading_evidence.json"))
+    p.add_argument(
+        "--output-md", type=Path, default=Path("reports/demo_trading_evidence.md")
+    )
+    p.add_argument(
+        "--output-json", type=Path, default=Path("reports/demo_trading_evidence.json")
+    )
+    p.add_argument("--archive-success", action="store_true")
     p.add_argument("--json", action="store_true")
     args = p.parse_args(argv)
 
@@ -175,13 +205,31 @@ def main(argv: list[str] | None = None) -> int:
 
     args.output_md.parent.mkdir(parents=True, exist_ok=True)
     args.output_json.parent.mkdir(parents=True, exist_ok=True)
-    args.output_md.write_text(to_markdown(rep), encoding="utf-8")
-    args.output_json.write_text(json.dumps(asdict(rep), ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
+    md_content = to_markdown(rep)
+    json_content = json.dumps(asdict(rep), ensure_ascii=False, indent=2, sort_keys=True)
+    args.output_md.write_text(md_content, encoding="utf-8")
+    args.output_json.write_text(json_content, encoding="utf-8")
+    if args.archive_success and rep.result == "DEMO_VERIFIED":
+        stable_md = args.output_md.with_name("demo_trading_evidence_DEMO_VERIFIED.md")
+        stable_json = args.output_json.with_name(
+            "demo_trading_evidence_DEMO_VERIFIED.json"
+        )
+        stable_md.write_text(md_content, encoding="utf-8")
+        stable_json.write_text(json_content, encoding="utf-8")
+        ts = time.strftime("%Y%m%d_%H%M%S")
+        ts_md = args.output_md.with_name(f"demo_trading_evidence_DEMO_VERIFIED_{ts}.md")
+        ts_json = args.output_json.with_name(
+            f"demo_trading_evidence_DEMO_VERIFIED_{ts}.json"
+        )
+        ts_md.write_text(md_content, encoding="utf-8")
+        ts_json.write_text(json_content, encoding="utf-8")
 
     if args.json:
         print(json.dumps(asdict(rep), ensure_ascii=False, indent=2, sort_keys=True))
     else:
-        print(f"demo_trading_evidence: result={rep.result} demo_verified={str(rep.demo_verified).lower()}")
+        print(
+            f"demo_trading_evidence: result={rep.result} demo_verified={str(rep.demo_verified).lower()}"
+        )
     return 1 if rep.result == "FAILED" else 0
 
 

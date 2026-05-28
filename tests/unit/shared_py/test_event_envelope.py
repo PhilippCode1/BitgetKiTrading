@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from shared_py.eventbus import STREAM_SYSTEM_ALERT, EventEnvelope
 from shared_py.bitget.instruments import BitgetInstrumentIdentity
+from shared_py.eventbus import STREAM_SYSTEM_ALERT, EventEnvelope
 
 
 def test_system_alert_stream_mapping() -> None:

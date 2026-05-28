@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from typing import Any
 
+from shared_py.model_contracts import extract_primary_feature_snapshot
+
 from learning_engine.analytics import error_patterns, promotion_gates
 from learning_engine.config import LearningEngineSettings
-from shared_py.model_contracts import extract_primary_feature_snapshot
 
 
 def build_signal_and_risk_recommendations(
@@ -17,7 +18,9 @@ def build_signal_and_risk_recommendations(
     if n_loss == 0:
         n_loss = 1
 
-    high_tf_conflict_losses = error_patterns.label_frequency_on_losses(rows, "HIGH_TF_CONFLICT")
+    high_tf_conflict_losses = error_patterns.label_frequency_on_losses(
+        rows, "HIGH_TF_CONFLICT"
+    )
     if high_tf_conflict_losses >= 3 and high_tf_conflict_losses / n_loss >= 0.2:
         recs.append(
             {
@@ -79,14 +82,18 @@ def build_promotion_recommendations(
         out.append(
             {
                 "type": "retire",
-                "payload": promotion_gates.retire_payload(strategy_id, strategy_name, metrics),
+                "payload": promotion_gates.retire_payload(
+                    strategy_id, strategy_name, metrics
+                ),
             }
         )
     elif promotion_gates.should_suggest_promote(metrics, settings):
         out.append(
             {
                 "type": "promotion",
-                "payload": promotion_gates.promote_payload(strategy_id, strategy_name, metrics),
+                "payload": promotion_gates.promote_payload(
+                    strategy_id, strategy_name, metrics
+                ),
             }
         )
     return out

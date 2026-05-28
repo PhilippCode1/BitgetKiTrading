@@ -70,7 +70,11 @@ def build_auto_plan_bundle(
     try:
         sp = Decimal(str(stop_plan["stop_price"]))
     except Exception:
-        sp = entry * (Decimal("1") - Decimal("0.01")) if side == "long" else entry * Decimal("1.01")
+        sp = (
+            entry * (Decimal("1") - Decimal("0.01"))
+            if side == "long"
+            else entry * Decimal("1.01")
+        )
     rr = estimate_rr(entry, side, sp, tp_plan)
     score, warns = compute_stop_quality(
         entry=entry,

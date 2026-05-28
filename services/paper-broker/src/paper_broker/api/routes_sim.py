@@ -6,7 +6,11 @@ from typing import Any
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from paper_broker.engine.broker import PaperBrokerService, SimFundingState, SimMarketState
+from paper_broker.engine.broker import (
+    PaperBrokerService,
+    SimFundingState,
+    SimMarketState,
+)
 
 
 class SimMarketBody(BaseModel):

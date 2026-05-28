@@ -23,7 +23,9 @@ def _job_display_names() -> dict[str, str]:
         if not isinstance(spec, dict):
             continue
         name = spec.get("name")
-        out[job_id] = str(name).strip() if isinstance(name, str) and name.strip() else job_id
+        out[job_id] = (
+            str(name).strip() if isinstance(name, str) and name.strip() else job_id
+        )
     return out
 
 

@@ -193,7 +193,9 @@ def validate_matrix(data: dict[str, Any], *, root: Path = ROOT) -> list[Evidence
 
         for list_field in ("required_evidence", "evidence_files", "required_commands"):
             value = category.get(list_field)
-            if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+            if not isinstance(value, list) or not all(
+                isinstance(item, str) for item in value
+            ):
                 _issue(
                     issues,
                     "invalid_list_field",
@@ -220,7 +222,9 @@ def validate_matrix(data: dict[str, Any], *, root: Path = ROOT) -> list[Evidence
         evidence_files = category.get("evidence_files")
         if isinstance(evidence_files, list):
             for evidence_file in evidence_files:
-                if isinstance(evidence_file, str) and _evidence_path_missing(evidence_file, root=root):
+                if isinstance(evidence_file, str) and _evidence_path_missing(
+                    evidence_file, root=root
+                ):
                     _issue(
                         issues,
                         "missing_evidence_file",
@@ -309,7 +313,9 @@ def strict_failed(issues: list[EvidenceIssue]) -> bool:
         "missing_required_field",
         "unknown_status",
     }
-    return any(issue.severity == "error" or issue.code in strict_codes for issue in issues)
+    return any(
+        issue.severity == "error" or issue.code in strict_codes for issue in issues
+    )
 
 
 def render_text(summary: dict[str, Any]) -> str:
@@ -329,7 +335,10 @@ def render_text(summary: dict[str, Any]) -> str:
 
 def _normalize_report_text(text: str) -> str:
     """Vergleich robust gegen CRLF/LF und finales Newline."""
-    return "\n".join(text.replace("\r\n", "\n").replace("\r", "\n").splitlines()).rstrip() + "\n"
+    return (
+        "\n".join(text.replace("\r\n", "\n").replace("\r", "\n").splitlines()).rstrip()
+        + "\n"
+    )
 
 
 def render_markdown(data: dict[str, Any], summary: dict[str, Any]) -> str:
@@ -385,7 +394,9 @@ def render_markdown(data: dict[str, Any], summary: dict[str, Any]) -> str:
         ]
     )
     for category in _categories(data):
-        evidence_files = ", ".join(f"`{item}`" for item in category.get("evidence_files", []))
+        evidence_files = ", ".join(
+            f"`{item}`" for item in category.get("evidence_files", [])
+        )
         lines.append(
             "| {id} | `{status}` | {blocks} | {evidence} |".format(
                 id=category.get("id"),
@@ -483,7 +494,11 @@ def main(argv: list[str] | None = None) -> int:
             return 1
 
     if args.json:
-        print(json.dumps({"categories": _categories(data), **summary}, indent=2, sort_keys=True))
+        print(
+            json.dumps(
+                {"categories": _categories(data), **summary}, indent=2, sort_keys=True
+            )
+        )
     else:
         print(render_text(summary))
 

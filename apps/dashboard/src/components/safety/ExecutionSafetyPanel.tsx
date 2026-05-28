@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 
+import { useI18n } from "@/components/i18n/I18nProvider";
+
 type ActionId =
   | "kill_switch_arm"
   | "kill_switch_release"
@@ -11,44 +13,44 @@ type ActionId =
 
 type ActionSpec = {
   id: ActionId;
-  title: string;
+  titleKey: string;
   dangerous: boolean;
   endpoint: string | null;
   endpointAvailable: boolean;
 };
 
-const ACTIONS: readonly ActionSpec[] = [
+const ACTION_SPECS: readonly ActionSpec[] = [
   {
     id: "kill_switch_arm",
-    title: "Kill-Switch armieren",
+    titleKey: "console.executionSafetyPanel.killArm",
     dangerous: true,
     endpoint: "/api/dashboard/live-broker/kill-switch/arm",
     endpointAvailable: false,
   },
   {
     id: "kill_switch_release",
-    title: "Kill-Switch freigeben",
+    titleKey: "console.executionSafetyPanel.killRelease",
     dangerous: true,
     endpoint: "/api/dashboard/live-broker/kill-switch/release",
     endpointAvailable: false,
   },
   {
     id: "safety_latch_release",
-    title: "Safety-Latch freigeben",
+    titleKey: "console.executionSafetyPanel.latchRelease",
     dangerous: true,
     endpoint: "/api/dashboard/live-broker/safety-latch/release",
     endpointAvailable: false,
   },
   {
     id: "cancel_all",
-    title: "Cancel-All (kontrolliert)",
+    titleKey: "console.executionSafetyPanel.cancelAll",
     dangerous: true,
     endpoint: "/api/dashboard/live-broker/orders/cancel-all",
     endpointAvailable: false,
   },
   {
     id: "emergency_flatten",
-    title: "Emergency-Flatten (reduce-only)",
+    titleKey: "console.executionSafetyPanel.emergencyFlatten",
     dangerous: true,
     endpoint: "/api/dashboard/live-broker/emergency-flatten",
     endpointAvailable: false,
@@ -60,15 +62,18 @@ export function actionDisabledReason(params: {
   killSwitchActive: boolean;
   safetyLatchActive: boolean;
   reconcileOk: boolean;
+  t: (key: string) => string;
 }): string | null {
-  const { action, killSwitchActive, safetyLatchActive, reconcileOk } = params;
-  if (!action.endpointAvailable) return "Endpoint fehlt, Aktion ist sicher deaktiviert.";
-  if (!reconcileOk) return "Reconcile nicht ok, Aktion blockiert.";
+  const { action, killSwitchActive, safetyLatchActive, reconcileOk, t } =
+    params;
+  if (!action.endpointAvailable)
+    return t("console.executionSafetyPanel.reasonEndpointMissing");
+  if (!reconcileOk) return t("console.executionSafetyPanel.reasonReconcile");
   if (killSwitchActive && action.id !== "kill_switch_release") {
-    return "Kill-Switch aktiv, normale Aktionen sind blockiert.";
+    return t("console.executionSafetyPanel.reasonKillSwitch");
   }
   if (safetyLatchActive && action.id !== "safety_latch_release") {
-    return "Safety-Latch aktiv, normale Aktionen sind blockiert.";
+    return t("console.executionSafetyPanel.reasonSafetyLatch");
   }
   return null;
 }
@@ -82,10 +87,11 @@ export function ExecutionSafetyPanel({
   safetyLatchActive: boolean;
   reconcileOk: boolean;
 }) {
+  const { t } = useI18n();
   const [selected, setSelected] = useState<ActionId | null>(null);
   const [confirmed, setConfirmed] = useState(false);
   const selectedAction = useMemo(
-    () => ACTIONS.find((a) => a.id === selected) ?? null,
+    () => ACTION_SPECS.find((a) => a.id === selected) ?? null,
     [selected],
   );
   const disabledReason = selectedAction
@@ -94,59 +100,56 @@ export function ExecutionSafetyPanel({
         killSwitchActive,
         safetyLatchActive,
         reconcileOk,
+        t,
       })
     : null;
 
   return (
     <div className="panel">
-      <h2>Safety Panel</h2>
-      <p className="muted small">
-        Gefaehrliche Aktionen brauchen immer Kontext, Bestaetigung und sicheren Endpoint.
-      </p>
+      <h2>{t("console.executionSafetyPanel.title")}</h2>
+      <p className="muted small">{t("console.executionSafetyPanel.lead")}</p>
       <ul className="news-list">
-        {ACTIONS.map((action) => {
+        {ACTION_SPECS.map((action) => {
           const reason = actionDisabledReason({
             action,
             killSwitchActive,
             safetyLatchActive,
             reconcileOk,
+            t,
           });
           const disabled = Boolean(reason);
           return (
             <li key={action.id}>
               <button
                 type="button"
-                className={action.dangerous ? "public-btn danger" : "public-btn ghost"}
-                title="Bestaetigungsdialog oeffnen"
+                className={
+                  action.dangerous ? "public-btn danger" : "public-btn ghost"
+                }
                 onClick={() => {
                   setSelected(action.id);
                   setConfirmed(false);
                 }}
               >
-                {action.title} pruefen
+                {t(action.titleKey)}
               </button>
               <span className="muted small">
                 {" "}
-                — {disabled ? reason : "Endpoint vorhanden, weiterhin nur mit Bestaetigung."}
+                — {disabled ? reason : t("console.safetyCommandActions.select")}
               </span>
             </li>
           );
         })}
       </ul>
       {selectedAction ? (
-        <div className="panel" role="dialog" aria-label="Bestaetigung fuer Sicherheitsaktion">
-          <h3>Bestaetigung erforderlich</h3>
-          <p>
-            Du willst <strong>{selectedAction.title}</strong> ausfuehren. Diese Aktion ist
-            potenziell gefaehrlich und darf niemals ohne klaren Sicherheitskontext laufen.
-          </p>
+        <div className="panel" style={{ marginTop: "1rem" }}>
+          <h3>{t(selectedAction.titleKey)}</h3>
           <label className="muted small">
             <input
               type="checkbox"
               checked={confirmed}
               onChange={(e) => setConfirmed(e.target.checked)}
             />{" "}
-            Ich bestaetige den Modus, die Blocker und den Notfallkontext.
+            {t("console.executionSafetyPanel.confirmCheckbox")}
           </label>
           <div style={{ marginTop: 10 }}>
             <button
@@ -154,12 +157,13 @@ export function ExecutionSafetyPanel({
               className="public-btn danger"
               disabled={!confirmed || Boolean(disabledReason)}
               aria-disabled={!confirmed || Boolean(disabledReason)}
-              title={disabledReason ?? "Nur freigeben, wenn Backend sicher verdrahtet ist"}
             >
-              Aktion ausfuehren (derzeit deaktiviert)
+              {t("console.executionSafetyPanel.executeDisabled")}
             </button>
           </div>
-          {disabledReason ? <p className="muted small">{disabledReason}</p> : null}
+          {disabledReason ? (
+            <p className="muted small">{disabledReason}</p>
+          ) : null}
         </div>
       ) : null}
     </div>

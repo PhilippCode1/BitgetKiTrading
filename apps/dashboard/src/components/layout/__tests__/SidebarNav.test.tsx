@@ -30,7 +30,9 @@ describe("SidebarNav", () => {
   it("zeigt auch mit Admin-Berechtigung nur Main-Console-Module", () => {
     renderNav(<SidebarNav showAdminNav />);
     expect(screen.queryByRole("link", { name: /Admin cockpit/i })).toBeNull();
-    expect(screen.getByRole("link", { name: /^Settings$/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /^Settings$/i }),
+    ).toBeInTheDocument();
   });
 
   it("Pro: zentrale Main-Console-Navigation ohne Legacy-Integrationslink", () => {

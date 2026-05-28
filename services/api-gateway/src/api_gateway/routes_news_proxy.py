@@ -36,7 +36,9 @@ def news_scored(
     try:
         dsn = get_database_url()
         with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
-            items = fetch_news_scored(conn, min_score=min_score, sentiment=sentiment, limit=lim)
+            items = fetch_news_scored(
+                conn, min_score=min_score, sentiment=sentiment, limit=lim
+            )
         es = len(items) == 0
         return merge_read_envelope(
             {"items": items, "limit": lim},

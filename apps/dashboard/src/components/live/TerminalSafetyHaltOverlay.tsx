@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { useI18n } from "@/components/i18n/I18nProvider";
-import { fetchSystemHealth } from "@/lib/api";
+import { fetchSystemHealth } from "@/lib/api-client";
 import {
   isLiveBrokerGlobalHaltFromHealth,
   SYSTEM_HEALTH_QUERY_KEY,

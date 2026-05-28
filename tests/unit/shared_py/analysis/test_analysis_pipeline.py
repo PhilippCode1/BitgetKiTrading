@@ -10,7 +10,10 @@ from shared_py.analysis import (
     sanitize_ticker_snapshot_for_family,
     validate_event_vs_resolved_metadata,
 )
-from shared_py.bitget.instruments import BitgetInstrumentCatalogEntry, BitgetInstrumentIdentity
+from shared_py.bitget.instruments import (
+    BitgetInstrumentCatalogEntry,
+    BitgetInstrumentIdentity,
+)
 
 
 def _identity(**kwargs: object) -> BitgetInstrumentIdentity:
@@ -63,8 +66,16 @@ def test_family_foreign_namespace_violation() -> None:
 
 
 def test_validate_event_vs_metadata_mismatch() -> None:
-    ev = _identity(market_family="futures", product_type="USDT-FUTURES", public_ws_inst_type="USDT-FUTURES")
-    row = _entry(market_family="futures", product_type="COIN-FUTURES", public_ws_inst_type="COIN-FUTURES")
+    ev = _identity(
+        market_family="futures",
+        product_type="USDT-FUTURES",
+        public_ws_inst_type="USDT-FUTURES",
+    )
+    row = _entry(
+        market_family="futures",
+        product_type="COIN-FUTURES",
+        public_ws_inst_type="COIN-FUTURES",
+    )
     issues = validate_event_vs_resolved_metadata(ev, row)
     assert "metadata_product_type_mismatch" in issues
 

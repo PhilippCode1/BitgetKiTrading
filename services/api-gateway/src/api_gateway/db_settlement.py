@@ -350,9 +350,7 @@ def create_settlement_request(
     return fetch_settlement(conn, settlement_id=sid)
 
 
-def _current_status(
-    conn: psycopg.Connection[Any], settlement_id: UUID
-) -> str | None:
+def _current_status(conn: psycopg.Connection[Any], settlement_id: UUID) -> str | None:
     row = conn.execute(
         """
         SELECT status FROM app.profit_fee_settlement_request

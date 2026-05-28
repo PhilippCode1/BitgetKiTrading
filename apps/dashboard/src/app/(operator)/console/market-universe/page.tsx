@@ -172,10 +172,9 @@ export default async function MarketUniversePage({
       {!data ? null : (
         <>
           <div className="panel">
-            <h2>Asset-Universum: Discovery, Quarantaene und Live-Gates</h2>
+            <h2>{t("pages.marketUniverse.discoveryTitle")}</h2>
             <p className="muted small">
-              Diese Tabelle ist fail-closed: Ohne valide Discovery-, Daten- und
-              Evidence-Lage bleibt Live blockiert.
+              {t("pages.marketUniverse.discoveryLead")}
             </p>
             {(() => {
               const rows = buildAssetUniverseConsoleRows(data.instruments);
@@ -184,20 +183,42 @@ export default async function MarketUniversePage({
                   <table className="data-table">
                     <thead>
                       <tr>
-                        <th>Symbol</th>
-                        <th>Instrument-ID</th>
-                        <th>Market Family</th>
-                        <th>ProductType</th>
-                        <th>MarginCoin</th>
-                        <th>Status</th>
-                        <th>Datenqualitaet</th>
-                        <th>Liquiditaet</th>
-                        <th>Spread</th>
-                        <th>Funding/OI</th>
-                        <th>Risk Tier</th>
-                        <th>Asset-Tier</th>
-                        <th>Modus erlaubt</th>
-                        <th>Blockgruende</th>
+                        <th>{t("pages.marketUniverse.discoveryThSymbol")}</th>
+                        <th>
+                          {t("pages.marketUniverse.discoveryThInstrumentId")}
+                        </th>
+                        <th>
+                          {t("pages.marketUniverse.discoveryThMarketFamily")}
+                        </th>
+                        <th>
+                          {t("pages.marketUniverse.discoveryThProductType")}
+                        </th>
+                        <th>
+                          {t("pages.marketUniverse.discoveryThMarginCoin")}
+                        </th>
+                        <th>{t("pages.marketUniverse.discoveryThStatus")}</th>
+                        <th>
+                          {t("pages.marketUniverse.discoveryThDataQuality")}
+                        </th>
+                        <th>
+                          {t("pages.marketUniverse.discoveryThLiquidity")}
+                        </th>
+                        <th>{t("pages.marketUniverse.discoveryThSpread")}</th>
+                        <th>
+                          {t("pages.marketUniverse.discoveryThFundingOi")}
+                        </th>
+                        <th>
+                          {t("pages.marketUniverse.discoveryThRiskTier")}
+                        </th>
+                        <th>
+                          {t("pages.marketUniverse.discoveryThAssetTier")}
+                        </th>
+                        <th>
+                          {t("pages.marketUniverse.discoveryThModeAllowed")}
+                        </th>
+                        <th>
+                          {t("pages.marketUniverse.discoveryThBlockReasons")}
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -224,7 +245,9 @@ export default async function MarketUniversePage({
                           </td>
                           <td>
                             {row.blockReasons.length === 0 ? (
-                              <span className="muted">Keine</span>
+                              <span className="muted">
+                                {t("pages.marketUniverse.discoveryNoBlockReasons")}
+                              </span>
                             ) : (
                               <ul className="news-list">
                                 {row.blockReasons.map((reason) => (

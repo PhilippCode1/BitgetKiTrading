@@ -4,7 +4,7 @@ import hashlib
 import logging
 from typing import Any
 
-from shared_py.eventbus import EventEnvelope, RedisStreamBus, STREAM_LLM_FAILED
+from shared_py.eventbus import STREAM_LLM_FAILED, EventEnvelope, RedisStreamBus
 
 logger = logging.getLogger("llm_orchestrator.events")
 

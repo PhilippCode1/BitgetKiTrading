@@ -106,8 +106,11 @@ if [[ -z "${COMPOSE_FILES+x}" ]]; then
     local)
       COMPOSE_FILES=(-f docker-compose.yml -f docker-compose.local-publish.yml)
       ;;
-    shadow|production)
+    shadow)
       COMPOSE_FILES=(-f docker-compose.yml)
+      ;;
+    production)
+      COMPOSE_FILES=(-f docker-compose.yml -f docker-compose.production-ops.yml)
       ;;
   esac
 fi
@@ -138,6 +141,13 @@ if [[ -f tools/validate_env_profile.py ]]; then
     production) PY_PROF=production ;;
   esac
   "$PYTHON_BIN" tools/validate_env_profile.py --env-file "$ENV_FILE" --profile "$PY_PROF" || exit 1
+fi
+
+if [[ "$PROFILE" == "production" && -f scripts/go_live_check.sh ]]; then
+  echo "==> Go-Live ENV/Preflight (Production)"
+  if ! bash scripts/go_live_check.sh "$ENV_FILE"; then
+    echo "WARN: Go-Live-Check meldet Fehler — LIVE-Trading blockiert bis behoben." >&2
+  fi
 fi
 
 if [[ "$PROFILE" == "local" && -f scripts/mint_dashboard_gateway_jwt.py ]]; then
@@ -271,12 +281,33 @@ print("external datastores ok")
 PY
 }
 
+migration_uses_compose_service() {
+  [[ "$PROFILE" == "production" && "$DATASTORE_MODE" == "compose" ]]
+}
+
 run_migrations() {
   if [[ "$RUN_MIGRATIONS" != "true" ]]; then
     echo "==> Migrationen uebersprungen (--skip-migrations)"
     return
   fi
-  echo "==> Migrationen anwenden (kanonisch + optional demo-seeds)"
+
+  if migration_uses_compose_service; then
+    echo "==> Migrationen: Pfad=compose-service-migrate (Production + Compose-Postgres)"
+    echo "    Grund: Host-DATABASE_URL muss Postgres nicht erreichen; migrate laeuft im Docker-Netz."
+    if [[ "$BUILD_IMAGES" == "true" ]]; then
+      echo "    Baue migrate-Image (einmalig vor run) ..."
+      compose build migrate
+    fi
+    compose run --rm migrate
+    return
+  fi
+
+  echo "==> Migrationen: Pfad=host-python (Profil=$PROFILE, datastores=$DATASTORE_MODE)"
+  echo "    Kanonisch + optional demo-seeds via infra/migrate.py und DATABASE_URL vom Host."
+  if [[ -z "${DATABASE_URL:-}" ]]; then
+    echo "FEHLER: DATABASE_URL fehlt fuer Host-Migrationen (externer Datastore oder Host-DSN setzen)." >&2
+    exit 1
+  fi
   DATABASE_URL="$DATABASE_URL" "$PYTHON_BIN" infra/migrate.py
   DATABASE_URL="$DATABASE_URL" "$PYTHON_BIN" infra/migrate.py --demo-seeds
 }

@@ -4,20 +4,20 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 import httpx
-
 from shared_py.bitget import build_rest_headers
-from shared_py.bitget.instruments import MarginAccountMode, endpoint_profile_for
+from shared_py.bitget.instruments import MarginAccountMode, MarketFamily, endpoint_profile_for
 
 if TYPE_CHECKING:
     from live_broker.config import LiveBrokerSettings
     from live_broker.execution.models import ExecutionIntentRequest
-    from live_broker.private_rest import BitgetPrivateRestClient
+    from live_broker.private_rest import BitgetPrivateRestClient, BitgetRestResponse
 
 logger = logging.getLogger("live_broker.exchange_client")
 
 _PRIVATE_DETAIL_DE: dict[str, str] = {
     "missing_api_key_or_secret": (
-        "API-Key oder Secret fehlt. Demo: BITGET_DEMO_ENABLED=true sowie BITGET_DEMO_API_KEY und "
+        "API-Key oder Secret fehlt. Demo: BITGET_DEMO_ENABLED=true sowie "
+        "BITGET_DEMO_API_KEY und "
         "BITGET_DEMO_API_SECRET. Live: BITGET_API_KEY und BITGET_API_SECRET."
     ),
     "missing_api_passphrase": (
@@ -30,7 +30,7 @@ _PRIVATE_DETAIL_DE: dict[str, str] = {
 
 
 class BitgetExchangeClient:
-    def __init__(self, settings: "LiveBrokerSettings") -> None:
+    def __init__(self, settings: LiveBrokerSettings) -> None:
         self._settings = settings
 
     def describe(self) -> dict[str, Any]:
@@ -49,13 +49,18 @@ class BitgetExchangeClient:
         }
 
     def private_api_configured(self) -> tuple[bool, str]:
-        if not self._settings.effective_api_key or not self._settings.effective_api_secret:
+        if (
+            not self._settings.effective_api_key
+            or not self._settings.effective_api_secret
+        ):
             return False, "missing_api_key_or_secret"
         if not self._settings.effective_api_passphrase:
             return False, "missing_api_passphrase"
         return True, "ok"
 
-    def probe_exchange(self, private_rest: "BitgetPrivateRestClient | None" = None) -> dict[str, Any]:
+    def probe_exchange(
+        self, private_rest: BitgetPrivateRestClient | None = None
+    ) -> dict[str, Any]:
         public_api_ok = False
         public_detail = "not_checked"
         try:
@@ -84,7 +89,9 @@ class BitgetExchangeClient:
             "market_snapshot": market_snapshot,
         }
         if private_rest is not None:
-            out["credential_profile"] = "demo" if self._settings.bitget_demo_enabled else "live"
+            out["credential_profile"] = (
+                "demo" if self._settings.bitget_demo_enabled else "live"
+            )
             out["credential_isolation_relaxed"] = bool(
                 getattr(self._settings, "bitget_relax_credential_isolation", False)
             )
@@ -133,9 +140,9 @@ class BitgetExchangeClient:
             "index_price": item.get("indexPrice"),
             "bid_price": item.get("bidPr"),
             "ask_price": item.get("askPr"),
-            "request_time": payload.get("requestTime")
-            if isinstance(payload, dict)
-            else None,
+            "request_time": (
+                payload.get("requestTime") if isinstance(payload, dict) else None
+            ),
         }
 
     def get_market_snapshot_for_family(
@@ -147,7 +154,12 @@ class BitgetExchangeClient:
         margin_account_mode: str | None = None,
     ) -> dict[str, Any]:
         """Public Ticker fuer beliebige Marktfamilie (kein Private-Auth)."""
-        fam = str(market_family).lower()
+        raw_family = str(market_family).lower()
+        fam: MarketFamily
+        if raw_family in ("spot", "margin", "futures"):
+            fam = raw_family
+        else:
+            fam = "futures"
         mode: MarginAccountMode = "cash"
         if fam == "margin":
             raw = str(margin_account_mode or self._settings.margin_account_mode).lower()
@@ -190,12 +202,12 @@ class BitgetExchangeClient:
             "index_price": item.get("indexPrice"),
             "bid_price": item.get("bidPr"),
             "ask_price": item.get("askPr"),
-            "request_time": payload.get("requestTime")
-            if isinstance(payload, dict)
-            else None,
+            "request_time": (
+                payload.get("requestTime") if isinstance(payload, dict) else None
+            ),
         }
 
-    def build_order_preview(self, intent: "ExecutionIntentRequest") -> dict[str, Any]:
+    def build_order_preview(self, intent: ExecutionIntentRequest) -> dict[str, Any]:
         side = "buy" if intent.direction == "long" else "sell"
         return {
             "rest_base_url": self._settings.effective_rest_base_url,
@@ -216,3 +228,23 @@ class BitgetExchangeClient:
             "demo_mode": self._settings.bitget_demo_enabled,
             "instrument": self._settings.instrument_identity().model_dump(mode="json"),
         }
+
+    def create_futures_grid_bot(
+        self,
+        private_rest: BitgetPrivateRestClient,
+        body: dict[str, Any],
+        *,
+        priority: bool = False,
+    ) -> BitgetRestResponse:
+        """Schnittstelle zur Erstellung eines Futures Grid Bots."""
+        return private_rest.create_futures_grid_bot(body, priority=priority)
+
+    def cancel_strategy_bot(
+        self,
+        private_rest: BitgetPrivateRestClient,
+        body: dict[str, Any],
+        *,
+        priority: bool = True,
+    ) -> BitgetRestResponse:
+        """Schnittstelle zur Loeschung/Stornierung eines aktiven Bots."""
+        return private_rest.cancel_strategy_bot(body, priority=priority)

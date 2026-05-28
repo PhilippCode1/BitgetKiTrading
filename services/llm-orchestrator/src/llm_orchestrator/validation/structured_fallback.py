@@ -60,14 +60,10 @@ def _synthesize_minimal(  # noqa: PLR0911, PLR0912
                 continue
             if br.get("type") == "null":
                 continue
-            return _synthesize_minimal(
-                br, root, string_default, depth - 1
-            )
+            return _synthesize_minimal(br, root, string_default, depth - 1)
     any_of = s.get("anyOf")
     if isinstance(any_of, list) and any_of and isinstance(any_of[0], dict):
-        return _synthesize_minimal(
-            any_of[0], root, string_default, depth - 1
-        )
+        return _synthesize_minimal(any_of[0], root, string_default, depth - 1)
     t = s.get("type")
     if t == "object" or (t is None and isinstance(s.get("required"), list)):
         props: dict[str, Any] = s.get("properties") or {}
@@ -92,7 +88,8 @@ def _synthesize_minimal(  # noqa: PLR0911, PLR0912
         if n <= 0:
             return []
         return [
-            _synthesize_minimal(items, root, string_default, depth - 1) for _ in range(n)
+            _synthesize_minimal(items, root, string_default, depth - 1)
+            for _ in range(n)
         ]
     if t == "string":
         mx = s.get("maxLength")
@@ -102,12 +99,12 @@ def _synthesize_minimal(  # noqa: PLR0911, PLR0912
         return tval
     if t == "integer":
         lo = s.get("minimum")
-        if isinstance(lo, (int, float)):
+        if isinstance(lo, int | float):
             return int(lo)
         return 0
     if t in ("number",):
         lo = s.get("minimum")
-        if isinstance(lo, (int, float)):
+        if isinstance(lo, int | float):
             return float(lo)
         return 0.0
     if t == "boolean":
@@ -192,7 +189,9 @@ def _fallback_by_known_id(
             "root_causes_de": [FALLBACK_TEXT_DE],
             "affected_services_de": ["(unbestimmt)"],
             "affected_repo_paths_de": ["(unbestimmt)"],
-            "recommended_next_steps_de": [f"{FALLBACK_TEXT_DE} (manuelle Sichtprüfung empfohlen)."],
+            "recommended_next_steps_de": [
+                f"{FALLBACK_TEXT_DE} (manuelle Sichtprüfung empfohlen)."
+            ],
             "proposed_commands_de": ["(keine Befehle; nur manuelle Prüfung)"],
             "env_or_config_hints_de": [FALLBACK_TEXT_DE],
             "non_authoritative_note_de": NOTE_NON_AUTH_DE,
@@ -228,7 +227,9 @@ def _fallback_by_known_id(
             "themes_de": [FALLBACK_TEXT_DE],
             "playbook_performance_hints_de": f"{FALLBACK_TEXT_DE} (keine Auswertung).",
             "risk_events_de": [FALLBACK_TEXT_DE],
-            "suggested_operator_followups_de": [f"{FALLBACK_TEXT_DE} (keine inhaltlichen Vorschläge)."],
+            "suggested_operator_followups_de": [
+                f"{FALLBACK_TEXT_DE} (keine inhaltlichen Vorschläge)."
+            ],
             "summary_confidence_0_1": 0.0,
         }
     if "assistant-turn" in key:
@@ -266,9 +267,7 @@ def build_structured_fallback(
             f"{FALLBACK_TEXT_DE} (JSON-Selbstreparatur gescheitert. Validator: {rfd}) "
             f"{NOTE_NON_AUTH_DE}"
         )
-    cand = _fallback_by_known_id(
-        key, fallback_binds=binds, user_visible_de=uvis
-    )
+    cand = _fallback_by_known_id(key, fallback_binds=binds, user_visible_de=uvis)
     if isinstance(cand, dict):
         try:
             validate_against_schema(schema_json, cand)
@@ -284,7 +283,9 @@ def build_structured_fallback(
 
     msg = f"{FALLBACK_TEXT_DE} (generischer Schema-Aufbau) {NOTE_NON_AUTH_DE}"
     try:
-        gen = _synthesize_minimal(schema_json, schema_json, string_default=msg, depth=36)
+        gen = _synthesize_minimal(
+            schema_json, schema_json, string_default=msg, depth=36
+        )
     except (KeyError, TypeError, RecursionError, ValueError) as exc:
         raise RuntimeError(
             f"strukturierter Fallback: Synthese abgebrochen: {exc!s}"
@@ -308,9 +309,7 @@ def build_graceful_degradation_result(
     msg = (public_message_de or "").strip() or FALLBACK_TEXT_DE
     binds: dict[str, Any] = dict(fallback_binds or {})
     key = _schema_id_key(schema_json)
-    cand = _fallback_by_known_id(
-        key, fallback_binds=binds, user_visible_de=msg
-    )
+    cand = _fallback_by_known_id(key, fallback_binds=binds, user_visible_de=msg)
     if isinstance(cand, dict):
         validate_against_schema(schema_json, cand)
         validate_task_output(cand, task_type=task_type)

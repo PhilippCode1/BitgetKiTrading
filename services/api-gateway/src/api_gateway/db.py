@@ -5,7 +5,6 @@ from typing import Any
 
 import psycopg
 from psycopg.rows import dict_row
-
 from shared_py.postgres_migrations import (
     list_expected_migration_filenames,
     postgres_migrations_dir,
@@ -51,6 +50,7 @@ TABLE_COUNT_QUERIES = {
     "tsdb.open_interest": "select count(*) as row_count from tsdb.open_interest",
 }
 
+
 class DatabaseHealthError(RuntimeError):
     pass
 
@@ -83,7 +83,9 @@ def get_db_health() -> dict[str, Any]:
                 """
             ).fetchone()
             existing_tables = _load_existing_tables(conn)
-            missing_tables = [table for table in CORE_TABLES if table not in existing_tables]
+            missing_tables = [
+                table for table in CORE_TABLES if table not in existing_tables
+            ]
             table_status = _collect_table_status(conn, existing_tables)
 
             migration_catalog_available = bool(postgres_migrations_dir())
@@ -97,12 +99,16 @@ def get_db_health() -> dict[str, Any]:
                 applied_set = {str(row["filename"]) for row in applied_rows}
                 applied_filenames = sorted(applied_set)
                 if migration_catalog_available and expected_files:
-                    pending_migrations = [f for f in expected_files if f not in applied_set]
+                    pending_migrations = [
+                        f for f in expected_files if f not in applied_set
+                    ]
             else:
                 applied_filenames = []
 
             schema_core_ok = not missing_tables
-            migrations_ok = (not migration_catalog_available) or (not pending_migrations)
+            migrations_ok = (not migration_catalog_available) or (
+                not pending_migrations
+            )
             schema_alignment_ok = schema_core_ok and migrations_ok
             status = "ok" if schema_alignment_ok else "error"
     except psycopg.Error as exc:
@@ -112,7 +118,9 @@ def get_db_health() -> dict[str, Any]:
     return {
         "status": status,
         "database": server_info["database_name"] if server_info is not None else None,
-        "current_schema": server_info["current_schema"] if server_info is not None else None,
+        "current_schema": (
+            server_info["current_schema"] if server_info is not None else None
+        ),
         "server_time": (
             server_info["server_time"].isoformat() if server_info is not None else None
         ),

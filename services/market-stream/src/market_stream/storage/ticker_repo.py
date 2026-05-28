@@ -199,7 +199,9 @@ class TickerRepository:
                 async with connection.transaction():
                     await connection.executemany(UPSERT_TICKER_SQL, rows)
                     if funding_rows:
-                        await connection.executemany(UPSERT_FUNDING_RATE_SQL, funding_rows)
+                        await connection.executemany(
+                            UPSERT_FUNDING_RATE_SQL, funding_rows
+                        )
                     if open_interest_rows:
                         await connection.executemany(
                             UPSERT_OPEN_INTEREST_SQL,

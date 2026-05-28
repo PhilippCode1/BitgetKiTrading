@@ -13,8 +13,9 @@ import hashlib
 import json
 import logging
 import time
+from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Any, Mapping
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -61,7 +62,9 @@ def _fetch_yahoo_closes_sync(
     url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol_yahoo}"
     params = {"interval": interval, "range": range_}
     with httpx.Client(timeout=timeout_sec) as client:
-        r = client.get(url, params=params, headers={"User-Agent": "bitget-btc-ai-correlation/1.0"})
+        r = client.get(
+            url, params=params, headers={"User-Agent": "bitget-btc-ai-correlation/1.0"}
+        )
         r.raise_for_status()
         body = r.json()
     chart = body.get("chart") or {}
@@ -103,7 +106,9 @@ def _spillover_scores(corr: np.ndarray, impulse: np.ndarray) -> list[float]:
         import apex_core  # type: ignore[import-not-found]
 
         out = np.array(
-            apex_core.compute_corr_inv_impulse(np.ascontiguousarray(flat), int(n), np.ascontiguousarray(imp)),
+            apex_core.compute_corr_inv_impulse(
+                np.ascontiguousarray(flat), int(n), np.ascontiguousarray(imp)
+            ),
             dtype=np.float64,
         )
         return [float(x) for x in out.tolist()]
@@ -117,7 +122,9 @@ def _spillover_scores(corr: np.ndarray, impulse: np.ndarray) -> list[float]:
             return [0.0] * n
 
 
-def _rolling_corr_matrix(returns: pd.DataFrame, window: int) -> tuple[np.ndarray, list[str]]:
+def _rolling_corr_matrix(
+    returns: pd.DataFrame, window: int
+) -> tuple[np.ndarray, list[str]]:
     cols = [c for c in ASSET_ORDER if c in returns.columns]
     if not cols:
         raise ValueError("returns ohne bekannte Spalten")
@@ -127,12 +134,14 @@ def _rolling_corr_matrix(returns: pd.DataFrame, window: int) -> tuple[np.ndarray
     tail = sub.tail(int(window))
     cmat = tail.corr(method="pearson").reindex(index=cols, columns=cols)
     cmat = cmat.fillna(0.0)
-    for i, a in enumerate(cols):
+    for _i, a in enumerate(cols):
         cmat.loc[a, a] = 1.0
     return cmat.values.astype(np.float64), cols
 
 
-def detect_regime_divergence(returns_1h: pd.DataFrame) -> tuple[bool, float, dict[str, float]]:
+def detect_regime_divergence(
+    returns_1h: pd.DataFrame,
+) -> tuple[bool, float, dict[str, float]]:
     """
     UUP (Dollar-Staerke-Proxy) vs BTC: starke Dollar-Bewegung, BTC kaum Reaktion -> Decoupling-Hinweis.
     Nutzt summierte Log-Returns ueber ca. 12h.
@@ -176,7 +185,7 @@ def build_horizon_bundle(
     if merged.shape[0] < 8:
         raise RuntimeError("merge zu kurz")
     raw_mat, cols = _rolling_corr_matrix(merged, window)
-    order_idx = [ASSET_ORDER.index(c) for c in cols]
+    [ASSET_ORDER.index(c) for c in cols]
     # volle 5x5 mit Identitaet wo Spalte fehlt
     n_full = len(ASSET_ORDER)
     full = np.eye(n_full, dtype=np.float64)
@@ -227,7 +236,9 @@ def persist_snapshot(redis: Any | None, snapshot: dict[str, Any]) -> None:
     if redis is None:
         return
     try:
-        redis.setex(REDIS_LAST_SNAPSHOT_KEY, 86_400, json.dumps(snapshot, separators=(",", ":")))
+        redis.setex(
+            REDIS_LAST_SNAPSHOT_KEY, 86_400, json.dumps(snapshot, separators=(",", ":"))
+        )
     except Exception as exc:
         logger.debug("redis set snapshot: %s", exc)
 
@@ -277,7 +288,9 @@ def compute_correlation_snapshot(
                     "ts": [int(ts.timestamp()) for ts in tail.index],
                     "c": [float(x) for x in tail.values.tolist()],
                 }
-                redis.setex(f"apex:corr:series:{YAHOO_SYMBOLS[a]}", 3600, json.dumps(payload))
+                redis.setex(
+                    f"apex:corr:series:{YAHOO_SYMBOLS[a]}", 3600, json.dumps(payload)
+                )
             except Exception:
                 pass
 
@@ -287,7 +300,9 @@ def compute_correlation_snapshot(
         hid = str(h["id"])
         src = series_5m if hid == "5m" else series_1h if hid == "1h" else series_1d
         try:
-            horizons_out[hid] = build_horizon_bundle(horizon=h, series_by_asset=src, state=st)
+            horizons_out[hid] = build_horizon_bundle(
+                horizon=h, series_by_asset=src, state=st
+            )
         except Exception as exc:
             logger.warning("horizon %s bundle failed: %s", hid, exc)
             prev = st.matrices.get(hid)
@@ -310,7 +325,11 @@ def compute_correlation_snapshot(
                 }
 
     merged_1h = pd.concat(
-        [_log_returns(series_1h[a]).rename(a) for a in ASSET_ORDER if a in series_1h and not series_1h[a].empty],
+        [
+            _log_returns(series_1h[a]).rename(a)
+            for a in ASSET_ORDER
+            if a in series_1h and not series_1h[a].empty
+        ],
         axis=1,
         join="inner",
     ).dropna(how="any")
@@ -330,7 +349,10 @@ def compute_correlation_snapshot(
             "debug": div_dbg,
         },
         "engine_meta": {
-            "yahoo_intervals": {h["id"]: {"interval": h["interval"], "range": h["range"]} for h in HORIZONS},
+            "yahoo_intervals": {
+                h["id"]: {"interval": h["interval"], "range": h["range"]}
+                for h in HORIZONS
+            },
             "used_matrix_fallback": used_fallback,
         },
     }
@@ -341,6 +363,8 @@ def compute_correlation_snapshot(
 
 def correlation_dedupe_key(snapshot: Mapping[str, Any]) -> str:
     h = snapshot.get("horizons") or {}
-    m5 = json.dumps(h.get("5m", {}).get("correlation_matrix") or [], separators=(",", ":"))[:2000]
+    m5 = json.dumps(
+        h.get("5m", {}).get("correlation_matrix") or [], separators=(",", ":")
+    )[:2000]
     raw = f"{snapshot.get('computed_ts_ms')}|{m5}"
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:48]

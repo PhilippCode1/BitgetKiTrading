@@ -27,7 +27,7 @@ from shared_py.resilience.survival_kernel import (
 
 
 def compute_backoff_delay(attempt: int, *, base_sec: float, max_sec: float) -> float:
-    return min(max_sec, base_sec * (2**attempt))
+    return min(max_sec, base_sec * (2**attempt))  # type: ignore
 
 
 def is_retryable_http_status(status: int | None) -> bool:

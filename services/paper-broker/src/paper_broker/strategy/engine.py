@@ -79,16 +79,24 @@ def merge_signal_with_db(
 
 
 class StrategyExecutionEngine:
-    def __init__(self, settings: PaperBrokerSettings, broker: PaperBrokerService) -> None:
+    def __init__(
+        self, settings: PaperBrokerSettings, broker: PaperBrokerService
+    ) -> None:
         self.settings = settings
         self.broker = broker
-        self._signal_ids: deque[str] = deque(maxlen=max(1, settings.strategy_signal_queue_max))
+        self._signal_ids: deque[str] = deque(
+            maxlen=max(1, settings.strategy_signal_queue_max)
+        )
 
     def _state_key(self, symbol: str) -> str:
         return symbol.upper()
 
     def _paper_tenant_id(self) -> str:
-        t = self.settings.paper_tenant_id or self.settings.billing_prepaid_tenant_id or "default"
+        t = (
+            self.settings.paper_tenant_id
+            or self.settings.billing_prepaid_tenant_id
+            or "default"
+        )
         return str(t).strip() or "default"
 
     def _record_no_trade_gate(
@@ -139,7 +147,11 @@ class StrategyExecutionEngine:
                 if paused:
                     logger.info("auto_trade_decision skip paused symbol=%s", symbol)
                     self._record_no_trade_gate(
-                        conn, now_ms=now_ms, symbol=symbol, payload=payload, gate_code="paused"
+                        conn,
+                        now_ms=now_ms,
+                        symbol=symbol,
+                        payload=payload,
+                        gate_code="paused",
                     )
                     return
                 if now_ms < risk_until:
@@ -158,7 +170,10 @@ class StrategyExecutionEngine:
                     )
                     return
                 if self.settings.strategy_exec_mode != "auto":
-                    logger.info("auto_trade_decision skip mode=%s", self.settings.strategy_exec_mode)
+                    logger.info(
+                        "auto_trade_decision skip mode=%s",
+                        self.settings.strategy_exec_mode,
+                    )
                     self._record_no_trade_gate(
                         conn,
                         now_ms=now_ms,
@@ -207,8 +222,12 @@ class StrategyExecutionEngine:
                     min_strength=self.settings.strat_min_signal_strength,
                     min_prob=float(self.settings.strat_min_probability),
                     min_risk_score=self.settings.strat_min_risk_score,
-                    min_expected_return_bps=float(self.settings.strat_min_expected_return_bps),
-                    max_expected_mae_bps=float(self.settings.strat_max_expected_mae_bps),
+                    min_expected_return_bps=float(
+                        self.settings.strat_min_expected_return_bps
+                    ),
+                    max_expected_mae_bps=float(
+                        self.settings.strat_max_expected_mae_bps
+                    ),
                     min_projected_rr=float(self.settings.strat_min_projected_rr),
                 )
                 ok, reasons = should_auto_trade(merged, gate_cfg)
@@ -266,7 +285,9 @@ class StrategyExecutionEngine:
                     return
 
                 open_side: str | None = None
-                for p in repo_positions.list_open_positions(conn, tenant_id=self._paper_tenant_id()):
+                for p in repo_positions.list_open_positions(
+                    conn, tenant_id=self._paper_tenant_id()
+                ):
                     if str(p["symbol"]).upper() == symbol.upper():
                         open_side = str(p["side"]).lower()
                         break
@@ -298,7 +319,9 @@ class StrategyExecutionEngine:
                     conn, aid, tenant_id=self._paper_tenant_id()
                 )
                 if account_row is None:
-                    logger.warning("auto_trade_decision account_missing account_id=%s", aid)
+                    logger.warning(
+                        "auto_trade_decision account_missing account_id=%s", aid
+                    )
                     self._record_no_trade_gate(
                         conn,
                         now_ms=now_ms,
@@ -312,7 +335,9 @@ class StrategyExecutionEngine:
                 ref_px = merged.get("entry_price") or merged.get("last_price")
                 ctx = {
                     "account_equity": str(account_row["equity"]),
-                    "reference_price": str(ref_px) if ref_px not in (None, "") else None,
+                    "reference_price": (
+                        str(ref_px) if ref_px not in (None, "") else None
+                    ),
                 }
                 intent = strat.build_order_intent(merged, ctx)
                 if intent.side not in ("long", "short"):
@@ -342,7 +367,8 @@ class StrategyExecutionEngine:
                     daily_loss_usdt=account_metrics["daily_loss_usdt"],
                     signal_allowed_leverage=merged.get("allowed_leverage"),
                     signal_recommended_leverage=merged.get("recommended_leverage"),
-                    leverage_cap_reasons_json=merged.get("leverage_cap_reasons_json") or [],
+                    leverage_cap_reasons_json=merged.get("leverage_cap_reasons_json")
+                    or [],
                 )
                 if risk_decision["trade_action"] == "do_not_trade":
                     logger.info(
@@ -423,9 +449,11 @@ class StrategyExecutionEngine:
                     key=self._state_key(symbol),
                     paused=bool(st["paused"]) if st else False,
                     risk_off_until_ts_ms=risk_until,
-                    last_signal_id=UUID(str(merged["signal_id"]))
-                    if merged.get("signal_id")
-                    else None,
+                    last_signal_id=(
+                        UUID(str(merged["signal_id"]))
+                        if merged.get("signal_id")
+                        else None
+                    ),
                     updated_ts_ms=now_ms,
                 )
                 repo_strategy.insert_strategy_event(
@@ -446,7 +474,9 @@ class StrategyExecutionEngine:
                         "signal_id": str(merged.get("signal_id")),
                         "position_id": str(pid),
                         "plan_version": plan_res.get("plan_version"),
-                        "stop_plan_keys": list((plan_res.get("stop_plan") or {}).keys()),
+                        "stop_plan_keys": list(
+                            (plan_res.get("stop_plan") or {}).keys()
+                        ),
                         "tp_plan_keys": list((plan_res.get("tp_plan") or {}).keys()),
                         "stop_quality_score": plan_res.get("stop_quality_score"),
                         "rr_estimate": plan_res.get("rr_estimate"),
@@ -462,10 +492,14 @@ class StrategyExecutionEngine:
             out["position_id"],
         )
 
-    def _de_risk_warnung(self, conn: psycopg.Connection[Any], symbol: str, now_ms: int) -> None:
+    def _de_risk_warnung(
+        self, conn: psycopg.Connection[Any], symbol: str, now_ms: int
+    ) -> None:
         pct = Decimal(str(self.settings.close_partial_on_news_shock_pct))
         closed: list[UUID] = []
-        for pos in repo_positions.list_open_positions(conn, tenant_id=self._paper_tenant_id()):
+        for pos in repo_positions.list_open_positions(
+            conn, tenant_id=self._paper_tenant_id()
+        ):
             if str(pos["symbol"]).upper() != symbol.upper():
                 continue
             pid = UUID(str(pos["position_id"]))
@@ -497,9 +531,7 @@ class StrategyExecutionEngine:
                 return UUID(str(raw).strip())
             except ValueError:
                 return None
-        return repo_accounts.first_account_id(
-            conn, tenant_id=self._paper_tenant_id()
-        )
+        return repo_accounts.first_account_id(conn, tenant_id=self._paper_tenant_id())
 
     def handle_news_scored(self, payload: dict[str, Any], symbol: str) -> None:
         if not self.settings.strategy_exec_enabled:
@@ -511,7 +543,9 @@ class StrategyExecutionEngine:
         pct = Decimal(str(self.settings.close_partial_on_news_shock_pct))
         thresh = self.settings.news_shock_score
         with paper_connect(self.settings.database_url) as conn:
-            for pos in repo_positions.list_open_positions(conn, tenant_id=self._paper_tenant_id()):
+            for pos in repo_positions.list_open_positions(
+                conn, tenant_id=self._paper_tenant_id()
+            ):
                 if str(pos["symbol"]).upper() != symbol.upper():
                     continue
                 side = str(pos["side"]).lower()
@@ -563,7 +597,9 @@ class StrategyExecutionEngine:
                     if q > 0:
                         self.broker.close_position(pid, q, "market", ts_ms=now_ms)
 
-    def handle_drawing_updated(self, payload: dict[str, Any], symbol: str, timeframe: str) -> None:
+    def handle_drawing_updated(
+        self, payload: dict[str, Any], symbol: str, timeframe: str
+    ) -> None:
         if not self.settings.strategy_exec_enabled:
             return
         pids = payload.get("parent_ids") or []
@@ -590,13 +626,20 @@ class StrategyExecutionEngine:
                         details={"parent_ids": ids, "updated_positions": n},
                     )
 
-    def handle_structure_updated(self, payload: dict[str, Any], symbol: str, timeframe: str) -> None:
-        if not self.settings.strategy_exec_enabled or not self.settings.use_structure_flip_exit:
+    def handle_structure_updated(
+        self, payload: dict[str, Any], symbol: str, timeframe: str
+    ) -> None:
+        if (
+            not self.settings.strategy_exec_enabled
+            or not self.settings.use_structure_flip_exit
+        ):
             return
         td = str(payload.get("trend_dir", ""))
         now_ms = int(time.time() * 1000)
         with paper_connect(self.settings.database_url) as conn:
-            for pos in repo_positions.list_open_positions(conn, tenant_id=self._paper_tenant_id()):
+            for pos in repo_positions.list_open_positions(
+                conn, tenant_id=self._paper_tenant_id()
+            ):
                 if str(pos["symbol"]).upper() != symbol.upper():
                     continue
                 meta = _meta_dict(pos.get("meta"))
@@ -604,7 +647,9 @@ class StrategyExecutionEngine:
                 if ptf.lower() != timeframe.lower():
                     continue
                 side = str(pos["side"]).lower()
-                contradict = (side == "long" and td == "-1") or (side == "short" and td == "1")
+                contradict = (side == "long" and td == "-1") or (
+                    side == "short" and td == "1"
+                )
                 if not contradict:
                     continue
                 pid = UUID(str(pos["position_id"]))
@@ -628,9 +673,11 @@ class StrategyExecutionEngine:
                     sp = _dec(stop_p["stop_price"])
                 except Exception:
                     continue
-                tighten = _dec(pos["entry_price_avg"]) * Decimal(
-                    str(self.settings.structure_flip_tighten_bps)
-                ) / Decimal("10000")
+                tighten = (
+                    _dec(pos["entry_price_avg"])
+                    * Decimal(str(self.settings.structure_flip_tighten_bps))
+                    / Decimal("10000")
+                )
                 if side == "long":
                     new_stop = sp + tighten
                     if new_stop > entry:
@@ -643,9 +690,7 @@ class StrategyExecutionEngine:
                     continue
                 stop_p["stop_price"] = str(new_stop)
                 with conn.transaction():
-                    t_str = str(
-                        pos.get("tenant_id") or self._paper_tenant_id()
-                    )
+                    t_str = str(pos.get("tenant_id") or self._paper_tenant_id())
                     repo_positions.update_stop_plan_only(
                         conn,
                         pid,
@@ -673,7 +718,9 @@ class StrategyExecutionEngine:
             return
         self._apply_break_even_stops(conn, now_ms)
 
-    def _apply_break_even_stops(self, conn: psycopg.Connection[Any], now_ms: int) -> None:
+    def _apply_break_even_stops(
+        self, conn: psycopg.Connection[Any], now_ms: int
+    ) -> None:
         pdef = self._paper_tenant_id()
         for pos in repo_positions.list_open_positions(conn, tenant_id=pdef):
             t_str = str(pos.get("tenant_id") or pdef)
@@ -744,20 +791,26 @@ class StrategyExecutionEngine:
             "paused": bool(st["paused"]) if st else False,
             "risk_off_until_ts_ms": risk_until,
             "risk_off_active": now_ms < risk_until,
-            "last_signal_id": str(st["last_signal_id"]) if st and st.get("last_signal_id") else None,
+            "last_signal_id": (
+                str(st["last_signal_id"]) if st and st.get("last_signal_id") else None
+            ),
         }
 
     def strategy_pause(self, symbol: str) -> None:
         now_ms = int(time.time() * 1000)
         with paper_connect(self.settings.database_url) as conn:
             with conn.transaction():
-                repo_strategy.set_strategy_paused(conn, self._state_key(symbol), True, now_ms)
+                repo_strategy.set_strategy_paused(
+                    conn, self._state_key(symbol), True, now_ms
+                )
 
     def strategy_resume(self, symbol: str) -> None:
         now_ms = int(time.time() * 1000)
         with paper_connect(self.settings.database_url) as conn:
             with conn.transaction():
-                repo_strategy.set_strategy_paused(conn, self._state_key(symbol), False, now_ms)
+                repo_strategy.set_strategy_paused(
+                    conn, self._state_key(symbol), False, now_ms
+                )
 
     def strategy_rules(self) -> dict[str, Any]:
         return {

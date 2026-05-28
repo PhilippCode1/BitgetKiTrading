@@ -40,7 +40,11 @@ def alerts_from_service_checks(results: list[ServiceCheckResult]) -> list[AlertS
             35 if sev == "critical" else 55,
         )
         d = r.details
-        ex = f" {d.get('degraded_reason')!s}" if isinstance(d, dict) and d.get("degraded_reason") else ""
+        ex = (
+            f" {d.get('degraded_reason')!s}"
+            if isinstance(d, dict) and d.get("degraded_reason")
+            else ""
+        )
         out.append(
             AlertSpec(
                 alert_key=key,
@@ -109,7 +113,9 @@ def alerts_from_freshness(rows: list[FreshnessRow]) -> list[AlertSpec]:
     return out
 
 
-def alert_stream_stalled(stream: str, *, candle_stale_critical: bool) -> AlertSpec | None:
+def alert_stream_stalled(
+    stream: str, *, candle_stale_critical: bool
+) -> AlertSpec | None:
     if not candle_stale_critical:
         return None
     key = f"stream_stalled:{stream}"

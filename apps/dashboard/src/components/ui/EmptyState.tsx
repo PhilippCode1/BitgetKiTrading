@@ -11,8 +11,7 @@ import { SystemCommsPhaseStrip } from "@/components/system-comms/SystemCommsPhas
 import type { SystemCommsPhase } from "@/lib/system-communication";
 
 export type EmptyStateCTA = Readonly<
-  | { labelKey: string; href: string }
-  | { labelKey: string; onClick: () => void }
+  { labelKey: string; href: string } | { labelKey: string; onClick: () => void }
 >;
 
 type EmptyStateIcon = "inbox" | "layers" | "activity" | "wallet";

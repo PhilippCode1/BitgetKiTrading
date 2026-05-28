@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from shared_py.unified_exit_plan import UNIFIED_EXIT_PLAN_VERSION, build_unified_exit_plan
+from shared_py.unified_exit_plan import (
+    UNIFIED_EXIT_PLAN_VERSION,
+    build_unified_exit_plan,
+)
 
 
 def test_unified_exit_plan_mfe_ladder_not_fixed_rr() -> None:

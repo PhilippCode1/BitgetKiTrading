@@ -74,13 +74,21 @@ def test_provider_outage_message_is_degraded_not_allow_trade() -> None:
 
 
 def test_visible_ui_texts_german_and_no_billing_terms() -> None:
-    panel = Path("apps/dashboard/src/components/panels/OperatorExplainPanel.tsx").read_text(encoding="utf-8").lower()
+    panel = (
+        Path("apps/dashboard/src/components/panels/OperatorExplainPanel.tsx")
+        .read_text(encoding="utf-8")
+        .lower()
+    )
     assert "aiassistantdegradedsafe" in panel
     de = Path("apps/dashboard/src/messages/de.json").read_text(encoding="utf-8").lower()
     assert "ki-erklärung aktuell nicht verfügbar" in de
 
 
 def test_forbidden_billing_customer_terms_not_in_operator_doc() -> None:
-    doc = Path("docs/production_10_10/main_console_ai_operator_assistant.md").read_text(encoding="utf-8").lower()
+    doc = (
+        Path("docs/production_10_10/main_console_ai_operator_assistant.md")
+        .read_text(encoding="utf-8")
+        .lower()
+    )
     for token in ("billing", "kunde", "kunden", "payment", "subscription"):
         assert token not in doc

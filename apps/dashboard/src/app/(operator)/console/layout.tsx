@@ -34,8 +34,9 @@ export default async function OperatorConsoleLayout({ children }: Props) {
   const uiMode = await getRequestUiMode();
   const probe = await getGatewayBootstrapProbeForRequest();
   const t = await getServerTranslator();
-  let systemHealth: Awaited<ReturnType<typeof fetchSystemHealthBestEffort>>["health"] =
-    null;
+  let systemHealth: Awaited<
+    ReturnType<typeof fetchSystemHealthBestEffort>
+  >["health"] = null;
   let executionTier: ExecutionTierSnapshot | null = null;
   let healthLoadHint: string | null = null;
   const probeBlocks = probe.rootCause !== "ok";

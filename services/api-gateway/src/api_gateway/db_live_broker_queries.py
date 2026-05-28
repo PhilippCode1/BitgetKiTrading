@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
 import psycopg
-
 from shared_py.observability.execution_forensic import (
     build_forensic_timeline_phases,
     build_live_broker_forensic_snapshot,
@@ -37,7 +36,7 @@ def _ts_ms_to_iso(value: Any) -> str | None:
     iv = _i(value)
     if iv is None:
         return None
-    return datetime.fromtimestamp(iv / 1000.0, tz=timezone.utc).isoformat()
+    return datetime.fromtimestamp(iv / 1000.0, tz=UTC).isoformat()
 
 
 def _serialize_cell(v: Any) -> Any:
@@ -49,7 +48,7 @@ def _serialize_cell(v: Any) -> Any:
         return str(v)
     if isinstance(v, Decimal):
         return str(v)
-    if isinstance(v, (bytes, memoryview)):
+    if isinstance(v, bytes | memoryview):
         return None
     return v
 
@@ -258,7 +257,11 @@ def compute_operator_live_submission_summary(
             "reasons_de": [
                 "System laeuft im Paper-Modus. Live-Order-Submission an die Boerse ist absichtlich nicht aktiv."
             ],
-            **{**base_meta, "safety_kill_switch_count": 0, "safety_latch_active": False},
+            **{
+                **base_meta,
+                "safety_kill_switch_count": 0,
+                "safety_latch_active": False,
+            },
         }
 
     if em == "shadow" and (not live_trade_enable or not live_submission_enabled):
@@ -275,7 +278,11 @@ def compute_operator_live_submission_summary(
             "lane": "live_lane_disabled_config",
             "reasons_de": reasons
             or ["Shadow-Modus: Live-Order-Submission ist derzeit nicht aktiv."],
-            **{**base_meta, "safety_kill_switch_count": 0, "safety_latch_active": False},
+            **{
+                **base_meta,
+                "safety_kill_switch_count": 0,
+                "safety_latch_active": False,
+            },
         }
 
     if not live_trade_enable:
@@ -289,7 +296,11 @@ def compute_operator_live_submission_summary(
         return {
             "lane": "live_lane_disabled_config",
             "reasons_de": reasons2,
-            **{**base_meta, "safety_kill_switch_count": 0, "safety_latch_active": False},
+            **{
+                **base_meta,
+                "safety_kill_switch_count": 0,
+                "safety_latch_active": False,
+            },
         }
 
     if not live_submission_enabled:
@@ -299,7 +310,11 @@ def compute_operator_live_submission_summary(
                 "Live-Gate ist an, aber Boersen-Submission ist aus (live_submission_enabled im Reconcile-Snapshot). "
                 "Ursache oft Konfiguration oder vorheriger Safety-Pfad — Runtime-Details und Audit pruefen."
             ],
-            **{**base_meta, "safety_kill_switch_count": 0, "safety_latch_active": False},
+            **{
+                **base_meta,
+                "safety_kill_switch_count": 0,
+                "safety_latch_active": False,
+            },
         }
 
     ui = (
@@ -325,7 +340,11 @@ def compute_operator_live_submission_summary(
         return {
             "lane": "live_lane_blocked_exchange",
             "reasons_de": [msgs.get(str(ui), "Bitget-Status unguenstig fuer Live.")],
-            **{**base_meta, "safety_kill_switch_count": 0, "safety_latch_active": False},
+            **{
+                **base_meta,
+                "safety_kill_switch_count": 0,
+                "safety_latch_active": False,
+            },
         }
 
     hints: list[str] = []
@@ -440,9 +459,9 @@ def fetch_live_broker_runtime(conn: psycopg.Connection[Any]) -> dict[str, Any] |
             "reason": row["reason"],
             "source": row["source"],
             "symbol": row.get("symbol"),
-            "created_ts": row["created_ts"].isoformat()
-            if row.get("created_ts")
-            else None,
+            "created_ts": (
+                row["created_ts"].isoformat() if row.get("created_ts") else None
+            ),
         }
         for row in kill_switch_rows
     ]
@@ -488,7 +507,9 @@ def fetch_live_broker_runtime(conn: psycopg.Connection[Any]) -> dict[str, Any] |
         "safety_latch_active": safety_latch_active,
         "instrument_catalog": instrument_catalog,
         "current_instrument_metadata": current_instrument_metadata,
-        "created_ts": data["created_ts"].isoformat() if data.get("created_ts") else None,
+        "created_ts": (
+            data["created_ts"].isoformat() if data.get("created_ts") else None
+        ),
         "bitget_private_status": bitget_private_status,
         "operator_live_submission": operator_live_submission,
     }
@@ -520,17 +541,25 @@ def fetch_live_broker_decisions(
     for row in rows:
         data = dict(row)
         payload = _j(data.get("payload_json")) or {}
-        signal_payload = payload.get("signal_payload") if isinstance(payload, dict) else {}
+        signal_payload = (
+            payload.get("signal_payload") if isinstance(payload, dict) else {}
+        )
         if not isinstance(signal_payload, dict):
             signal_payload = {}
-        slf = _shadow_live_fields(payload) if isinstance(payload, dict) else _shadow_live_fields({})
+        slf = (
+            _shadow_live_fields(payload)
+            if isinstance(payload, dict)
+            else _shadow_live_fields({})
+        )
         sig_mf = (
             signal_payload.get("market_family")
             if isinstance(signal_payload.get("market_family"), str)
             else None
         )
         sig_pb = (
-            signal_payload.get("playbook_id") if isinstance(signal_payload.get("playbook_id"), str) else None
+            signal_payload.get("playbook_id")
+            if isinstance(signal_payload.get("playbook_id"), str)
+            else None
         )
         sig_lane = (
             signal_payload.get("meta_trade_lane")
@@ -578,12 +607,16 @@ def fetch_live_broker_decisions(
                     if payload.get("signal_recommended_leverage") is not None
                     else signal_payload.get("recommended_leverage")
                 ),
-                "signal_trade_action": payload.get("signal_trade_action")
-                if payload.get("signal_trade_action") is not None
-                else signal_payload.get("trade_action"),
-                "signal_leverage_policy_version": payload.get("signal_leverage_policy_version")
-                if payload.get("signal_leverage_policy_version") is not None
-                else signal_payload.get("leverage_policy_version"),
+                "signal_trade_action": (
+                    payload.get("signal_trade_action")
+                    if payload.get("signal_trade_action") is not None
+                    else signal_payload.get("trade_action")
+                ),
+                "signal_leverage_policy_version": (
+                    payload.get("signal_leverage_policy_version")
+                    if payload.get("signal_leverage_policy_version") is not None
+                    else signal_payload.get("leverage_policy_version")
+                ),
                 "signal_leverage_cap_reasons_json": (
                     payload.get("signal_leverage_cap_reasons_json")
                     if payload.get("signal_leverage_cap_reasons_json") is not None
@@ -591,19 +624,31 @@ def fetch_live_broker_decisions(
                 )
                 or [],
                 "approved_7x": bool(data["approved_7x"]),
-                "qty_base": str(data["qty_base"]) if data.get("qty_base") is not None else None,
-                "entry_price": (
-                    str(data["entry_price"]) if data.get("entry_price") is not None else None
+                "qty_base": (
+                    str(data["qty_base"]) if data.get("qty_base") is not None else None
                 ),
-                "stop_loss": str(data["stop_loss"]) if data.get("stop_loss") is not None else None,
+                "entry_price": (
+                    str(data["entry_price"])
+                    if data.get("entry_price") is not None
+                    else None
+                ),
+                "stop_loss": (
+                    str(data["stop_loss"])
+                    if data.get("stop_loss") is not None
+                    else None
+                ),
                 "take_profit": (
-                    str(data["take_profit"]) if data.get("take_profit") is not None else None
+                    str(data["take_profit"])
+                    if data.get("take_profit") is not None
+                    else None
                 ),
                 "operator_release_exists": data.get("operator_release_ts") is not None,
                 "operator_release_source": data.get("operator_release_source"),
-                "operator_release_ts": data["operator_release_ts"].isoformat()
-                if data.get("operator_release_ts")
-                else None,
+                "operator_release_ts": (
+                    data["operator_release_ts"].isoformat()
+                    if data.get("operator_release_ts")
+                    else None
+                ),
                 "risk_trade_action": data.get("risk_trade_action"),
                 "risk_decision_state": data.get("risk_decision_state"),
                 "risk_primary_reason": data.get("risk_primary_reason"),
@@ -611,8 +656,12 @@ def fetch_live_broker_decisions(
                 **slf,
                 "payload": payload,
                 "trace": _j(data.get("trace_json")) or {},
-                "created_ts": data["created_ts"].isoformat() if data.get("created_ts") else None,
-                "updated_ts": data["updated_ts"].isoformat() if data.get("updated_ts") else None,
+                "created_ts": (
+                    data["created_ts"].isoformat() if data.get("created_ts") else None
+                ),
+                "updated_ts": (
+                    data["updated_ts"].isoformat() if data.get("updated_ts") else None
+                ),
             }
         )
     return out
@@ -642,12 +691,18 @@ def fetch_live_broker_paper_reference(
                 "position_id": data["position_id"],
                 "symbol": data["symbol"],
                 "state": data.get("state"),
-                "qty_base": str(data["qty_base"]) if data.get("qty_base") is not None else None,
+                "qty_base": (
+                    str(data["qty_base"]) if data.get("qty_base") is not None else None
+                ),
                 "reason": data.get("reason"),
                 "payload": _j(data.get("payload_json")) or {},
                 "trace": _j(data.get("trace_json")) or {},
-                "created_ts": data["created_ts"].isoformat() if data.get("created_ts") else None,
-                "updated_ts": data["updated_ts"].isoformat() if data.get("updated_ts") else None,
+                "created_ts": (
+                    data["created_ts"].isoformat() if data.get("created_ts") else None
+                ),
+                "updated_ts": (
+                    data["updated_ts"].isoformat() if data.get("updated_ts") else None
+                ),
             }
         )
     return out
@@ -698,8 +753,12 @@ def fetch_live_broker_orders(
                 "last_exchange_msg": data.get("last_exchange_msg"),
                 "last_response": _j(data.get("last_response_json")) or {},
                 "trace": _j(data.get("trace_json")) or {},
-                "created_ts": data["created_ts"].isoformat() if data.get("created_ts") else None,
-                "updated_ts": data["updated_ts"].isoformat() if data.get("updated_ts") else None,
+                "created_ts": (
+                    data["created_ts"].isoformat() if data.get("created_ts") else None
+                ),
+                "updated_ts": (
+                    data["updated_ts"].isoformat() if data.get("updated_ts") else None
+                ),
             }
         )
     return out
@@ -731,10 +790,18 @@ def fetch_live_broker_fills(
                 "size": str(data["size"]) if data.get("size") is not None else None,
                 "fee": str(data["fee"]) if data.get("fee") is not None else None,
                 "fee_coin": data.get("fee_coin"),
-                "is_maker": bool(data["is_maker"]) if data.get("is_maker") is not None else None,
-                "exchange_ts_ms": int(data["exchange_ts_ms"]) if data.get("exchange_ts_ms") is not None else None,
+                "is_maker": (
+                    bool(data["is_maker"]) if data.get("is_maker") is not None else None
+                ),
+                "exchange_ts_ms": (
+                    int(data["exchange_ts_ms"])
+                    if data.get("exchange_ts_ms") is not None
+                    else None
+                ),
                 "raw": _j(data.get("raw_json")) or {},
-                "created_ts": data["created_ts"].isoformat() if data.get("created_ts") else None,
+                "created_ts": (
+                    data["created_ts"].isoformat() if data.get("created_ts") else None
+                ),
             }
         )
     return out
@@ -788,10 +855,14 @@ def fetch_live_broker_kill_switch_events(
                 "product_type": data.get("product_type"),
                 "margin_coin": data.get("margin_coin"),
                 "internal_order_id": (
-                    str(data["internal_order_id"]) if data.get("internal_order_id") else None
+                    str(data["internal_order_id"])
+                    if data.get("internal_order_id")
+                    else None
                 ),
                 "details": _j(data.get("details_json")) or {},
-                "created_ts": data["created_ts"].isoformat() if data.get("created_ts") else None,
+                "created_ts": (
+                    data["created_ts"].isoformat() if data.get("created_ts") else None
+                ),
             }
         )
     return out
@@ -827,7 +898,9 @@ def fetch_live_broker_order_actions(
                 "retry_count": data.get("retry_count"),
                 "request": _j(data.get("request_json")) or {},
                 "response": _j(data.get("response_json")) or {},
-                "created_ts": data["created_ts"].isoformat() if data.get("created_ts") else None,
+                "created_ts": (
+                    data["created_ts"].isoformat() if data.get("created_ts") else None
+                ),
             }
         )
     return out
@@ -873,11 +946,15 @@ def fetch_live_broker_audit_trails(
                 "scope_key": data["scope_key"],
                 "source": data["source"],
                 "internal_order_id": (
-                    str(data["internal_order_id"]) if data.get("internal_order_id") else None
+                    str(data["internal_order_id"])
+                    if data.get("internal_order_id")
+                    else None
                 ),
                 "symbol": data.get("symbol"),
                 "details": _j(data.get("details_json")) or {},
-                "created_ts": data["created_ts"].isoformat() if data.get("created_ts") else None,
+                "created_ts": (
+                    data["created_ts"].isoformat() if data.get("created_ts") else None
+                ),
             }
         )
     return out
@@ -939,15 +1016,23 @@ def fetch_execution_forensic_timeline(
         journal.append(
             {
                 "journal_id": str(jd["journal_id"]),
-                "execution_decision_id": str(jd["execution_decision_id"])
-                if jd.get("execution_decision_id")
-                else None,
-                "internal_order_id": str(jd["internal_order_id"])
-                if jd.get("internal_order_id")
-                else None,
+                "execution_decision_id": (
+                    str(jd["execution_decision_id"])
+                    if jd.get("execution_decision_id")
+                    else None
+                ),
+                "internal_order_id": (
+                    str(jd["internal_order_id"])
+                    if jd.get("internal_order_id")
+                    else None
+                ),
                 "phase": jd.get("phase"),
-                "details_json": redact_nested_mapping(_j(jd.get("details_json")) or {}, max_depth=5),
-                "created_ts": jd["created_ts"].isoformat() if jd.get("created_ts") else None,
+                "details_json": redact_nested_mapping(
+                    _j(jd.get("details_json")) or {}, max_depth=5
+                ),
+                "created_ts": (
+                    jd["created_ts"].isoformat() if jd.get("created_ts") else None
+                ),
             }
         )
 
@@ -991,52 +1076,94 @@ def fetch_execution_forensic_timeline(
                 "playbook_decision_mode": sd.get("playbook_decision_mode"),
                 "strategy_name": sd.get("strategy_name"),
                 "regime_state": sd.get("regime_state"),
-                "stop_fragility_0_1": float(sd["stop_fragility_0_1"])
-                if sd.get("stop_fragility_0_1") is not None
-                else None,
-                "stop_executability_0_1": float(sd["stop_executability_0_1"])
-                if sd.get("stop_executability_0_1") is not None
-                else None,
-                "stop_distance_pct": float(sd["stop_distance_pct"])
-                if sd.get("stop_distance_pct") is not None
-                else None,
-                "stop_budget_max_pct_allowed": float(sd["stop_budget_max_pct_allowed"])
-                if sd.get("stop_budget_max_pct_allowed") is not None
-                else None,
-                "stop_min_executable_pct": float(sd["stop_min_executable_pct"])
-                if sd.get("stop_min_executable_pct") is not None
-                else None,
-                "stop_quality_0_1": float(sd["stop_quality_0_1"])
-                if sd.get("stop_quality_0_1") is not None
-                else None,
-                "stop_to_spread_ratio": float(sd["stop_to_spread_ratio"])
-                if sd.get("stop_to_spread_ratio") is not None
-                else None,
-                "model_uncertainty_0_1": float(sd["model_uncertainty_0_1"])
-                if sd.get("model_uncertainty_0_1") is not None
-                else None,
-                "shadow_divergence_0_1": float(sd["shadow_divergence_0_1"])
-                if sd.get("shadow_divergence_0_1") is not None
-                else None,
-                "expected_return_bps": float(sd["expected_return_bps"])
-                if sd.get("expected_return_bps") is not None
-                else None,
-                "expected_mae_bps": float(sd["expected_mae_bps"])
-                if sd.get("expected_mae_bps") is not None
-                else None,
-                "expected_mfe_bps": float(sd["expected_mfe_bps"])
-                if sd.get("expected_mfe_bps") is not None
-                else None,
-                "abstention_reasons_json": _trunc_json_list(sd.get("abstention_reasons_json"), 20),
-                "rejection_reasons_json": _trunc_json_list(sd.get("rejection_reasons_json"), 20),
-                "leverage_cap_reasons_json": _trunc_json_list(sd.get("leverage_cap_reasons_json"), 16),
+                "stop_fragility_0_1": (
+                    float(sd["stop_fragility_0_1"])
+                    if sd.get("stop_fragility_0_1") is not None
+                    else None
+                ),
+                "stop_executability_0_1": (
+                    float(sd["stop_executability_0_1"])
+                    if sd.get("stop_executability_0_1") is not None
+                    else None
+                ),
+                "stop_distance_pct": (
+                    float(sd["stop_distance_pct"])
+                    if sd.get("stop_distance_pct") is not None
+                    else None
+                ),
+                "stop_budget_max_pct_allowed": (
+                    float(sd["stop_budget_max_pct_allowed"])
+                    if sd.get("stop_budget_max_pct_allowed") is not None
+                    else None
+                ),
+                "stop_min_executable_pct": (
+                    float(sd["stop_min_executable_pct"])
+                    if sd.get("stop_min_executable_pct") is not None
+                    else None
+                ),
+                "stop_quality_0_1": (
+                    float(sd["stop_quality_0_1"])
+                    if sd.get("stop_quality_0_1") is not None
+                    else None
+                ),
+                "stop_to_spread_ratio": (
+                    float(sd["stop_to_spread_ratio"])
+                    if sd.get("stop_to_spread_ratio") is not None
+                    else None
+                ),
+                "model_uncertainty_0_1": (
+                    float(sd["model_uncertainty_0_1"])
+                    if sd.get("model_uncertainty_0_1") is not None
+                    else None
+                ),
+                "shadow_divergence_0_1": (
+                    float(sd["shadow_divergence_0_1"])
+                    if sd.get("shadow_divergence_0_1") is not None
+                    else None
+                ),
+                "expected_return_bps": (
+                    float(sd["expected_return_bps"])
+                    if sd.get("expected_return_bps") is not None
+                    else None
+                ),
+                "expected_mae_bps": (
+                    float(sd["expected_mae_bps"])
+                    if sd.get("expected_mae_bps") is not None
+                    else None
+                ),
+                "expected_mfe_bps": (
+                    float(sd["expected_mfe_bps"])
+                    if sd.get("expected_mfe_bps") is not None
+                    else None
+                ),
+                "abstention_reasons_json": _trunc_json_list(
+                    sd.get("abstention_reasons_json"), 20
+                ),
+                "rejection_reasons_json": _trunc_json_list(
+                    sd.get("rejection_reasons_json"), 20
+                ),
+                "leverage_cap_reasons_json": _trunc_json_list(
+                    sd.get("leverage_cap_reasons_json"), 16
+                ),
                 "reasons_json": redact_nested_mapping(reasons_json, max_depth=4),
-                "source_snapshot_json": redact_nested_mapping(source_snapshot, max_depth=4),
+                "source_snapshot_json": redact_nested_mapping(
+                    source_snapshot, max_depth=4
+                ),
                 "explain_short": sd.get("explain_short"),
-                "explain_long_md": (str(sd.get("explain_long_md") or "")[:4000] or None),
-                "risk_warnings_json": _trunc_json_list(sd.get("risk_warnings_json"), 16),
-                "analysis_ts_ms": int(sd["analysis_ts_ms"]) if sd.get("analysis_ts_ms") is not None else None,
-                "created_ts": sd["created_at"].isoformat() if sd.get("created_at") else None,
+                "explain_long_md": (
+                    str(sd.get("explain_long_md") or "")[:4000] or None
+                ),
+                "risk_warnings_json": _trunc_json_list(
+                    sd.get("risk_warnings_json"), 16
+                ),
+                "analysis_ts_ms": (
+                    int(sd["analysis_ts_ms"])
+                    if sd.get("analysis_ts_ms") is not None
+                    else None
+                ),
+                "created_ts": (
+                    sd["created_at"].isoformat() if sd.get("created_at") else None
+                ),
             }
 
     orders_rows = conn.execute(
@@ -1055,8 +1182,12 @@ def fetch_execution_forensic_timeline(
         oid = str(od["internal_order_id"])
         order_ids.append(oid)
         o_pub = _row_public(od)
-        o_pub["last_response_json"] = redact_nested_mapping(_j(od.get("last_response_json")) or {}, max_depth=3)
-        o_pub["trace_json"] = redact_nested_mapping(_j(od.get("trace_json")) or {}, max_depth=3)
+        o_pub["last_response_json"] = redact_nested_mapping(
+            _j(od.get("last_response_json")) or {}, max_depth=3
+        )
+        o_pub["trace_json"] = redact_nested_mapping(
+            _j(od.get("trace_json")) or {}, max_depth=3
+        )
         orders.append(o_pub)
 
     fills: list[dict[str, Any]] = []
@@ -1096,9 +1227,15 @@ def fetch_execution_forensic_timeline(
                     "exchange_code": ad.get("exchange_code"),
                     "exchange_msg": ad.get("exchange_msg"),
                     "retry_count": ad.get("retry_count"),
-                    "request_json": redact_nested_mapping(_j(ad.get("request_json")) or {}, max_depth=3),
-                    "response_json": redact_nested_mapping(_j(ad.get("response_json")) or {}, max_depth=3),
-                    "created_ts": ad["created_ts"].isoformat() if ad.get("created_ts") else None,
+                    "request_json": redact_nested_mapping(
+                        _j(ad.get("request_json")) or {}, max_depth=3
+                    ),
+                    "response_json": redact_nested_mapping(
+                        _j(ad.get("response_json")) or {}, max_depth=3
+                    ),
+                    "created_ts": (
+                        ad["created_ts"].isoformat() if ad.get("created_ts") else None
+                    ),
                 }
             )
 
@@ -1125,12 +1262,18 @@ def fetch_execution_forensic_timeline(
                     "scope": ad.get("scope"),
                     "scope_key": ad.get("scope_key"),
                     "source": ad.get("source"),
-                    "internal_order_id": str(ad["internal_order_id"])
-                    if ad.get("internal_order_id")
-                    else None,
+                    "internal_order_id": (
+                        str(ad["internal_order_id"])
+                        if ad.get("internal_order_id")
+                        else None
+                    ),
                     "symbol": ad.get("symbol"),
-                    "details": redact_nested_mapping(_j(ad.get("details_json")) or {}, max_depth=4),
-                    "created_ts": ad["created_ts"].isoformat() if ad.get("created_ts") else None,
+                    "details": redact_nested_mapping(
+                        _j(ad.get("details_json")) or {}, max_depth=4
+                    ),
+                    "created_ts": (
+                        ad["created_ts"].isoformat() if ad.get("created_ts") else None
+                    ),
                 }
             )
 
@@ -1162,9 +1305,13 @@ def fetch_execution_forensic_timeline(
     if risk is not None:
         rd = dict(risk)
         risk_snapshot = _row_public(rd)
-        risk_snapshot["detail_json"] = redact_nested_mapping(_j(rd.get("detail_json")) or {}, max_depth=4)
+        risk_snapshot["detail_json"] = redact_nested_mapping(
+            _j(rd.get("detail_json")) or {}, max_depth=4
+        )
         risk_snapshot["reasons_json"] = _trunc_json_list(_j(rd.get("reasons_json")), 24)
-        risk_snapshot["metrics_json"] = redact_nested_mapping(_j(rd.get("metrics_json")) or {}, max_depth=3)
+        risk_snapshot["metrics_json"] = redact_nested_mapping(
+            _j(rd.get("metrics_json")) or {}, max_depth=3
+        )
 
     learning_e2e_record: dict[str, Any] | None = None
     paper_positions: list[dict[str, Any]] = []
@@ -1206,23 +1353,41 @@ def fetch_execution_forensic_timeline(
                 "regime_label": ed.get("regime_label"),
                 "meta_trade_lane": ed.get("meta_trade_lane"),
                 "trade_action": ed.get("trade_action"),
-                "paper_trade_id": str(ed["paper_trade_id"]) if ed.get("paper_trade_id") else None,
-                "shadow_trade_id": str(ed["shadow_trade_id"]) if ed.get("shadow_trade_id") else None,
-                "live_mirror_trade_id": str(ed["live_mirror_trade_id"])
-                if ed.get("live_mirror_trade_id")
-                else None,
-                "trade_evaluation_id": str(ed["trade_evaluation_id"])
-                if ed.get("trade_evaluation_id")
-                else None,
-                "snapshot_json": redact_nested_mapping(_j(ed.get("snapshot_json")) or {}, max_depth=4),
-                "outcomes_json": redact_nested_mapping(_j(ed.get("outcomes_json")) or {}, max_depth=4),
-                "label_qc_json": redact_nested_mapping(_j(ed.get("label_qc_json")) or {}, max_depth=4),
+                "paper_trade_id": (
+                    str(ed["paper_trade_id"]) if ed.get("paper_trade_id") else None
+                ),
+                "shadow_trade_id": (
+                    str(ed["shadow_trade_id"]) if ed.get("shadow_trade_id") else None
+                ),
+                "live_mirror_trade_id": (
+                    str(ed["live_mirror_trade_id"])
+                    if ed.get("live_mirror_trade_id")
+                    else None
+                ),
+                "trade_evaluation_id": (
+                    str(ed["trade_evaluation_id"])
+                    if ed.get("trade_evaluation_id")
+                    else None
+                ),
+                "snapshot_json": redact_nested_mapping(
+                    _j(ed.get("snapshot_json")) or {}, max_depth=4
+                ),
+                "outcomes_json": redact_nested_mapping(
+                    _j(ed.get("outcomes_json")) or {}, max_depth=4
+                ),
+                "label_qc_json": redact_nested_mapping(
+                    _j(ed.get("label_qc_json")) or {}, max_depth=4
+                ),
                 "operator_mirror_actions_json": redact_nested_mapping(
                     _j(ed.get("operator_mirror_actions_json")) or [],
                     max_depth=4,
                 ),
-                "created_ts": ed["created_ts"].isoformat() if ed.get("created_ts") else None,
-                "updated_ts": ed["updated_ts"].isoformat() if ed.get("updated_ts") else None,
+                "created_ts": (
+                    ed["created_ts"].isoformat() if ed.get("created_ts") else None
+                ),
+                "updated_ts": (
+                    ed["updated_ts"].isoformat() if ed.get("updated_ts") else None
+                ),
             }
 
         pos_rows = conn.execute(
@@ -1241,27 +1406,49 @@ def fetch_execution_forensic_timeline(
         paper_positions = [
             {
                 "position_id": str(dict(r)["position_id"]),
-                "signal_id": str(dict(r)["signal_id"]) if dict(r).get("signal_id") else None,
+                "signal_id": (
+                    str(dict(r)["signal_id"]) if dict(r).get("signal_id") else None
+                ),
                 "tenant_id": dict(r).get("tenant_id"),
                 "symbol": dict(r).get("symbol"),
                 "side": dict(r).get("side"),
                 "state": dict(r).get("state"),
-                "qty_base": str(dict(r)["qty_base"]) if dict(r).get("qty_base") is not None else None,
-                "entry_price_avg": str(dict(r)["entry_price_avg"])
-                if dict(r).get("entry_price_avg") is not None
-                else None,
-                "leverage": str(dict(r)["leverage"]) if dict(r).get("leverage") is not None else None,
+                "qty_base": (
+                    str(dict(r)["qty_base"])
+                    if dict(r).get("qty_base") is not None
+                    else None
+                ),
+                "entry_price_avg": (
+                    str(dict(r)["entry_price_avg"])
+                    if dict(r).get("entry_price_avg") is not None
+                    else None
+                ),
+                "leverage": (
+                    str(dict(r)["leverage"])
+                    if dict(r).get("leverage") is not None
+                    else None
+                ),
                 "opened_ts_ms": _i(dict(r).get("opened_ts_ms")),
                 "closed_ts_ms": _i(dict(r).get("closed_ts_ms")),
                 "canonical_instrument_id": dict(r).get("canonical_instrument_id"),
                 "market_family": dict(r).get("market_family"),
                 "product_type": dict(r).get("product_type"),
-                "stop_plan_json": redact_nested_mapping(_j(dict(r).get("stop_plan_json")) or {}, max_depth=3),
-                "tp_plan_json": redact_nested_mapping(_j(dict(r).get("tp_plan_json")) or {}, max_depth=3),
+                "stop_plan_json": redact_nested_mapping(
+                    _j(dict(r).get("stop_plan_json")) or {}, max_depth=3
+                ),
+                "tp_plan_json": redact_nested_mapping(
+                    _j(dict(r).get("tp_plan_json")) or {}, max_depth=3
+                ),
                 "stop_quality_score": dict(r).get("stop_quality_score"),
-                "rr_estimate": str(dict(r)["rr_estimate"]) if dict(r).get("rr_estimate") is not None else None,
+                "rr_estimate": (
+                    str(dict(r)["rr_estimate"])
+                    if dict(r).get("rr_estimate") is not None
+                    else None
+                ),
                 "plan_updated_ts_ms": _i(dict(r).get("plan_updated_ts_ms")),
-                "meta": redact_nested_mapping(_j(dict(r).get("meta")) or {}, max_depth=3),
+                "meta": redact_nested_mapping(
+                    _j(dict(r).get("meta")) or {}, max_depth=3
+                ),
             }
             for r in pos_rows
         ]
@@ -1285,15 +1472,19 @@ def fetch_execution_forensic_timeline(
             {
                 "evaluation_id": str(dict(r)["evaluation_id"]),
                 "paper_trade_id": str(dict(r)["paper_trade_id"]),
-                "signal_id": str(dict(r)["signal_id"]) if dict(r).get("signal_id") else None,
+                "signal_id": (
+                    str(dict(r)["signal_id"]) if dict(r).get("signal_id") else None
+                ),
                 "symbol": dict(r).get("symbol"),
                 "timeframe": dict(r).get("timeframe"),
                 "opened_ts_ms": _i(dict(r).get("opened_ts_ms")),
                 "closed_ts_ms": _i(dict(r).get("closed_ts_ms")),
                 "side": dict(r).get("side"),
-                "pnl_net_usdt": float(dict(r)["pnl_net_usdt"])
-                if dict(r).get("pnl_net_usdt") is not None
-                else None,
+                "pnl_net_usdt": (
+                    float(dict(r)["pnl_net_usdt"])
+                    if dict(r).get("pnl_net_usdt") is not None
+                    else None
+                ),
                 "direction_correct": dict(r).get("direction_correct"),
                 "stop_hit": dict(r).get("stop_hit"),
                 "tp1_hit": dict(r).get("tp1_hit"),
@@ -1302,13 +1493,19 @@ def fetch_execution_forensic_timeline(
                 "time_to_tp1_ms": _i(dict(r).get("time_to_tp1_ms")),
                 "time_to_stop_ms": _i(dict(r).get("time_to_stop_ms")),
                 "stop_quality_score": dict(r).get("stop_quality_score"),
-                "slippage_bps_entry": float(dict(r)["slippage_bps_entry"])
-                if dict(r).get("slippage_bps_entry") is not None
-                else None,
-                "slippage_bps_exit": float(dict(r)["slippage_bps_exit"])
-                if dict(r).get("slippage_bps_exit") is not None
-                else None,
-                "error_labels_json": _trunc_json_list(dict(r).get("error_labels_json"), 12),
+                "slippage_bps_entry": (
+                    float(dict(r)["slippage_bps_entry"])
+                    if dict(r).get("slippage_bps_entry") is not None
+                    else None
+                ),
+                "slippage_bps_exit": (
+                    float(dict(r)["slippage_bps_exit"])
+                    if dict(r).get("slippage_bps_exit") is not None
+                    else None
+                ),
+                "error_labels_json": _trunc_json_list(
+                    dict(r).get("error_labels_json"), 12
+                ),
                 "signal_snapshot_json": redact_nested_mapping(
                     _j(dict(r).get("signal_snapshot_json")) or {},
                     max_depth=3,
@@ -1321,7 +1518,11 @@ def fetch_execution_forensic_timeline(
                     _j(dict(r).get("structure_snapshot_json")) or {},
                     max_depth=3,
                 ),
-                "created_ts": dict(r)["created_ts"].isoformat() if dict(r).get("created_ts") else None,
+                "created_ts": (
+                    dict(r)["created_ts"].isoformat()
+                    if dict(r).get("created_ts")
+                    else None
+                ),
             }
             for r in eval_rows
         ]
@@ -1342,10 +1543,16 @@ def fetch_execution_forensic_timeline(
             "ts": dict(r)["ts"].isoformat() if dict(r).get("ts") else None,
             "outcome": dict(r).get("outcome"),
             "action_kind": dict(r).get("action_kind"),
-            "execution_id": str(dict(r)["execution_id"]) if dict(r).get("execution_id") else None,
-            "pending_id": str(dict(r)["pending_id"]) if dict(r).get("pending_id") else None,
+            "execution_id": (
+                str(dict(r)["execution_id"]) if dict(r).get("execution_id") else None
+            ),
+            "pending_id": (
+                str(dict(r)["pending_id"]) if dict(r).get("pending_id") else None
+            ),
             "http_status": dict(r).get("http_status"),
-            "details_json": redact_nested_mapping(_j(dict(r).get("details_json")) or {}, max_depth=4),
+            "details_json": redact_nested_mapping(
+                _j(dict(r).get("details_json")) or {}, max_depth=4
+            ),
         }
         for r in tga_rows
     ]
@@ -1371,9 +1578,15 @@ def fetch_execution_forensic_timeline(
             "telegram_message_id": dict(r).get("telegram_message_id"),
             "attempt_count": dict(r).get("attempt_count"),
             "last_error": dict(r).get("last_error"),
-            "sent_ts": dict(r)["sent_ts"].isoformat() if dict(r).get("sent_ts") else None,
-            "created_ts": dict(r)["created_ts"].isoformat() if dict(r).get("created_ts") else None,
-            "payload": redact_nested_mapping(_j(dict(r).get("payload")) or {}, max_depth=4),
+            "sent_ts": (
+                dict(r)["sent_ts"].isoformat() if dict(r).get("sent_ts") else None
+            ),
+            "created_ts": (
+                dict(r)["created_ts"].isoformat() if dict(r).get("created_ts") else None
+            ),
+            "payload": redact_nested_mapping(
+                _j(dict(r).get("payload")) or {}, max_depth=4
+            ),
         }
         for r in outbox_rows
     ]
@@ -1398,13 +1611,17 @@ def fetch_execution_forensic_timeline(
     gateway_audit_trails = [
         {
             "id": str(dict(r)["id"]),
-            "created_ts": dict(r)["created_ts"].isoformat() if dict(r).get("created_ts") else None,
+            "created_ts": (
+                dict(r)["created_ts"].isoformat() if dict(r).get("created_ts") else None
+            ),
             "actor": dict(r).get("actor"),
             "auth_method": dict(r).get("auth_method"),
             "action": dict(r).get("action"),
             "http_method": dict(r).get("http_method"),
             "path": dict(r).get("path"),
-            "detail_json": redact_nested_mapping(_j(dict(r).get("detail_json")) or {}, max_depth=4),
+            "detail_json": redact_nested_mapping(
+                _j(dict(r).get("detail_json")) or {}, max_depth=4
+            ),
         }
         for r in gate_rows
     ]
@@ -1427,28 +1644,62 @@ def fetch_execution_forensic_timeline(
         exit_plans = [
             {
                 "plan_id": str(dict(r)["plan_id"]),
-                "root_internal_order_id": str(dict(r)["root_internal_order_id"])
-                if dict(r).get("root_internal_order_id")
-                else None,
+                "root_internal_order_id": (
+                    str(dict(r)["root_internal_order_id"])
+                    if dict(r).get("root_internal_order_id")
+                    else None
+                ),
                 "source_signal_id": dict(r).get("source_signal_id"),
                 "symbol": dict(r).get("symbol"),
                 "side": dict(r).get("side"),
                 "timeframe": dict(r).get("timeframe"),
                 "state": dict(r).get("state"),
-                "entry_price": str(dict(r)["entry_price"]) if dict(r).get("entry_price") is not None else None,
-                "initial_qty": str(dict(r)["initial_qty"]) if dict(r).get("initial_qty") is not None else None,
-                "remaining_qty": str(dict(r)["remaining_qty"])
-                if dict(r).get("remaining_qty") is not None
-                else None,
-                "stop_plan_json": redact_nested_mapping(_j(dict(r).get("stop_plan_json")) or {}, max_depth=4),
-                "tp_plan_json": redact_nested_mapping(_j(dict(r).get("tp_plan_json")) or {}, max_depth=4),
-                "context_json": redact_nested_mapping(_j(dict(r).get("context_json")) or {}, max_depth=4),
-                "last_market_json": redact_nested_mapping(_j(dict(r).get("last_market_json")) or {}, max_depth=4),
-                "last_decision_json": redact_nested_mapping(_j(dict(r).get("last_decision_json")) or {}, max_depth=4),
+                "entry_price": (
+                    str(dict(r)["entry_price"])
+                    if dict(r).get("entry_price") is not None
+                    else None
+                ),
+                "initial_qty": (
+                    str(dict(r)["initial_qty"])
+                    if dict(r).get("initial_qty") is not None
+                    else None
+                ),
+                "remaining_qty": (
+                    str(dict(r)["remaining_qty"])
+                    if dict(r).get("remaining_qty") is not None
+                    else None
+                ),
+                "stop_plan_json": redact_nested_mapping(
+                    _j(dict(r).get("stop_plan_json")) or {}, max_depth=4
+                ),
+                "tp_plan_json": redact_nested_mapping(
+                    _j(dict(r).get("tp_plan_json")) or {}, max_depth=4
+                ),
+                "context_json": redact_nested_mapping(
+                    _j(dict(r).get("context_json")) or {}, max_depth=4
+                ),
+                "last_market_json": redact_nested_mapping(
+                    _j(dict(r).get("last_market_json")) or {}, max_depth=4
+                ),
+                "last_decision_json": redact_nested_mapping(
+                    _j(dict(r).get("last_decision_json")) or {}, max_depth=4
+                ),
                 "last_reason": dict(r).get("last_reason"),
-                "created_ts": dict(r)["created_ts"].isoformat() if dict(r).get("created_ts") else None,
-                "updated_ts": dict(r)["updated_ts"].isoformat() if dict(r).get("updated_ts") else None,
-                "closed_ts": dict(r)["closed_ts"].isoformat() if dict(r).get("closed_ts") else None,
+                "created_ts": (
+                    dict(r)["created_ts"].isoformat()
+                    if dict(r).get("created_ts")
+                    else None
+                ),
+                "updated_ts": (
+                    dict(r)["updated_ts"].isoformat()
+                    if dict(r).get("updated_ts")
+                    else None
+                ),
+                "closed_ts": (
+                    dict(r)["closed_ts"].isoformat()
+                    if dict(r).get("closed_ts")
+                    else None
+                ),
             }
             for r in exit_rows
         ]
@@ -1464,10 +1715,18 @@ def fetch_execution_forensic_timeline(
                     "trade_action": sig_block.get("trade_action"),
                     "decision_state": sig_block.get("decision_state"),
                     "router_id": (
-                        ((_j(sig_block.get("reasons_json")) or {}).get("specialists") or {})
+                        (
+                            (_j(sig_block.get("reasons_json")) or {}).get("specialists")
+                            or {}
+                        )
                         .get("router_arbitration", {})
                         .get("router_id")
-                        if isinstance((_j(sig_block.get("reasons_json")) or {}).get("specialists"), dict)
+                        if isinstance(
+                            (_j(sig_block.get("reasons_json")) or {}).get(
+                                "specialists"
+                            ),
+                            dict,
+                        )
                         else None
                     ),
                     "playbook_id": sig_block.get("playbook_id"),
@@ -1500,7 +1759,8 @@ def fetch_execution_forensic_timeline(
     if learning_e2e_record:
         events.append(
             {
-                "ts": learning_e2e_record.get("created_ts") or learning_e2e_record.get("updated_ts"),
+                "ts": learning_e2e_record.get("created_ts")
+                or learning_e2e_record.get("updated_ts"),
                 "kind": "learning_e2e_record",
                 "ref": learning_e2e_record.get("record_id"),
                 "summary": {
@@ -1552,16 +1812,24 @@ def fetch_execution_forensic_timeline(
                 "ts": plan.get("updated_ts") or plan.get("created_ts"),
                 "kind": "exit_plan",
                 "ref": plan.get("plan_id"),
-                "summary": {"state": plan.get("state"), "last_reason": plan.get("last_reason")},
+                "summary": {
+                    "state": plan.get("state"),
+                    "last_reason": plan.get("last_reason"),
+                },
             }
         )
     for paper_pos in paper_positions:
         events.append(
             {
-                "ts": _ts_ms_to_iso(paper_pos.get("closed_ts_ms") or paper_pos.get("opened_ts_ms")),
+                "ts": _ts_ms_to_iso(
+                    paper_pos.get("closed_ts_ms") or paper_pos.get("opened_ts_ms")
+                ),
                 "kind": "paper_position",
                 "ref": paper_pos.get("position_id"),
-                "summary": {"state": paper_pos.get("state"), "side": paper_pos.get("side")},
+                "summary": {
+                    "state": paper_pos.get("state"),
+                    "side": paper_pos.get("side"),
+                },
             }
         )
     for review in trade_reviews:
@@ -1583,7 +1851,10 @@ def fetch_execution_forensic_timeline(
                 "ts": action.get("ts"),
                 "kind": "telegram_operator_action",
                 "ref": action.get("audit_id"),
-                "summary": {"outcome": action.get("outcome"), "action_kind": action.get("action_kind")},
+                "summary": {
+                    "outcome": action.get("outcome"),
+                    "action_kind": action.get("action_kind"),
+                },
             }
         )
     for msg in telegram_alert_outbox:
@@ -1592,7 +1863,10 @@ def fetch_execution_forensic_timeline(
                 "ts": msg.get("sent_ts") or msg.get("created_ts"),
                 "kind": "telegram_outbox",
                 "ref": msg.get("alert_id"),
-                "summary": {"alert_type": msg.get("alert_type"), "state": msg.get("state")},
+                "summary": {
+                    "alert_type": msg.get("alert_type"),
+                    "state": msg.get("state"),
+                },
             }
         )
     for audit in gateway_audit_trails:
@@ -1601,7 +1875,10 @@ def fetch_execution_forensic_timeline(
                 "ts": audit.get("created_ts"),
                 "kind": "gateway_audit",
                 "ref": audit.get("id"),
-                "summary": {"action": audit.get("action"), "auth_method": audit.get("auth_method")},
+                "summary": {
+                    "action": audit.get("action"),
+                    "auth_method": audit.get("auth_method"),
+                },
             }
         )
     events.sort(key=lambda e: (e.get("ts") is None, e.get("ts") or ""))
@@ -1617,7 +1894,9 @@ def fetch_execution_forensic_timeline(
         signal_path_summary = build_live_broker_forensic_snapshot(
             signal_payload=sig_block,
             risk_decision=risk_snapshot if isinstance(risk_snapshot, dict) else None,
-            shadow_live_report=shadow_assessment if isinstance(shadow_assessment, dict) else None,
+            shadow_live_report=(
+                shadow_assessment if isinstance(shadow_assessment, dict) else None
+            ),
             trace=trace_for_snap,
         )
     corr_chain = None
@@ -1665,14 +1944,15 @@ def _attach_apex_trade_forensic_golden_record(
     conn: psycopg.Connection[Any], timeline: dict[str, Any]
 ) -> dict[str, Any]:
     from psycopg import errors as pg_errors
-
     from shared_py.observability.apex_trade_forensic_store import (
         expected_previous_chain_for_row,
         fetch_apex_trade_forensic_row,
         upsert_apex_trade_forensic,
         verify_row_integrity,
     )
-    from shared_py.observability.trade_lifecycle_audit import build_golden_record_from_timeline
+    from shared_py.observability.trade_lifecycle_audit import (
+        build_golden_record_from_timeline,
+    )
 
     ex = str(timeline.get("execution_id") or "")
     if not ex:
@@ -1738,8 +2018,10 @@ def _attach_apex_trade_forensic_golden_record(
         "is_verified": is_ver.get("is_verified") if stored else False,
         "verification": is_ver,
         "golden_record": g if isinstance(g, dict) else None,
-        "chain_checksum_hex": ch.hex() if isinstance(ch, (bytes, memoryview)) else None,
-        "prev_chain_checksum_hex": pr.hex() if isinstance(pr, (bytes, memoryview)) else None,
+        "chain_checksum_hex": ch.hex() if isinstance(ch, bytes | memoryview) else None,
+        "prev_chain_checksum_hex": (
+            pr.hex() if isinstance(pr, bytes | memoryview) else None
+        ),
     }
     return timeline
 
@@ -1748,7 +2030,9 @@ def fetch_ops_risk_assist_context(
     conn: psycopg.Connection[Any], *, execution_id: str
 ) -> dict[str, Any] | None:
     """Kontext fuer Multiturn ops_risk Assist (Golden Record + Policy-Treffer)."""
-    from shared_py.observability.risk_rejection_inquiry import build_ops_risk_assist_context
+    from shared_py.observability.risk_rejection_inquiry import (
+        build_ops_risk_assist_context,
+    )
 
     row = fetch_execution_forensic_timeline(conn, execution_id=execution_id)
     if row is None:

@@ -20,7 +20,12 @@ from api_gateway.db_live_broker_queries import (
 
 
 class _FakeCursor:
-    def __init__(self, *, one: dict[str, object] | None = None, many: list[dict[str, object]] | None = None):
+    def __init__(
+        self,
+        *,
+        one: dict[str, object] | None = None,
+        many: list[dict[str, object]] | None = None,
+    ):
         self._one = one
         self._many = many or []
 
@@ -36,14 +41,18 @@ class _FakeConn:
         if "FROM live.reconcile_snapshots" in sql:
             return _FakeCursor(
                 one={
-                    "reconcile_snapshot_id": UUID("00000000-0000-0000-0000-000000000001"),
+                    "reconcile_snapshot_id": UUID(
+                        "00000000-0000-0000-0000-000000000001"
+                    ),
                     "status": "ok",
                     "runtime_mode": "shadow",
                     "upstream_ok": True,
                     "shadow_enabled": True,
                     "live_submission_enabled": False,
                     "decision_counts_json": {"shadow_recorded": 2},
-                    "details_json": {"execution_controls": {"strategy_execution_mode": "manual"}},
+                    "details_json": {
+                        "execution_controls": {"strategy_execution_mode": "manual"}
+                    },
                     "created_ts": None,
                 }
             )
@@ -113,10 +122,16 @@ def test_fetch_live_broker_runtime_flattens_nested_instrument_metadata() -> None
     assert ols.get("lane") == "live_lane_disabled_config"
     assert isinstance(ols.get("reasons_de"), list)
     assert item["instrument_catalog"]["status"] == "ok"
-    assert item["current_instrument_metadata"]["metadata_source"] == "/api/v2/mix/market/contracts"
+    assert (
+        item["current_instrument_metadata"]["metadata_source"]
+        == "/api/v2/mix/market/contracts"
+    )
     assert item["current_instrument_metadata"]["supports_shorting"] is True
     assert item["current_instrument_metadata"]["snapshot_id"] == "snap-7"
-    assert item["current_instrument_metadata"]["session_state"]["trade_allowed_now"] is True
+    assert (
+        item["current_instrument_metadata"]["session_state"]["trade_allowed_now"]
+        is True
+    )
     assert item.get("bitget_private_status", {}).get("ui_status") == "unknown"
 
 
@@ -130,7 +145,12 @@ def test_compute_operator_live_submission_kill_switch_over_config() -> None:
         live_submission_enabled=False,
         safety_latch_active=False,
         active_kill_switches=[
-            {"scope": "global", "scope_key": "*", "reason": "ops_drill", "source": "test"}
+            {
+                "scope": "global",
+                "scope_key": "*",
+                "reason": "ops_drill",
+                "source": "test",
+            }
         ],
         bitget_private_status={"ui_status": "unknown"},
         require_shadow_match_before_live=False,

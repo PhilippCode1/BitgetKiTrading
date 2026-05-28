@@ -77,7 +77,9 @@ def list_active_plans(conn: psycopg.Connection[Any]) -> list[dict[str, Any]]:
     return out
 
 
-def fetch_plan(conn: psycopg.Connection[Any], *, plan_code: str) -> dict[str, Any] | None:
+def fetch_plan(
+    conn: psycopg.Connection[Any], *, plan_code: str
+) -> dict[str, Any] | None:
     row = conn.execute(
         """
         SELECT plan_code, billing_interval, display_name_de, net_amount_cents, currency,
@@ -585,8 +587,7 @@ def list_tenants_for_subscription_prepaid_billing(
     admin_done = "admin_review_complete"
     if tenant_id_filter and tenant_id_filter.strip():
         tid = tenant_id_filter.strip()
-        q = (
-            """
+        q = """
             SELECT
                 s.tenant_id, s.plan_code, s.status,
                 p.net_amount_cents, p.vat_rate_bps,
@@ -603,11 +604,9 @@ def list_tenants_for_subscription_prepaid_billing(
                     AND tc.status = %s
               )
             """
-        )
         rows = conn.execute(q, (tid, admin_done)).fetchall()
     else:
-        q = (
-            """
+        q = """
             SELECT
                 s.tenant_id, s.plan_code, s.status,
                 p.net_amount_cents, p.vat_rate_bps,
@@ -624,7 +623,6 @@ def list_tenants_for_subscription_prepaid_billing(
               )
             ORDER BY s.tenant_id
             """
-        )
         rows = conn.execute(q, (admin_done,)).fetchall()
     return [dict(r) for r in rows]
 

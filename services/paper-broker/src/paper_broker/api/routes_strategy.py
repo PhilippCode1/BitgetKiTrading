@@ -7,13 +7,15 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from paper_broker.config import PaperBrokerSettings
-from paper_broker.storage.connection import paper_connect
 from paper_broker.storage import repo_strategy
+from paper_broker.storage.connection import paper_connect
 from paper_broker.strategy.engine import StrategyExecutionEngine
 
 
 class SymbolBody(BaseModel):
-    symbol: str = Field(..., description="Explizites Symbol, keine implizite Produktionsvorgabe")
+    symbol: str = Field(
+        ..., description="Explizites Symbol, keine implizite Produktionsvorgabe"
+    )
 
 
 def _serialize_position(row: dict[str, Any]) -> dict[str, Any]:
@@ -49,6 +51,10 @@ def build_strategy_router(
             raise HTTPException(status_code=400, detail="limit 1..100")
         with paper_connect(settings.database_url, autocommit=True) as conn:
             rows = repo_strategy.list_recent_positions(conn, limit=limit)
-        return {"status": "ok", "count": len(rows), "positions": [_serialize_position(x) for x in rows]}
+        return {
+            "status": "ok",
+            "count": len(rows),
+            "positions": [_serialize_position(x) for x in rows],
+        }
 
     return r

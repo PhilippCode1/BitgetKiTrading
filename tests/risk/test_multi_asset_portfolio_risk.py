@@ -24,7 +24,13 @@ def _limits() -> PortfolioRiskLimits:
     )
 
 
-def _item(symbol: str, notional: float, side: str = "long", family: str = "futures", risk_pct: float = 0.01) -> ExposureItem:
+def _item(
+    symbol: str,
+    notional: float,
+    side: str = "long",
+    family: str = "futures",
+    risk_pct: float = 0.01,
+) -> ExposureItem:
     return ExposureItem(
         symbol=symbol,
         market_family=family,
@@ -44,6 +50,7 @@ def _snapshot(**overrides: object) -> PortfolioSnapshot:
         "account_equity": 10_000.0,
         "used_margin": 2000.0,
         "snapshot_fresh": True,
+        "owner_limits_present": True,
         "correlation_stress": 0.4,
         "unknown_correlation": False,
     }
@@ -62,7 +69,9 @@ def test_stale_snapshot_blocks() -> None:
 
 
 def test_exposure_over_limit_blocks() -> None:
-    out = evaluate_portfolio_risk(_snapshot(open_positions=[_item("BTCUSDT", 50_000.0)]), _limits())
+    out = evaluate_portfolio_risk(
+        _snapshot(open_positions=[_item("BTCUSDT", 50_000.0)]), _limits()
+    )
     assert "total_exposure_ueber_limit" in out.block_reasons
 
 
@@ -72,34 +81,60 @@ def test_margin_usage_over_limit_blocks() -> None:
 
 
 def test_largest_position_risk_over_limit_blocks() -> None:
-    out = evaluate_portfolio_risk(_snapshot(open_positions=[_item("BTCUSDT", 1000.0, risk_pct=0.08)]), _limits())
+    out = evaluate_portfolio_risk(
+        _snapshot(open_positions=[_item("BTCUSDT", 1000.0, risk_pct=0.08)]), _limits()
+    )
     assert "largest_position_risk_ueber_limit" in out.block_reasons
 
 
 def test_max_concurrent_positions_blocks() -> None:
-    out = evaluate_portfolio_risk(_snapshot(open_positions=[_item("A", 1000), _item("B", 1000), _item("C", 1000), _item("D", 1000)]), _limits())
+    out = evaluate_portfolio_risk(
+        _snapshot(
+            open_positions=[
+                _item("A", 1000),
+                _item("B", 1000),
+                _item("C", 1000),
+                _item("D", 1000),
+            ]
+        ),
+        _limits(),
+    )
     assert "max_concurrent_positions_ueberschritten" in out.block_reasons
 
 
 def test_pending_orders_increase_exposure() -> None:
     base = evaluate_portfolio_risk(_snapshot(), _limits())
-    with_pending = evaluate_portfolio_risk(_snapshot(pending_orders=[_item("ETHUSDT", 3000.0)]), _limits())
+    with_pending = evaluate_portfolio_risk(
+        _snapshot(pending_orders=[_item("ETHUSDT", 3000.0)]), _limits()
+    )
     assert with_pending.total_exposure > base.total_exposure
 
 
 def test_pending_candidates_increase_risk() -> None:
-    out = evaluate_portfolio_risk(_snapshot(pending_live_candidates=[_item("SOLUSDT", 4000.0)]), _limits())
+    out = evaluate_portfolio_risk(
+        _snapshot(pending_live_candidates=[_item("SOLUSDT", 4000.0)]), _limits()
+    )
     assert out.pending_live_candidates_count == 1
     assert out.total_exposure >= 8000.0
 
 
 def test_direction_long_limit_blocks() -> None:
-    out = evaluate_portfolio_risk(_snapshot(open_positions=[_item("A", 9000), _item("B", 5000)]), _limits())
+    out = evaluate_portfolio_risk(
+        _snapshot(open_positions=[_item("A", 9000), _item("B", 5000)]), _limits()
+    )
     assert "net_long_exposure_ueber_limit" in out.block_reasons
 
 
 def test_direction_short_limit_blocks() -> None:
-    out = evaluate_portfolio_risk(_snapshot(open_positions=[_item("A", 9000, side="short"), _item("B", 5000, side="short")]), _limits())
+    out = evaluate_portfolio_risk(
+        _snapshot(
+            open_positions=[
+                _item("A", 9000, side="short"),
+                _item("B", 5000, side="short"),
+            ]
+        ),
+        _limits(),
+    )
     assert "net_short_exposure_ueber_limit" in out.block_reasons
 
 

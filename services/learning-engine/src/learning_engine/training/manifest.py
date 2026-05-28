@@ -25,7 +25,10 @@ def build_training_manifest(
         "training_seed": training_seed,
         "cv": {
             "walk_forward": {"k_folds": cv_kfolds, "embargo_pct": cv_embargo_pct},
-            "purged_kfold_embargo": {"k_folds": cv_kfolds, "embargo_pct": cv_embargo_pct},
+            "purged_kfold_embargo": {
+                "k_folds": cv_kfolds,
+                "embargo_pct": cv_embargo_pct,
+            },
         },
         "data_version_hash": data_version_hash,
         "feature_schema_hash": feature_schema_hash,

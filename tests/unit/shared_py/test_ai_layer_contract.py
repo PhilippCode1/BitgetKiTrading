@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from shared_py.ai_layer_contract import (
+    ADMIN_VERSIONED_PROMPT_KEYS,
     AI_LAYER_CONTRACT_VERSION,
     DEFAULT_RATE_LIMIT_POLICY,
     ExecutionReceipt,
@@ -16,7 +17,6 @@ from shared_py.ai_layer_contract import (
     PipelineStage,
     PromptRegistryKey,
     TradingDecisionEnvelope,
-    ADMIN_VERSIONED_PROMPT_KEYS,
     ai_layer_descriptor,
     assert_monotonic_pipeline,
     pipeline_stage_rank,
@@ -26,7 +26,9 @@ from shared_py.ai_layer_contract import (
 
 
 def test_pipeline_order_increasing() -> None:
-    assert pipeline_stage_rank(PipelineStage.USER_REQUEST) < pipeline_stage_rank(PipelineStage.EXECUTION)
+    assert pipeline_stage_rank(PipelineStage.USER_REQUEST) < pipeline_stage_rank(
+        PipelineStage.EXECUTION
+    )
 
 
 def test_assert_monotonic_ok() -> None:
@@ -136,7 +138,9 @@ def test_inference_meta_frozen() -> None:
 
 def test_live_execution_requires_allowed_policy() -> None:
     tid = "trace-x"
-    pol = TradingDecisionEnvelope(trace_id=tid, allowed=False, reject_reason_code="limit")
+    pol = TradingDecisionEnvelope(
+        trace_id=tid, allowed=False, reject_reason_code="limit"
+    )
     rec = ExecutionReceipt(trace_id=tid, execution_mode="live")
     assert trading_execution_requires_prior_policy(rec, pol) is False
 

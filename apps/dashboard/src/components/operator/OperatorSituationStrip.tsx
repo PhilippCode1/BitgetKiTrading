@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 
+import { useI18n } from "@/components/i18n/I18nProvider";
 import { consolePath } from "@/lib/console-paths";
 import type { OperatorSituationSummary } from "@/lib/operator-snapshot";
 
@@ -18,6 +21,7 @@ function driftClass(action: string | null): string {
 }
 
 export function OperatorSituationStrip({ summary, symbol, timeframe }: Props) {
+  const { t } = useI18n();
   const killHot = summary.killSwitchActiveCount > 0;
   const latchHot = summary.safetyLatchActive;
   const alertsHot = summary.openMonitorAlerts > 0;
@@ -27,12 +31,12 @@ export function OperatorSituationStrip({ summary, symbol, timeframe }: Props) {
   return (
     <section
       className="operator-situation-strip"
-      aria-label="Operator-Lage kompakt"
+      aria-label={t("console.operatorStrip.ariaLabel")}
       role="region"
     >
       <div className="operator-strip-grid">
         <div className="operator-strip-item">
-          <span className="operator-strip-k">Modus</span>
+          <span className="operator-strip-k">{t("console.operatorStrip.mode")}</span>
           <span className="operator-strip-v">
             <strong>{summary.executionMode}</strong> / {summary.strategyMode}
           </span>
@@ -44,9 +48,11 @@ export function OperatorSituationStrip({ summary, symbol, timeframe }: Props) {
               : "operator-strip-item"
           }
         >
-          <span className="operator-strip-k">Live</span>
+          <span className="operator-strip-k">{t("console.operatorStrip.live")}</span>
           <span className="operator-strip-v">
-            trade <strong>{String(summary.liveTradeEnable)}</strong> — submit{" "}
+            {t("console.operatorStrip.liveTrade")}{" "}
+            <strong>{String(summary.liveTradeEnable)}</strong> —{" "}
+            {t("console.operatorStrip.liveSubmit")}{" "}
             <strong>{String(summary.liveSubmissionEnabled)}</strong>
           </span>
         </div>
@@ -57,9 +63,12 @@ export function OperatorSituationStrip({ summary, symbol, timeframe }: Props) {
               : "operator-strip-item"
           }
         >
-          <span className="operator-strip-k">Kill-Switch</span>
+          <span className="operator-strip-k">
+            {t("console.operatorStrip.killSwitch")}
+          </span>
           <span className="operator-strip-v">
-            <strong>{summary.killSwitchActiveCount}</strong> aktiv
+            <strong>{summary.killSwitchActiveCount}</strong>{" "}
+            {t("console.operatorStrip.killActive")}
           </span>
         </div>
         <div
@@ -69,13 +78,21 @@ export function OperatorSituationStrip({ summary, symbol, timeframe }: Props) {
               : "operator-strip-item"
           }
         >
-          <span className="operator-strip-k">Safety-Latch</span>
+          <span className="operator-strip-k">
+            {t("console.operatorStrip.safetyLatch")}
+          </span>
           <span className="operator-strip-v">
-            <strong>{latchHot ? "AN" : "aus"}</strong>
+            <strong>
+              {latchHot
+                ? t("console.operatorStrip.latchOn")
+                : t("console.operatorStrip.latchOff")}
+            </strong>
           </span>
         </div>
         <div className={driftClass(summary.onlineDriftAction)}>
-          <span className="operator-strip-k">Online-Drift</span>
+          <span className="operator-strip-k">
+            {t("console.operatorStrip.onlineDrift")}
+          </span>
           <span className="operator-strip-v">
             <strong>{summary.onlineDriftAction ?? "—"}</strong>
             {summary.onlineDriftComputedAt ? (
@@ -90,9 +107,12 @@ export function OperatorSituationStrip({ summary, symbol, timeframe }: Props) {
               : "operator-strip-item"
           }
         >
-          <span className="operator-strip-k">Monitor-Alerts</span>
+          <span className="operator-strip-k">
+            {t("console.operatorStrip.monitorAlerts")}
+          </span>
           <span className="operator-strip-v">
-            <strong>{summary.openMonitorAlerts}</strong> offen
+            <strong>{summary.openMonitorAlerts}</strong>{" "}
+            {t("console.operatorStrip.monitorOpen")}
           </span>
         </div>
         <div
@@ -102,7 +122,9 @@ export function OperatorSituationStrip({ summary, symbol, timeframe }: Props) {
               : "operator-strip-item"
           }
         >
-          <span className="operator-strip-k">Broker-Probe</span>
+          <span className="operator-strip-k">
+            {t("console.operatorStrip.brokerProbe")}
+          </span>
           <span className="operator-strip-v">
             {summary.brokerServiceName ? (
               <>
@@ -115,7 +137,9 @@ export function OperatorSituationStrip({ summary, symbol, timeframe }: Props) {
           </span>
         </div>
         <div className="operator-strip-item">
-          <span className="operator-strip-k">Reconcile</span>
+          <span className="operator-strip-k">
+            {t("console.operatorStrip.reconcile")}
+          </span>
           <span className="operator-strip-v">
             {summary.reconcileStatus ?? "—"}
           </span>
@@ -127,30 +151,44 @@ export function OperatorSituationStrip({ summary, symbol, timeframe }: Props) {
               : "operator-strip-item operator-strip-warn"
           }
         >
-          <span className="operator-strip-k">DB</span>
+          <span className="operator-strip-k">{t("console.operatorStrip.db")}</span>
           <span className="operator-strip-v">
-            <strong>{summary.databaseOk ? "ok" : "Fehler"}</strong>
+            <strong>
+              {summary.databaseOk ? "ok" : t("console.operatorStrip.dbError")}
+            </strong>
           </span>
         </div>
         <div className="operator-strip-item">
-          <span className="operator-strip-k">Drift-Events (Fenster)</span>
+          <span className="operator-strip-k">
+            {t("console.operatorStrip.driftEvents")}
+          </span>
           <span className="operator-strip-v">
             <strong>{summary.recentDriftEventCount}</strong>{" "}
             <Link
               href={consolePath("learning")}
               className="operator-strip-link"
             >
-              Learning
+              {t("console.operatorStrip.learningLink")}
             </Link>
           </span>
         </div>
       </div>
       <p className="muted operator-strip-foot">
-        Kontext: <code>{symbol}</code> / <code>{timeframe}</code> —
-        Vollstaendige Schalter:{" "}
-        <Link href={consolePath("health")}>System-Health</Link>, Live-Journal:{" "}
-        <Link href={consolePath("live-broker")}>Live-Broker</Link>, Signale:{" "}
-        <Link href={consolePath("signals")}>Signalübersicht</Link>.
+        {t("console.operatorStrip.footerContext")}{" "}
+        <code>{symbol}</code> / <code>{timeframe}</code> —{" "}
+        {t("console.operatorStrip.footerFullSwitches")}{" "}
+        <Link href={consolePath("health")}>
+          {t("console.operatorStrip.footerHealth")}
+        </Link>
+        , {t("console.operatorStrip.footerLiveBroker")}:{" "}
+        <Link href={consolePath("live-broker")}>
+          {t("console.operatorStrip.footerLiveBroker")}
+        </Link>
+        , {t("console.operatorStrip.footerSignals")}:{" "}
+        <Link href={consolePath("signals")}>
+          {t("console.operatorStrip.footerSignals")}
+        </Link>
+        .
       </p>
     </section>
   );

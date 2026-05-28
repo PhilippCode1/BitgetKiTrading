@@ -75,7 +75,9 @@ def log_effective_datastores(logger: logging.Logger, settings: Any) -> None:
             _pool_params_for_log(),
         )
     else:
-        logger.warning("datastore_postgres_effective missing DATABASE_URL source=%s", src)
+        logger.warning(
+            "datastore_postgres_effective missing DATABASE_URL source=%s", src
+        )
 
     ru = str(getattr(settings, "redis_url", "") or "").strip()
     if ru:

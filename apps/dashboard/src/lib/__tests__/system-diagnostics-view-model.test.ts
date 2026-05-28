@@ -79,7 +79,7 @@ describe("system-diagnostics-view-model", () => {
       healthEndpointWired: true,
     });
     expect(model.redisStatus).toBe("down");
-    expect(model.summaryReasons.join(" ")).toMatch(/Redis\/Eventbus nicht ok/i);
+    expect(model.summaryReasonKeys).toContain("redisNotOk");
   });
 
   it("markiert stale-data checks", () => {
@@ -94,9 +94,15 @@ describe("system-diagnostics-view-model", () => {
       openAlerts: [],
       healthEndpointWired: true,
     });
-    expect(model.staleChecks.find((x) => x.key === "candles")?.stale).toBe(true);
-    expect(model.staleChecks.find((x) => x.key === "signals")?.stale).toBe(true);
-    expect(model.staleChecks.find((x) => x.key === "reconcile")?.stale).toBe(true);
+    expect(model.staleChecks.find((x) => x.key === "candles")?.stale).toBe(
+      true,
+    );
+    expect(model.staleChecks.find((x) => x.key === "signals")?.stale).toBe(
+      true,
+    );
+    expect(model.staleChecks.find((x) => x.key === "reconcile")?.stale).toBe(
+      true,
+    );
   });
 
   it("redacted sensitive error payload", () => {
@@ -113,7 +119,7 @@ describe("system-diagnostics-view-model", () => {
       openAlerts: [],
       healthEndpointWired: false,
     });
-    expect(model.summaryReasons.join(" ")).toMatch(/nicht verdrahtet/i);
+    expect(model.summaryReasonKeys).toContain("healthEndpointUnwired");
     expect(model.overallStatus).toBe("Blockiert");
   });
 });

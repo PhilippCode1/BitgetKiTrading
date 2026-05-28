@@ -59,7 +59,9 @@ def upsert_strategy_metrics(
     )
 
 
-def clear_error_patterns_for_window(conn: psycopg.Connection[Any], *, window: str) -> None:
+def clear_error_patterns_for_window(
+    conn: psycopg.Connection[Any], *, window: str
+) -> None:
     conn.execute("DELETE FROM learn.error_patterns WHERE time_window = %s", (window,))
 
 

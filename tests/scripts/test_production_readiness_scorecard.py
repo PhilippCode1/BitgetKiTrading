@@ -16,7 +16,9 @@ ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts" / "production_readiness_scorecard.py"
 
 
-def _matrix(status: str = "verified", overrides: dict[str, str] | None = None) -> dict[str, object]:
+def _matrix(
+    status: str = "verified", overrides: dict[str, str] | None = None
+) -> dict[str, object]:
     overrides = overrides or {}
     return {
         "categories": [
@@ -63,7 +65,17 @@ def test_json_output_parseable() -> None:
 
 
 def test_report_contains_required_sections() -> None:
-    scorecard = build_readiness_scorecard(_matrix(), report_names=["bitget_readiness.md", "dr_restore_test.md", "shadow_burn_in.md", "live_safety_drill.md", "production_readiness_scorecard.md"], asset_data_quality_verified=True)
+    scorecard = build_readiness_scorecard(
+        _matrix(),
+        report_names=[
+            "bitget_readiness.md",
+            "dr_restore_test.md",
+            "shadow_burn_in.md",
+            "live_safety_drill.md",
+            "production_readiness_scorecard.md",
+        ],
+        asset_data_quality_verified=True,
+    )
     report = scorecard_to_markdown(scorecard)
     for heading in (
         "Datum/Zeit",

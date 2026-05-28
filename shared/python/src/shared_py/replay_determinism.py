@@ -76,7 +76,10 @@ def trace_implies_replay_determinism(trace: dict[str, Any] | None) -> bool:
     det = trace.get("determinism")
     if isinstance(det, dict) and det.get("replay_session_id"):
         return True
-    if trace.get("session_id") and str(trace.get("source") or "").strip() == "learning_engine.replay":
+    if (
+        trace.get("session_id")
+        and str(trace.get("source") or "").strip() == "learning_engine.replay"
+    ):
         return True
     return False
 

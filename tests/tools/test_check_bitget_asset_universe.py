@@ -9,7 +9,6 @@ import yaml
 
 from tools.check_bitget_asset_universe import analyze_asset_universe
 
-
 ROOT = Path(__file__).resolve().parents[2]
 TOOL = ROOT / "tools" / "check_bitget_asset_universe.py"
 
@@ -21,10 +20,16 @@ def _write(path: Path, content: str) -> None:
 
 def _build_fixture(
     tmp_path: Path,
-) -> tuple[Path, Path, Path, Path, Path, Path, Path, tuple[Path, ...], tuple[Path, ...]]:
+) -> tuple[
+    Path, Path, Path, Path, Path, Path, Path, tuple[Path, ...], tuple[Path, ...]
+]:
     doc = tmp_path / "docs" / "production_10_10" / "bitget_asset_universe.md"
-    contract_doc = tmp_path / "docs" / "production_10_10" / "instrument_catalog_contract.md"
-    main_console_doc = tmp_path / "docs" / "production_10_10" / "main_console_product_direction.md"
+    contract_doc = (
+        tmp_path / "docs" / "production_10_10" / "instrument_catalog_contract.md"
+    )
+    main_console_doc = (
+        tmp_path / "docs" / "production_10_10" / "main_console_product_direction.md"
+    )
     no_go_doc = tmp_path / "docs" / "production_10_10" / "no_go_rules.md"
     matrix = tmp_path / "docs" / "production_10_10" / "evidence_matrix.yaml"
     refresh_script = tmp_path / "scripts" / "refresh_bitget_asset_universe.py"
@@ -50,13 +55,15 @@ def _build_fixture(
     )
     _write(
         matrix,
-        yaml.safe_dump({"categories": [{"id": "bitget_asset_universe"}]}, sort_keys=False),
+        yaml.safe_dump(
+            {"categories": [{"id": "bitget_asset_universe"}]}, sort_keys=False
+        ),
     )
     _write(contract_doc, "# Contract\n")
     _write(main_console_doc, "# Main Console\nAsset-Universum ist sichtbar.\n")
     _write(no_go_doc, "# No-Go\nOhne Asset-Freigabe kein Live-Block.\n")
     _write(refresh_script, "#!/usr/bin/env python3\n")
-    _write(fixture_json, "{\"assets\": []}\n")
+    _write(fixture_json, '{"assets": []}\n')
     for path in instrument_paths + test_paths:
         _write(path, "# fixture\n")
     return (
@@ -159,7 +166,10 @@ def test_detects_missing_quarantine_delisting_terms(tmp_path: Path) -> None:
         instrument_paths=instrument_paths,
         test_paths=test_paths,
     )
-    assert any(issue["code"] == "required_governance_term_missing" for issue in summary["issues"])
+    assert any(
+        issue["code"] == "required_governance_term_missing"
+        for issue in summary["issues"]
+    )
 
 
 def test_warns_when_matrix_category_missing(tmp_path: Path) -> None:
@@ -186,7 +196,9 @@ def test_warns_when_matrix_category_missing(tmp_path: Path) -> None:
         instrument_paths=instrument_paths,
         test_paths=test_paths,
     )
-    assert any(issue["code"] == "matrix_category_missing" for issue in summary["issues"])
+    assert any(
+        issue["code"] == "matrix_category_missing" for issue in summary["issues"]
+    )
 
 
 def test_json_output_is_parseable() -> None:

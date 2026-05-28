@@ -1,4 +1,10 @@
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 
@@ -101,9 +107,14 @@ categories:
         "# report",
         "utf-8",
       );
-      const cards = buildEvidenceCards({ rootDir: root, gitSha: "0123456789abcdef" });
+      const cards = buildEvidenceCards({
+        rootDir: root,
+        gitSha: "0123456789abcdef",
+      });
       const card = cards.find((c) => c.id === "asset_universe_quality");
-      expect(card?.lastReportPath).toBe("reports/market_data_quality_sample.md");
+      expect(card?.lastReportPath).toBe(
+        "reports/market_data_quality_sample.md",
+      );
       expect(card?.status).toBe("partial");
       expect(card?.gitSha).toBe("0123456789ab");
     });
@@ -132,9 +143,9 @@ categories:
       writeMatrix(root, "categories: []");
       const cards = buildEvidenceCards({ rootDir: root });
       expect(cards.every((c) => c.statusLabelDe.length > 0)).toBe(true);
-      expect(cards.some((c) => /Live bleibt blockiert/.test(c.liveImpactDe))).toBe(
-        true,
-      );
+      expect(
+        cards.some((c) => /Live bleibt blockiert/.test(c.liveImpactDe)),
+      ).toBe(true);
     });
   });
 

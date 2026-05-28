@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
-import json
 from pathlib import Path
 
 from scripts.live_safety_drill import (
@@ -12,7 +12,6 @@ from scripts.live_safety_drill import (
     secret_surface_issues,
     simulate_safety_drill,
 )
-
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts" / "live_safety_drill.py"
@@ -40,7 +39,14 @@ def test_emergency_flatten_is_safe_reduce_only() -> None:
 def test_report_contains_go_no_go(tmp_path: Path) -> None:
     report = tmp_path / "live_safety_drill.md"
     completed = subprocess.run(
-        [sys.executable, str(SCRIPT), "--mode", "simulated", "--output-md", str(report)],
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--mode",
+            "simulated",
+            "--output-md",
+            str(report),
+        ],
         cwd=ROOT,
         capture_output=True,
         text=True,
@@ -51,7 +57,9 @@ def test_report_contains_go_no_go(tmp_path: Path) -> None:
     assert "Go/No-Go" in text
     assert "NO_GO" in text
     assert "Live-Write erlaubt" in text
-    assert "live_write_allowed" in evidence_to_markdown(simulate_safety_drill("simulated"))
+    assert "live_write_allowed" in evidence_to_markdown(
+        simulate_safety_drill("simulated")
+    )
 
 
 def _valid_external_drill() -> dict[str, object]:
@@ -113,7 +121,12 @@ def test_external_safety_secret_surface_blocks_unredacted_values() -> None:
     assert secret_surface_issues({"authorization": "Bearer real-token"}) == [
         "secret_like_field_not_redacted:authorization"
     ]
-    assert secret_surface_issues({"authorization": "[REDACTED]", "database_url": "not_stored_in_repo"}) == []
+    assert (
+        secret_surface_issues(
+            {"authorization": "[REDACTED]", "database_url": "not_stored_in_repo"}
+        )
+        == []
+    )
 
 
 def test_cli_template_strict_fails_and_writes_json(tmp_path: Path) -> None:

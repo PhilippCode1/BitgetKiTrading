@@ -54,7 +54,9 @@ class MultiAssetStrategyEvidence:
     live_requested: bool = False
 
 
-def evaluate_multi_asset_strategy_evidence(item: MultiAssetStrategyEvidence) -> tuple[Verdict, list[str], str]:
+def evaluate_multi_asset_strategy_evidence(
+    item: MultiAssetStrategyEvidence,
+) -> tuple[Verdict, list[str], str]:
     reasons: list[str] = []
     warnings: list[str] = []
 
@@ -107,10 +109,7 @@ def evaluate_multi_asset_strategy_evidence(item: MultiAssetStrategyEvidence) -> 
 
     details = reasons if reasons else warnings
     if not details:
-        text = (
-            f"Strategie {item.strategy_id} für {item.asset_symbol}/{item.asset_class}: "
-            "Eignung ausreichend (PASS)."
-        )
+        text = f"Strategie {item.strategy_id} für {item.asset_symbol}/{item.asset_class}: Eignung ausreichend (PASS)."
     else:
         text = (
             f"Strategie {item.strategy_id} für {item.asset_symbol}/{item.asset_class}: "

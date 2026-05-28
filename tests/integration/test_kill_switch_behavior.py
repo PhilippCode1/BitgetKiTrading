@@ -39,7 +39,6 @@ from live_broker.orders.models import OrderCreateRequest
 from live_broker.orders.service import LiveBrokerOrderService
 from live_broker.persistence.repo import LiveBrokerRepository
 from live_broker.private_rest import BitgetRestError
-
 from shared_py.modul_mate_db_gates import assert_execution_allowed
 from shared_py.product_policy import ExecutionPolicyViolationError
 
@@ -58,7 +57,11 @@ def _test_dsn() -> str:
 
 
 def _test_redis_url() -> str:
-    u = (os.getenv("TEST_REDIS_URL") or os.getenv("REDIS_URL") or "redis://127.0.0.1:6379/0").strip()
+    u = (
+        os.getenv("TEST_REDIS_URL")
+        or os.getenv("REDIS_URL")
+        or "redis://127.0.0.1:6379/0"
+    ).strip()
     try:
         r = redis.Redis.from_url(u, socket_connect_timeout=1.0)
         r.ping()

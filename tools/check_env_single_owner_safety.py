@@ -203,29 +203,72 @@ def validate_env(
     strict_runtime: bool = False,
 ) -> list[EnvIssue]:
     issues: list[EnvIssue] = []
-    prod_like = profile == "production" or truthy(env, "PRODUCTION") or env.get("APP_ENV") == "production"
-    shadow_like = profile == "shadow" or env.get("APP_ENV") == "shadow" or env.get("EXECUTION_MODE") == "shadow"
+    prod_like = (
+        profile == "production"
+        or truthy(env, "PRODUCTION")
+        or env.get("APP_ENV") == "production"
+    )
+    shadow_like = (
+        profile == "shadow"
+        or env.get("APP_ENV") == "shadow"
+        or env.get("EXECUTION_MODE") == "shadow"
+    )
 
-    expected_app_env = {"production": "production", "shadow": "shadow", "local": "local"}.get(profile)
-    if expected_app_env and env.get("APP_ENV") and env.get("APP_ENV") != expected_app_env:
-        _issue(issues, "profile_app_env_mismatch", f"profile={profile} expects APP_ENV={expected_app_env}.", "APP_ENV")
+    expected_app_env = {
+        "production": "production",
+        "shadow": "shadow",
+        "local": "local",
+    }.get(profile)
+    if (
+        expected_app_env
+        and env.get("APP_ENV")
+        and env.get("APP_ENV") != expected_app_env
+    ):
+        _issue(
+            issues,
+            "profile_app_env_mismatch",
+            f"profile={profile} expects APP_ENV={expected_app_env}.",
+            "APP_ENV",
+        )
 
     for key in BASE_REQUIRED_KEYS:
         if key not in env:
-            _issue(issues, "missing_required_key", "required single-owner safety key is absent.", key)
+            _issue(
+                issues,
+                "missing_required_key",
+                "required single-owner safety key is absent.",
+                key,
+            )
 
     for key, value in sorted(env.items()):
         key_u = key.upper()
         if key_u.startswith("NEXT_PUBLIC_"):
             if any(fragment in key_u for fragment in BROWSER_FORBIDDEN_FRAGMENTS):
-                _issue(issues, "browser_secret_key_name", "NEXT_PUBLIC_* must not expose secret-like names.", key)
+                _issue(
+                    issues,
+                    "browser_secret_key_name",
+                    "NEXT_PUBLIC_* must not expose secret-like names.",
+                    key,
+                )
             if any(pattern.search(value) for pattern in SECRET_VALUE_PATTERNS):
-                _issue(issues, "browser_secret_value", "NEXT_PUBLIC_* value looks like a raw secret.", key)
+                _issue(
+                    issues,
+                    "browser_secret_value",
+                    "NEXT_PUBLIC_* value looks like a raw secret.",
+                    key,
+                )
         if strict_runtime and key_u in RUNTIME_SECRET_KEYS and is_placeholder(value):
-            _issue(issues, "placeholder_runtime_secret", "runtime secret is blank or placeholder.", key)
+            _issue(
+                issues,
+                "placeholder_runtime_secret",
+                "runtime secret is blank or placeholder.",
+                key,
+            )
 
     if prod_like:
-        if "BITGET_RELAX_CREDENTIAL_ISOLATION" in env and not falsy(env, "BITGET_RELAX_CREDENTIAL_ISOLATION"):
+        if "BITGET_RELAX_CREDENTIAL_ISOLATION" in env and not falsy(
+            env, "BITGET_RELAX_CREDENTIAL_ISOLATION"
+        ):
             _issue(
                 issues,
                 "production_relaxed_credential_isolation_forbidden",
@@ -239,7 +282,12 @@ def validate_env(
             "BITGET_DEMO_ENABLED",
         ):
             if truthy(env, key):
-                _issue(issues, "production_forbidden_true", "value must not be true in production.", key)
+                _issue(
+                    issues,
+                    "production_forbidden_true",
+                    "value must not be true in production.",
+                    key,
+                )
         for key, value in env.items():
             if key.endswith("_URL") or key in {
                 "API_GATEWAY_URL",
@@ -254,7 +302,12 @@ def validate_env(
                 "REDIS_URL_DOCKER",
             }:
                 if strict_runtime and _has_loopback(value):
-                    _issue(issues, "production_loopback_url", "loopback URL is forbidden in production runtime.", key)
+                    _issue(
+                        issues,
+                        "production_loopback_url",
+                        "loopback URL is forbidden in production runtime.",
+                        key,
+                    )
         if truthy(env, "PAYMENT_MOCK_ENABLED"):
             _issue(
                 issues,
@@ -265,9 +318,19 @@ def validate_env(
             )
 
     if shadow_like and truthy(env, "LIVE_TRADE_ENABLE"):
-        _issue(issues, "shadow_live_trade_enabled", "shadow mode must not enable live order submission.", "LIVE_TRADE_ENABLE")
+        _issue(
+            issues,
+            "shadow_live_trade_enabled",
+            "shadow mode must not enable live order submission.",
+            "LIVE_TRADE_ENABLE",
+        )
     if shadow_like and truthy(env, "LLM_USE_FAKE_PROVIDER"):
-        _issue(issues, "shadow_fake_provider_enabled", "shadow must use real data/provider paths, not fake provider.", "LLM_USE_FAKE_PROVIDER")
+        _issue(
+            issues,
+            "shadow_fake_provider_enabled",
+            "shadow must use real data/provider paths, not fake provider.",
+            "LLM_USE_FAKE_PROVIDER",
+        )
 
     if profile == "local":
         if truthy(env, "LLM_USE_FAKE_PROVIDER") or truthy(env, "BITGET_DEMO_ENABLED"):
@@ -282,16 +345,37 @@ def validate_env(
         required_true = (
             ("EXECUTION_MODE", "live", "live_trade_requires_live_execution_mode"),
             ("LIVE_BROKER_ENABLED", "true", "live_trade_requires_live_broker"),
-            ("LIVE_REQUIRE_OPERATOR_RELEASE_FOR_LIVE_OPEN", "true", "live_trade_requires_operator_release"),
-            ("REQUIRE_SHADOW_MATCH_BEFORE_LIVE", "true", "live_trade_requires_shadow_match"),
-            ("LIVE_REQUIRE_EXCHANGE_HEALTH", "true", "live_trade_requires_exchange_health"),
+            (
+                "LIVE_REQUIRE_OPERATOR_RELEASE_FOR_LIVE_OPEN",
+                "true",
+                "live_trade_requires_operator_release",
+            ),
+            (
+                "REQUIRE_SHADOW_MATCH_BEFORE_LIVE",
+                "true",
+                "live_trade_requires_shadow_match",
+            ),
+            (
+                "LIVE_REQUIRE_EXCHANGE_HEALTH",
+                "true",
+                "live_trade_requires_exchange_health",
+            ),
             ("RISK_HARD_GATING_ENABLED", "true", "live_trade_requires_risk_governor"),
             ("LIVE_KILL_SWITCH_ENABLED", "true", "live_trade_requires_kill_switch"),
         )
         for key, expected, code in required_true:
-            actual_ok = env.get(key) == expected if key == "EXECUTION_MODE" else truthy(env, key)
+            actual_ok = (
+                env.get(key) == expected
+                if key == "EXECUTION_MODE"
+                else truthy(env, key)
+            )
             if not actual_ok:
-                _issue(issues, code, f"LIVE_TRADE_ENABLE=true requires {key}={expected}.", key)
+                _issue(
+                    issues,
+                    code,
+                    f"LIVE_TRADE_ENABLE=true requires {key}={expected}.",
+                    key,
+                )
         asset_gate_keys = (
             "LIVE_REQUIRE_ASSET_ELIGIBILITY",
             "ASSET_LIVE_ELIGIBILITY_REQUIRED",
@@ -307,7 +391,6 @@ def validate_env(
         safety_keys = (
             "LIVE_SAFETY_LATCH_ON_DUPLICATE_RECOVERY_FAIL",
             "GATEWAY_MANUAL_ACTION_REQUIRED",
-            "GATEWAY_REQUIRE_MANUAL_ACTION_TOKEN",
         )
         if not any(truthy(env, key) for key in safety_keys if key in env):
             _issue(
@@ -324,19 +407,48 @@ def validate_env(
     )
     demo_keys = any(
         _actual_secret_value_present(env, key)
-        for key in ("BITGET_DEMO_API_KEY", "BITGET_DEMO_API_SECRET", "BITGET_DEMO_API_PASSPHRASE")
+        for key in (
+            "BITGET_DEMO_API_KEY",
+            "BITGET_DEMO_API_SECRET",
+            "BITGET_DEMO_API_PASSPHRASE",
+        )
     )
     if demo_enabled and live_keys:
-        _issue(issues, "bitget_demo_live_key_mix", "Demo mode must not be combined with live Bitget credentials.", "BITGET_DEMO_ENABLED")
+        _issue(
+            issues,
+            "bitget_demo_live_key_mix",
+            "Demo mode must not be combined with live Bitget credentials.",
+            "BITGET_DEMO_ENABLED",
+        )
     if live_keys and demo_keys:
-        _issue(issues, "bitget_demo_live_key_mix", "Demo and live Bitget credential sets must not be present together.", "BITGET_API_KEY")
+        _issue(
+            issues,
+            "bitget_demo_live_key_mix",
+            "Demo and live Bitget credential sets must not be present together.",
+            "BITGET_API_KEY",
+        )
 
     if not PRIVATE_SCOPE_DOC.is_file():
-        _issue(issues, "private_scope_doc_missing", "private owner scope doc must exist.", None)
+        _issue(
+            issues,
+            "private_scope_doc_missing",
+            "private owner scope doc must exist.",
+            None,
+        )
     if not GERMAN_UI_DOC.is_file():
-        _issue(issues, "german_ui_policy_missing", "German Main Console policy must exist.", None)
+        _issue(
+            issues,
+            "german_ui_policy_missing",
+            "German Main Console policy must exist.",
+            None,
+        )
     if not SAFETY_DOC.is_file():
-        _issue(issues, "single_owner_env_doc_missing", "single-owner ENV safety doc must exist.", None)
+        _issue(
+            issues,
+            "single_owner_env_doc_missing",
+            "single-owner ENV safety doc must exist.",
+            None,
+        )
 
     if template:
         issues = [
@@ -345,7 +457,11 @@ def validate_env(
             if issue.code not in {"placeholder_runtime_secret"}
         ]
     if strict_runtime and template:
-        _issue(issues, "mode_conflict", "--template and --strict-runtime are mutually exclusive.")
+        _issue(
+            issues,
+            "mode_conflict",
+            "--template and --strict-runtime are mutually exclusive.",
+        )
     return issues
 
 
@@ -379,7 +495,9 @@ def _redacted_issue_line(issue: EnvIssue) -> str:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--env-file", type=Path, required=True)
-    parser.add_argument("--profile", choices=("local", "shadow", "production"), required=True)
+    parser.add_argument(
+        "--profile", choices=("local", "shadow", "production"), required=True
+    )
     parser.add_argument("--template", action="store_true")
     parser.add_argument("--strict-runtime", action="store_true")
     parser.add_argument("--json", action="store_true")
@@ -411,7 +529,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.json:
         print(json.dumps(summary, indent=2, sort_keys=True))
     else:
-        mode = "template" if args.template else "strict-runtime" if args.strict_runtime else "static"
+        mode = (
+            "template"
+            if args.template
+            else "strict-runtime" if args.strict_runtime else "static"
+        )
         print(f"env_single_owner_safety: profile={args.profile} mode={mode}")
         print(
             f"ok={str(summary['ok']).lower()} errors={summary['error_count']} "

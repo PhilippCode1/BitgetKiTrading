@@ -17,6 +17,13 @@ from llm_orchestrator.llm_metrics import (
 
 logger = logging.getLogger("llm_orchestrator.openai")
 
+# OpenAI-Python-SDK >=1.14 verlangt einen nicht-leeren api_key beim Client-Bau.
+# Ohne echten Key bleibt `available` false — es werden keine Requests gestartet,
+# bis `generate_structured` explizit aufgerufen wird (nur dann mit echtem Key).
+_OFFLINE_OPENAI_SDK_PLACEHOLDER_KEY = (
+    "sk-offline-ci-placeholder-not-a-real-secret-do-not-use-for-requests"
+)
+
 _RESPONSES_INSTRUCTIONS_DE = (
     "Antworte ausschliesslich mit JSON, das exakt dem vorgegebenen Schema entspricht "
     "(Structured Outputs, strict)."
@@ -39,14 +46,8 @@ def _usage_from_responses_api(resp: Any) -> tuple[int, int]:
     u = getattr(resp, "usage", None)
     if u is None:
         return 0, 0
-    pin = (
-        getattr(u, "input_tokens", None)
-        or getattr(u, "prompt_tokens", None)
-    )
-    cout = (
-        getattr(u, "output_tokens", None)
-        or getattr(u, "completion_tokens", None)
-    )
+    pin = getattr(u, "input_tokens", None) or getattr(u, "prompt_tokens", None)
+    cout = getattr(u, "output_tokens", None) or getattr(u, "completion_tokens", None)
     return int(pin or 0), int(cout or 0)
 
 
@@ -58,9 +59,7 @@ def _record_openai_call_metrics(
     comp: Any = None,
     resp: Any = None,
 ) -> None:
-    observe_request_duration(
-        duration_sec, "openai", transport, task_type=task_type
-    )
+    observe_request_duration(duration_sec, "openai", transport, task_type=task_type)
     p, t = 0, 0
     if comp is not None:
         p, t = _usage_from_chat_completion(comp)
@@ -107,7 +106,8 @@ class OpenAIProvider:
         self._settings = settings
         key = (settings.openai_api_key or "").strip()
         self._client = OpenAI(
-            api_key=key or None, timeout=_openai_client_timeout_sec(settings)
+            api_key=key or _OFFLINE_OPENAI_SDK_PLACEHOLDER_KEY,
+            timeout=_openai_client_timeout_sec(settings),
         )
         self.default_model = settings.openai_model_primary
         self._has_responses = hasattr(self._client, "responses")
@@ -147,7 +147,7 @@ class OpenAIProvider:
         system_instructions_append_de: str | None = None,
         task_type: str | None = None,
     ) -> dict[str, Any]:
-        if not self._client:
+        if not self.available:
             raise RuntimeError("OpenAI: OPENAI_API_KEY fehlt")
         use_model = (model or "").strip() or self.default_model
         cap_ms = min(

@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from shared_py.bitget.instruments import BitgetAssetUniverseInstrument, evaluate_asset_universe_live_eligibility
+from shared_py.bitget.instruments import (
+    BitgetAssetUniverseInstrument,
+    evaluate_asset_universe_live_eligibility,
+)
 from shared_py.live_preflight import LivePreflightContext, evaluate_live_preflight
 
 
@@ -31,7 +34,9 @@ def _base() -> BitgetAssetUniverseInstrument:
 
 
 def test_unknown_instrument_is_no_trade() -> None:
-    evaluated = evaluate_asset_universe_live_eligibility(_base().model_copy(update={"status": "unknown"}))
+    evaluated = evaluate_asset_universe_live_eligibility(
+        _base().model_copy(update={"status": "unknown"})
+    )
     assert evaluated.is_live_allowed is False
     assert "status_unknown" in evaluated.block_reasons
 

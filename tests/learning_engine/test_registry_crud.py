@@ -6,6 +6,7 @@ from uuid import UUID, uuid4
 
 import pytest
 from fastapi import HTTPException
+
 from learning_engine.config import LearningEngineSettings
 from learning_engine.registry import models, service, storage
 from learning_engine.storage.connection import db_connect
@@ -91,4 +92,6 @@ def test_registry_lifecycle_promote_requires_manual_override() -> None:
     finally:
         if sid is not None:
             with db_connect(settings.database_url) as conn:
-                conn.execute("DELETE FROM learn.strategies WHERE strategy_id = %s", (sid,))
+                conn.execute(
+                    "DELETE FROM learn.strategies WHERE strategy_id = %s", (sid,)
+                )

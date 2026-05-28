@@ -12,7 +12,8 @@ bestehenden SIGNAL_MODEL_FEATURE_SCHEMA_HASH zu aendern.
 
 from __future__ import annotations
 
-from typing import Any, Literal, Mapping
+from collections.abc import Mapping
+from typing import Any, Literal
 
 from shared_py.model_contracts import (
     FEATURE_SCHEMA_HASH,
@@ -114,7 +115,9 @@ _OPTIONAL_EXPERIMENTAL = _OPTIONAL_SIGNAL_FIELDS | _EXPERIMENTAL_SIGNAL_FIELDS
 _CATALOG_KEYS = set(_SIGNAL_FIELD_CATALOG.keys())
 _VECTOR_FIELDS_SET = set(SIGNAL_MODEL_FEATURE_FIELDS)
 if _CATALOG_KEYS != _VECTOR_FIELDS_SET:
-    raise RuntimeError("SIGNAL_MODEL_FIELD_KATALOG passt nicht zu SIGNAL_MODEL_FEATURE_FIELDS")
+    raise RuntimeError(
+        "SIGNAL_MODEL_FIELD_KATALOG passt nicht zu SIGNAL_MODEL_FEATURE_FIELDS"
+    )
 if not _OPTIONAL_EXPERIMENTAL <= _VECTOR_FIELDS_SET:
     raise RuntimeError("optional/experimentell enthaelt unbekannte Felder")
 if _OPTIONAL_SIGNAL_FIELDS & _EXPERIMENTAL_SIGNAL_FIELDS:
@@ -126,14 +129,17 @@ FIELD_CATALOG_HASH = stable_json_hash(
         "catalog_version": FIELD_CATALOG_VERSION,
         "model_layer_contract_version": MODEL_LAYER_CONTRACT_VERSION,
         "fields": [
-            {"name": name, "tier": _SIGNAL_FIELD_CATALOG[name]} for name in SIGNAL_MODEL_FEATURE_FIELDS
+            {"name": name, "tier": _SIGNAL_FIELD_CATALOG[name]}
+            for name in SIGNAL_MODEL_FEATURE_FIELDS
         ],
     }
 )
 
 
 def required_signal_feature_fields() -> frozenset[str]:
-    return frozenset(f for f, tier in _SIGNAL_FIELD_CATALOG.items() if tier == "required")
+    return frozenset(
+        f for f, tier in _SIGNAL_FIELD_CATALOG.items() if tier == "required"
+    )
 
 
 def compare_vector_keys_to_canonical(feature_map: Mapping[str, Any]) -> dict[str, Any]:
@@ -155,12 +161,14 @@ def _leak_value_is_informative(value: Any) -> bool:
         return False
     if value is False:
         return False
-    if isinstance(value, (list, dict)) and len(value) == 0:
+    if isinstance(value, list | dict) and len(value) == 0:
         return False
     return True
 
 
-def audit_signal_snapshot_row_for_leakage(signal_snapshot: Mapping[str, Any] | None) -> list[str]:
+def audit_signal_snapshot_row_for_leakage(
+    signal_snapshot: Mapping[str, Any] | None,
+) -> list[str]:
     if not isinstance(signal_snapshot, Mapping):
         return []
     leaked: list[str] = []
@@ -172,7 +180,9 @@ def audit_signal_snapshot_row_for_leakage(signal_snapshot: Mapping[str, Any] | N
     return sorted(leaked)
 
 
-def canonical_model_layer_descriptor(*, include_field_tiers: bool = True) -> dict[str, Any]:
+def canonical_model_layer_descriptor(
+    *, include_field_tiers: bool = True
+) -> dict[str, Any]:
     out: dict[str, Any] = {
         "model_layer_contract_version": MODEL_LAYER_CONTRACT_VERSION,
         "upstream": {
@@ -192,5 +202,7 @@ def canonical_model_layer_descriptor(*, include_field_tiers: bool = True) -> dic
         },
     }
     if include_field_tiers:
-        out["field_catalog"]["tiers"] = {f: _SIGNAL_FIELD_CATALOG[f] for f in SIGNAL_MODEL_FEATURE_FIELDS}
+        out["field_catalog"]["tiers"] = {
+            f: _SIGNAL_FIELD_CATALOG[f] for f in SIGNAL_MODEL_FEATURE_FIELDS
+        }
     return out

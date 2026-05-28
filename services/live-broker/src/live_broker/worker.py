@@ -24,8 +24,8 @@ from live_broker.exits.service import LiveExitService
 from live_broker.orders.service import LiveBrokerOrderService
 from live_broker.persistence.repo import LiveBrokerRepository
 from live_broker.private_rest import BitgetPrivateRestClient
-from live_broker.private_ws.sync import ExchangeStateSyncService
 from live_broker.private_ws import PrivateWsClientStats
+from live_broker.private_ws.sync import ExchangeStateSyncService
 from live_broker.reconcile.rest_catchup import run_rest_snapshot_catchup
 from live_broker.reconcile.service import LiveReconcileService
 
@@ -102,7 +102,9 @@ class LiveBrokerWorker:
                     reason=str(reason),
                     reconcile_run_id=None,
                 )
-                self._stats["rest_catchups"] = int(self._stats.get("rest_catchups") or 0) + 1
+                self._stats["rest_catchups"] = (
+                    int(self._stats.get("rest_catchups") or 0) + 1
+                )
                 if self._on_rest_catchup_success is not None:
                     self._on_rest_catchup_success()
             except Exception as exc:
@@ -119,12 +121,17 @@ class LiveBrokerWorker:
         self._stats["ws_events_processed"] += 1
 
     def run_forever(self, stop_event: threading.Event) -> None:
-        streams = [self._settings.live_broker_signal_stream, *self._settings.reference_streams]
+        streams = [
+            self._settings.live_broker_signal_stream,
+            *self._settings.reference_streams,
+        ]
         self._stats["thread_running"] = True
         hb_t = start_thread_periodic_heartbeat("live_broker", 8.0, stop_event)
         try:
             for stream in streams:
-                self._bus.ensure_group(stream, self._settings.live_broker_consumer_group)
+                self._bus.ensure_group(
+                    stream, self._settings.live_broker_consumer_group
+                )
             if (
                 self._private_rest is not None
                 and self._catchup_queue is not None
@@ -162,7 +169,9 @@ class LiveBrokerWorker:
                         telemetry: dict[str, Any] = {
                             "worker": {
                                 "last_ws_event": self._stats.get("last_ws_event"),
-                                "ws_events_processed": self._stats.get("ws_events_processed"),
+                                "ws_events_processed": self._stats.get(
+                                    "ws_events_processed"
+                                ),
                             }
                         }
                         if self._private_ws_stats is not None:
@@ -172,7 +181,9 @@ class LiveBrokerWorker:
                             worker_telemetry=telemetry,
                         )
                         self._stats["last_reconcile_ts"] = snapshot.get("created_ts")
-                        div = (snapshot.get("details_json") or {}).get("drift", {}).get("divergence") or {}
+                        div = (snapshot.get("details_json") or {}).get("drift", {}).get(
+                            "divergence"
+                        ) or {}
                         pw = div.get("private_ws") or {}
                         if (
                             self._catchup_queue is not None
@@ -182,8 +193,12 @@ class LiveBrokerWorker:
                             try:
                                 self._catchup_queue.put_nowait("ws_stale_reconcile")
                             except queue.Full:
-                                logger.warning("rest catchup queue full (ws_stale_reconcile)")
-                        exit_summary = self._exit_service.run_once(reason="worker_interval")
+                                logger.warning(
+                                    "rest catchup queue full (ws_stale_reconcile)"
+                                )
+                        exit_summary = self._exit_service.run_once(
+                            reason="worker_interval"
+                        )
                         self._stats["last_exit_run"] = int(time.time() * 1000)
                         self._stats["exit_orders_submitted"] = int(
                             exit_summary.get("exit_orders_submitted") or 0
@@ -191,7 +206,9 @@ class LiveBrokerWorker:
                     except Exception as exc:
                         self._stats["last_error"] = str(exc)[:200]
                         logger.exception("periodic reconcile failed: %s", exc)
-                    next_reconcile_at = now + max(1, self._settings.live_reconcile_interval_sec)
+                    next_reconcile_at = now + max(
+                        1, self._settings.live_reconcile_interval_sec
+                    )
 
                 activity = False
                 if self._ws_queue is not None:
@@ -240,8 +257,12 @@ class LiveBrokerWorker:
                                 merged_apex = finalize_apex_deltas(
                                     set_hop(base, "message_queue", mq_in, t_mq1)
                                 )
-                                log_apex_chain_ms(merged_apex, stage="live_broker_message_queue")
-                                env2 = item.envelope.model_copy(update={"apex_trace": merged_apex})
+                                log_apex_chain_ms(
+                                    merged_apex, stage="live_broker_message_queue"
+                                )
+                                env2 = item.envelope.model_copy(
+                                    update={"apex_trace": merged_apex}
+                                )
                                 self._execution_service.handle_signal_event(env2)
                                 self._stats["signals_consumed"] += 1
                             else:
@@ -250,11 +271,16 @@ class LiveBrokerWorker:
                                     message_id=item.message_id,
                                 )
                                 self._stats["paper_reference_events"] += 1
-                            self._bus.ack(item.stream, self._settings.live_broker_consumer_group, item.message_id)
+                            self._bus.ack(
+                                item.stream,
+                                self._settings.live_broker_consumer_group,
+                                item.message_id,
+                            )
                         except Exception as exc:
                             self._stats["last_error"] = str(exc)[:200]
                             logger.exception(
-                                "worker event processing failed stream=%s message_id=%s error=%s",
+                                "worker event processing failed stream=%s "
+                                "message_id=%s error=%s",
                                 item.stream,
                                 item.message_id,
                                 exc,
@@ -277,7 +303,9 @@ class LiveBrokerWorker:
                                 )
                             except Exception as dlq_exc:
                                 self._stats["last_error"] = str(dlq_exc)[:200]
-                                logger.exception("worker DLQ publish failed: %s", dlq_exc)
+                                logger.exception(
+                                    "worker DLQ publish failed: %s", dlq_exc
+                                )
                 if not activity:
                     time.sleep(0.2)
         finally:

@@ -1,4 +1,8 @@
+import "server-only";
+
 import { cache } from "react";
+
+import { getJsonBrowser } from "@/lib/api-client";
 
 import {
   apiFetchErrorConfig,
@@ -25,10 +29,8 @@ export type { GatewayFetchErrorInfo };
 
 import { serverEnv } from "@/lib/server-env";
 import { classifyFetchError } from "@/lib/user-facing-fetch-error";
-import {
-  fetchGatewayGetWithRetry,
-  isRetryableGatewayGetStatus,
-} from "@/lib/gateway-upstream-fetch";
+import { isRetryableGatewayGetStatus } from "@/lib/gateway-get-retry-policy";
+import { fetchGatewayGetWithRetry } from "@/lib/gateway-upstream-fetch";
 import type {
   AdminConsoleOverviewResponse,
   AdminPerformanceOverviewResponse,
@@ -161,6 +163,20 @@ function _qsToSearchParams(
   return sp;
 }
 
+async function _resolveServerAuthorization(): Promise<string> {
+  if (typeof window !== "undefined") return "";
+  try {
+    const { readPortalAuthorizationFromCookies } = await import(
+      "@/lib/portal-jwt-server"
+    );
+    const fromCookie = await readPortalAuthorizationFromCookies();
+    if (fromCookie) return fromCookie;
+  } catch {
+    // Aufruf ausserhalb eines Request-Scopes (Build, statische Render) — Fallback.
+  }
+  return serverEnv.gatewayAuthorizationHeader || "";
+}
+
 async function getJsonServer<T>(
   path: string,
   qs?: Record<string, string | number | undefined | null>,
@@ -169,7 +185,7 @@ async function getJsonServer<T>(
   if (probe.blocksV1Reads) {
     throw apiFetchErrorConfig(path, blockedV1MessageForPath(path, probe));
   }
-  const auth = serverEnv.gatewayAuthorizationHeader || "";
+  const auth = await _resolveServerAuthorization();
   const sp = _qsToSearchParams(qs);
   let res: Response;
   try {
@@ -343,21 +359,7 @@ async function getJson<T>(
    * Browser: ausschliesslich same-origin BFF — kein direktes Gateway (kein JWT/CORS im Client).
    */
   if (!isServer) {
-    const rel = path.startsWith("/") ? path.slice(1) : path;
-    if (!rel.startsWith("v1/")) {
-      throw apiFetchErrorConfig(
-        path,
-        `GET ${path}: Erwarteter Pfad unter /v1/* fuer Gateway-BFF.`,
-      );
-    }
-    const u = new URL(`/api/dashboard/gateway/${rel}`, window.location.origin);
-    if (qs) {
-      for (const [k, v] of Object.entries(qs)) {
-        if (v === undefined || v === null || v === "") continue;
-        u.searchParams.set(k, String(v));
-      }
-    }
-    return getJsonViaDashboardBff<T>(u.pathname + u.search, path);
+    return getJsonBrowser<T>(path, qs);
   }
 
   const key = `${path}?${JSON.stringify(qs ?? {})}`;

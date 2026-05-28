@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 
-import { requireOperatorGatewayAuth } from "@/lib/gateway-bff";
+import { requirePortalGatewayAuth } from "@/lib/gateway-bff";
 import { fetchGatewayWithoutBearer } from "@/lib/gateway-upstream-fetch";
 import { upstreamFetchFailedResponse } from "@/lib/gateway-upstream";
 import { serverEnv } from "@/lib/server-env";
 
 export async function POST(req: Request) {
-  const auth = requireOperatorGatewayAuth();
+  const auth = requirePortalGatewayAuth(req.headers);
   if (!auth.ok) return auth.response;
   const secret = serverEnv.paymentMockWebhookSecret;
   if (!secret) {

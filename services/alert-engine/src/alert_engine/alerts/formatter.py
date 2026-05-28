@@ -16,7 +16,7 @@ def truncate_telegram_text(text: str, safe_len: int) -> str:
     t = text.strip()
     if len(t) <= safe_len:
         return t
-    return t[: safe_len] + "\n…(truncated)"
+    return t[:safe_len] + "\n…(truncated)"
 
 
 def chunk_message(text: str, chunk_size: int) -> list[str]:

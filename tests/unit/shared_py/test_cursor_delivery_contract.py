@@ -6,8 +6,8 @@ from shared_py.cursor_delivery_contract import (
     DELIVERY_MARKER_FUTURE,
     DELIVERY_MARKER_PROVISIONAL,
     IMPLEMENTATION_PHASE_ORDER,
-    ImplementationPhaseId,
     RESPONSE_SECTION_TITLES_DE,
+    ImplementationPhaseId,
     cursor_delivery_descriptor,
     phase_index,
     response_checklist_de,
@@ -20,7 +20,9 @@ def test_response_sections_five() -> None:
 
 
 def test_phases_ordered_ba00_first() -> None:
-    assert IMPLEMENTATION_PHASE_ORDER[0] == ImplementationPhaseId.BA00_CONTRACTS_AND_DOCS
+    assert (
+        IMPLEMENTATION_PHASE_ORDER[0] == ImplementationPhaseId.BA00_CONTRACTS_AND_DOCS
+    )
 
 
 def test_phase_index_monotonic() -> None:

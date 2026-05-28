@@ -14,7 +14,9 @@ from monitor_engine.config import MonitorEngineSettings
 logger = logging.getLogger("monitor_engine.alerts.trading_sql")
 
 
-def _one(conn: psycopg.Connection[Any], sql: str, params: tuple[Any, ...] | None = None) -> Any:
+def _one(
+    conn: psycopg.Connection[Any], sql: str, params: tuple[Any, ...] | None = None
+) -> Any:
     row = conn.execute(sql, params or ()).fetchone()
     if row is None:
         return None
@@ -26,7 +28,9 @@ def collect_trading_sql_alerts(settings: MonitorEngineSettings) -> list[AlertSpe
         return []
     out: list[AlertSpec] = []
     try:
-        with psycopg.connect(settings.database_url, row_factory=dict_row, connect_timeout=5) as conn:
+        with psycopg.connect(
+            settings.database_url, row_factory=dict_row, connect_timeout=5
+        ) as conn:
             cnt = _one(
                 conn,
                 """

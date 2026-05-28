@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-from llm_orchestrator.agents.tsfm_types import TsfmSemanticSynthesis, TsfmSignalCandidatePayloadV1
+from llm_orchestrator.agents.tsfm_types import (
+    TsfmSemanticSynthesis,
+    TsfmSignalCandidatePayloadV1,
+)
 
 # Operator-/War-Room-Prompt: fehlende Marktdaten ehrlich benennen (mit Prompt-Manifest)
 OPERATOR_MARKET_DATA_GAP_DIRECTIVE_DE = (
     "Falls in READONLY_KONTEXT explizit Hinweise wie leeres Orderbook oder "
-    "\"[KEINE AKTUELLEN NEWS VERFÜGBAR]\" o. ae. vorkommen: weise in der Antwort sichtbar "
+    '"[KEINE AKTUELLEN NEWS VERFÜGBAR]" o. ae. vorkommen: weise in der Antwort sichtbar '
     "darauf hin, dass diese Marktdaten fuer die Einschätzung fehlten — "
     "erfinde sie nicht und halluziniere keine Preis-/Buch-Details."
 )

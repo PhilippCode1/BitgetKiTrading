@@ -57,7 +57,9 @@ def _row(
     }
 
 
-def capability_matrix_for_profile(profile: BitgetEndpointProfile) -> list[dict[str, Any]]:
+def capability_matrix_for_profile(
+    profile: BitgetEndpointProfile,
+) -> list[dict[str, Any]]:
     """Explizite Matrix je Kategorie — keine stillschweigenden No-Ops."""
     rows: list[dict[str, Any]] = []
 
@@ -177,29 +179,35 @@ def capability_matrix_for_profile(profile: BitgetEndpointProfile) -> list[dict[s
             "reduce_only",
             supported=ro_ok,
             execution_disabled=not ro_ok,
-            reason="ok"
-            if ro_ok
-            else (
-                "missing_place_order"
-                if not po
-                else "family_does_not_support_reduce_only_flag"
+            reason=(
+                "ok"
+                if ro_ok
+                else (
+                    "missing_place_order"
+                    if not po
+                    else "family_does_not_support_reduce_only_flag"
+                )
             ),
             write=True,
         )
     )
 
-    lev_ok = bool(_path(profile.private_set_leverage_path)) and bool(profile.supports_leverage)
+    lev_ok = bool(_path(profile.private_set_leverage_path)) and bool(
+        profile.supports_leverage
+    )
     rows.append(
         _row(
             "leverage_config",
             supported=lev_ok,
             execution_disabled=not lev_ok,
-            reason="ok"
-            if lev_ok
-            else (
-                "missing_private_set_leverage_path"
-                if not _path(profile.private_set_leverage_path)
-                else "family_does_not_support_leverage_api"
+            reason=(
+                "ok"
+                if lev_ok
+                else (
+                    "missing_private_set_leverage_path"
+                    if not _path(profile.private_set_leverage_path)
+                    else "family_does_not_support_leverage_api"
+                )
             ),
             write=True,
         )
@@ -242,13 +250,17 @@ def _find_row(matrix: list[dict[str, Any]], category: str) -> dict[str, Any] | N
     return None
 
 
-def assert_read_capability(profile: BitgetEndpointProfile, category: ControlCategory) -> None:
+def assert_read_capability(
+    profile: BitgetEndpointProfile, category: ControlCategory
+) -> None:
     if category in _WRITE_CATEGORIES:
         raise ValueError(f"use assert_write_capability for {category}")
     _assert_capability(profile, category)
 
 
-def assert_write_capability(profile: BitgetEndpointProfile, category: ControlCategory) -> None:
+def assert_write_capability(
+    profile: BitgetEndpointProfile, category: ControlCategory
+) -> None:
     if category not in _WRITE_CATEGORIES:
         raise ValueError(f"not a write category: {category}")
     _assert_capability(profile, category)
@@ -271,5 +283,8 @@ def _assert_capability(profile: BitgetEndpointProfile, category: str) -> None:
         classification="service_disabled",
         message=f"control_plane:{category}:execution_disabled:{reason}",
         retryable=False,
-        payload={"control_plane_matrix_version": CONTROL_PLANE_MATRIX_VERSION, "category": category},
+        payload={
+            "control_plane_matrix_version": CONTROL_PLANE_MATRIX_VERSION,
+            "category": category,
+        },
     )

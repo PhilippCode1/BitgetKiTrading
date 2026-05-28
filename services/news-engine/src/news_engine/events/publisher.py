@@ -4,10 +4,10 @@ import logging
 from typing import Any
 
 from shared_py.eventbus import (
-    EventEnvelope,
-    RedisStreamBus,
     STREAM_NEWS_ITEM_CREATED,
     STREAM_NEWS_SCORED,
+    EventEnvelope,
+    RedisStreamBus,
 )
 
 logger = logging.getLogger("news_engine.publisher")

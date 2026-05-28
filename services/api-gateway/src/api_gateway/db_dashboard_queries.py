@@ -10,6 +10,7 @@ from uuid import UUID
 import psycopg
 from psycopg import errors as pg_errors
 from psycopg.types.json import Json
+from shared_py.strategy_config_hash import compute_configuration_hash
 
 from api_gateway.db_live_queries import (
     fetch_online_drift_state_row,
@@ -21,7 +22,6 @@ from api_gateway.signal_contract import (
     build_signal_view_detail,
     build_signal_view_list_item,
 )
-from shared_py.strategy_config_hash import compute_configuration_hash
 
 
 def _j(data: Any) -> Any:
@@ -59,7 +59,9 @@ def _coerce_bool(value: Any) -> bool | None:
     return None
 
 
-def _instrument_metadata_entry(raw_meta: Any) -> tuple[dict[str, Any], dict[str, Any] | None]:
+def _instrument_metadata_entry(
+    raw_meta: Any,
+) -> tuple[dict[str, Any], dict[str, Any] | None]:
     meta = _j(raw_meta)
     if not isinstance(meta, dict):
         return {}, None
@@ -88,50 +90,68 @@ def _instrument_metadata_summary(
     if not meta:
         return {"instrument_metadata": None} if include_raw else {}
     out: dict[str, Any] = {
-        "instrument_metadata_snapshot_id": str(snapshot_id).strip()
-        if snapshot_id not in (None, "")
-        else (
-            str(meta.get("snapshot_id")).strip()
-            if meta.get("snapshot_id") not in (None, "")
+        "instrument_metadata_snapshot_id": (
+            str(snapshot_id).strip()
+            if snapshot_id not in (None, "")
+            else (
+                str(meta.get("snapshot_id")).strip()
+                if meta.get("snapshot_id") not in (None, "")
+                else None
+            )
+        ),
+        "instrument_venue": (
+            meta.get("venue") if isinstance(meta.get("venue"), str) else None
+        ),
+        "instrument_category_key": (
+            meta.get("category_key")
+            if isinstance(meta.get("category_key"), str)
             else None
         ),
-        "instrument_venue": meta.get("venue")
-        if isinstance(meta.get("venue"), str)
-        else None,
-        "instrument_category_key": meta.get("category_key")
-        if isinstance(meta.get("category_key"), str)
-        else None,
-        "instrument_metadata_source": meta.get("metadata_source")
-        if isinstance(meta.get("metadata_source"), str)
-        else None,
+        "instrument_metadata_source": (
+            meta.get("metadata_source")
+            if isinstance(meta.get("metadata_source"), str)
+            else None
+        ),
         "instrument_metadata_verified": _coerce_bool(meta.get("metadata_verified")),
-        "instrument_product_type": meta.get("product_type")
-        if isinstance(meta.get("product_type"), str)
-        else None,
-        "instrument_margin_account_mode": meta.get("margin_account_mode")
-        if isinstance(meta.get("margin_account_mode"), str)
-        else None,
-        "instrument_base_coin": meta.get("base_coin")
-        if isinstance(meta.get("base_coin"), str)
-        else None,
-        "instrument_quote_coin": meta.get("quote_coin")
-        if isinstance(meta.get("quote_coin"), str)
-        else None,
-        "instrument_settle_coin": meta.get("settle_coin")
-        if isinstance(meta.get("settle_coin"), str)
-        else None,
+        "instrument_product_type": (
+            meta.get("product_type")
+            if isinstance(meta.get("product_type"), str)
+            else None
+        ),
+        "instrument_margin_account_mode": (
+            meta.get("margin_account_mode")
+            if isinstance(meta.get("margin_account_mode"), str)
+            else None
+        ),
+        "instrument_base_coin": (
+            meta.get("base_coin") if isinstance(meta.get("base_coin"), str) else None
+        ),
+        "instrument_quote_coin": (
+            meta.get("quote_coin") if isinstance(meta.get("quote_coin"), str) else None
+        ),
+        "instrument_settle_coin": (
+            meta.get("settle_coin")
+            if isinstance(meta.get("settle_coin"), str)
+            else None
+        ),
         "instrument_inventory_visible": _coerce_bool(meta.get("inventory_visible")),
         "instrument_analytics_eligible": _coerce_bool(meta.get("analytics_eligible")),
-        "instrument_paper_shadow_eligible": _coerce_bool(meta.get("paper_shadow_eligible")),
+        "instrument_paper_shadow_eligible": _coerce_bool(
+            meta.get("paper_shadow_eligible")
+        ),
         "instrument_live_execution_enabled": _coerce_bool(
             meta.get("live_execution_enabled")
         ),
         "instrument_execution_disabled": _coerce_bool(meta.get("execution_disabled")),
         "instrument_supports_funding": _coerce_bool(meta.get("supports_funding")),
-        "instrument_supports_open_interest": _coerce_bool(meta.get("supports_open_interest")),
+        "instrument_supports_open_interest": _coerce_bool(
+            meta.get("supports_open_interest")
+        ),
         "instrument_supports_long_short": _coerce_bool(meta.get("supports_long_short")),
         "instrument_supports_shorting": _coerce_bool(meta.get("supports_shorting")),
-        "instrument_supports_reduce_only": _coerce_bool(meta.get("supports_reduce_only")),
+        "instrument_supports_reduce_only": _coerce_bool(
+            meta.get("supports_reduce_only")
+        ),
         "instrument_supports_leverage": _coerce_bool(meta.get("supports_leverage")),
     }
     if include_raw:
@@ -184,19 +204,35 @@ def _latest_execution_status(
         shadow = _shadow_live_from_execution_payload(exec_payload)
         execution_status = {
             "latest_execution_id": execution_row.get("latest_execution_id"),
-            "latest_execution_decision_action": execution_row.get("latest_execution_decision_action"),
-            "latest_execution_decision_reason": execution_row.get("latest_execution_decision_reason"),
-            "latest_execution_runtime_mode": execution_row.get("latest_execution_runtime_mode"),
-            "latest_execution_requested_mode": execution_row.get("latest_execution_requested_mode"),
-            "latest_execution_created_ts": execution_row["latest_execution_created_ts"].isoformat()
-            if execution_row.get("latest_execution_created_ts")
-            else None,
-            "operator_release_exists": bool(execution_row.get("operator_release_exists")),
+            "latest_execution_decision_action": execution_row.get(
+                "latest_execution_decision_action"
+            ),
+            "latest_execution_decision_reason": execution_row.get(
+                "latest_execution_decision_reason"
+            ),
+            "latest_execution_runtime_mode": execution_row.get(
+                "latest_execution_runtime_mode"
+            ),
+            "latest_execution_requested_mode": execution_row.get(
+                "latest_execution_requested_mode"
+            ),
+            "latest_execution_created_ts": (
+                execution_row["latest_execution_created_ts"].isoformat()
+                if execution_row.get("latest_execution_created_ts")
+                else None
+            ),
+            "operator_release_exists": bool(
+                execution_row.get("operator_release_exists")
+            ),
             "operator_release_source": execution_row.get("operator_release_source"),
-            "operator_release_ts": execution_row["operator_release_ts"].isoformat()
-            if execution_row.get("operator_release_ts")
-            else None,
-            "live_mirror_eligible": _coerce_bool(exec_payload.get("live_mirror_eligible")),
+            "operator_release_ts": (
+                execution_row["operator_release_ts"].isoformat()
+                if execution_row.get("operator_release_ts")
+                else None
+            ),
+            "live_mirror_eligible": _coerce_bool(
+                exec_payload.get("live_mirror_eligible")
+            ),
         }
     if alert_row is None:
         telegram_status = {
@@ -210,9 +246,11 @@ def _latest_execution_status(
             "telegram_alert_type": alert_row.get("telegram_alert_type"),
             "telegram_delivery_state": alert_row.get("telegram_delivery_state"),
             "telegram_message_id": alert_row.get("telegram_message_id"),
-            "telegram_sent_ts": alert_row["telegram_sent_ts"].isoformat()
-            if alert_row.get("telegram_sent_ts")
-            else None,
+            "telegram_sent_ts": (
+                alert_row["telegram_sent_ts"].isoformat()
+                if alert_row.get("telegram_sent_ts")
+                else None
+            ),
         }
     return {
         **execution_status,
@@ -237,17 +275,27 @@ def _exit_router_from_reasons_json(reasons: Any) -> dict[str, Any]:
     ra = ra if isinstance(ra, dict) else {}
     og = ra.get("operator_gate_required")
     return {
-        "exit_family_effective_primary": ex_eff.strip() if isinstance(ex_eff, str) and ex_eff.strip() else None,
-        "exit_family_primary_ensemble": ex_ens.strip() if isinstance(ex_ens, str) and ex_ens.strip() else None,
-        "specialist_router_id": ra.get("router_id") if isinstance(ra.get("router_id"), str) else None,
-        "router_selected_playbook_id": ra.get("selected_playbook_id")
-        if isinstance(ra.get("selected_playbook_id"), str)
-        else None,
+        "exit_family_effective_primary": (
+            ex_eff.strip() if isinstance(ex_eff, str) and ex_eff.strip() else None
+        ),
+        "exit_family_primary_ensemble": (
+            ex_ens.strip() if isinstance(ex_ens, str) and ex_ens.strip() else None
+        ),
+        "specialist_router_id": (
+            ra.get("router_id") if isinstance(ra.get("router_id"), str) else None
+        ),
+        "router_selected_playbook_id": (
+            ra.get("selected_playbook_id")
+            if isinstance(ra.get("selected_playbook_id"), str)
+            else None
+        ),
         "router_operator_gate_required": bool(og) if isinstance(og, bool) else None,
     }
 
 
-def _merge_exit_router(primary: dict[str, Any], fallback: dict[str, Any]) -> dict[str, Any]:
+def _merge_exit_router(
+    primary: dict[str, Any], fallback: dict[str, Any]
+) -> dict[str, Any]:
     out = dict(primary)
     for k, v in fallback.items():
         if out.get(k) is None and v is not None:
@@ -645,28 +693,56 @@ def fetch_signals_recent(
             "tf": tf,
             "dir": direction.lower() if direction else None,
             "min_st": min_strength,
-            "mf": market_family.strip() if market_family and market_family.strip() else None,
+            "mf": (
+                market_family.strip()
+                if market_family and market_family.strip()
+                else None
+            ),
             "pb": playbook_id.strip() if playbook_id and playbook_id.strip() else None,
-            "pbf": playbook_family.strip() if playbook_family and playbook_family.strip() else None,
-            "ta": trade_action.strip().lower() if trade_action and trade_action.strip() else None,
-            "lane": meta_trade_lane.strip() if meta_trade_lane and meta_trade_lane.strip() else None,
-            "rs": regime_state.strip() if regime_state and regime_state.strip() else None,
-            "router": specialist_router_id.strip()
-            if specialist_router_id and specialist_router_id.strip()
-            else None,
-            "exit_family": exit_family.strip() if exit_family and exit_family.strip() else None,
-            "decision_state": decision_state.strip()
-            if decision_state and decision_state.strip()
-            else None,
-            "strategy_name": strategy_name.strip()
-            if strategy_name and strategy_name.strip()
-            else None,
-            "signal_class": signal_class.strip()
-            if signal_class and signal_class.strip()
-            else None,
-            "srk": signal_registry_key.strip()
-            if signal_registry_key and signal_registry_key.strip()
-            else None,
+            "pbf": (
+                playbook_family.strip()
+                if playbook_family and playbook_family.strip()
+                else None
+            ),
+            "ta": (
+                trade_action.strip().lower()
+                if trade_action and trade_action.strip()
+                else None
+            ),
+            "lane": (
+                meta_trade_lane.strip()
+                if meta_trade_lane and meta_trade_lane.strip()
+                else None
+            ),
+            "rs": (
+                regime_state.strip() if regime_state and regime_state.strip() else None
+            ),
+            "router": (
+                specialist_router_id.strip()
+                if specialist_router_id and specialist_router_id.strip()
+                else None
+            ),
+            "exit_family": (
+                exit_family.strip() if exit_family and exit_family.strip() else None
+            ),
+            "decision_state": (
+                decision_state.strip()
+                if decision_state and decision_state.strip()
+                else None
+            ),
+            "strategy_name": (
+                strategy_name.strip()
+                if strategy_name and strategy_name.strip()
+                else None
+            ),
+            "signal_class": (
+                signal_class.strip() if signal_class and signal_class.strip() else None
+            ),
+            "srk": (
+                signal_registry_key.strip()
+                if signal_registry_key and signal_registry_key.strip()
+                else None
+            ),
             "lim": limit,
         },
     ).fetchall()
@@ -688,8 +764,10 @@ def fetch_signals_recent(
         uni_hard = _parse_rg_json_list(d.get("rg_universal_blocks_raw"))
         router_id = d.get("specialist_router_id_rj") or d.get("specialist_router_id_ss")
         router_pb = d.get("router_playbook_id_rj") or d.get("router_playbook_id_ss")
-        og_raw = d.get("router_operator_gate_rj") if d.get("router_operator_gate_rj") is not None else d.get(
-            "router_operator_gate_ss"
+        og_raw = (
+            d.get("router_operator_gate_rj")
+            if d.get("router_operator_gate_rj") is not None
+            else d.get("router_operator_gate_ss")
         )
         router_og = _coerce_bool(og_raw)
         ex_eff = d.get("exit_family_effective_primary")
@@ -702,115 +780,157 @@ def fetch_signals_recent(
         )
         latest_status = _latest_execution_status(execution_row=d, alert_row=d)
         row_payload: dict[str, Any] = {
-                "signal_id": str(d["signal_id"]),
-                "symbol": d["symbol"],
-                "timeframe": d["timeframe"],
-                "direction": d["direction"],
-                "market_regime": d.get("market_regime"),
-                "regime_bias": d.get("regime_bias"),
-                "regime_confidence_0_1": float(d["regime_confidence_0_1"])
+            "signal_id": str(d["signal_id"]),
+            "symbol": d["symbol"],
+            "timeframe": d["timeframe"],
+            "direction": d["direction"],
+            "market_regime": d.get("market_regime"),
+            "regime_bias": d.get("regime_bias"),
+            "regime_confidence_0_1": (
+                float(d["regime_confidence_0_1"])
                 if d.get("regime_confidence_0_1") is not None
-                else None,
-                "signal_strength_0_100": float(d["signal_strength_0_100"]),
-                "probability_0_1": float(d["probability_0_1"]),
-                "take_trade_prob": float(d["take_trade_prob"])
+                else None
+            ),
+            "signal_strength_0_100": float(d["signal_strength_0_100"]),
+            "probability_0_1": float(d["probability_0_1"]),
+            "take_trade_prob": (
+                float(d["take_trade_prob"])
                 if d.get("take_trade_prob") is not None
-                else None,
-                "take_trade_model_version": d.get("take_trade_model_version"),
-                "take_trade_model_run_id": str(d["take_trade_model_run_id"])
+                else None
+            ),
+            "take_trade_model_version": d.get("take_trade_model_version"),
+            "take_trade_model_run_id": (
+                str(d["take_trade_model_run_id"])
                 if d.get("take_trade_model_run_id") is not None
-                else None,
-                "take_trade_calibration_method": d.get("take_trade_calibration_method"),
-                "expected_return_bps": float(d["expected_return_bps"])
+                else None
+            ),
+            "take_trade_calibration_method": d.get("take_trade_calibration_method"),
+            "expected_return_bps": (
+                float(d["expected_return_bps"])
                 if d.get("expected_return_bps") is not None
-                else None,
-                "expected_mae_bps": float(d["expected_mae_bps"])
+                else None
+            ),
+            "expected_mae_bps": (
+                float(d["expected_mae_bps"])
                 if d.get("expected_mae_bps") is not None
-                else None,
-                "expected_mfe_bps": float(d["expected_mfe_bps"])
+                else None
+            ),
+            "expected_mfe_bps": (
+                float(d["expected_mfe_bps"])
                 if d.get("expected_mfe_bps") is not None
-                else None,
-                "model_uncertainty_0_1": float(d["model_uncertainty_0_1"])
+                else None
+            ),
+            "model_uncertainty_0_1": (
+                float(d["model_uncertainty_0_1"])
                 if d.get("model_uncertainty_0_1") is not None
-                else None,
-                "uncertainty_effective_for_leverage_0_1": float(d["uncertainty_effective_for_leverage_0_1"])
+                else None
+            ),
+            "uncertainty_effective_for_leverage_0_1": (
+                float(d["uncertainty_effective_for_leverage_0_1"])
                 if d.get("uncertainty_effective_for_leverage_0_1") is not None
-                else None,
-                "model_ood_alert": bool(d.get("model_ood_alert")),
-                "trade_action": d.get("trade_action"),
-                "meta_decision_action": d.get("meta_decision_action"),
-                "meta_decision_kernel_version": d.get("meta_decision_kernel_version"),
-                "decision_confidence_0_1": float(d["decision_confidence_0_1"])
+                else None
+            ),
+            "model_ood_alert": bool(d.get("model_ood_alert")),
+            "trade_action": d.get("trade_action"),
+            "meta_decision_action": d.get("meta_decision_action"),
+            "meta_decision_kernel_version": d.get("meta_decision_kernel_version"),
+            "decision_confidence_0_1": (
+                float(d["decision_confidence_0_1"])
                 if d.get("decision_confidence_0_1") is not None
-                else None,
-                "decision_policy_version": d.get("decision_policy_version"),
-                "allowed_leverage": int(d["allowed_leverage"])
+                else None
+            ),
+            "decision_policy_version": d.get("decision_policy_version"),
+            "allowed_leverage": (
+                int(d["allowed_leverage"])
                 if d.get("allowed_leverage") is not None
-                else None,
-                "recommended_leverage": int(d["recommended_leverage"])
+                else None
+            ),
+            "recommended_leverage": (
+                int(d["recommended_leverage"])
                 if d.get("recommended_leverage") is not None
-                else None,
-                "leverage_policy_version": d.get("leverage_policy_version"),
-                "leverage_cap_reasons_json": _j(d.get("leverage_cap_reasons_json")) or [],
-                "signal_class": d["signal_class"],
-                "decision_state": d["decision_state"],
-                "analysis_ts_ms": int(d["analysis_ts_ms"]),
-                "created_ts": d["created_at"].isoformat() if d.get("created_at") else None,
-                "outcome_badge": outcome_badge,
-                "meta_trade_lane": d.get("meta_trade_lane"),
-                "canonical_instrument_id": d.get("canonical_instrument_id"),
-                "market_family": d.get("market_family"),
-                "strategy_name": d.get("strategy_name"),
-                "playbook_id": d.get("playbook_id"),
-                "playbook_family": d.get("playbook_family"),
-                "playbook_decision_mode": d.get("playbook_decision_mode"),
-                "regime_state": d.get("regime_state"),
-                "regime_substate": d.get("regime_substate"),
-                "regime_transition_state": d.get("regime_transition_state"),
-                "stop_distance_pct": float(d["stop_distance_pct"])
+                else None
+            ),
+            "leverage_policy_version": d.get("leverage_policy_version"),
+            "leverage_cap_reasons_json": _j(d.get("leverage_cap_reasons_json")) or [],
+            "signal_class": d["signal_class"],
+            "decision_state": d["decision_state"],
+            "analysis_ts_ms": int(d["analysis_ts_ms"]),
+            "created_ts": d["created_at"].isoformat() if d.get("created_at") else None,
+            "outcome_badge": outcome_badge,
+            "meta_trade_lane": d.get("meta_trade_lane"),
+            "canonical_instrument_id": d.get("canonical_instrument_id"),
+            "market_family": d.get("market_family"),
+            "strategy_name": d.get("strategy_name"),
+            "playbook_id": d.get("playbook_id"),
+            "playbook_family": d.get("playbook_family"),
+            "playbook_decision_mode": d.get("playbook_decision_mode"),
+            "regime_state": d.get("regime_state"),
+            "regime_substate": d.get("regime_substate"),
+            "regime_transition_state": d.get("regime_transition_state"),
+            "stop_distance_pct": (
+                float(d["stop_distance_pct"])
                 if d.get("stop_distance_pct") is not None
-                else None,
-                "stop_budget_max_pct_allowed": float(d["stop_budget_max_pct_allowed"])
+                else None
+            ),
+            "stop_budget_max_pct_allowed": (
+                float(d["stop_budget_max_pct_allowed"])
                 if d.get("stop_budget_max_pct_allowed") is not None
-                else None,
-                "stop_min_executable_pct": float(d["stop_min_executable_pct"])
+                else None
+            ),
+            "stop_min_executable_pct": (
+                float(d["stop_min_executable_pct"])
                 if d.get("stop_min_executable_pct") is not None
-                else None,
-                "stop_fragility_0_1": float(d["stop_fragility_0_1"])
+                else None
+            ),
+            "stop_fragility_0_1": (
+                float(d["stop_fragility_0_1"])
                 if d.get("stop_fragility_0_1") is not None
-                else None,
-                "stop_executability_0_1": float(d["stop_executability_0_1"])
+                else None
+            ),
+            "stop_executability_0_1": (
+                float(d["stop_executability_0_1"])
                 if d.get("stop_executability_0_1") is not None
-                else None,
-                "stop_quality_0_1": float(d["stop_quality_0_1"])
+                else None
+            ),
+            "stop_quality_0_1": (
+                float(d["stop_quality_0_1"])
                 if d.get("stop_quality_0_1") is not None
-                else None,
-                "stop_to_spread_ratio": float(d["stop_to_spread_ratio"])
+                else None
+            ),
+            "stop_to_spread_ratio": (
+                float(d["stop_to_spread_ratio"])
                 if d.get("stop_to_spread_ratio") is not None
-                else None,
-                "stop_budget_policy_version": d.get("stop_budget_policy_version"),
-                **instrument_meta,
-                "exit_family_effective_primary": ex_eff_s,
-                "exit_family_primary_ensemble": ex_ens_s,
-                "specialist_router_id": router_id if isinstance(router_id, str) else None,
-                "router_selected_playbook_id": router_pb if isinstance(router_pb, str) else None,
-                "router_operator_gate_required": router_og,
-                "live_execution_block_reasons_json": live_blocks,
-                "governor_universal_hard_block_reasons_json": uni_hard,
-                "live_execution_clear_for_real_money": len(live_blocks) == 0,
-                "risk_volatility_clamp_active": _coerce_bool(d.get("rg_vol_clamp_raw")),
-                "governor_bff_risk_flags_json": _j(d.get("rg_bff_flags_raw"))
+                else None
+            ),
+            "stop_budget_policy_version": d.get("stop_budget_policy_version"),
+            **instrument_meta,
+            "exit_family_effective_primary": ex_eff_s,
+            "exit_family_primary_ensemble": ex_ens_s,
+            "specialist_router_id": router_id if isinstance(router_id, str) else None,
+            "router_selected_playbook_id": (
+                router_pb if isinstance(router_pb, str) else None
+            ),
+            "router_operator_gate_required": router_og,
+            "live_execution_block_reasons_json": live_blocks,
+            "governor_universal_hard_block_reasons_json": uni_hard,
+            "live_execution_clear_for_real_money": len(live_blocks) == 0,
+            "risk_volatility_clamp_active": _coerce_bool(d.get("rg_vol_clamp_raw")),
+            "governor_bff_risk_flags_json": (
+                _j(d.get("rg_bff_flags_raw"))
                 if d.get("rg_bff_flags_raw") is not None
-                else [],
-                **latest_status,
-            }
+                else []
+            ),
+            **latest_status,
+        }
         row_payload["signal_contract_version"] = SIGNAL_API_CONTRACT_VERSION
         row_payload["signal_view"] = build_signal_view_list_item(row_payload)
         out.append(row_payload)
     return out
 
 
-def fetch_signal_by_id(conn: psycopg.Connection[Any], signal_id: UUID) -> dict[str, Any] | None:
+def fetch_signal_by_id(
+    conn: psycopg.Connection[Any], signal_id: UUID
+) -> dict[str, Any] | None:
     row = conn.execute(
         """
         SELECT s.*, so.wins, so.losses, so.evaluations_count
@@ -868,7 +988,9 @@ def fetch_signal_by_id(conn: psycopg.Connection[Any], signal_id: UUID) -> dict[s
         (str(signal_id),),
     ).fetchone()
     execution_data = dict(execution_row) if execution_row is not None else None
-    latest_execution_id = execution_data.get("latest_execution_id") if execution_data else None
+    latest_execution_id = (
+        execution_data.get("latest_execution_id") if execution_data else None
+    )
     alert_row = conn.execute(
         """
         SELECT o.alert_type AS telegram_alert_type,
@@ -902,27 +1024,41 @@ def fetch_signal_by_id(conn: psycopg.Connection[Any], signal_id: UUID) -> dict[s
         "regime_state": d.get("regime_state"),
         "regime_substate": d.get("regime_substate"),
         "regime_transition_state": d.get("regime_transition_state"),
-        "stop_distance_pct": float(d["stop_distance_pct"])
-        if d.get("stop_distance_pct") is not None
-        else None,
-        "stop_budget_max_pct_allowed": float(d["stop_budget_max_pct_allowed"])
-        if d.get("stop_budget_max_pct_allowed") is not None
-        else None,
-        "stop_min_executable_pct": float(d["stop_min_executable_pct"])
-        if d.get("stop_min_executable_pct") is not None
-        else None,
-        "stop_fragility_0_1": float(d["stop_fragility_0_1"])
-        if d.get("stop_fragility_0_1") is not None
-        else None,
-        "stop_executability_0_1": float(d["stop_executability_0_1"])
-        if d.get("stop_executability_0_1") is not None
-        else None,
-        "stop_quality_0_1": float(d["stop_quality_0_1"])
-        if d.get("stop_quality_0_1") is not None
-        else None,
-        "stop_to_spread_ratio": float(d["stop_to_spread_ratio"])
-        if d.get("stop_to_spread_ratio") is not None
-        else None,
+        "stop_distance_pct": (
+            float(d["stop_distance_pct"])
+            if d.get("stop_distance_pct") is not None
+            else None
+        ),
+        "stop_budget_max_pct_allowed": (
+            float(d["stop_budget_max_pct_allowed"])
+            if d.get("stop_budget_max_pct_allowed") is not None
+            else None
+        ),
+        "stop_min_executable_pct": (
+            float(d["stop_min_executable_pct"])
+            if d.get("stop_min_executable_pct") is not None
+            else None
+        ),
+        "stop_fragility_0_1": (
+            float(d["stop_fragility_0_1"])
+            if d.get("stop_fragility_0_1") is not None
+            else None
+        ),
+        "stop_executability_0_1": (
+            float(d["stop_executability_0_1"])
+            if d.get("stop_executability_0_1") is not None
+            else None
+        ),
+        "stop_quality_0_1": (
+            float(d["stop_quality_0_1"])
+            if d.get("stop_quality_0_1") is not None
+            else None
+        ),
+        "stop_to_spread_ratio": (
+            float(d["stop_to_spread_ratio"])
+            if d.get("stop_to_spread_ratio") is not None
+            else None
+        ),
         "stop_budget_policy_version": d.get("stop_budget_policy_version"),
         **instrument_meta,
         "exit_family_effective_primary": ex_rt.get("exit_family_effective_primary"),
@@ -932,44 +1068,63 @@ def fetch_signal_by_id(conn: psycopg.Connection[Any], signal_id: UUID) -> dict[s
         "router_operator_gate_required": ex_rt.get("router_operator_gate_required"),
         "market_regime": d.get("market_regime"),
         "regime_bias": d.get("regime_bias"),
-        "regime_confidence_0_1": float(d["regime_confidence_0_1"])
-        if d.get("regime_confidence_0_1") is not None
-        else None,
+        "regime_confidence_0_1": (
+            float(d["regime_confidence_0_1"])
+            if d.get("regime_confidence_0_1") is not None
+            else None
+        ),
         "regime_reasons_json": d.get("regime_reasons_json") or [],
         "signal_strength_0_100": float(d["signal_strength_0_100"]),
         "probability_0_1": float(d["probability_0_1"]),
-        "take_trade_prob": float(d["take_trade_prob"])
-        if d.get("take_trade_prob") is not None
-        else None,
+        "take_trade_prob": (
+            float(d["take_trade_prob"])
+            if d.get("take_trade_prob") is not None
+            else None
+        ),
         "take_trade_model_version": d.get("take_trade_model_version"),
-        "take_trade_model_run_id": str(d["take_trade_model_run_id"])
-        if d.get("take_trade_model_run_id") is not None
-        else None,
+        "take_trade_model_run_id": (
+            str(d["take_trade_model_run_id"])
+            if d.get("take_trade_model_run_id") is not None
+            else None
+        ),
         "take_trade_calibration_method": d.get("take_trade_calibration_method"),
-        "expected_return_bps": float(d["expected_return_bps"])
-        if d.get("expected_return_bps") is not None
-        else None,
-        "expected_mae_bps": float(d["expected_mae_bps"])
-        if d.get("expected_mae_bps") is not None
-        else None,
-        "expected_mfe_bps": float(d["expected_mfe_bps"])
-        if d.get("expected_mfe_bps") is not None
-        else None,
-        "target_projection_models_json": _j(d.get("target_projection_models_json")) or [],
-        "model_uncertainty_0_1": float(d["model_uncertainty_0_1"])
-        if d.get("model_uncertainty_0_1") is not None
-        else None,
-        "uncertainty_effective_for_leverage_0_1": float(
-            d["uncertainty_effective_for_leverage_0_1"]
-        )
-        if d.get("uncertainty_effective_for_leverage_0_1") is not None
-        else None,
-        "shadow_divergence_0_1": float(d["shadow_divergence_0_1"])
-        if d.get("shadow_divergence_0_1") is not None
-        else None,
-        "model_ood_score_0_1": float(d["model_ood_score_0_1"])
-        if d.get("model_ood_score_0_1") is not None
-        else None,
+        "expected_return_bps": (
+            float(d["expected_return_bps"])
+            if d.get("expected_return_bps") is not None
+            else None
+        ),
+        "expected_mae_bps": (
+            float(d["expected_mae_bps"])
+            if d.get("expected_mae_bps") is not None
+            else None
+        ),
+        "expected_mfe_bps": (
+            float(d["expected_mfe_bps"])
+            if d.get("expected_mfe_bps") is not None
+            else None
+        ),
+        "target_projection_models_json": _j(d.get("target_projection_models_json"))
+        or [],
+        "model_uncertainty_0_1": (
+            float(d["model_uncertainty_0_1"])
+            if d.get("model_uncertainty_0_1") is not None
+            else None
+        ),
+        "uncertainty_effective_for_leverage_0_1": (
+            float(d["uncertainty_effective_for_leverage_0_1"])
+            if d.get("uncertainty_effective_for_leverage_0_1") is not None
+            else None
+        ),
+        "shadow_divergence_0_1": (
+            float(d["shadow_divergence_0_1"])
+            if d.get("shadow_divergence_0_1") is not None
+            else None
+        ),
+        "model_ood_score_0_1": (
+            float(d["model_ood_score_0_1"])
+            if d.get("model_ood_score_0_1") is not None
+            else None
+        ),
         "model_ood_alert": bool(d.get("model_ood_alert")),
         "uncertainty_reasons_json": _j(d.get("uncertainty_reasons_json")) or [],
         "ood_reasons_json": _j(d.get("ood_reasons_json")) or [],
@@ -977,16 +1132,22 @@ def fetch_signal_by_id(conn: psycopg.Connection[Any], signal_id: UUID) -> dict[s
         "trade_action": d.get("trade_action"),
         "meta_decision_action": d.get("meta_decision_action"),
         "meta_decision_kernel_version": d.get("meta_decision_kernel_version"),
-        "decision_confidence_0_1": float(d["decision_confidence_0_1"])
-        if d.get("decision_confidence_0_1") is not None
-        else None,
+        "decision_confidence_0_1": (
+            float(d["decision_confidence_0_1"])
+            if d.get("decision_confidence_0_1") is not None
+            else None
+        ),
         "decision_policy_version": d.get("decision_policy_version"),
-        "allowed_leverage": int(d["allowed_leverage"])
-        if d.get("allowed_leverage") is not None
-        else None,
-        "recommended_leverage": int(d["recommended_leverage"])
-        if d.get("recommended_leverage") is not None
-        else None,
+        "allowed_leverage": (
+            int(d["allowed_leverage"])
+            if d.get("allowed_leverage") is not None
+            else None
+        ),
+        "recommended_leverage": (
+            int(d["recommended_leverage"])
+            if d.get("recommended_leverage") is not None
+            else None
+        ),
         "leverage_policy_version": d.get("leverage_policy_version"),
         "leverage_cap_reasons_json": _j(d.get("leverage_cap_reasons_json")) or [],
         "signal_class": d["signal_class"],
@@ -1002,12 +1163,16 @@ def fetch_signal_by_id(conn: psycopg.Connection[Any], signal_id: UUID) -> dict[s
         "portfolio_risk_synthesis_json": rg.get("portfolio_risk_synthesis_json"),
         "live_execution_clear_for_real_money": len(live_blocks) == 0,
         "max_leverage_cap": rg.get("max_leverage_cap"),
-        "risk_volatility_clamp_active": bool(rg.get("risk_volatility_clamp_active"))
-        if rg.get("risk_volatility_clamp_active") is not None
-        else None,
-        "governor_bff_risk_flags_json": rg.get("governor_bff_risk_flags_json")
-        if isinstance(rg.get("governor_bff_risk_flags_json"), list)
-        else [],
+        "risk_volatility_clamp_active": (
+            bool(rg.get("risk_volatility_clamp_active"))
+            if rg.get("risk_volatility_clamp_active") is not None
+            else None
+        ),
+        "governor_bff_risk_flags_json": (
+            rg.get("governor_bff_risk_flags_json")
+            if isinstance(rg.get("governor_bff_risk_flags_json"), list)
+            else []
+        ),
         **latest_status,
     }
     payload["signal_contract_version"] = SIGNAL_API_CONTRACT_VERSION
@@ -1015,7 +1180,9 @@ def fetch_signal_by_id(conn: psycopg.Connection[Any], signal_id: UUID) -> dict[s
     return payload
 
 
-def fetch_signal_explain(conn: psycopg.Connection[Any], signal_id: UUID) -> dict[str, Any] | None:
+def fetch_signal_explain(
+    conn: psycopg.Connection[Any], signal_id: UUID
+) -> dict[str, Any] | None:
     row = conn.execute(
         """
         SELECT s.signal_id, e.explain_short, e.explain_long_md, e.risk_warnings_json,
@@ -1127,9 +1294,11 @@ def fetch_paper_open_positions(
                 "mark_price": mark,
                 "unrealized_pnl_usdt": float(u_pnl),
                 "leverage": str(d["leverage"]),
-                "leverage_allocator": meta.get("leverage_allocator")
-                if isinstance(meta.get("leverage_allocator"), dict)
-                else None,
+                "leverage_allocator": (
+                    meta.get("leverage_allocator")
+                    if isinstance(meta.get("leverage_allocator"), dict)
+                    else None
+                ),
                 "opened_ts_ms": int(d["opened_ts_ms"]),
                 "meta": meta,
             }
@@ -1184,21 +1353,37 @@ def fetch_paper_trades_recent(
                 "side": d["side"],
                 "qty_base": str(d["qty_base"]),
                 "entry_price_avg": str(d["entry_price_avg"]),
-                "closed_ts_ms": int(d["closed_ts_ms"]) if d.get("closed_ts_ms") else None,
+                "closed_ts_ms": (
+                    int(d["closed_ts_ms"]) if d.get("closed_ts_ms") else None
+                ),
                 "state": d["state"],
-                "pnl_net_usdt": float(d["pnl_net_usdt"]) if d.get("pnl_net_usdt") is not None else None,
-                "fees_total_usdt": float(d["fees_total_usdt"])
-                if d.get("fees_total_usdt") is not None
-                else None,
-                "funding_total_usdt": float(d["funding_total_usdt"])
-                if d.get("funding_total_usdt") is not None
-                else None,
+                "pnl_net_usdt": (
+                    float(d["pnl_net_usdt"])
+                    if d.get("pnl_net_usdt") is not None
+                    else None
+                ),
+                "fees_total_usdt": (
+                    float(d["fees_total_usdt"])
+                    if d.get("fees_total_usdt") is not None
+                    else None
+                ),
+                "funding_total_usdt": (
+                    float(d["funding_total_usdt"])
+                    if d.get("funding_total_usdt") is not None
+                    else None
+                ),
                 "direction_correct": d.get("direction_correct"),
                 "reason_closed": reason,
-                "leverage_allocator": meta.get("leverage_allocator")
-                if isinstance(meta.get("leverage_allocator"), dict)
-                else None,
-                "meta": {k: v for k, v in meta.items() if k not in ("close_reason", "reason_closed")},
+                "leverage_allocator": (
+                    meta.get("leverage_allocator")
+                    if isinstance(meta.get("leverage_allocator"), dict)
+                    else None
+                ),
+                "meta": {
+                    k: v
+                    for k, v in meta.items()
+                    if k not in ("close_reason", "reason_closed")
+                },
             }
         )
     return out
@@ -1213,7 +1398,9 @@ def fetch_paper_metrics_summary(conn: psycopg.Connection[Any]) -> dict[str, Any]
         LIMIT 1
         """
     ).fetchone()
-    fee_sum = conn.execute("SELECT COALESCE(SUM(fee_usdt), 0) AS s FROM paper.fee_ledger").fetchone()
+    fee_sum = conn.execute(
+        "SELECT COALESCE(SUM(fee_usdt), 0) AS s FROM paper.fee_ledger"
+    ).fetchone()
     fund_sum = conn.execute(
         "SELECT COALESCE(SUM(funding_usdt), 0) AS s FROM paper.funding_ledger"
     ).fetchone()
@@ -1235,7 +1422,9 @@ def fetch_paper_metrics_summary(conn: psycopg.Connection[Any]) -> dict[str, Any]
     }
 
 
-def fetch_equity_series(conn: psycopg.Connection[Any], *, max_points: int) -> list[dict[str, Any]]:
+def fetch_equity_series(
+    conn: psycopg.Connection[Any], *, max_points: int
+) -> list[dict[str, Any]]:
     """Kumulative Equity aus learn.trade_evaluations; Startwert = initial_equity des ersten Paper-Kontos.
 
     Ohne Paper-Konto: leere Serie (keine erfundene 10k-Baseline — vermeidet Drift zur Summary).
@@ -1307,21 +1496,27 @@ def fetch_news_scored(
                 "source": d.get("source"),
                 "title": d.get("title"),
                 "url": d.get("url"),
-                "score_0_100": int(d["relevance_score"])
-                if d.get("relevance_score") is not None
-                else 0,
+                "score_0_100": (
+                    int(d["relevance_score"])
+                    if d.get("relevance_score") is not None
+                    else 0
+                ),
                 "sentiment": d.get("sentiment"),
                 "impact_window": d.get("impact_window"),
-                "published_ts_ms": int(d["published_ts_ms"])
-                if d.get("published_ts_ms") is not None
-                else None,
+                "published_ts_ms": (
+                    int(d["published_ts_ms"])
+                    if d.get("published_ts_ms") is not None
+                    else None
+                ),
                 "summary": (summary or "")[:500],
             }
         )
     return out
 
 
-def fetch_news_by_id(conn: psycopg.Connection[Any], news_id: UUID) -> dict[str, Any] | None:
+def fetch_news_by_id(
+    conn: psycopg.Connection[Any], news_id: UUID
+) -> dict[str, Any] | None:
     row = conn.execute(
         """
         SELECT news_id, id as legacy_id, source, title, url, published_ts_ms, ingested_ts_ms,
@@ -1352,10 +1547,14 @@ def fetch_news_by_id(conn: psycopg.Connection[Any], news_id: UUID) -> dict[str, 
         "source": d.get("source"),
         "title": d.get("title"),
         "url": d.get("url"),
-        "score_0_100": int(d["relevance_score"]) if d.get("relevance_score") is not None else 0,
+        "score_0_100": (
+            int(d["relevance_score"]) if d.get("relevance_score") is not None else 0
+        ),
         "sentiment": d.get("sentiment"),
         "impact_window": d.get("impact_window"),
-        "published_ts_ms": int(d["published_ts_ms"]) if d.get("published_ts_ms") else None,
+        "published_ts_ms": (
+            int(d["published_ts_ms"]) if d.get("published_ts_ms") else None
+        ),
         "description": d.get("description"),
         "content": d.get("content"),
         "llm_summary_json": llm if isinstance(llm, dict) else {},
@@ -1399,9 +1598,11 @@ def fetch_signal_aggregate_by_strategy_names(
             continue
         out[str(k)] = {
             "signal_count": int(d["signal_count"] or 0),
-            "last_signal_ts_ms": int(d["last_signal_ts_ms"])
-            if d.get("last_signal_ts_ms") is not None
-            else None,
+            "last_signal_ts_ms": (
+                int(d["last_signal_ts_ms"])
+                if d.get("last_signal_ts_ms") is not None
+                else None
+            ),
         }
     return out
 
@@ -1460,7 +1661,9 @@ def fetch_signal_path_playbooks_unlinked(
     return out
 
 
-def fetch_strategies_registry(conn: psycopg.Connection[Any], *, limit: int) -> list[dict[str, Any]]:
+def fetch_strategies_registry(
+    conn: psycopg.Connection[Any], *, limit: int
+) -> list[dict[str, Any]]:
     rows = conn.execute(
         """
         SELECT s.strategy_id, s.name, s.description, s.scope_json, s.created_ts,
@@ -1510,7 +1713,9 @@ def fetch_strategies_registry(conn: psycopg.Connection[Any], *, limit: int) -> l
                 "rolling_metrics_json": mj,
                 "rolling_time_window": "30d",
                 "rolling_snapshot_empty": rolling_snapshot_empty,
-                "created_ts": d["created_ts"].isoformat() if d.get("created_ts") else None,
+                "created_ts": (
+                    d["created_ts"].isoformat() if d.get("created_ts") else None
+                ),
                 "registry_row_kind": "registry",
                 "signal_path_signal_count": sig["signal_count"],
                 "signal_path_last_signal_ts_ms": sig["last_signal_ts_ms"],
@@ -1519,7 +1724,9 @@ def fetch_strategies_registry(conn: psycopg.Connection[Any], *, limit: int) -> l
     return out
 
 
-def fetch_strategy_detail(conn: psycopg.Connection[Any], strategy_id: UUID) -> dict[str, Any] | None:
+def fetch_strategy_detail(
+    conn: psycopg.Connection[Any], strategy_id: UUID
+) -> dict[str, Any] | None:
     strat = conn.execute(
         """
         SELECT strategy_id, name, description, scope_json, created_ts, updated_ts
@@ -1581,7 +1788,9 @@ def fetch_strategy_detail(conn: psycopg.Connection[Any], strategy_id: UUID) -> d
             {
                 "time_window": rd.get("time_window"),
                 "metrics_json": mj,
-                "updated_ts": rd["updated_ts"].isoformat() if rd.get("updated_ts") else None,
+                "updated_ts": (
+                    rd["updated_ts"].isoformat() if rd.get("updated_ts") else None
+                ),
             }
         )
     nm = str(s["name"])
@@ -1608,7 +1817,9 @@ def fetch_strategy_detail(conn: psycopg.Connection[Any], strategy_id: UUID) -> d
             if perf_empty
             else None
         ),
-        "status_updated_ts": st_d["updated_ts"].isoformat() if st_d.get("updated_ts") else None,
+        "status_updated_ts": (
+            st_d["updated_ts"].isoformat() if st_d.get("updated_ts") else None
+        ),
         "versions": [
             {
                 "strategy_version_id": str(dict(v)["strategy_version_id"]),
@@ -1619,7 +1830,9 @@ def fetch_strategy_detail(conn: psycopg.Connection[Any], strategy_id: UUID) -> d
                     else None
                 ),
                 "created_ts": (
-                    dict(v)["created_ts"].isoformat() if dict(v).get("created_ts") else None
+                    dict(v)["created_ts"].isoformat()
+                    if dict(v).get("created_ts")
+                    else None
                 ),
             }
             for v in versions
@@ -1687,7 +1900,9 @@ def fetch_strategy_status_row(
     }
 
 
-def fetch_model_registry_v2_slots(conn: psycopg.Connection[Any], *, limit: int) -> list[dict[str, Any]]:
+def fetch_model_registry_v2_slots(
+    conn: psycopg.Connection[Any], *, limit: int
+) -> list[dict[str, Any]]:
     rows = conn.execute(
         """
         SELECT g.model_name, g.role, g.run_id::text AS run_id, g.calibration_status,
@@ -1709,20 +1924,28 @@ def fetch_model_registry_v2_slots(conn: psycopg.Connection[Any], *, limit: int) 
                 "role": d["role"],
                 "run_id": d["run_id"],
                 "calibration_status": d["calibration_status"],
-                "activated_ts": d["activated_ts"].isoformat() if d.get("activated_ts") else None,
+                "activated_ts": (
+                    d["activated_ts"].isoformat() if d.get("activated_ts") else None
+                ),
                 "notes": d.get("notes"),
-                "updated_ts": d["updated_ts"].isoformat() if d.get("updated_ts") else None,
+                "updated_ts": (
+                    d["updated_ts"].isoformat() if d.get("updated_ts") else None
+                ),
                 "version": d.get("version"),
                 "promoted_bool": bool(d.get("promoted_bool")),
                 "calibration_method": d.get("calibration_method"),
                 "scope_type": d.get("scope_type") or "global",
-                "scope_key": d.get("scope_key") if d.get("scope_key") is not None else "",
+                "scope_key": (
+                    d.get("scope_key") if d.get("scope_key") is not None else ""
+                ),
             }
         )
     return out
 
 
-def fetch_learning_strategy_metrics(conn: psycopg.Connection[Any], *, limit: int) -> list[dict[str, Any]]:
+def fetch_learning_strategy_metrics(
+    conn: psycopg.Connection[Any], *, limit: int
+) -> list[dict[str, Any]]:
     rows = conn.execute(
         """
         SELECT m.strategy_id, s.name, m.time_window AS window, m.metrics_json, m.updated_ts
@@ -1739,13 +1962,17 @@ def fetch_learning_strategy_metrics(conn: psycopg.Connection[Any], *, limit: int
             "strategy_name": dict(r)["name"],
             "window": dict(r)["window"],
             "metrics_json": dict(r).get("metrics_json") or {},
-            "updated_ts": dict(r)["updated_ts"].isoformat() if dict(r).get("updated_ts") else None,
+            "updated_ts": (
+                dict(r)["updated_ts"].isoformat() if dict(r).get("updated_ts") else None
+            ),
         }
         for r in rows
     ]
 
 
-def fetch_error_patterns_top(conn: psycopg.Connection[Any], *, limit: int) -> list[dict[str, Any]]:
+def fetch_error_patterns_top(
+    conn: psycopg.Connection[Any], *, limit: int
+) -> list[dict[str, Any]]:
     rows = conn.execute(
         """
         SELECT pattern_key, time_window AS window, count, examples_json, updated_ts
@@ -1761,13 +1988,17 @@ def fetch_error_patterns_top(conn: psycopg.Connection[Any], *, limit: int) -> li
             "window": dict(r)["window"],
             "count": int(dict(r)["count"]),
             "examples_json": dict(r).get("examples_json") or [],
-            "updated_ts": dict(r)["updated_ts"].isoformat() if dict(r).get("updated_ts") else None,
+            "updated_ts": (
+                dict(r)["updated_ts"].isoformat() if dict(r).get("updated_ts") else None
+            ),
         }
         for r in rows
     ]
 
 
-def fetch_recommendations_recent(conn: psycopg.Connection[Any], *, limit: int) -> list[dict[str, Any]]:
+def fetch_recommendations_recent(
+    conn: psycopg.Connection[Any], *, limit: int
+) -> list[dict[str, Any]]:
     rows = conn.execute(
         """
         SELECT rec_id, type, payload_json, status, created_ts
@@ -1783,13 +2014,17 @@ def fetch_recommendations_recent(conn: psycopg.Connection[Any], *, limit: int) -
             "type": dict(r)["type"],
             "payload_json": dict(r).get("payload_json") or {},
             "status": dict(r)["status"],
-            "created_ts": dict(r)["created_ts"].isoformat() if dict(r).get("created_ts") else None,
+            "created_ts": (
+                dict(r)["created_ts"].isoformat() if dict(r).get("created_ts") else None
+            ),
         }
         for r in rows
     ]
 
 
-def fetch_model_ops_report(conn: psycopg.Connection[Any], *, slice_hours: int = 168) -> dict[str, Any]:
+def fetch_model_ops_report(
+    conn: psycopg.Connection[Any], *, slice_hours: int = 168
+) -> dict[str, Any]:
     """
     Aggregiert Kalibrierungs-/Drift-/Slice-/Abstentions-Kennzahlen fuer Operator-Dashboard (read-only).
     """
@@ -1865,13 +2100,16 @@ def fetch_model_ops_report(conn: psycopg.Connection[Any], *, slice_hours: int = 
         "schema_version": "model-ops-report-v1",
         "slice_hours": hours,
         "online_drift": online,
-        "drift_events_last_24h": int(dict(drift_n or {}).get("c") or 0) if drift_n else 0,
+        "drift_events_last_24h": (
+            int(dict(drift_n or {}).get("c") or 0) if drift_n else 0
+        ),
         "champion_take_trade_snapshot": (
             {
                 "run_id": str(dict(champ)["run_id"]),
                 "version": dict(champ).get("version"),
                 "brier_score": dict(champ).get("brier_score"),
-                "has_calibration_curve": dict(champ).get("calibration_curve") is not None,
+                "has_calibration_curve": dict(champ).get("calibration_curve")
+                is not None,
                 "cv_summary": dict(champ).get("cv_summary"),
             }
             if champ
@@ -1879,10 +2117,12 @@ def fetch_model_ops_report(conn: psycopg.Connection[Any], *, slice_hours: int = 
         ),
         "signal_slices": {
             "by_market_regime": [
-                {"slice_key": dict(r)["slice_key"], "count": int(dict(r)["n"])} for r in regime_rows
+                {"slice_key": dict(r)["slice_key"], "count": int(dict(r)["n"])}
+                for r in regime_rows
             ],
             "by_market_family_in_snapshot": [
-                {"slice_key": dict(r)["slice_key"], "count": int(dict(r)["n"])} for r in family_rows
+                {"slice_key": dict(r)["slice_key"], "count": int(dict(r)["n"])}
+                for r in family_rows
             ],
         },
         "abstention_and_no_trade": {
@@ -1895,7 +2135,9 @@ def fetch_model_ops_report(conn: psycopg.Connection[Any], *, slice_hours: int = 
     }
 
 
-def fetch_drift_recent(conn: psycopg.Connection[Any], *, limit: int) -> list[dict[str, Any]]:
+def fetch_drift_recent(
+    conn: psycopg.Connection[Any], *, limit: int
+) -> list[dict[str, Any]]:
     try:
         rows = conn.execute(
             """
@@ -1914,13 +2156,19 @@ def fetch_drift_recent(conn: psycopg.Connection[Any], *, limit: int) -> list[dic
             "metric_name": dict(r)["metric_name"],
             "severity": dict(r)["severity"],
             "details_json": dict(r).get("details_json") or {},
-            "detected_ts": dict(r)["detected_ts"].isoformat() if dict(r).get("detected_ts") else None,
+            "detected_ts": (
+                dict(r)["detected_ts"].isoformat()
+                if dict(r).get("detected_ts")
+                else None
+            ),
         }
         for r in rows
     ]
 
 
-def fetch_backtest_runs(conn: psycopg.Connection[Any], *, limit: int) -> list[dict[str, Any]]:
+def fetch_backtest_runs(
+    conn: psycopg.Connection[Any], *, limit: int
+) -> list[dict[str, Any]]:
     rows = conn.execute(
         """
         SELECT run_id, symbol, status, cv_method, metrics_json, created_ts, mode
@@ -1938,7 +2186,9 @@ def fetch_backtest_runs(conn: psycopg.Connection[Any], *, limit: int) -> list[di
             "status": dict(r).get("status"),
             "cv_method": dict(r).get("cv_method"),
             "metrics_json": dict(r).get("metrics_json") or {},
-            "created_ts": dict(r)["created_ts"].isoformat() if dict(r).get("created_ts") else None,
+            "created_ts": (
+                dict(r)["created_ts"].isoformat() if dict(r).get("created_ts") else None
+            ),
         }
         for r in rows
     ]
@@ -1952,7 +2202,9 @@ def fetch_admin_rules(conn: psycopg.Connection[Any]) -> list[dict[str, Any]]:
         {
             "rule_set_id": dict(r)["rule_set_id"],
             "rules_json": dict(r)["rules_json"] or {},
-            "updated_ts": dict(r)["updated_ts"].isoformat() if dict(r).get("updated_ts") else None,
+            "updated_ts": (
+                dict(r)["updated_ts"].isoformat() if dict(r).get("updated_ts") else None
+            ),
         }
         for r in rows
     ]
@@ -2031,7 +2283,14 @@ def registry_insert_strategy_version(
         VALUES (%s, %s, %s::jsonb, %s::jsonb, %s::jsonb, %s)
         RETURNING strategy_version_id, version, configuration_hash, created_ts
         """,
-        (str(strategy_id), version, Json(definition), Json(parameters), Json(risk_profile), h),
+        (
+            str(strategy_id),
+            version,
+            Json(definition),
+            Json(parameters),
+            Json(risk_profile),
+            h,
+        ),
     ).fetchone()
     assert row is not None
     d = dict(row)
@@ -2087,7 +2346,9 @@ def update_strategy_status(
     return True
 
 
-def fetch_data_freshness(conn: psycopg.Connection[Any], *, symbol: str) -> dict[str, Any]:
+def fetch_data_freshness(
+    conn: psycopg.Connection[Any], *, symbol: str
+) -> dict[str, Any]:
     sym = symbol.upper()
     c = conn.execute(
         """
@@ -2102,7 +2363,13 @@ def fetch_data_freshness(conn: psycopg.Connection[Any], *, symbol: str) -> dict[
         "SELECT MAX(COALESCE(published_ts_ms, ingested_ts_ms, 0)) AS ts FROM app.news_items"
     ).fetchone()
     return {
-        "last_candle_ts_ms": int(dict(c)["ts"]) if c and dict(c).get("ts") is not None else None,
-        "last_signal_ts_ms": int(dict(sig)["ts"]) if sig and dict(sig).get("ts") is not None else None,
-        "last_news_ts_ms": int(dict(news)["ts"]) if news and dict(news).get("ts") is not None else None,
+        "last_candle_ts_ms": (
+            int(dict(c)["ts"]) if c and dict(c).get("ts") is not None else None
+        ),
+        "last_signal_ts_ms": (
+            int(dict(sig)["ts"]) if sig and dict(sig).get("ts") is not None else None
+        ),
+        "last_news_ts_ms": (
+            int(dict(news)["ts"]) if news and dict(news).get("ts") is not None else None
+        ),
     }

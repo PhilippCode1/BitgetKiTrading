@@ -21,9 +21,9 @@ from learning_engine.rl_env.trading_environment import (  # noqa: E402
     TradingReplayEnv,
 )
 from learning_engine.training.rl_train import (  # noqa: E402
+    run_rl_smoke_episode,
     synthetic_ohlcv,
     train_consensus_weights_ppo,
-    run_rl_smoke_episode,
 )
 
 

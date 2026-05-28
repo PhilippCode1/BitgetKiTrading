@@ -55,7 +55,9 @@ def contains_forbidden_trading_promises(text: str) -> bool:
     return any(token in lowered for token in forbidden)
 
 
-def validate_operator_assistant_response(payload: dict[str, Any], *, live_blocked: bool) -> AssistantValidationResult:
+def validate_operator_assistant_response(
+    payload: dict[str, Any], *, live_blocked: bool
+) -> AssistantValidationResult:
     reasons: list[str] = []
     result = payload.get("result")
     if not isinstance(result, dict):
@@ -66,11 +68,16 @@ def validate_operator_assistant_response(payload: dict[str, Any], *, live_blocke
     if authority != "none":
         reasons.append("execution_authority_not_none")
 
-    explanation = str(result.get("explanation_de") or result.get("incident_summary_de") or "")
+    explanation = str(
+        result.get("explanation_de") or result.get("incident_summary_de") or ""
+    )
     if not explanation.strip():
         reasons.append("missing_explanation")
 
-    if "keine live-freigabe" not in explanation.lower() and "nur erklärung" not in explanation.lower():
+    if (
+        "keine live-freigabe" not in explanation.lower()
+        and "nur erklärung" not in explanation.lower()
+    ):
         reasons.append("missing_non_authoritative_disclaimer")
 
     if live_blocked and "live bleibt blockiert" not in explanation.lower():
@@ -79,11 +86,15 @@ def validate_operator_assistant_response(payload: dict[str, Any], *, live_blocke
     if contains_forbidden_trading_promises(explanation):
         reasons.append("forbidden_trading_phrase")
 
-    if re.search(r"(?i)(api[_-]?key|secret|token|passphrase|password)\s*[:=]\s*\S+", explanation):
+    if re.search(
+        r"(?i)(api[_-]?key|secret|token|passphrase|password)\s*[:=]\s*\S+", explanation
+    ):
         reasons.append("secret_leak")
 
     return AssistantValidationResult(ok=len(reasons) == 0, reasons=reasons)
 
 
 def build_degraded_assistant_message() -> str:
-    return "KI-Erklärung aktuell nicht verfügbar — keine Auswirkung auf Trading-Freigaben."
+    return (
+        "KI-Erklärung aktuell nicht verfügbar — keine Auswirkung auf Trading-Freigaben."
+    )

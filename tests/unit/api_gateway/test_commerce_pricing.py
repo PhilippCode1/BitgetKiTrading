@@ -16,5 +16,9 @@ def test_llm_token_line_total_is_linear_no_hidden_multiplier() -> None:
     from api_gateway.commerce.pricing import llm_tokens_line_total_usd
 
     p = Decimal("0.002")
-    assert llm_tokens_line_total_usd(token_count=1000, usd_per_1k_tokens=p) == Decimal("0.002")
-    assert llm_tokens_line_total_usd(token_count=500, usd_per_1k_tokens=p) == Decimal("0.001")
+    assert llm_tokens_line_total_usd(token_count=1000, usd_per_1k_tokens=p) == Decimal(
+        "0.002"
+    )
+    assert llm_tokens_line_total_usd(token_count=500, usd_per_1k_tokens=p) == Decimal(
+        "0.001"
+    )

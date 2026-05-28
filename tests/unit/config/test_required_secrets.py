@@ -3,6 +3,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import pytest
+
 from config.required_secrets import (
     RequiredSecretsError,
     required_env_names_for_env_file_profile,
@@ -17,13 +18,17 @@ def test_union_local_includes_gateway_secret_once() -> None:
 
 
 def test_staging_and_shadow_profiles_same_union() -> None:
-    assert required_env_names_for_env_file_profile(profile="staging") == required_env_names_for_env_file_profile(
+    assert required_env_names_for_env_file_profile(
+        profile="staging"
+    ) == required_env_names_for_env_file_profile(
         profile="shadow",
     )
 
 
 def test_shadow_boot_uses_staging_matrix_column() -> None:
-    env = {k: "z" * 32 for k in required_env_names_for_env_file_profile(profile="staging")}
+    env = {
+        k: "z" * 32 for k in required_env_names_for_env_file_profile(profile="staging")
+    }
     settings = SimpleNamespace(production=True, app_env="shadow")
     validate_required_secrets("api-gateway", settings, environ=env)
 

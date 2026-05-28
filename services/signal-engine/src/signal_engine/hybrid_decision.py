@@ -2,11 +2,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from shared_py.leverage_allocator import LEVERAGE_ALLOCATOR_VERSION, allocate_integer_leverage
-from shared_py.unified_leverage_allocator import recompute_unified_leverage_allocation
-from shared_py.projection_adjustment import (
-    cap_from_liquidation_stress,
-    liquidation_proximity_stress_0_1,
+from shared_py.leverage_allocator import (
+    LEVERAGE_ALLOCATOR_VERSION,
+    allocate_integer_leverage,
 )
 from shared_py.meta_trade_decision import (
     META_TRADE_DECISION_VERSION,
@@ -14,7 +12,12 @@ from shared_py.meta_trade_decision import (
     resolve_meta_trade_lane,
     shrink_calibrated_take_trade_probability,
 )
+from shared_py.projection_adjustment import (
+    cap_from_liquidation_stress,
+    liquidation_proximity_stress_0_1,
+)
 from shared_py.signal_contracts import DecisionState, TradeAction
+from shared_py.unified_leverage_allocator import recompute_unified_leverage_allocation
 
 from signal_engine.config import SignalEngineSettings
 from signal_engine.product_family_risk import (
@@ -38,33 +41,47 @@ def assess_hybrid_decision(
 ) -> dict[str, Any]:
     direction = str(signal_row.get("direction") or "").strip().lower()
     product_family = market_family_from_signal_row(signal_row)
-    gov = assess_risk_governor(settings=settings, signal_row=signal_row, direction=direction)
+    gov = assess_risk_governor(
+        settings=settings, signal_row=signal_row, direction=direction
+    )
     governor_hard: list[str] = []
     if getattr(settings, "risk_hard_gating_enabled", True):
         governor_hard = list(gov.get("hard_block_reasons_json") or [])
 
-    signal_class = str(signal_row.get("signal_class") or "").strip().lower() or "warnung"
+    signal_class = (
+        str(signal_row.get("signal_class") or "").strip().lower() or "warnung"
+    )
     market_regime = str(signal_row.get("market_regime") or "").strip().lower()
     regime_bias = str(signal_row.get("regime_bias") or "").strip().lower()
-    regime_confidence = _clamp01(_coerce_float(signal_row.get("regime_confidence_0_1")) or 0.0)
+    regime_confidence = _clamp01(
+        _coerce_float(signal_row.get("regime_confidence_0_1")) or 0.0
+    )
     take_trade_prob = _coerce_float(signal_row.get("take_trade_prob"))
-    take_trade_prob_adjusted, prob_shrink_reasons = shrink_calibrated_take_trade_probability(
-        take_trade_prob,
-        ood_score_0_1=_coerce_float(signal_row.get("model_ood_score_0_1")),
-        ood_alert=bool(signal_row.get("model_ood_alert")),
-        model_uncertainty_0_1=_coerce_float(signal_row.get("model_uncertainty_0_1")),
-        ood_shrink_factor=settings.meta_prob_ood_shrink_factor,
-        uncertainty_shrink_weight=settings.meta_prob_uncertainty_shrink_weight,
+    take_trade_prob_adjusted, prob_shrink_reasons = (
+        shrink_calibrated_take_trade_probability(
+            take_trade_prob,
+            ood_score_0_1=_coerce_float(signal_row.get("model_ood_score_0_1")),
+            ood_alert=bool(signal_row.get("model_ood_alert")),
+            model_uncertainty_0_1=_coerce_float(
+                signal_row.get("model_uncertainty_0_1")
+            ),
+            ood_shrink_factor=settings.meta_prob_ood_shrink_factor,
+            uncertainty_shrink_weight=settings.meta_prob_uncertainty_shrink_weight,
+        )
     )
     heuristic_probability = _coerce_float(signal_row.get("probability_0_1"))
     expected_return_bps = _coerce_float(signal_row.get("expected_return_bps"))
     expected_mae_bps = _coerce_float(signal_row.get("expected_mae_bps"))
     expected_mfe_bps = _coerce_float(signal_row.get("expected_mfe_bps"))
-    signal_strength = _clamp01((_coerce_float(signal_row.get("signal_strength_0_100")) or 0.0) / 100.0)
+    signal_strength = _clamp01(
+        (_coerce_float(signal_row.get("signal_strength_0_100")) or 0.0) / 100.0
+    )
     composite_strength = _clamp01(
         (_coerce_float(signal_row.get("weighted_composite_score_0_100")) or 0.0) / 100.0
     )
-    model_uncertainty = _clamp01(_coerce_float(signal_row.get("model_uncertainty_0_1")) or 1.0)
+    model_uncertainty = _clamp01(
+        _coerce_float(signal_row.get("model_uncertainty_0_1")) or 1.0
+    )
     uncertainty_component = 1.0 - model_uncertainty
     projected_rr = _projected_rr(expected_mae_bps, expected_mfe_bps)
     regime_alignment = _regime_alignment(
@@ -119,7 +136,9 @@ def assess_hybrid_decision(
 
     lev_eff = _coerce_float(signal_row.get("uncertainty_effective_for_leverage_0_1"))
     model_uncertainty_for_leverage = (
-        _clamp01(max(model_uncertainty, float(lev_eff))) if lev_eff is not None else model_uncertainty
+        _clamp01(max(model_uncertainty, float(lev_eff)))
+        if lev_eff is not None
+        else model_uncertainty
     )
     leverage_decision = _signal_leverage_decision(
         settings=settings,
@@ -136,7 +155,10 @@ def assess_hybrid_decision(
     )
     leverage_block_reason = leverage_decision["blocked_reason"]
     min_lev = effective_min_leverage(product_family, settings.risk_allowed_leverage_min)
-    if final_trade_action == "allow_trade" and leverage_decision["allowed_leverage"] < min_lev:
+    if (
+        final_trade_action == "allow_trade"
+        and leverage_decision["allowed_leverage"] < min_lev
+    ):
         final_decision_state = "downgraded"
         final_trade_action = "do_not_trade"
         model_gate_reasons = _unique_strs(
@@ -199,20 +221,37 @@ def assess_hybrid_decision(
     leverage_decision = {**leverage_decision, "allowed_leverage": final_allowed}
     leverage_decision["recommended_leverage"] = final_rec
 
-    acct_snap = extract_risk_account_snapshot(_as_dict(signal_row.get("source_snapshot_json")))
+    acct_snap = extract_risk_account_snapshot(
+        _as_dict(signal_row.get("source_snapshot_json"))
+    )
     stop_proxy_pct: float | None = None
     if expected_mae_bps is not None and float(expected_mae_bps) > 0:
         stop_proxy_pct = float(expected_mae_bps) / 10000.0
-    leverage_decision["unified_leverage_allocation"] = recompute_unified_leverage_allocation(
-        allowed_leverage=int(final_allowed),
-        recommended_leverage=final_rec,
-        stop_distance_pct=stop_proxy_pct,
-        meta_trade_lane=meta_lane,
-        trade_action=final_trade_action,
-        governor=gov,
-        risk_account_snapshot=acct_snap,
-        signal_row=signal_row,
-        settings=settings,
+    exec_mode_resolved = signal_row.get("execution_mode")
+    if exec_mode_resolved is None:
+        snap = signal_row.get("source_snapshot_json")
+        if isinstance(snap, dict):
+            exec_mode_resolved = snap.get("execution_mode")
+            if exec_mode_resolved is None:
+                hd = snap.get("hybrid_decision")
+                if isinstance(hd, dict):
+                    exec_mode_resolved = hd.get("execution_mode")
+    if exec_mode_resolved is None:
+        exec_mode_resolved = "STANDARD_FUTURES"
+
+    leverage_decision["unified_leverage_allocation"] = (
+        recompute_unified_leverage_allocation(
+            allowed_leverage=int(final_allowed),
+            recommended_leverage=final_rec,
+            stop_distance_pct=stop_proxy_pct,
+            meta_trade_lane=meta_lane,
+            trade_action=final_trade_action,
+            governor=gov,
+            risk_account_snapshot=acct_snap,
+            signal_row=signal_row,
+            settings=settings,
+            execution_mode=exec_mode_resolved,
+        )
     )
 
     abstention_reasons = _unique_strs(
@@ -243,9 +282,12 @@ def assess_hybrid_decision(
             approval_reasons.append("hybrid_regime_aligned")
         approval_reasons.append(f"meta_trade_lane_{meta_lane}")
 
-    final_signal_class = signal_class if final_trade_action == "allow_trade" else "warnung"
+    final_signal_class = (
+        signal_class if final_trade_action == "allow_trade" else "warnung"
+    )
     leverage_cap_reasons = _unique_strs(
-        list(leverage_decision["cap_reasons_json"]) + list(leverage_decision["factor_reasons_json"])
+        list(leverage_decision["cap_reasons_json"])
+        + list(leverage_decision["factor_reasons_json"])
     )
     _u = leverage_decision.get("unified_leverage_allocation") or {}
     return {
@@ -254,12 +296,16 @@ def assess_hybrid_decision(
         "decision_confidence_0_1": round(_clamp01(decision_confidence), 6),
         "allowed_leverage": leverage_decision["allowed_leverage"],
         "recommended_leverage": (
-            leverage_decision["recommended_leverage"] if final_trade_action == "allow_trade" else None
+            leverage_decision["recommended_leverage"]
+            if final_trade_action == "allow_trade"
+            else None
         ),
         "execution_leverage_cap": _u.get("execution_leverage_cap"),
         "mirror_leverage": _u.get("mirror_leverage"),
         "unified_leverage_allocator_version": _u.get("version"),
-        "live_execution_block_reasons_json": list(gov.get("live_execution_block_reasons_json") or []),
+        "live_execution_block_reasons_json": list(
+            gov.get("live_execution_block_reasons_json") or []
+        ),
         "portfolio_risk_synthesis_json": gov.get("portfolio_risk_synthesis_json"),
         "leverage_policy_version": LEVERAGE_ALLOCATOR_VERSION,
         "leverage_cap_reasons_json": leverage_cap_reasons,
@@ -273,7 +319,9 @@ def assess_hybrid_decision(
             "trade_action": final_trade_action,
             "meta_trade_decision_version": META_TRADE_DECISION_VERSION,
             "meta_trade_lane": meta_lane,
-            "meta_lane_reasons": list(dict.fromkeys(meta_lane_reasons + meta_lane_extra)),
+            "meta_lane_reasons": list(
+                dict.fromkeys(meta_lane_reasons + meta_lane_extra)
+            ),
             "take_trade_prob_adjusted_0_1": take_trade_prob_adjusted,
             "take_trade_prob_raw_0_1": take_trade_prob,
             "prob_shrink_reasons": prob_shrink_reasons,
@@ -288,16 +336,22 @@ def assess_hybrid_decision(
             "uncertainty_0_1": model_uncertainty,
             "allowed_leverage": leverage_decision["allowed_leverage"],
             "recommended_leverage": (
-                leverage_decision["recommended_leverage"] if final_trade_action == "allow_trade" else None
+                leverage_decision["recommended_leverage"]
+                if final_trade_action == "allow_trade"
+                else None
             ),
             "leverage_policy_version": LEVERAGE_ALLOCATOR_VERSION,
             "leverage_allocator": leverage_decision,
             "risk_governor": gov,
-            "live_execution_block_reasons_json": list(gov.get("live_execution_block_reasons_json") or []),
+            "live_execution_block_reasons_json": list(
+                gov.get("live_execution_block_reasons_json") or []
+            ),
             "governor_universal_hard_block_reasons_json": list(
                 gov.get("universal_hard_block_reasons_json") or []
             ),
-            "primary_abstention_reason": abstention_reasons[0] if abstention_reasons else None,
+            "primary_abstention_reason": (
+                abstention_reasons[0] if abstention_reasons else None
+            ),
             "safety_floor_reasons": safety_floor_reasons,
             "model_gate_reasons": model_gate_reasons,
             "approval_reasons": approval_reasons,
@@ -399,11 +453,15 @@ def _trade_score(
     min_projected_rr: float,
 ) -> float:
     probability_component = _clamp01(
-        take_trade_prob if take_trade_prob is not None else (heuristic_probability or 0.0)
+        take_trade_prob
+        if take_trade_prob is not None
+        else (heuristic_probability or 0.0)
     )
     edge_component = 0.0
     if expected_return_bps is not None and min_expected_return_bps > 0:
-        edge_component = _clamp01(expected_return_bps / max(min_expected_return_bps * 2.0, 1.0))
+        edge_component = _clamp01(
+            expected_return_bps / max(min_expected_return_bps * 2.0, 1.0)
+        )
     rr_component = 0.0
     if projected_rr is not None and min_projected_rr > 0:
         rr_component = _clamp01(projected_rr / max(min_projected_rr * 1.5, 1.0))
@@ -439,7 +497,8 @@ def _signal_leverage_decision(
     instrument_meta = _as_dict(source_snapshot.get("instrument"))
     primary_tf = _as_dict(feature_snapshot.get("primary_tf"))
     data_issues = _unique_strs(
-        list(source_snapshot.get("data_issues") or []) + list(signal_row.get("uncertainty_reasons_json") or [])
+        list(source_snapshot.get("data_issues") or [])
+        + list(signal_row.get("uncertainty_reasons_json") or [])
     )
     config_hi = min(settings.risk_allowed_leverage_max, 75)
     risk_max = max_config_risk_leverage(
@@ -452,7 +511,9 @@ def _signal_leverage_decision(
         effective_adverse_bps=expected_mae_bps,
         preview_leverage=liq_preview,
     )
-    liq_cap_val = cap_from_liquidation_stress(stress_0_1=liq_stress, risk_max=max(1, risk_max))
+    liq_cap_val = cap_from_liquidation_stress(
+        stress_0_1=liq_stress, risk_max=max(1, risk_max)
+    )
     if liq_cap_val is None:
         liq_cap_val = risk_max
 
@@ -463,7 +524,9 @@ def _signal_leverage_decision(
     execution_cost_bps = _coerce_float(primary_tf.get("execution_cost_bps"))
     volatility_cost_bps = _coerce_float(primary_tf.get("volatility_cost_bps"))
     funding_rate_bps = abs(_coerce_float(primary_tf.get("funding_rate_bps")) or 0.0)
-    funding_window_bps = abs(_coerce_float(primary_tf.get("funding_cost_bps_window")) or 0.0)
+    funding_window_bps = abs(
+        _coerce_float(primary_tf.get("funding_cost_bps_window")) or 0.0
+    )
     depth_ratio = _coerce_float(primary_tf.get("depth_to_bar_volume_ratio"))
     liquidity_source = str(primary_tf.get("liquidity_source") or "").strip().lower()
     if direction == "short":
@@ -535,9 +598,9 @@ def _signal_leverage_decision(
             risk_max=risk_max,
         ),
         "liquidation_proximity_cap": liq_cap_val,
-        "data_quality_factor_cap": 6
-        if data_issues or quality_gate.get("passed") is False
-        else risk_max,
+        "data_quality_factor_cap": (
+            6 if data_issues or quality_gate.get("passed") is False else risk_max
+        ),
         "risk_governor_cap": min(risk_max, risk_gov_cap),
         "instrument_metadata_cap": (
             risk_max
@@ -553,9 +616,7 @@ def _signal_leverage_decision(
                 if instrument_meta.get("supports_leverage") is True
                 and instrument_meta.get("leverage_max") not in (None, "")
                 else (
-                    0
-                    if instrument_meta.get("supports_leverage") is False
-                    else risk_max
+                    0 if instrument_meta.get("supports_leverage") is False else risk_max
                 )
             )
         ),
@@ -606,7 +667,9 @@ def _regime_alignment(
     return _clamp01(0.35 * (1.0 - regime_confidence))
 
 
-def _projected_rr(expected_mae_bps: float | None, expected_mfe_bps: float | None) -> float | None:
+def _projected_rr(
+    expected_mae_bps: float | None, expected_mfe_bps: float | None
+) -> float | None:
     if expected_mae_bps is None or expected_mfe_bps is None:
         return None
     if expected_mae_bps <= 0:
@@ -642,7 +705,9 @@ def _edge_score(
 ) -> float:
     edge_component = 0.0
     if expected_return_bps is not None and min_expected_return_bps > 0:
-        edge_component = _clamp01(expected_return_bps / max(min_expected_return_bps * 6.0, 1.0))
+        edge_component = _clamp01(
+            expected_return_bps / max(min_expected_return_bps * 6.0, 1.0)
+        )
     rr_component = 0.0
     if projected_rr is not None and min_projected_rr > 0:
         rr_component = _clamp01(projected_rr / max(min_projected_rr * 3.0, 1.0))
@@ -671,7 +736,9 @@ def _depth_score(
     if depth_ratio is None or impact_bps is None:
         return 0.0
     depth_component = _clamp01(depth_ratio / max(min_depth_ratio * 2.0, 0.0001))
-    impact_component = _cost_score(value=impact_bps, hard_limit=max_impact_bps, scale=1.0)
+    impact_component = _cost_score(
+        value=impact_bps, hard_limit=max_impact_bps, scale=1.0
+    )
     score = min(depth_component, impact_component)
     if liquidity_source != "orderbook_levels":
         score = min(score, 0.05)

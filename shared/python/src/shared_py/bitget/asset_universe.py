@@ -41,7 +41,14 @@ class BitgetAssetCatalogEntry(BaseModel):
     data_quality_status: GateStatus = "data_unknown"
     operator_note_de: str = ""
 
-    @field_validator("symbol", "base_coin", "quote_coin", "product_type", "margin_coin", mode="before")
+    @field_validator(
+        "symbol",
+        "base_coin",
+        "quote_coin",
+        "product_type",
+        "margin_coin",
+        mode="before",
+    )
     @classmethod
     def _normalize_upper(cls, value: object) -> object:
         if value is None:
@@ -51,7 +58,9 @@ class BitgetAssetCatalogEntry(BaseModel):
             return None
         return text.upper()
 
-    @field_validator("market_family", "status_on_exchange", "data_quality_status", mode="before")
+    @field_validator(
+        "market_family", "status_on_exchange", "data_quality_status", mode="before"
+    )
     @classmethod
     def _normalize_lower(cls, value: object) -> object:
         if value is None:
@@ -65,7 +74,7 @@ class BitgetAssetCatalogEntry(BaseModel):
             return ""
         return str(value).strip()
 
-    def with_evaluated_live_gate(self) -> "BitgetAssetCatalogEntry":
+    def with_evaluated_live_gate(self) -> BitgetAssetCatalogEntry:
         reasons = evaluate_live_block_reasons(self)
         payload = self.model_dump(mode="json")
         payload["live_block_reasons"] = reasons
@@ -111,7 +120,9 @@ def block_reasons_to_german(reasons: list[str]) -> list[str]:
         "shadow_nicht_freigegeben": "Shadow-Modus ist nicht freigegeben.",
         "neues_asset_nicht_automatisch_live": "Neue Assets sind nie automatisch live freigegeben.",
     }
-    return [mapping.get(reason, f"Unbekannter Blockgrund: {reason}") for reason in reasons]
+    return [
+        mapping.get(reason, f"Unbekannter Blockgrund: {reason}") for reason in reasons
+    ]
 
 
 @dataclass(frozen=True)
@@ -125,7 +136,9 @@ class AssetUniverseSummary:
     market_family_counts: dict[str, int]
 
 
-def summarize_asset_universe(entries: list[BitgetAssetCatalogEntry]) -> AssetUniverseSummary:
+def summarize_asset_universe(
+    entries: list[BitgetAssetCatalogEntry],
+) -> AssetUniverseSummary:
     family_counts = Counter(entry.market_family for entry in entries)
     blocked_assets = sum(1 for entry in entries if not entry.live_allowed)
     quarantined_assets = sum(
@@ -135,7 +148,9 @@ def summarize_asset_universe(entries: list[BitgetAssetCatalogEntry]) -> AssetUni
     )
     return AssetUniverseSummary(
         total_assets=len(entries),
-        active_assets=sum(1 for entry in entries if entry.status_on_exchange == "active"),
+        active_assets=sum(
+            1 for entry in entries if entry.status_on_exchange == "active"
+        ),
         blocked_assets=blocked_assets,
         quarantined_assets=quarantined_assets,
         shadow_allowed_assets=sum(1 for entry in entries if entry.shadow_allowed),

@@ -1,4 +1,5 @@
 """Catalog snapshot: Postgres-Inhalt muss Vorrang vor Redis haben (kein Fixture/Cache-Drift)."""
+
 from __future__ import annotations
 
 import time
@@ -23,7 +24,9 @@ def _fresh_snapshot(snapshot_id: str) -> BitgetInstrumentCatalogSnapshot:
     )
 
 
-def test_get_snapshot_prefers_database_over_redis_cache(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_snapshot_prefers_database_over_redis_cache(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setenv("LIVE_TRADE_ENABLE", "false")
     monkeypatch.setenv("EXECUTION_MODE", "paper")
     db_snap = _fresh_snapshot("from-postgres")

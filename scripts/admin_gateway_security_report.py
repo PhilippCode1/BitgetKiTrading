@@ -23,7 +23,11 @@ from api_gateway.manual_action import (  # noqa: E402
     ROUTE_KEY_OPERATOR_RELEASE,
     ROUTE_KEY_SAFETY_EMERGENCY_FLATTEN,
 )
-from shared_py.audit_contracts import build_private_audit_event, payload_contains_secret_markers  # noqa: E402
+
+from shared_py.audit_contracts import (  # noqa: E402
+    build_private_audit_event,
+    payload_contains_secret_markers,
+)
 from shared_py.single_admin_access import (  # noqa: E402
     SingleAdminContext,
     assert_single_admin_context,
@@ -59,7 +63,9 @@ def _git_sha() -> str:
         return "unknown"
 
 
-def _audit_event(*, scenario_id: str, decision: str, reasons: list[str], git_sha: str) -> dict[str, Any]:
+def _audit_event(
+    *, scenario_id: str, decision: str, reasons: list[str], git_sha: str
+) -> dict[str, Any]:
     return {
         "event_id": f"admin-gateway-security-{scenario_id}",
         "event_type": "private_decision_audit",
@@ -178,9 +184,14 @@ def build_report_payload() -> dict[str, Any]:
         )
     )
 
-    read_ctx = GatewayAuthContext(actor="philipp", auth_method="jwt", roles=frozenset({"gateway:read"}))
-    read_cannot_mutate = not read_ctx.can_admin_write() and not read_ctx.can_execute_live_broker_route(
-        ROUTE_KEY_SAFETY_EMERGENCY_FLATTEN
+    read_ctx = GatewayAuthContext(
+        actor="philipp", auth_method="jwt", roles=frozenset({"gateway:read"})
+    )
+    read_cannot_mutate = (
+        not read_ctx.can_admin_write()
+        and not read_ctx.can_execute_live_broker_route(
+            ROUTE_KEY_SAFETY_EMERGENCY_FLATTEN
+        )
     )
     scenarios.append(
         _scenario(
@@ -192,8 +203,12 @@ def build_report_payload() -> dict[str, Any]:
         )
     )
 
-    operator_ctx = GatewayAuthContext(actor="philipp", auth_method="jwt", roles=frozenset({"operator:mutate"}))
-    operator_route_allowed = operator_ctx.can_execute_live_broker_route(ROUTE_KEY_OPERATOR_RELEASE)
+    operator_ctx = GatewayAuthContext(
+        actor="philipp", auth_method="jwt", roles=frozenset({"operator:mutate"})
+    )
+    operator_route_allowed = operator_ctx.can_execute_live_broker_route(
+        ROUTE_KEY_OPERATOR_RELEASE
+    )
     scenarios.append(
         _scenario(
             scenario_id="operator_role_requires_manual_action_for_release",
@@ -205,8 +220,12 @@ def build_report_payload() -> dict[str, Any]:
         )
     )
 
-    emergency_ctx = GatewayAuthContext(actor="philipp", auth_method="jwt", roles=frozenset({"emergency:mutate"}))
-    emergency_route_allowed = emergency_ctx.can_execute_live_broker_route(ROUTE_KEY_SAFETY_EMERGENCY_FLATTEN)
+    emergency_ctx = GatewayAuthContext(
+        actor="philipp", auth_method="jwt", roles=frozenset({"emergency:mutate"})
+    )
+    emergency_route_allowed = emergency_ctx.can_execute_live_broker_route(
+        ROUTE_KEY_SAFETY_EMERGENCY_FLATTEN
+    )
     scenarios.append(
         _scenario(
             scenario_id="emergency_role_requires_manual_action_for_flatten",
@@ -224,7 +243,9 @@ def build_report_payload() -> dict[str, Any]:
         roles=frozenset({"billing:read"}),
         portal_roles=frozenset({"customer"}),
     )
-    customer_cannot_admin = customer_ctx.is_customer_portal_jwt() and not customer_ctx.can_admin_write()
+    customer_cannot_admin = (
+        customer_ctx.is_customer_portal_jwt() and not customer_ctx.can_admin_write()
+    )
     scenarios.append(
         _scenario(
             scenario_id="customer_portal_cannot_admin",
@@ -235,7 +256,9 @@ def build_report_payload() -> dict[str, Any]:
         )
     )
 
-    public_secret_detected = contains_forbidden_public_secret_env("NEXT_PUBLIC_ADMIN_TOKEN=example-only")
+    public_secret_detected = contains_forbidden_public_secret_env(
+        "NEXT_PUBLIC_ADMIN_TOKEN=example-only"
+    )
     scenarios.append(
         _scenario(
             scenario_id="public_secret_env_blocked",
@@ -247,7 +270,11 @@ def build_report_payload() -> dict[str, Any]:
     )
 
     redacted = redact_auth_error("Authorization: Bearer synthetic-token SECRET=value")
-    redaction_ok = "synthetic-token" not in redacted and "value" not in redacted and "REDACTED" in redacted
+    redaction_ok = (
+        "synthetic-token" not in redacted
+        and "value" not in redacted
+        and "REDACTED" in redacted
+    )
     scenarios.append(
         _scenario(
             scenario_id="auth_errors_are_redacted",
@@ -259,7 +286,11 @@ def build_report_payload() -> dict[str, Any]:
     )
 
     covered = sorted(row["id"] for row in scenarios if row["passed"])
-    missing = [scenario_id for scenario_id in REQUIRED_SCENARIO_IDS if scenario_id not in covered]
+    missing = [
+        scenario_id
+        for scenario_id in REQUIRED_SCENARIO_IDS
+        if scenario_id not in covered
+    ]
     failures = [
         row["id"]
         for row in scenarios
@@ -333,7 +364,9 @@ def main(argv: list[str] | None = None) -> int:
     payload = build_report_payload()
     if args.output_json:
         args.output_json.parent.mkdir(parents=True, exist_ok=True)
-        args.output_json.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+        args.output_json.write_text(
+            json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
     if args.output_md:
         args.output_md.parent.mkdir(parents=True, exist_ok=True)
         args.output_md.write_text(render_markdown(payload), encoding="utf-8")

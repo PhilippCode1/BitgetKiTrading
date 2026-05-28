@@ -27,13 +27,19 @@ def persist_drawing_batch(
     """
     log = logger or logging.getLogger("drawing_engine.persist")
     if not records:
-        log.debug("persist skip: leere drawing-liste symbol=%s tf=%s", symbol, timeframe)
+        log.debug(
+            "persist skip: leere drawing-liste symbol=%s tf=%s", symbol, timeframe
+        )
         return []
 
     keep = {str(r["parent_id"]) for r in records}
-    expired = repo.expire_active_not_in(symbol=symbol, timeframe=timeframe, keep_parent_ids=keep)
+    expired = repo.expire_active_not_in(
+        symbol=symbol, timeframe=timeframe, keep_parent_ids=keep
+    )
     if expired:
-        log.debug("expired %s orphan active drawings for %s %s", expired, symbol, timeframe)
+        log.debug(
+            "expired %s orphan active drawings for %s %s", expired, symbol, timeframe
+        )
 
     input_gates = (
         input_gates_from_drawing_provenance(batch_input_provenance)

@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from monitor_engine.storage.repo_self_healing import count_allowed_restarts_in_window, prune_restart_events
+from monitor_engine.storage.repo_self_healing import (
+    count_allowed_restarts_in_window,
+    prune_restart_events,
+)
 
 NOW = 1_700_000_000.0
 WINDOW = 3600.0

@@ -10,9 +10,6 @@ from typing import Any
 import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Json
-
-from audit_ledger.config import AuditLedgerSettings
-from audit_ledger.crypto_sign import ed25519_sign_chain_hash, ed25519_verify
 from shared_py.audit_ledger_chain import GENESIS_CHAIN_HASH, ledger_chain_digest
 from shared_py.observability.apex_trade_forensic_store import (
     expected_previous_chain_for_row,
@@ -20,8 +17,13 @@ from shared_py.observability.apex_trade_forensic_store import (
     upsert_apex_trade_forensic,
     verify_row_integrity,
 )
-from shared_py.observability.ledger_decision_package import build_ledger_decision_package
+from shared_py.observability.ledger_decision_package import (
+    build_ledger_decision_package,
+)
 from shared_py.observability.secret_leak_guard import scrub_audit_payload
+
+from audit_ledger.config import AuditLedgerSettings
+from audit_ledger.crypto_sign import ed25519_sign_chain_hash, ed25519_verify
 
 logger = logging.getLogger("audit_ledger.repository")
 
@@ -129,7 +131,11 @@ class LedgerRepository:
         apex_trace: dict[str, Any],
     ) -> None:
         """app.apex_latency_audit — gleiche Semantik wie live-broker.repo.upsert."""
-        if not (signal_id or "").strip() or not isinstance(apex_trace, dict) or not apex_trace:
+        if (
+            not (signal_id or "").strip()
+            or not isinstance(apex_trace, dict)
+            or not apex_trace
+        ):
             return
         eid = None
         if execution_id:
@@ -140,10 +146,15 @@ class LedgerRepository:
         with psycopg.connect(self._dsn) as conn:
             conn.execute(
                 """
-                INSERT INTO app.apex_latency_audit (signal_id, execution_id, trace_id, apex_trace, updated_at)
+                INSERT INTO app.apex_latency_audit (
+                    signal_id, execution_id, trace_id, apex_trace, updated_at
+                )
                 VALUES (%(sid)s, %(eid)s, %(tid)s, %(apex)s, now())
                 ON CONFLICT (signal_id) DO UPDATE SET
-                    execution_id = COALESCE(EXCLUDED.execution_id, app.apex_latency_audit.execution_id),
+                    execution_id = COALESCE(
+                        EXCLUDED.execution_id,
+                        app.apex_latency_audit.execution_id
+                    ),
                     trace_id = EXCLUDED.trace_id,
                     apex_trace = EXCLUDED.apex_trace,
                     updated_at = now()
@@ -221,15 +232,20 @@ class LedgerRepository:
         signal_id: str | None,
         golden_record: dict[str, Any],
     ) -> dict[str, Any] | None:
-        """Schreibt app.apex_trade_forensics (Hash-Kette, siehe shared_py.apex_trade_forensic_store)."""
+        """
+        Schreibt app.apex_trade_forensics.
+
+        Hash-Kette siehe `shared_py.apex_trade_forensic_store`.
+        """
         with psycopg.connect(self._dsn) as conn:
             return upsert_apex_trade_forensic(
-                conn, execution_id=execution_id, signal_id=signal_id, golden_record=golden_record
+                conn,
+                execution_id=execution_id,
+                signal_id=signal_id,
+                golden_record=golden_record,
             )
 
-    def fetch_trade_forensic_export(
-        self, execution_id: str
-    ) -> dict[str, Any] | None:
+    def fetch_trade_forensic_export(self, execution_id: str) -> dict[str, Any] | None:
         """Liest Golden Record inkl. is_verified fuer eine execution_id."""
         with psycopg.connect(self._dsn, row_factory=dict_row) as conn:
             row = fetch_apex_trade_forensic_row(conn, execution_id=execution_id)
@@ -253,12 +269,16 @@ class LedgerRepository:
                 "created_at": row.get("created_at"),
                 "golden_record": row.get("golden_record"),
                 "chain_checksum_hex": ccs.hex() if isinstance(ccs, bytes) else None,
-                "prev_chain_checksum_hex": pcs.hex() if isinstance(pcs, bytes) else None,
+                "prev_chain_checksum_hex": (
+                    pcs.hex() if isinstance(pcs, bytes) else None
+                ),
                 "is_verified": v.get("is_verified"),
                 "verification": v,
             }
 
-    def verify_chain_last_n(self, n: int = 1000) -> tuple[bool, list[str], int, int | None]:
+    def verify_chain_last_n(
+        self, n: int = 1000
+    ) -> tuple[bool, list[str], int, int | None]:
         """
         Wie verify_full_chain, nur fuer die letzten n Eintraege (id absteigend);
         reicht vorigen Kettenglied-Knoten aus dem DB-Parent aus.
@@ -292,7 +312,9 @@ class LedgerRepository:
                 ).fetchone()
             if not prow or prow.get("chain_hash") is None:
                 errors.append(
-                    f"window: Parent-Zeile id={first_id - 1} fehlt; Kettenglied ab id={first_id} nicht pruefbar"
+                    "window: Parent-Zeile id="
+                    f"{first_id - 1} fehlt; "
+                    f"Kettenglied ab id={first_id} nicht pruefbar"
                 )
             else:
                 pbt = prow["chain_hash"]
@@ -319,10 +341,16 @@ class LedgerRepository:
             canon = str(r["canonical_payload_text"] or "").encode("utf-8")
 
             if prev_stored != prev_link:
+                stored_prev = (
+                    prev_stored.hex()
+                    if isinstance(prev_stored, bytes | memoryview)
+                    else prev_stored
+                )
                 msg = (
                     f"row id={rid}: prev_chain_hash bricht Kette "
                     f"(erwartet {prev_link.hex()[:12]}.., "
-                    f"gespeichert {prev_stored.hex() if isinstance(prev_stored, (bytes, memoryview)) else prev_stored})"
+                    "gespeichert "
+                    f"{stored_prev})"
                 )
                 errors.append(msg)
                 first_bad = first_bad or rid

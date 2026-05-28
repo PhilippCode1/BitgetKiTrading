@@ -12,7 +12,6 @@ for candidate in (FEATURE_SRC, SHARED_SRC):
         sys.path.insert(0, candidate_str)
 
 from feature_engine.worker import _validate_candle_close_event
-
 from shared_py.eventbus import EventEnvelope
 
 

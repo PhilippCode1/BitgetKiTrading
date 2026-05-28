@@ -38,17 +38,27 @@ def load_dotenv(path: Path) -> dict[str, str]:
         k, _, v = line.partition("=")
         key = k.strip()
         val = v.strip()
-        if (val.startswith('"') and val.endswith('"')) or (val.startswith("'") and val.endswith("'")):
+        if (val.startswith('"') and val.endswith('"')) or (
+            val.startswith("'") and val.endswith("'")
+        ):
             val = val[1:-1]
         out[key] = val
     return out
 
 
 def orch_base_url(env: dict[str, str]) -> str:
-    b = (env.get("LLM_ORCH_BASE_URL") or os.environ.get("LLM_ORCH_BASE_URL") or "").strip().rstrip("/")
+    b = (
+        (env.get("LLM_ORCH_BASE_URL") or os.environ.get("LLM_ORCH_BASE_URL") or "")
+        .strip()
+        .rstrip("/")
+    )
     if b:
         return b
-    h = (env.get("HEALTH_URL_LLM_ORCHESTRATOR") or os.environ.get("HEALTH_URL_LLM_ORCHESTRATOR") or "").strip()
+    h = (
+        env.get("HEALTH_URL_LLM_ORCHESTRATOR")
+        or os.environ.get("HEALTH_URL_LLM_ORCHESTRATOR")
+        or ""
+    ).strip()
     if h:
         u = h.rstrip("/")
         lu = u.lower()
@@ -162,7 +172,9 @@ def main() -> int:
                     print(json.dumps(hb, ensure_ascii=False, indent=2)[:1600])
         url = f"{base}/llm/analyst/operator_explain"
         print(f"POST {url}")
-        print(f"X-Internal-Service-Key={'yes' if ikey else 'no (dev may allow anonymous)'}")
+        print(
+            f"X-Internal-Service-Key={'yes' if ikey else 'no (dev may allow anonymous)'}"
+        )
         try:
             code, payload = http_post_json(url, body, headers=hdrs, timeout=130.0)
         except urllib.error.URLError as exc:
@@ -175,8 +187,14 @@ def main() -> int:
         gw = (ge("API_GATEWAY_URL") or f"http://{bind}:8000").rstrip("/")
         auth = ge("DASHBOARD_GATEWAY_AUTHORIZATION")
         if not auth:
-            print("FEHLT: DASHBOARD_GATEWAY_AUTHORIZATION fuer --mode gateway", file=sys.stderr)
-            print("Mint: python scripts/mint_dashboard_gateway_jwt.py --env-file .env.local --update-env-file", file=sys.stderr)
+            print(
+                "FEHLT: DASHBOARD_GATEWAY_AUTHORIZATION fuer --mode gateway",
+                file=sys.stderr,
+            )
+            print(
+                "Mint: python scripts/mint_dashboard_gateway_jwt.py --env-file .env.local --update-env-file",
+                file=sys.stderr,
+            )
             return 1
         url = f"{gw}/v1/llm/operator/explain"
         hdrs = {"Authorization": auth}
@@ -216,7 +234,10 @@ def main() -> int:
     print("explanation_de (first 240 chars):")
     print(expl[:240] + ("…" if len(expl) > 240 else ""))
     if prov == "fake" and "[TEST-PROVIDER" not in expl:
-        print("WARN: fake provider but explanation lacks [TEST-PROVIDER] marker", file=sys.stderr)
+        print(
+            "WARN: fake provider but explanation lacks [TEST-PROVIDER] marker",
+            file=sys.stderr,
+        )
     return 0
 
 

@@ -8,9 +8,25 @@ type Props = Readonly<{
   items: NewsScoredItem[];
   emptyMessage: string;
   detailLinkLabel: string;
+  thScore: string;
+  thSentiment: string;
+  thImpact: string;
+  thTitle: string;
+  thSource: string;
+  thTime: string;
 }>;
 
-export function NewsTable({ items, emptyMessage, detailLinkLabel }: Props) {
+export function NewsTable({
+  items,
+  emptyMessage,
+  detailLinkLabel,
+  thScore,
+  thSentiment,
+  thImpact,
+  thTitle,
+  thSource,
+  thTime,
+}: Props) {
   if (items.length === 0) {
     return <p className="muted">{emptyMessage}</p>;
   }
@@ -19,12 +35,12 @@ export function NewsTable({ items, emptyMessage, detailLinkLabel }: Props) {
       <table className="data-table">
         <thead>
           <tr>
-            <th>Score</th>
-            <th>Sentiment</th>
-            <th>Impact</th>
-            <th>Titel</th>
-            <th>Quelle</th>
-            <th>Zeit</th>
+            <th>{thScore}</th>
+            <th>{thSentiment}</th>
+            <th>{thImpact}</th>
+            <th>{thTitle}</th>
+            <th>{thSource}</th>
+            <th>{thTime}</th>
             <th />
           </tr>
         </thead>

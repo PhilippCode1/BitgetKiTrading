@@ -5,12 +5,13 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "tools" / "inventory_secret_surfaces.py"
 
 
-def test_secret_surface_inventory_generates_reports_with_redaction(tmp_path: Path) -> None:
+def test_secret_surface_inventory_generates_reports_with_redaction(
+    tmp_path: Path,
+) -> None:
     md = tmp_path / "secret_surface_inventory.md"
     js = tmp_path / "secret_surface_inventory.json"
     completed = subprocess.run(

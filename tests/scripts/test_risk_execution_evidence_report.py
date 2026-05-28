@@ -25,12 +25,29 @@ def test_payload_covers_required_live_preflight_reasons() -> None:
 
 def test_portfolio_order_and_reconcile_scenarios_block_live() -> None:
     payload = build_report_payload()
-    assert all(row["preflight"]["submit_allowed"] is False for row in payload["portfolio_scenarios"])
-    assert any("portfolio_snapshot_fehlt" in row["block_reasons"] for row in payload["portfolio_scenarios"])
-    assert any("duplicate_client_order_id" in row["block_reasons"] for row in payload["order_idempotency_scenarios"])
-    assert any(row["new_state"] == "unknown_submit_state" for row in payload["order_idempotency_scenarios"])
-    assert any("unknown_order_state" in row["block_reasons"] for row in payload["reconcile_scenarios"])
-    assert any(row["safety_latch_required"] is True for row in payload["reconcile_scenarios"])
+    assert all(
+        row["preflight"]["submit_allowed"] is False
+        for row in payload["portfolio_scenarios"]
+    )
+    assert any(
+        "portfolio_snapshot_fehlt" in row["block_reasons"]
+        for row in payload["portfolio_scenarios"]
+    )
+    assert any(
+        "duplicate_client_order_id" in row["block_reasons"]
+        for row in payload["order_idempotency_scenarios"]
+    )
+    assert any(
+        row["new_state"] == "unknown_submit_state"
+        for row in payload["order_idempotency_scenarios"]
+    )
+    assert any(
+        "unknown_order_state" in row["block_reasons"]
+        for row in payload["reconcile_scenarios"]
+    )
+    assert any(
+        row["safety_latch_required"] is True for row in payload["reconcile_scenarios"]
+    )
 
 
 def test_cli_writes_markdown_and_json(tmp_path: Path) -> None:

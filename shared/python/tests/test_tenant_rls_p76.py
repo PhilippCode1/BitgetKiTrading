@@ -14,6 +14,7 @@ from shared_py.postgres_tenant_rls import (
     apply_tenant_rls_guc,
 )
 
+
 def _p76_rls_dsn() -> str:
     """Nur P76_RLS_TEST_DSN (absichtlich), kein generisches DATABASE_URL in CI/Env."""
     return (os.environ.get("P76_RLS_TEST_DSN") or "").strip()
@@ -50,12 +51,10 @@ def test_rls_tenant_switches_in_one_connection() -> None:
             conn.execute("SELECT set_config('app.rls_internal_all_tenants', '1', true)")
             p = (t1, t2)
             conn.execute(
-                "DELETE FROM app.usage_ledger "
-                "WHERE tenant_id = ANY(%s::text[])",
+                "DELETE FROM app.usage_ledger " "WHERE tenant_id = ANY(%s::text[])",
                 (p,),
             )
-            ins = (
-                """
+            ins = """
                 INSERT INTO app.usage_ledger (
                     tenant_id, event_type, quantity, unit,
                     line_total_list_usd, platform_markup_factor, meta_json
@@ -64,7 +63,6 @@ def test_rls_tenant_switches_in_one_connection() -> None:
                     (%s, 'p76_rls', 1, 'unit', 0, 1.0, '{}'),
                     (%s, 'p76_rls', 1, 'unit', 0, 1.0, '{}')
                 """
-            )
             conn.execute(ins, (t1, t2))
 
     with psycopg.connect(dsn, row_factory=dict_row) as conn2:
@@ -83,8 +81,7 @@ def test_rls_tenant_switches_in_one_connection() -> None:
             apply_internal_all_tenants_rls_guc(c3)
             ac2 = (t1, t2)
             del_ledger = (
-                "DELETE FROM app.usage_ledger "
-                "WHERE tenant_id = ANY(%s::text[])"
+                "DELETE FROM app.usage_ledger " "WHERE tenant_id = ANY(%s::text[])"
             )
             c3.execute(del_ledger, (ac2,))
             c3.execute(

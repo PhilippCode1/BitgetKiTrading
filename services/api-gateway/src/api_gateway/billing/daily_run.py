@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -38,17 +38,16 @@ _EVENT_FLAT = "api_daily_flat_fee"
 
 
 def _advisory_key(tenant_id: str, accrual_date: date) -> int:
-    raw = hashlib.sha256(f"{tenant_id}:{accrual_date.isoformat()}".encode()).hexdigest()[:12]
+    raw = hashlib.sha256(
+        f"{tenant_id}:{accrual_date.isoformat()}".encode()
+    ).hexdigest()[:12]
     return int(raw, 16) % (2**31)
 
 
 def _advisory_key_subscription_deduction(tenant_id: str, accrual_date: date) -> int:
-    raw = (
-        hashlib.sha256(
-            f"sub_prepaid_deduction:{tenant_id}:{accrual_date.isoformat()}".encode()
-        )
-        .hexdigest()[:12]
-    )
+    raw = hashlib.sha256(
+        f"sub_prepaid_deduction:{tenant_id}:{accrual_date.isoformat()}".encode()
+    ).hexdigest()[:12]
     return int(raw, 16) % (2**31)
 
 
@@ -197,7 +196,7 @@ def run_daily_billing(
     if not settings.commercial_enabled:
         return {"status": "skipped", "reason": "commercial_disabled"}
 
-    d = accrual_date or datetime.now(timezone.utc).date()
+    d = accrual_date or datetime.now(UTC).date()
     daily_fee = Decimal(str(settings.billing_daily_api_fee_usd.strip() or "50"))
     warn_below = Decimal(str(settings.billing_warning_balance_usd.strip() or "100"))
     crit_below = Decimal(str(settings.billing_critical_balance_usd.strip() or "50"))
@@ -334,7 +333,9 @@ def run_daily_billing(
                 )
         except Exception as e:
             logger.exception("billing daily failed tenant=%s", tid)
-            results.append({"tenant_id": tid, "status": "error", "detail": str(e)[:500]})
+            results.append(
+                {"tenant_id": tid, "status": "error", "detail": str(e)[:500]}
+            )
 
     return {
         "status": "ok",
@@ -362,7 +363,7 @@ def run_daily_billing_cycle(
     if not settings.commercial_enabled:
         return {"status": "skipped", "reason": "commercial_disabled"}
 
-    d = accrual_date or datetime.now(timezone.utc).date()
+    d = accrual_date or datetime.now(UTC).date()
     try:
         raw = (settings.subscription_billing_eur_usd_rate or "1.0").strip() or "1.0"
         eur_to_usd = Decimal(str(raw))

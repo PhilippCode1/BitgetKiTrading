@@ -7,12 +7,13 @@ from pathlib import Path
 from scripts.cursor_master_status import ASSESSMENT_AREAS, render_master_status
 from shared_py.readiness_scorecard import REQUIRED_CATEGORIES, build_readiness_scorecard
 
-
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts" / "cursor_master_status.py"
 
 
-def _matrix(status: str = "verified", overrides: dict[str, str] | None = None) -> dict[str, object]:
+def _matrix(
+    status: str = "verified", overrides: dict[str, str] | None = None
+) -> dict[str, object]:
     overrides = overrides or {}
     return {
         "categories": [

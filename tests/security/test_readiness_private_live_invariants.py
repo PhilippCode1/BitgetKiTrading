@@ -50,7 +50,9 @@ def test_full_autonomous_live_is_always_no_go_even_when_everything_verified() ->
         asset_data_quality_verified=True,
         owner_private_live_release_confirmed=True,
     )
-    decision = next(item for item in scorecard.mode_decisions if item.mode == "full_autonomous_live")
+    decision = next(
+        item for item in scorecard.mode_decisions if item.mode == "full_autonomous_live"
+    )
     assert decision.decision == "NO_GO"
 
 

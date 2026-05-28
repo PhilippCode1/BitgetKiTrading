@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, Field
+from shared_py.service_auth import assert_internal_service_auth
 
 from learning_engine.config import LearningEngineSettings
 from learning_engine.storage.connection import db_connect
 from learning_engine.storage.repo_tsfm_war_room_audit import insert_tsfm_war_room_audit
-from shared_py.service_auth import assert_internal_service_auth
 
 
 class TsfmWarRoomAuditIn(BaseModel):
@@ -42,7 +42,9 @@ def build_tsfm_war_room_audit_router(settings: LearningEngineSettings) -> APIRou
     @r.post("/learning/tsfm-war-room-audit")
     def ingest_tsfm_war_room_audit(
         body: TsfmWarRoomAuditIn,
-        x_internal_service_key: Annotated[str | None, Header(alias="X-Internal-Service-Key")] = None,
+        x_internal_service_key: Annotated[
+            str | None, Header(alias="X-Internal-Service-Key")
+        ] = None,
     ) -> dict[str, Any]:
         assert_internal_service_auth(settings, x_internal_service_key)
         row = {

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from pathlib import Path
 import sys
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 ALERT_ENGINE_SRC = ROOT / "services" / "alert-engine" / "src"
@@ -10,7 +10,10 @@ for candidate in (ROOT / "shared" / "python" / "src", ALERT_ENGINE_SRC, ROOT):
     if candidate_str not in sys.path:
         sys.path.insert(0, candidate_str)
 
-from alert_engine.telegram.commands import ALLOWED_TELEGRAM_COMMANDS, READONLY_TELEGRAM_COMMANDS
+from alert_engine.telegram.commands import (
+    ALLOWED_TELEGRAM_COMMANDS,
+    READONLY_TELEGRAM_COMMANDS,
+)
 from shared_py.telegram_chat_contract import FORBIDDEN_CHAT_STRATEGY_MUTATION_VERBS
 
 

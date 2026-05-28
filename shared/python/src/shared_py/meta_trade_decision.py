@@ -130,22 +130,40 @@ def resolve_meta_trade_lane(
 
     paperish = False
     if take_trade_prob_adjusted is not None:
-        if take_trade_prob_adjusted < thresholds.hybrid_min_take_trade_prob + thresholds.paper_prob_margin:
+        if (
+            take_trade_prob_adjusted
+            < thresholds.hybrid_min_take_trade_prob + thresholds.paper_prob_margin
+        ):
             reasons.append("meta_lane_paper_adjusted_prob_band")
             paperish = True
-    if model_uncertainty_0_1 is not None and float(model_uncertainty_0_1) >= thresholds.paper_uncertainty_at_least:
+    if (
+        model_uncertainty_0_1 is not None
+        and float(model_uncertainty_0_1) >= thresholds.paper_uncertainty_at_least
+    ):
         reasons.append("meta_lane_paper_uncertainty")
         paperish = True
-    if execution_cost_bps is not None and execution_cost_bps >= thresholds.paper_execution_cost_bps_at_least:
+    if (
+        execution_cost_bps is not None
+        and execution_cost_bps >= thresholds.paper_execution_cost_bps_at_least
+    ):
         reasons.append("meta_lane_paper_execution_cost")
         paperish = True
-    if risk_score_0_100 is not None and float(risk_score_0_100) < thresholds.paper_risk_score_below:
+    if (
+        risk_score_0_100 is not None
+        and float(risk_score_0_100) < thresholds.paper_risk_score_below
+    ):
         reasons.append("meta_lane_paper_risk_score")
         paperish = True
-    if history_score_0_100 is not None and float(history_score_0_100) < thresholds.paper_history_score_below:
+    if (
+        history_score_0_100 is not None
+        and float(history_score_0_100) < thresholds.paper_history_score_below
+    ):
         reasons.append("meta_lane_paper_history_score")
         paperish = True
-    if structure_score_0_100 is not None and float(structure_score_0_100) < thresholds.paper_structure_score_below:
+    if (
+        structure_score_0_100 is not None
+        and float(structure_score_0_100) < thresholds.paper_structure_score_below
+    ):
         reasons.append("meta_lane_paper_structure_score")
         paperish = True
 
@@ -167,4 +185,6 @@ def _coerce_float(value: Any) -> float | None:
 def validate_meta_trade_lane(value: str | None) -> Literal["valid", "invalid"]:
     if value is None or value == "":
         return "valid"
-    return "valid" if value.strip().lower() in set(META_TRADE_LANE_VALUES) else "invalid"
+    return (
+        "valid" if value.strip().lower() in set(META_TRADE_LANE_VALUES) else "invalid"
+    )

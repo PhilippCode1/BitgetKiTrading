@@ -16,14 +16,20 @@ logger = logging.getLogger("llm_orchestrator.agents.quant")
 def _extract_tsfm_candidate(context: dict[str, Any]) -> dict[str, Any] | None:
     for key in ("tsfm_signal_candidate", "TSFM_SIGNAL_CANDIDATE"):
         raw = context.get(key)
-        if isinstance(raw, dict) and str(raw.get("schema") or "") == "tsfm_signal_candidate/v1":
+        if (
+            isinstance(raw, dict)
+            and str(raw.get("schema") or "") == "tsfm_signal_candidate/v1"
+        ):
             return raw
     for nest_key in ("market_event", "event", "envelope"):
         inner = context.get(nest_key)
         if not isinstance(inner, dict):
             continue
         cand = inner.get("tsfm_signal_candidate") or inner.get("payload")
-        if isinstance(cand, dict) and str(cand.get("schema") or "") == "tsfm_signal_candidate/v1":
+        if (
+            isinstance(cand, dict)
+            and str(cand.get("schema") or "") == "tsfm_signal_candidate/v1"
+        ):
             return cand
     return None
 
@@ -42,7 +48,9 @@ class QuantAnalystAgent(BaseTradingAgent):
         self._base = str(feature_engine_base_url).rstrip("/")
         self._http_timeout = float(http_timeout_sec)
 
-    async def _fetch_correlation_matrix(self, client: httpx.AsyncClient) -> dict[str, Any] | None:
+    async def _fetch_correlation_matrix(
+        self, client: httpx.AsyncClient
+    ) -> dict[str, Any] | None:
         try:
             r = await client.get(
                 f"{self._base}/correlation/matrix",
@@ -67,11 +75,15 @@ class QuantAnalystAgent(BaseTradingAgent):
 
         corr_bundle: dict[str, Any] | None = None
         try:
-            async with httpx.AsyncClient(timeout=min(self._http_timeout, 12.0)) as ccorr:
+            async with httpx.AsyncClient(
+                timeout=min(self._http_timeout, 12.0)
+            ) as ccorr:
                 corr_bundle = await self._fetch_correlation_matrix(ccorr)
         except Exception as exc:
             logger.debug("correlation client: %s", exc)
-        if context.get("intermarket_correlation") and isinstance(context["intermarket_correlation"], dict):
+        if context.get("intermarket_correlation") and isinstance(
+            context["intermarket_correlation"], dict
+        ):
             corr_bundle = context["intermarket_correlation"]
 
         raw_tsfm = _extract_tsfm_candidate(context)
@@ -84,11 +96,15 @@ class QuantAnalystAgent(BaseTradingAgent):
             elif bias == "short":
                 action, conf = "sell_bias", float(synthesis.synthesis_confidence_0_1)
             else:
-                action, conf = "hold_research", max(0.12, float(synthesis.synthesis_confidence_0_1) * 0.85)
+                action, conf = "hold_research", max(
+                    0.12, float(synthesis.synthesis_confidence_0_1) * 0.85
+                )
             elapsed_ms = (time.perf_counter_ns() - t0) / 1_000_000.0
             apex_payload = self._apex_smoke()
             corr_note = ""
-            if corr_bundle and isinstance((corr_bundle.get("regime_divergence") or {}), dict):
+            if corr_bundle and isinstance(
+                (corr_bundle.get("regime_divergence") or {}), dict
+            ):
                 rd = corr_bundle["regime_divergence"]
                 if rd.get("triggered"):
                     corr_note = (
@@ -157,19 +173,21 @@ class QuantAnalystAgent(BaseTradingAgent):
 
         action = "none"
         conf = 0.55
-        if isinstance(rsi, (int, float)):
+        if isinstance(rsi, int | float):
             if float(rsi) < 35:
                 action, conf = "buy_bias", min(0.92, 0.55 + (35 - float(rsi)) / 100)
             elif float(rsi) > 65:
                 action, conf = "sell_bias", min(0.92, 0.55 + (float(rsi) - 65) / 100)
-        if isinstance(momentum, (int, float)) and action == "none":
+        if isinstance(momentum, int | float) and action == "none":
             if float(momentum) > 0.25:
                 action, conf = "buy_bias", 0.62
             elif float(momentum) < -0.25:
                 action, conf = "sell_bias", 0.62
 
         corr_note = ""
-        if corr_bundle and isinstance((corr_bundle.get("regime_divergence") or {}), dict):
+        if corr_bundle and isinstance(
+            (corr_bundle.get("regime_divergence") or {}), dict
+        ):
             if (corr_bundle["regime_divergence"] or {}).get("triggered"):
                 corr_note = " Intermarket: Divergenz UUP vs BTC (Decoupling-Hinweis)."
         rationale = (
@@ -202,9 +220,8 @@ class QuantAnalystAgent(BaseTradingAgent):
 
     def _apex_smoke(self) -> dict[str, Any]:
         try:
-            import numpy as np
-
             import apex_core  # type: ignore[import-not-found]
+            import numpy as np
 
             closes = np.linspace(100.0, 102.0, 80, dtype=np.float64)
             rsi_rust = float(apex_core.compute_rsi_sma(closes, 14))
@@ -213,7 +230,9 @@ class QuantAnalystAgent(BaseTradingAgent):
             logger.debug("apex_core smoke skipped: %s", exc)
             return {"apex_core_status": "unavailable", "error": str(exc)[:200]}
 
-    def _no_feature_message(self, symbol: str, timeframe: str, detail: str) -> dict[str, Any]:
+    def _no_feature_message(
+        self, symbol: str, timeframe: str, detail: str
+    ) -> dict[str, Any]:
         return {
             "schema_version": "agent-comm-v1",
             "agent_id": self.agent_id,
@@ -227,7 +246,10 @@ class QuantAnalystAgent(BaseTradingAgent):
                 "action": "hold_research",
                 "symbol": symbol,
                 "timeframe": timeframe,
-                "payload": {"reason": "feature_row_missing", "tsfm_primary_source": False},
+                "payload": {
+                    "reason": "feature_row_missing",
+                    "tsfm_primary_source": False,
+                },
             },
             "evidence_refs": [],
         }

@@ -79,7 +79,9 @@ function mapPayloadToDashboardPersona(payload: JWTPayload): DashboardPersona {
     return "operator";
   }
   const mainRole =
-    typeof payload["role"] === "string" ? payload["role"].trim().toLowerCase() : "";
+    typeof payload["role"] === "string"
+      ? payload["role"].trim().toLowerCase()
+      : "";
   if (mainRole === "customer") {
     return "customer";
   }

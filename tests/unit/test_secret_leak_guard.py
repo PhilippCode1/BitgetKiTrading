@@ -1,7 +1,10 @@
 import numpy as np
 import pytest
 
-from shared_py.observability.secret_leak_guard import scrub_audit_payload, scrub_plaintext
+from shared_py.observability.secret_leak_guard import (
+    scrub_audit_payload,
+    scrub_plaintext,
+)
 from shared_py.rust_core_bridge import assert_float64_c_contiguous
 
 
@@ -20,7 +23,9 @@ def test_scrub_plaintext_bitget_env_line() -> None:
 
 
 def test_scrub_audit_payload_masks_secret_keys() -> None:
-    d = scrub_audit_payload({"api_key": "x", "nested": {"password": "y", "ok": 1}}, max_depth=4)
+    d = scrub_audit_payload(
+        {"api_key": "x", "nested": {"password": "y", "ok": 1}}, max_depth=4
+    )
     assert isinstance(d, dict)
     assert d.get("api_key") == "***"
     assert d.get("nested", {}).get("password") == "***"

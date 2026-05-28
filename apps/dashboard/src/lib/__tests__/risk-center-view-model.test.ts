@@ -90,19 +90,33 @@ describe("risk-center-view-model", () => {
         risk_account_snapshot: {
           portfolio_risk_json: {
             direction_net_exposure_0_1: 0.91,
-            live_block_reasons_json: ["portfolio_live_direction_concentration_exceeded"],
+            live_block_reasons_json: [
+              "portfolio_live_direction_concentration_exceeded",
+            ],
           },
         },
       },
     };
-    const summary = portfolioRiskSummary({ runtime, decisions: [], orders: [] });
-    expect(summary.liveBlockReasons.join(" ")).toContain("portfolio_live_direction_concentration_exceeded");
+    const summary = portfolioRiskSummary({
+      runtime,
+      decisions: [],
+      orders: [],
+    });
+    expect(summary.liveBlockReasons.join(" ")).toContain(
+      "portfolio_live_direction_concentration_exceeded",
+    );
   });
 
   it("Asset-Tier 4/5 zeigt Live blockiert", () => {
     const row = buildAssetRiskRows({
       instruments: [instrumentBase],
-      signals: [{ ...signalBase, asset_risk_tier: "Tier 5", trade_action: "allow_trade" } as any],
+      signals: [
+        {
+          ...signalBase,
+          asset_risk_tier: "Tier 5",
+          trade_action: "allow_trade",
+        } as any,
+      ],
     })[0];
     expect(row.maxMode).toBe("Paper");
     expect(row.blockReasons.join(" ")).toContain("asset quarantined");
@@ -132,7 +146,14 @@ describe("risk-center-view-model", () => {
     const blockers = computeLiveBlockers({
       health: null,
       runtime: { ...runtimeBase, safety_latch_active: true },
-      liveSignal: { signal_id: "x", direction: "long", signal_strength_0_100: 1, probability_0_1: 0.5, signal_class: "a", risk_warnings_json: [] } as any,
+      liveSignal: {
+        signal_id: "x",
+        direction: "long",
+        signal_strength_0_100: 1,
+        probability_0_1: 0.5,
+        signal_class: "a",
+        risk_warnings_json: [],
+      } as any,
       killSwitchCount: 1,
       decisions: [],
     });
@@ -143,7 +164,9 @@ describe("risk-center-view-model", () => {
   it("deutsche Blockgruende in Asset-Tabelle", () => {
     const row = buildAssetRiskRows({
       instruments: [instrumentBase],
-      signals: [{ ...signalBase, live_execution_block_reasons_json: ["stale candles"] }],
+      signals: [
+        { ...signalBase, live_execution_block_reasons_json: ["stale candles"] },
+      ],
     })[0];
     expect(row.blockReasons.join(" ")).toContain("stale data");
   });

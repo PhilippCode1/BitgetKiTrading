@@ -27,7 +27,9 @@ def build_sse_ticket(*, secret: str, sub: str, ttl_sec: int) -> str:
     exp = int(time.time()) + int(ttl_sec)
     sub_s = (sub or "anon")[:128]
     body = f"1{_SEP}{exp}{_SEP}{sub_s}"
-    sig = hmac.new(secret.encode("utf-8"), body.encode("utf-8"), hashlib.sha256).hexdigest()
+    sig = hmac.new(
+        secret.encode("utf-8"), body.encode("utf-8"), hashlib.sha256
+    ).hexdigest()
     payload = {"v": 1, "exp": exp, "sub": sub_s, "sig": sig}
     raw = json.dumps(payload, separators=(",", ":")).encode("utf-8")
     return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
@@ -50,5 +52,7 @@ def verify_sse_ticket(token: str, *, secret: str) -> bool:
     sub_s = str(payload.get("sub") or "")[:128]
     sig = str(payload.get("sig") or "")
     body = f"1{_SEP}{exp}{_SEP}{sub_s}"
-    expected = hmac.new(secret.encode("utf-8"), body.encode("utf-8"), hashlib.sha256).hexdigest()
+    expected = hmac.new(
+        secret.encode("utf-8"), body.encode("utf-8"), hashlib.sha256
+    ).hexdigest()
     return hmac.compare_digest(expected, sig)

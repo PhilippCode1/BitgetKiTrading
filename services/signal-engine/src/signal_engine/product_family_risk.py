@@ -18,6 +18,7 @@ def _as_dict(value: object) -> dict[str, Any]:
         return dict(value)
     return {}
 
+
 RiskDispatchLane = Literal["spot_cash", "margin_maint", "futures_leveraged"]
 
 
@@ -51,7 +52,9 @@ def max_config_risk_leverage(mf: str, risk_max: int) -> int:
     return 1 if (mf or "").lower() == "spot" else int(risk_max)
 
 
-def maintenance_margin_rate_from_instrument(instrument: dict[str, Any] | None) -> float | None:
+def maintenance_margin_rate_from_instrument(
+    instrument: dict[str, Any] | None
+) -> float | None:
     if not instrument:
         return None
     raw = instrument.get("maintenance_margin_rate_0_1")

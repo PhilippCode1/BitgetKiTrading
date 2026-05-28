@@ -28,9 +28,18 @@ x-app-runtime-env: &app-runtime-env
   BITGET_USE_DOCKER_DATASTORE_DSN: "true"
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
   CONFIG_ENV_FILE: ${COMPOSE_ENV_FILE:-.env.local}
-  DATABASE_URL_DOCKER: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-bitget_ai}
+  # Kritische Demo/LIVE-Sicherheitsflags explizit aus Compose-Interpolation setzen,
+  # damit --env-file Profile (z. B. .env.demo) nicht durch .env.local Defaults uebersteuert werden.
+  EXECUTION_MODE: ${EXECUTION_MODE:-paper}
+  LIVE_TRADE_ENABLE: ${LIVE_TRADE_ENABLE:-false}
+  BITGET_DEMO_ENABLED: ${BITGET_DEMO_ENABLED:-false}
+  BITGET_DEMO_REST_BASE_URL: ${BITGET_DEMO_REST_BASE_URL:-https://api.bitget.com}
+  BITGET_DEMO_PAPTRADING_HEADER: ${BITGET_DEMO_PAPTRADING_HEADER:-1}
+  DEMO_ORDER_SUBMIT_ENABLE: ${DEMO_ORDER_SUBMIT_ENABLE:-false}
+  DEMO_CLOSE_POSITION_ENABLE: ${DEMO_CLOSE_POSITION_ENABLE:-false}
+  DATABASE_URL_DOCKER: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-bitget_ai}
   REDIS_URL_DOCKER: redis://redis:6379/0
-  DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-bitget_ai}
+  DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-bitget_ai}
   REDIS_URL: redis://redis:6379/0
   # Sinnvolle Defaults, falls Host-.env keine Symbole setzt (Compose-Start ohne leeres Universe)
   BITGET_UNIVERSE_SYMBOLS: ${BITGET_UNIVERSE_SYMBOLS:-BTCUSDT,ETHUSDT}
@@ -61,7 +70,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-bitget_ai}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -713,6 +722,18 @@ services:
       PORT: 3000
       # Explizit aus COMPOSE_ENV_FILE interpolieren (BFF/Health -> Gateway); siehe docs/LOCAL_START_MINIMUM.md
       DASHBOARD_GATEWAY_AUTHORIZATION: ${DASHBOARD_GATEWAY_AUTHORIZATION:-}
+      GATEWAY_JWT_SECRET: ${GATEWAY_JWT_SECRET:-}
+      GATEWAY_JWT_AUDIENCE: ${GATEWAY_JWT_AUDIENCE:-api-gateway}
+      GATEWAY_JWT_ISSUER: ${GATEWAY_JWT_ISSUER:-bitget-btc-ai-gateway}
+      PORTAL_AUTH_PROVIDER: ${PORTAL_AUTH_PROVIDER:-oidc}
+      OIDC_ISSUER: ${OIDC_ISSUER:-}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-}
+      OIDC_REDIRECT_URI: ${OIDC_REDIRECT_URI:-}
+      OIDC_SCOPES: ${OIDC_SCOPES:-openid profile email}
+      OIDC_DEFAULT_TENANT_ID: ${OIDC_DEFAULT_TENANT_ID:-}
+      OIDC_TENANT_CLAIM: ${OIDC_TENANT_CLAIM:-tenant_id}
+      OIDC_ADMIN_EMAILS: ${OIDC_ADMIN_EMAILS:-}
     ports:
       - "${COMPOSE_EDGE_BIND:-127.0.0.1}:3000:3000"
     depends_on:
@@ -794,3 +815,21 @@ services:
     depends_on:
       prometheus:
         condition: service_started
+
+  alertmanager:
+    <<: *service-defaults
+    image: prom/alertmanager:v0.27.0
+    container_name: bitget_ai_alertmanager
+    profiles:
+      - observability
+    ports:
+      - "${COMPOSE_EDGE_BIND:-127.0.0.1}:9093:9093"
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--storage.path=/alertmanager"
+    volumes:
+      - ./infra/observability/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    depends_on:
+      prometheus:
+        condition: service_started
+

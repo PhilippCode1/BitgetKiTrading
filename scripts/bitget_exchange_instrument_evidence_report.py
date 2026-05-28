@@ -18,22 +18,41 @@ for import_path in (ROOT, SHARED_SRC):
     if str(import_path) not in sys.path:
         sys.path.insert(0, str(import_path))
 
-from scripts.bitget_readiness_check import build_readiness_report, load_dotenv  # noqa: E402
+from scripts.bitget_readiness_check import (  # noqa: E402
+    build_readiness_report,
+    load_dotenv,
+)
 from scripts.refresh_bitget_asset_universe import (  # noqa: E402
     build_report_payload as build_asset_universe_payload,
+)
+from scripts.refresh_bitget_asset_universe import (
     load_entries_from_json,
 )
-from shared_py.bitget.exchange_readiness import assess_external_key_evidence  # noqa: E402
+from shared_py.bitget.exchange_readiness import (
+    assess_external_key_evidence,  # noqa: E402
+)
 from shared_py.bitget.instruments import (  # noqa: E402
     BitgetAssetUniverseInstrument,
     evaluate_asset_universe_live_eligibility,
 )
-from shared_py.live_preflight import LivePreflightContext, evaluate_live_preflight  # noqa: E402
+from shared_py.live_preflight import (  # noqa: E402
+    LivePreflightContext,
+    evaluate_live_preflight,
+)
 
 DEFAULT_ENV_FILE = ROOT / ".env.production.example"
-DEFAULT_ASSET_UNIVERSE_INPUT = ROOT / "tests" / "fixtures" / "bitget_asset_universe_sample.json"
-DEFAULT_KEY_EVIDENCE = ROOT / "docs" / "production_10_10" / "bitget_key_permission_evidence.template.json"
-DEFAULT_EXTERNAL_TEMPLATE = ROOT / "docs" / "production_10_10" / "bitget_exchange_instrument_evidence.template.json"
+DEFAULT_ASSET_UNIVERSE_INPUT = (
+    ROOT / "tests" / "fixtures" / "bitget_asset_universe_sample.json"
+)
+DEFAULT_KEY_EVIDENCE = (
+    ROOT / "docs" / "production_10_10" / "bitget_key_permission_evidence.template.json"
+)
+DEFAULT_EXTERNAL_TEMPLATE = (
+    ROOT
+    / "docs"
+    / "production_10_10"
+    / "bitget_exchange_instrument_evidence.template.json"
+)
 
 EXTERNAL_SCHEMA_VERSION = 1
 
@@ -77,11 +96,21 @@ REQUIRED_LIVE_PREFLIGHT_REASONS = (
     "instrument_metadata_stale",
 )
 
-SECRET_LIKE_KEYS = ("api_key", "secret", "passphrase", "token", "password", "authorization", "private_key")
+SECRET_LIKE_KEYS = (
+    "api_key",
+    "secret",
+    "passphrase",
+    "token",
+    "password",
+    "authorization",
+    "private_key",
+)
 
 
 def _now() -> str:
-    return datetime.now(tz=UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return (
+        datetime.now(tz=UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    )
 
 
 def _git_sha() -> str:
@@ -143,7 +172,12 @@ def build_external_evidence_template() -> dict[str, Any]:
 
 
 def _missing_or_template(value: Any) -> bool:
-    return value is None or value == "" or value == [] or str(value).startswith("CHANGE_ME")
+    return (
+        value is None
+        or value == ""
+        or value == []
+        or str(value).startswith("CHANGE_ME")
+    )
 
 
 def _secret_surface_issues(value: Any, path: str = "") -> list[str]:
@@ -152,13 +186,20 @@ def _secret_surface_issues(value: Any, path: str = "") -> list[str]:
         for key, child in value.items():
             child_path = f"{path}.{key}" if path else str(key)
             if any(marker in str(key).lower() for marker in SECRET_LIKE_KEYS):
-                if isinstance(child, str) and child not in {"", "REDACTED", "[REDACTED]", "CHANGE_ME_REDACTED"}:
+                if isinstance(child, str) and child not in {
+                    "",
+                    "REDACTED",
+                    "[REDACTED]",
+                    "CHANGE_ME_REDACTED",
+                }:
                     issues.append(f"{child_path}_not_redacted")
             issues.extend(_secret_surface_issues(child, child_path))
     elif isinstance(value, list):
         for index, child in enumerate(value):
             issues.extend(_secret_surface_issues(child, f"{path}[{index}]"))
-    elif isinstance(value, str) and any(marker in value.lower() for marker in ("bitget_", "sk-", "eyj")):
+    elif isinstance(value, str) and any(
+        marker in value.lower() for marker in ("bitget_", "sk-", "eyj")
+    ):
         issues.append(f"{path}_secret_like_value")
     return issues
 
@@ -189,7 +230,11 @@ def assess_external_evidence(payload: dict[str, Any]) -> dict[str, Any]:
         failures.append("key_permissions_evidence_reference_fehlt")
 
     readonly_discovery = payload.get("readonly_discovery") or {}
-    for key in ("public_time_checked", "public_instruments_checked", "private_readonly_checked"):
+    for key in (
+        "public_time_checked",
+        "public_instruments_checked",
+        "private_readonly_checked",
+    ):
         if readonly_discovery.get(key) is not True:
             failures.append(f"readonly_discovery_{key}_nicht_belegt")
     if readonly_discovery.get("write_endpoints_called") is not False:
@@ -340,7 +385,9 @@ def build_report_payload(
     external_payload = json.loads(external_evidence_json.read_text(encoding="utf-8"))
     external_assessment = assess_external_evidence(external_payload)
 
-    asset_universe_payload = build_asset_universe_payload(load_entries_from_json(asset_universe_input))
+    asset_universe_payload = build_asset_universe_payload(
+        load_entries_from_json(asset_universe_input)
+    )
     asset_universe_reasons = sorted(
         {
             reason
@@ -349,7 +396,9 @@ def build_report_payload(
         }
     )
     live_allowed_fixture_assets = [
-        asset["symbol"] for asset in asset_universe_payload["assets"] if asset.get("live_allowed") is True
+        asset["symbol"]
+        for asset in asset_universe_payload["assets"]
+        if asset.get("live_allowed") is True
     ]
 
     instrument_rows: list[dict[str, Any]] = []
@@ -363,7 +412,10 @@ def build_report_payload(
                 "block_reasons": evaluated.block_reasons,
                 "preflight": _preflight_decision(
                     asset_in_catalog="status_unknown" not in evaluated.block_reasons,
-                    asset_status_ok=not any(reason in evaluated.block_reasons for reason in ("status_delisted", "status_suspended")),
+                    asset_status_ok=not any(
+                        reason in evaluated.block_reasons
+                        for reason in ("status_delisted", "status_suspended")
+                    ),
                     instrument_contract_complete=not any(
                         reason in evaluated.block_reasons
                         for reason in (
@@ -388,11 +440,21 @@ def build_report_payload(
         )
 
     exchange_preflight_rows = [
-        {"id": "key_permission_template_missing_external", "preflight": _preflight_decision(bitget_ok=key_assessment.status == "PASS")},
-        {"id": "readiness_dry_run_no_external_network", "preflight": _preflight_decision(bitget_ok=readiness_report.status == "verified")},
+        {
+            "id": "key_permission_template_missing_external",
+            "preflight": _preflight_decision(bitget_ok=key_assessment.status == "PASS"),
+        },
+        {
+            "id": "readiness_dry_run_no_external_network",
+            "preflight": _preflight_decision(
+                bitget_ok=readiness_report.status == "verified"
+            ),
+        },
     ]
 
-    covered_instrument_reasons = sorted({reason for row in instrument_rows for reason in row["block_reasons"]})
+    covered_instrument_reasons = sorted(
+        {reason for row in instrument_rows for reason in row["block_reasons"]}
+    )
     covered_live_preflight_reasons = sorted(
         {
             reason
@@ -400,12 +462,20 @@ def build_report_payload(
             for reason in row["preflight"]["blocking_reasons"]
         }
     )
-    missing_instrument = [reason for reason in REQUIRED_INSTRUMENT_BLOCK_REASONS if reason not in covered_instrument_reasons]
+    missing_instrument = [
+        reason
+        for reason in REQUIRED_INSTRUMENT_BLOCK_REASONS
+        if reason not in covered_instrument_reasons
+    ]
     missing_asset_universe = [
-        reason for reason in REQUIRED_ASSET_UNIVERSE_BLOCK_REASONS if reason not in asset_universe_reasons
+        reason
+        for reason in REQUIRED_ASSET_UNIVERSE_BLOCK_REASONS
+        if reason not in asset_universe_reasons
     ]
     missing_preflight = [
-        reason for reason in REQUIRED_LIVE_PREFLIGHT_REASONS if reason not in covered_live_preflight_reasons
+        reason
+        for reason in REQUIRED_LIVE_PREFLIGHT_REASONS
+        if reason not in covered_live_preflight_reasons
     ]
 
     return {
@@ -466,20 +536,49 @@ def render_markdown(payload: dict[str, Any]) -> str:
         "",
         "## Instrument-Fail-Closed-Coverage",
         "",
-        "- Abgedeckt: " + (", ".join(f"`{item}`" for item in payload["covered_instrument_block_reasons"]) or "-"),
-        "- Fehlend: " + (", ".join(f"`{item}`" for item in payload["missing_instrument_block_reasons"]) or "-"),
+        "- Abgedeckt: "
+        + (
+            ", ".join(
+                f"`{item}`" for item in payload["covered_instrument_block_reasons"]
+            )
+            or "-"
+        ),
+        "- Fehlend: "
+        + (
+            ", ".join(
+                f"`{item}`" for item in payload["missing_instrument_block_reasons"]
+            )
+            or "-"
+        ),
         "",
     ]
     for row in payload["instrument_scenarios"]:
-        lines.append(f"- `{row['id']}`: live_allowed=`{row['is_live_allowed']}`, Gruende={', '.join(row['block_reasons']) or '-'}")
+        lines.append(
+            f"- `{row['id']}`: live_allowed=`{row['is_live_allowed']}`, Gruende={', '.join(row['block_reasons']) or '-'}"
+        )
     lines.extend(["", "## Asset-Universe-Fixture", ""])
-    lines.append("- Blockgruende: " + (", ".join(f"`{item}`" for item in payload["asset_universe_reasons"]) or "-"))
-    lines.append("- Live-faehige Fixture-Assets: " + (", ".join(f"`{item}`" for item in payload["live_allowed_fixture_assets"]) or "-"))
+    lines.append(
+        "- Blockgruende: "
+        + (", ".join(f"`{item}`" for item in payload["asset_universe_reasons"]) or "-")
+    )
+    lines.append(
+        "- Live-faehige Fixture-Assets: "
+        + (
+            ", ".join(f"`{item}`" for item in payload["live_allowed_fixture_assets"])
+            or "-"
+        )
+    )
     lines.extend(["", "## Externe Evidence", ""])
     lines.append(
         "- Assessment: "
         f"`{payload['external_evidence_assessment']['status']}`; Fehler="
-        + (", ".join(f"`{item}`" for item in payload["external_evidence_assessment"]["failures"]) or "-")
+        + (
+            ", ".join(
+                f"`{item}`"
+                for item in payload["external_evidence_assessment"]["failures"]
+            )
+            or "-"
+        )
     )
     lines.extend(["", "## Erforderlich vor Private Live", ""])
     lines.extend(f"- {item}" for item in payload["external_required"])
@@ -492,9 +591,13 @@ def render_markdown(payload: dict[str, Any]) -> str:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--env-file", type=Path, default=DEFAULT_ENV_FILE)
-    parser.add_argument("--asset-universe-input", type=Path, default=DEFAULT_ASSET_UNIVERSE_INPUT)
+    parser.add_argument(
+        "--asset-universe-input", type=Path, default=DEFAULT_ASSET_UNIVERSE_INPUT
+    )
     parser.add_argument("--key-evidence-json", type=Path, default=DEFAULT_KEY_EVIDENCE)
-    parser.add_argument("--external-evidence-json", type=Path, default=DEFAULT_EXTERNAL_TEMPLATE)
+    parser.add_argument(
+        "--external-evidence-json", type=Path, default=DEFAULT_EXTERNAL_TEMPLATE
+    )
     parser.add_argument("--write-template", type=Path)
     parser.add_argument("--output-md", type=Path)
     parser.add_argument("--output-json", type=Path)
@@ -504,10 +607,13 @@ def main(argv: list[str] | None = None) -> int:
     if args.write_template:
         args.write_template.parent.mkdir(parents=True, exist_ok=True)
         args.write_template.write_text(
-            json.dumps(build_external_evidence_template(), indent=2, ensure_ascii=False) + "\n",
+            json.dumps(build_external_evidence_template(), indent=2, ensure_ascii=False)
+            + "\n",
             encoding="utf-8",
         )
-        print(f"bitget_exchange_instrument_evidence_report: wrote template {args.write_template}")
+        print(
+            f"bitget_exchange_instrument_evidence_report: wrote template {args.write_template}"
+        )
         return 0
 
     payload = build_report_payload(
@@ -518,7 +624,9 @@ def main(argv: list[str] | None = None) -> int:
     )
     if args.output_json:
         args.output_json.parent.mkdir(parents=True, exist_ok=True)
-        args.output_json.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+        args.output_json.write_text(
+            json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
     if args.output_md:
         args.output_md.parent.mkdir(parents=True, exist_ok=True)
         args.output_md.write_text(render_markdown(payload), encoding="utf-8")

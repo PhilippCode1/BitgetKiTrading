@@ -5,7 +5,9 @@ from __future__ import annotations
 from decimal import Decimal
 
 
-def llm_tokens_line_total_usd(*, token_count: float, usd_per_1k_tokens: Decimal) -> Decimal:
+def llm_tokens_line_total_usd(
+    *, token_count: float, usd_per_1k_tokens: Decimal
+) -> Decimal:
     """USD = (tokens / 1000) * list_price_per_1k."""
     qty = Decimal(str(token_count))
     if qty < 0:

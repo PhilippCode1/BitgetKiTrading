@@ -37,7 +37,10 @@ def test_build_signal_operator_intel_no_trade() -> None:
     assert pl["symbol"] == "BTCUSDT"
     assert "uncertainty_high" in (pl.get("reasons") or [])
     assert "stop_budget_blocked" in (pl.get("reasons") or [])
-    assert pl.get("specialist_route") == "deterministic_specialist_router_v1 / do_not_trade"
+    assert (
+        pl.get("specialist_route")
+        == "deterministic_specialist_router_v1 / do_not_trade"
+    )
 
 
 def test_build_signal_operator_intel_allow_trade_includes_context() -> None:

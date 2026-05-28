@@ -60,7 +60,9 @@ class TestAlertBody(BaseModel):
 def admin_allow_chat(
     chat_id: int,
     x_admin_token: Annotated[str | None, Header(alias="X-Admin-Token")] = None,
-    x_internal_service_key: Annotated[str | None, Header(alias="X-Internal-Service-Key")] = None,
+    x_internal_service_key: Annotated[
+        str | None, Header(alias="X-Internal-Service-Key")
+    ] = None,
 ) -> dict[str, Any]:
     _require_admin(x_admin_token, x_internal_service_key)
     subs = RepoSubscriptions(get_settings().database_url)
@@ -72,7 +74,9 @@ def admin_allow_chat(
 def admin_block_chat(
     chat_id: int,
     x_admin_token: Annotated[str | None, Header(alias="X-Admin-Token")] = None,
-    x_internal_service_key: Annotated[str | None, Header(alias="X-Internal-Service-Key")] = None,
+    x_internal_service_key: Annotated[
+        str | None, Header(alias="X-Internal-Service-Key")
+    ] = None,
 ) -> dict[str, Any]:
     _require_admin(x_admin_token, x_internal_service_key)
     subs = RepoSubscriptions(get_settings().database_url)
@@ -84,7 +88,9 @@ def admin_block_chat(
 def admin_test_alert(
     body: TestAlertBody,
     x_admin_token: Annotated[str | None, Header(alias="X-Admin-Token")] = None,
-    x_internal_service_key: Annotated[str | None, Header(alias="X-Internal-Service-Key")] = None,
+    x_internal_service_key: Annotated[
+        str | None, Header(alias="X-Internal-Service-Key")
+    ] = None,
 ) -> dict[str, Any]:
     _require_admin(x_admin_token, x_internal_service_key)
     settings = get_settings()
@@ -94,7 +100,9 @@ def admin_test_alert(
     if cid is None:
         chats = subs.list_allowed_chat_ids()
         if not chats:
-            raise HTTPException(status_code=400, detail="no allowed chats; pass chat_id")
+            raise HTTPException(
+                status_code=400, detail="no allowed chats; pass chat_id"
+            )
         cid = chats[0]
     aid = outbox.insert_pending(
         alert_type="SYSTEM_ALERT",
@@ -112,7 +120,9 @@ def admin_test_alert(
 def admin_replay_event(
     body: dict[str, Any],
     x_admin_token: Annotated[str | None, Header(alias="X-Admin-Token")] = None,
-    x_internal_service_key: Annotated[str | None, Header(alias="X-Internal-Service-Key")] = None,
+    x_internal_service_key: Annotated[
+        str | None, Header(alias="X-Internal-Service-Key")
+    ] = None,
 ) -> dict[str, Any]:
     _require_admin(x_admin_token, x_internal_service_key)
     _require_alert_replay_enabled()
@@ -127,7 +137,9 @@ def admin_replay_telegram(
     request: Request,
     body: dict[str, Any],
     x_admin_token: Annotated[str | None, Header(alias="X-Admin-Token")] = None,
-    x_internal_service_key: Annotated[str | None, Header(alias="X-Internal-Service-Key")] = None,
+    x_internal_service_key: Annotated[
+        str | None, Header(alias="X-Internal-Service-Key")
+    ] = None,
 ) -> dict[str, Any]:
     _require_admin(x_admin_token, x_internal_service_key)
     _require_alert_replay_enabled()

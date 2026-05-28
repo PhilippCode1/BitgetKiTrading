@@ -1,4 +1,9 @@
-import type { BusinessDay, LineData, SeriesMarker, Time } from "lightweight-charts";
+import type {
+  BusinessDay,
+  LineData,
+  SeriesMarker,
+  Time,
+} from "lightweight-charts";
 
 import { PRODUCT_CHART_COLORS } from "@/lib/chart/product-chart-theme";
 import type { ProductCandleBar } from "@/lib/chart/map-candles";
@@ -21,13 +26,6 @@ export type LlmFilledPriceZone = Readonly<{
 export type SanitizedLlmChartAnnotations = Readonly<{
   horizontalLines: ReadonlyArray<{
     price: number;
-    label?: string;
-    lineStyle: 0 | 1 | 2 | 3;
-  }>;
-  /** @deprecated Im Apply-Pfad durch {@link filledZones} ersetzt; bleibt leer bei Schema 1.0. */
-  priceBands: ReadonlyArray<{
-    priceHigh: number;
-    priceLow: number;
     label?: string;
     lineStyle: 0 | 1 | 2 | 3;
   }>;
@@ -73,7 +71,6 @@ export type SanitizeLlmChartAnnotationsDetailedResult = Readonly<{
 
 const EMPTY: SanitizedLlmChartAnnotations = {
   horizontalLines: [],
-  priceBands: [],
   filledZones: [],
   markers: [],
   lineSegments: [],
@@ -107,29 +104,14 @@ export function chartTimeToUnixSeconds(
     return Number(t);
   }
   const b = t as BusinessDay;
-  if (
-    b &&
-    typeof b === "object" &&
-    "year" in b &&
-    "month" in b &&
-    "day" in b
-  ) {
-    return Math.floor(
-      Date.UTC(
-        b.year,
-        b.month - 1,
-        b.day,
-        0,
-        0,
-        0,
-        0,
-      ) / 1000,
-    );
+  if (b && typeof b === "object" && "year" in b && "month" in b && "day" in b) {
+    return Math.floor(Date.UTC(b.year, b.month - 1, b.day, 0, 0, 0, 0) / 1000);
   }
   return null;
 }
 
-const fmtPrice = (n: number) => n.toLocaleString("de-DE", { maximumFractionDigits: 6 });
+const fmtPrice = (n: number) =>
+  n.toLocaleString("de-DE", { maximumFractionDigits: 6 });
 
 /**
  * Text fuer Popover beim Hover: Zone + passender Begruendungsabschnitt, falls erkennbar.
@@ -140,7 +122,8 @@ export function buildLlmZonePopoverText(
 ): string {
   const pHi = Math.max(z.priceHigh, z.priceLow);
   const pLo = Math.min(z.priceHigh, z.priceLow);
-  const band = pHi === pLo ? fmtPrice(pHi) : `${fmtPrice(pLo)} – ${fmtPrice(pHi)}`;
+  const band =
+    pHi === pLo ? fmtPrice(pHi) : `${fmtPrice(pLo)} – ${fmtPrice(pHi)}`;
   const head = z.label ? `${z.label} (${band})` : `Preis ${band}`;
 
   const r = (rationale ?? "").trim();
@@ -156,9 +139,7 @@ export function buildLlmZonePopoverText(
   if (byPrices) {
     return `${head}\n\n${byPrices.trim()}`;
   }
-  const words = (z.label ?? "")
-    .split(/\W+/)
-    .filter((w) => w.length > 2);
+  const words = (z.label ?? "").split(/\W+/).filter((w) => w.length > 2);
   const byLabel = sentences.find((s) => {
     const sl = s.toLowerCase();
     return words.some((w) => sl.includes(w.toLowerCase()));
@@ -379,12 +360,6 @@ export function sanitizeLlmChartAnnotationsDetailed(
       }
     }
 
-    const priceBands: Array<{
-      priceHigh: number;
-      priceLow: number;
-      label?: string;
-      lineStyle: 0 | 1 | 2 | 3;
-    }> = [];
     const filledZones: LlmFilledPriceZone[] = [];
     if (Array.isArray(raw.price_bands)) {
       const slice = raw.price_bands.slice(0, 8);
@@ -575,7 +550,6 @@ export function sanitizeLlmChartAnnotationsDetailed(
     return {
       model: {
         horizontalLines,
-        priceBands,
         filledZones,
         markers,
         lineSegments,

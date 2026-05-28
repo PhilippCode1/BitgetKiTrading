@@ -44,7 +44,9 @@ def public_runtime_surface() -> dict[str, Any]:
             "payment_checkout_enabled": bool(s.payment_checkout_enabled),
             "payment_environment": s.payment_environment(),
             "telegram_bot_username_configured": bool(s.telegram_bot_username.strip()),
-            "telegram_required_for_console": bool(s.commercial_telegram_required_for_console),
+            "telegram_required_for_console": bool(
+                s.commercial_telegram_required_for_console
+            ),
         },
         "endpoints": {
             "openapi": "/docs",

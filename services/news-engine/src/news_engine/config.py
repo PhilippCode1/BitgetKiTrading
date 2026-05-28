@@ -2,10 +2,9 @@ from __future__ import annotations
 
 from typing import ClassVar
 
+from config.settings import BaseServiceSettings, _is_blank_or_placeholder
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import SettingsConfigDict
-
-from config.settings import BaseServiceSettings, _is_blank_or_placeholder
 
 _DEFAULT_ALLOWED = (
     "cryptopanic.com",
@@ -78,8 +77,12 @@ class NewsEngineSettings(BaseServiceSettings):
         description="Mindestalter letzter Ingestion (ms) bis core_pipeline als stale gilt; zusätzlich 3× Poll-Intervall.",
     )
     news_llm_enabled: bool = Field(default=False, alias="NEWS_LLM_ENABLED")
-    news_llm_provider_pref: str | None = Field(default=None, alias="NEWS_LLM_PROVIDER_PREF")
-    llm_orch_base_url: str = Field(default="http://localhost:8070", alias="LLM_ORCH_BASE_URL")
+    news_llm_provider_pref: str | None = Field(
+        default=None, alias="NEWS_LLM_PROVIDER_PREF"
+    )
+    llm_orch_base_url: str = Field(
+        default="http://localhost:8070", alias="LLM_ORCH_BASE_URL"
+    )
     news_llm_probe_timeout_sec: float = Field(
         default=2.5,
         alias="NEWS_LLM_PROBE_TIMEOUT_SEC",
@@ -87,7 +90,9 @@ class NewsEngineSettings(BaseServiceSettings):
     )
 
     # --- Apex Social Sentiment (X + Telegram, Embeddings via inference-server) ---
-    social_pipeline_enabled: bool = Field(default=False, alias="SOCIAL_PIPELINE_ENABLED")
+    social_pipeline_enabled: bool = Field(
+        default=False, alias="SOCIAL_PIPELINE_ENABLED"
+    )
     social_inference_base_url: str = Field(
         default="http://inference-server:8140",
         alias="SOCIAL_INFERENCE_BASE_URL",
@@ -97,14 +102,20 @@ class NewsEngineSettings(BaseServiceSettings):
         alias="SOCIAL_REFERENCE_JSON_PATH",
         description="Optional: Pfad zu social_sentiment_reference_v1.json (Repo-Default sonst).",
     )
-    social_embed_cache_ttl_sec: int = Field(default=86_400, alias="SOCIAL_EMBED_CACHE_TTL_SEC")
+    social_embed_cache_ttl_sec: int = Field(
+        default=86_400, alias="SOCIAL_EMBED_CACHE_TTL_SEC"
+    )
     social_roll_alpha: float = Field(default=0.35, alias="SOCIAL_ROLL_ALPHA")
-    social_spam_min_followers: int = Field(default=120, alias="SOCIAL_SPAM_MIN_FOLLOWERS")
+    social_spam_min_followers: int = Field(
+        default=120, alias="SOCIAL_SPAM_MIN_FOLLOWERS"
+    )
     social_spam_reject_missing_followers: bool = Field(
         default=False,
         alias="SOCIAL_SPAM_REJECT_MISSING_FOLLOWERS",
     )
-    social_spam_max_posts_per_window: int = Field(default=25, alias="SOCIAL_SPAM_MAX_POSTS_PER_WINDOW")
+    social_spam_max_posts_per_window: int = Field(
+        default=25, alias="SOCIAL_SPAM_MAX_POSTS_PER_WINDOW"
+    )
     social_spam_window_sec: int = Field(default=600, alias="SOCIAL_SPAM_WINDOW_SEC")
 
     social_x_enabled: bool = Field(default=False, alias="SOCIAL_X_ENABLED")
@@ -119,17 +130,23 @@ class NewsEngineSettings(BaseServiceSettings):
         description="true: loescht alle bestehenden Filter-Rules und setzt genau eine Apex-Rule (Vorsicht Produktion).",
     )
 
-    social_telegram_enabled: bool = Field(default=False, alias="SOCIAL_TELEGRAM_ENABLED")
+    social_telegram_enabled: bool = Field(
+        default=False, alias="SOCIAL_TELEGRAM_ENABLED"
+    )
     telegram_api_id: int | None = Field(default=None, alias="TELEGRAM_API_ID")
     telegram_api_hash: str | None = Field(default=None, alias="TELEGRAM_API_HASH")
-    telegram_session_string: str | None = Field(default=None, alias="TELEGRAM_SESSION_STRING")
+    telegram_session_string: str | None = Field(
+        default=None, alias="TELEGRAM_SESSION_STRING"
+    )
     telegram_alpha_channels: str = Field(
         default="",
         alias="TELEGRAM_ALPHA_CHANNELS",
         description="Komma-separierte @handles oder numerische Channel-IDs.",
     )
     news_score_max_llm_delta: int = Field(default=15, alias="NEWS_SCORE_MAX_LLM_DELTA")
-    news_score_publish_events: bool = Field(default=True, alias="NEWS_SCORE_PUBLISH_EVENTS")
+    news_score_publish_events: bool = Field(
+        default=True, alias="NEWS_SCORE_PUBLISH_EVENTS"
+    )
     news_max_ingest_item_age_ms: int = Field(
         default=604_800_000,
         alias="NEWS_MAX_INGEST_ITEM_AGE_MS",
@@ -162,7 +179,11 @@ class NewsEngineSettings(BaseServiceSettings):
             raise ValueError("NEWS_SCORE_MAX_LLM_DELTA ausserhalb 0..50")
         return v
 
-    @field_validator("news_max_ingest_item_age_ms", "news_max_future_skew_ms", "news_stale_warn_after_ms")
+    @field_validator(
+        "news_max_ingest_item_age_ms",
+        "news_max_future_skew_ms",
+        "news_stale_warn_after_ms",
+    )
     @classmethod
     def _positive_news_windows(cls, v: int) -> int:
         if v < 1:
@@ -183,7 +204,11 @@ class NewsEngineSettings(BaseServiceSettings):
             raise ValueError("SOCIAL_ROLL_ALPHA muss 0.01..0.99 sein")
         return v
 
-    @field_validator("social_spam_min_followers", "social_spam_max_posts_per_window", "social_spam_window_sec")
+    @field_validator(
+        "social_spam_min_followers",
+        "social_spam_max_posts_per_window",
+        "social_spam_window_sec",
+    )
     @classmethod
     def _social_spam_positive(cls, v: int) -> int:
         if v < 0:
@@ -196,11 +221,15 @@ class NewsEngineSettings(BaseServiceSettings):
         return parse_keyword_list(self.news_keywords)
 
     def allowed_hosts_set(self) -> set[str]:
-        hosts = {h.strip().lower() for h in self.news_http_allowed_hosts.split(",") if h.strip()}
+        hosts = {
+            h.strip().lower()
+            for h in self.news_http_allowed_hosts.split(",")
+            if h.strip()
+        }
         return hosts
 
     @model_validator(mode="after")
-    def _validate_llm_requirements(self) -> "NewsEngineSettings":
+    def _validate_llm_requirements(self) -> NewsEngineSettings:
         if self.news_llm_enabled and _is_blank_or_placeholder(self.llm_orch_base_url):
             raise ValueError(
                 "LLM_ORCH_BASE_URL muss gesetzt sein, wenn NEWS_LLM_ENABLED=true"

@@ -93,12 +93,19 @@ def test_cli_dry_no_dsn(tmp_path: Path) -> None:
     env = {
         k: v
         for k, v in __import__("os").environ.items()
-        if "DATABASE" not in k
-        and k != "TEST_DATABASE_URL"
+        if "DATABASE" not in k and k != "TEST_DATABASE_URL"
     }
     out = tmp_path / "dr.md"
     r = subprocess.run(  # noqa: S603
-        [sys.executable, str(TOOL), "--dry-run", "--output-md", str(out), "--artifact-dir", str(tmp_path / "a")],  # noqa: E501
+        [
+            sys.executable,
+            str(TOOL),
+            "--dry-run",
+            "--output-md",
+            str(out),
+            "--artifact-dir",
+            str(tmp_path / "a"),
+        ],  # noqa: E501
         cwd=REPO,
         capture_output=True,
         text=True,

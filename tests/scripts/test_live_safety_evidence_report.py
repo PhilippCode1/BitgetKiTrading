@@ -5,7 +5,10 @@ import subprocess
 import sys
 from pathlib import Path
 
-from scripts.live_safety_evidence_report import REQUIRED_SAFETY_BLOCKERS, build_report_payload
+from scripts.live_safety_evidence_report import (
+    REQUIRED_SAFETY_BLOCKERS,
+    build_report_payload,
+)
 
 REPO = Path(__file__).resolve().parents[2]
 
@@ -15,9 +18,16 @@ def test_payload_keeps_private_live_no_go_until_external_drill_exists() -> None:
 
     assert payload["private_live_decision"] == "NO_GO"
     assert payload["full_autonomous_live"] == "NO_GO"
-    assert "real_staging_shadow_kill_switch_drill_missing" in payload["external_required"]
-    assert "real_staging_shadow_safety_latch_drill_missing" in payload["external_required"]
-    assert "real_emergency_flatten_reduce_only_drill_missing" in payload["external_required"]
+    assert (
+        "real_staging_shadow_kill_switch_drill_missing" in payload["external_required"]
+    )
+    assert (
+        "real_staging_shadow_safety_latch_drill_missing" in payload["external_required"]
+    )
+    assert (
+        "real_emergency_flatten_reduce_only_drill_missing"
+        in payload["external_required"]
+    )
     assert "owner_signed_live_safety_acceptance_missing" in payload["external_required"]
 
 
@@ -26,7 +36,9 @@ def test_external_template_must_fail_closed_and_cover_required_blockers() -> Non
 
     assert payload["failures"] == []
     assert payload["external_template"]["status"] == "FAIL"
-    assert set(REQUIRED_SAFETY_BLOCKERS).issubset(set(payload["external_template"]["blockers"]))
+    assert set(REQUIRED_SAFETY_BLOCKERS).issubset(
+        set(payload["external_template"]["blockers"])
+    )
     assert payload["external_template"]["missing_required_blockers"] == []
     assert payload["external_template"]["secret_surface_issues"] == []
 

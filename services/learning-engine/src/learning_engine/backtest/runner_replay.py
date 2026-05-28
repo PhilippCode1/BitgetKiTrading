@@ -8,19 +8,23 @@ from uuid import UUID, uuid4
 
 import psycopg
 from psycopg.rows import dict_row
-
-from learning_engine.backtest.determinism_manifest import build_replay_manifest
-from learning_engine.config import LearningEngineSettings
-from learning_engine.storage import repo_backtest
 from shared_py.eventbus import EventEnvelope, RedisStreamBus
 from shared_py.eventbus.envelope import STREAM_CANDLE_CLOSE, STREAM_MARKET_TICK
-from shared_py.model_contracts import FEATURE_SCHEMA_HASH, FEATURE_SCHEMA_VERSION, MODEL_CONTRACT_VERSION
+from shared_py.model_contracts import (
+    FEATURE_SCHEMA_HASH,
+    FEATURE_SCHEMA_VERSION,
+    MODEL_CONTRACT_VERSION,
+)
 from shared_py.replay_determinism import (
     REPLAY_DETERMINISM_PROTOCOL_VERSION,
     normalized_timeframes,
     stable_replay_session_id,
     stable_stream_event_id,
 )
+
+from learning_engine.backtest.determinism_manifest import build_replay_manifest
+from learning_engine.config import LearningEngineSettings
+from learning_engine.storage import repo_backtest
 
 logger = logging.getLogger("learning_engine.backtest.replay")
 
@@ -171,7 +175,9 @@ def run_replay_candles(
                     close_ms = start_ms + _tf_ms(tf)
                     dk = f"{dedupe_prefix}:{sym}:{tf}:{start_ms}"
                     env = EventEnvelope(
-                        event_id=stable_stream_event_id(stream=STREAM_CANDLE_CLOSE, dedupe_key=dk),
+                        event_id=stable_stream_event_id(
+                            stream=STREAM_CANDLE_CLOSE, dedupe_key=dk
+                        ),
                         event_type="candle_close",
                         symbol=sym,
                         timeframe=tf,
@@ -222,9 +228,13 @@ def run_replay_candles(
                     break
             logger.info("replay session=%s published_candles=%s", session_id, total)
             with conn.transaction():
-                repo_backtest.update_replay_session(conn, session_id=session_id, status="completed")
+                repo_backtest.update_replay_session(
+                    conn, session_id=session_id, status="completed"
+                )
         except Exception:
             with conn.transaction():
-                repo_backtest.update_replay_session(conn, session_id=session_id, status="failed")
+                repo_backtest.update_replay_session(
+                    conn, session_id=session_id, status="failed"
+                )
             raise
     return session_id

@@ -27,7 +27,13 @@ export function parsePayloadCandleClose(
     return null;
   }
   const o = raw as Record<string, unknown>;
-  if (finiteNum(o.start_ts_ms) && finiteNum(o.open) && finiteNum(o.high) && finiteNum(o.low) && finiteNum(o.close)) {
+  if (
+    finiteNum(o.start_ts_ms) &&
+    finiteNum(o.open) &&
+    finiteNum(o.high) &&
+    finiteNum(o.low) &&
+    finiteNum(o.close)
+  ) {
     return {
       start_ts_ms: Math.trunc(o.start_ts_ms),
       open: o.open,

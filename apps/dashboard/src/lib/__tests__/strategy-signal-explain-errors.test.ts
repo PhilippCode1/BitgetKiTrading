@@ -19,7 +19,10 @@ describe("strategy-signal-explain-errors", () => {
     expect(
       isStrategySignalExplainSuccessPayload({
         ok: true,
-        result: { strategy_explanation_de: "x", execution_authority: "operator" },
+        result: {
+          strategy_explanation_de: "x",
+          execution_authority: "operator",
+        },
       }),
     ).toBe(false);
     expect(

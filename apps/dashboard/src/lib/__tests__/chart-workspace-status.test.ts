@@ -15,7 +15,9 @@ function stateBase(patch: Partial<LiveStateResponse> = {}): LiveStateResponse {
     timeframe: "5m",
     server_ts_ms: Date.now(),
     live_state_contract_version: 1,
-    candles: [{ time_s: 1, open: 1, high: 1, low: 1, close: 1, volume_usdt: 1 }],
+    candles: [
+      { time_s: 1, open: 1, high: 1, low: 1, close: 1, volume_usdt: 1 },
+    ],
     latest_signal: null,
     latest_feature: null,
     latest_news: [],
@@ -41,9 +43,14 @@ function stateBase(patch: Partial<LiveStateResponse> = {}): LiveStateResponse {
 
 describe("chart-workspace-status", () => {
   it("zeigt Alert bei fehlenden Candles", () => {
-    const s = stateBase({ candles: [], market_freshness: { status: "no_candles" } as any });
+    const s = stateBase({
+      candles: [],
+      market_freshness: { status: "no_candles" } as any,
+    });
     expect(resolveChartWorkspaceAlert(s, null)).toBe("no_candles_live_blocked");
-    expect(chartWorkspaceAlertText("no_candles_live_blocked")).toContain("Keine Marktdaten");
+    expect(chartWorkspaceAlertText("no_candles_live_blocked")).toContain(
+      "Keine Marktdaten",
+    );
   });
 
   it("zeigt Stale-Alert bei veralteten Daten", () => {
@@ -68,12 +75,18 @@ describe("chart-workspace-status", () => {
 
   it("zeigt Bitget-Quelle nicht erreichbar bei Fetch-Fehler", () => {
     const s = stateBase();
-    expect(resolveChartWorkspaceAlert(s, "network failed")).toBe("bitget_unreachable");
-    expect(chartWorkspaceAlertText("bitget_unreachable")).toContain("Bitget-Datenquelle");
+    expect(resolveChartWorkspaceAlert(s, "network failed")).toBe(
+      "bitget_unreachable",
+    );
+    expect(chartWorkspaceAlertText("bitget_unreachable")).toContain(
+      "Bitget-Datenquelle",
+    );
   });
 
   it("redacted Secrets in Error State", () => {
-    const msg = redactChartErrorDetail("Authorization=Bearer abc.def token=123");
+    const msg = redactChartErrorDetail(
+      "Authorization=Bearer abc.def token=123",
+    );
     expect(msg).toContain("authorization=***");
     expect(msg).toContain("token=***");
     expect(msg).not.toContain("abc.def");

@@ -19,8 +19,12 @@ from live_broker.config import LiveBrokerSettings
 
 
 def _base_demo_ws(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("BITGET_DEMO_WS_PUBLIC_URL", "wss://wspap.bitget.com/v2/ws/public")
-    monkeypatch.setenv("BITGET_DEMO_WS_PRIVATE_URL", "wss://wspap.bitget.com/v2/ws/private")
+    monkeypatch.setenv(
+        "BITGET_DEMO_WS_PUBLIC_URL", "wss://wspap.bitget.com/v2/ws/public"
+    )
+    monkeypatch.setenv(
+        "BITGET_DEMO_WS_PRIVATE_URL", "wss://wspap.bitget.com/v2/ws/private"
+    )
 
 
 def _minimal_live_broker_env(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -58,7 +62,9 @@ def test_demo_mode_rejects_parallel_live_credentials_when_private_exchange(
         LiveBrokerSettings()
 
 
-def test_shadow_private_path_rejects_demo_credentials(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_shadow_private_path_rejects_demo_credentials(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     _minimal_live_broker_env(monkeypatch)
     monkeypatch.setenv("EXECUTION_MODE", "shadow")
     monkeypatch.setenv("SHADOW_TRADE_ENABLE", "true")
@@ -73,7 +79,9 @@ def test_shadow_private_path_rejects_demo_credentials(monkeypatch: pytest.Monkey
         LiveBrokerSettings()
 
 
-def test_relax_isolation_allows_both_sets_on_shadow(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_relax_isolation_allows_both_sets_on_shadow(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     _minimal_live_broker_env(monkeypatch)
     monkeypatch.setenv("EXECUTION_MODE", "shadow")
     monkeypatch.setenv("SHADOW_TRADE_ENABLE", "true")

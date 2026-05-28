@@ -161,7 +161,11 @@ PLAYBOOK_REGISTRY: tuple[PlaybookDefinition, ...] = (
             PlaybookBenchmarkRule(
                 benchmark_id="trend_continuation_vs_pullback_same_regime",
                 comparison_class="same_family_same_regime_same_timeframe_bucket",
-                evaluation_focus=["expected_return_bps", "stop_out_rate", "profit_factor"],
+                evaluation_focus=[
+                    "expected_return_bps",
+                    "stop_out_rate",
+                    "profit_factor",
+                ],
                 minimum_samples=40,
                 notes="Vergleiche Trendfortsetzung gegen Pullback-Varianten im Trendregime.",
             )
@@ -192,7 +196,11 @@ PLAYBOOK_REGISTRY: tuple[PlaybookDefinition, ...] = (
             PlaybookBenchmarkRule(
                 benchmark_id="breakout_vs_vol_compression_same_setup",
                 comparison_class="same_family_same_regime_same_market_family",
-                evaluation_focus=["expected_mfe_bps", "time_to_tp1_ms", "slippage_bps_entry"],
+                evaluation_focus=[
+                    "expected_mfe_bps",
+                    "time_to_tp1_ms",
+                    "slippage_bps_entry",
+                ],
                 minimum_samples=35,
                 notes="Prueft, ob Expansion wirklich Folgedruck liefert oder nur Fehlausbruch ist.",
             )
@@ -211,7 +219,12 @@ PLAYBOOK_REGISTRY: tuple[PlaybookDefinition, ...] = (
         regime_suitability=["mean_reverting", "range_grind", "low_liquidity"],
         invalid_contexts=["trend_acceleration", "shock", "event_too_close"],
         preferred_stop_families=["microstructure_invalidation", "volatility_budget"],
-        exit_families=["mean_reversion_snapback", "scale_out", "mean_reversion_unwind", "time_stop"],
+        exit_families=[
+            "mean_reversion_snapback",
+            "scale_out",
+            "mean_reversion_unwind",
+            "time_stop",
+        ],
         minimum_liquidity=PlaybookLiquidityConstraints(
             max_spread_bps=20.0,
             max_execution_cost_bps=28.0,
@@ -230,7 +243,10 @@ PLAYBOOK_REGISTRY: tuple[PlaybookDefinition, ...] = (
         ],
         anti_patterns=["fade_strong_trend", "mean_reversion_without_pressure"],
         blacklist_criteria=["feature_quality_degraded", "liquidity_below_hard_floor"],
-        counterfactual_candidates=["range_rotation_rotation", "liquidity_sweep_reversal"],
+        counterfactual_candidates=[
+            "range_rotation_rotation",
+            "liquidity_sweep_reversal",
+        ],
         preferred_strategy_name="MeanReversionMicroStrategy",
     ),
     PlaybookDefinition(
@@ -254,7 +270,11 @@ PLAYBOOK_REGISTRY: tuple[PlaybookDefinition, ...] = (
             PlaybookBenchmarkRule(
                 benchmark_id="compression_expansion_vs_breakout_followthrough",
                 comparison_class="same_market_family_same_signal_class",
-                evaluation_focus=["expected_mfe_bps", "time_to_tp1_ms", "profit_factor"],
+                evaluation_focus=[
+                    "expected_mfe_bps",
+                    "time_to_tp1_ms",
+                    "profit_factor",
+                ],
                 minimum_samples=35,
                 notes="Hilft zu unterscheiden, ob Kompression eigenstaendig alpha liefert.",
             )
@@ -272,7 +292,10 @@ PLAYBOOK_REGISTRY: tuple[PlaybookDefinition, ...] = (
         target_market_families=["spot", "margin", "futures"],
         regime_suitability=["low_liquidity", "shock", "range_grind"],
         invalid_contexts=["shock", "thin_book_followthrough"],
-        preferred_stop_families=["liquidity_sweep_invalidation", "microstructure_invalidation"],
+        preferred_stop_families=[
+            "liquidity_sweep_invalidation",
+            "microstructure_invalidation",
+        ],
         exit_families=["scale_out", "mean_reversion_unwind", "liquidity_target"],
         minimum_liquidity=PlaybookLiquidityConstraints(
             max_spread_bps=22.0,
@@ -286,7 +309,11 @@ PLAYBOOK_REGISTRY: tuple[PlaybookDefinition, ...] = (
             PlaybookBenchmarkRule(
                 benchmark_id="liquidity_sweep_vs_mean_reversion",
                 comparison_class="same_family_same_regime_same_market_family",
-                evaluation_focus=["slippage_bps_entry", "expected_return_bps", "time_to_stop_ms"],
+                evaluation_focus=[
+                    "slippage_bps_entry",
+                    "expected_return_bps",
+                    "time_to_stop_ms",
+                ],
                 minimum_samples=30,
                 notes="Sweep-Setups muessen bessere Entry-Qualitaet liefern als generische Mean-Reversion.",
             )
@@ -324,7 +351,10 @@ PLAYBOOK_REGISTRY: tuple[PlaybookDefinition, ...] = (
         ],
         anti_patterns=["pullback_too_deep", "counter_regime_bias"],
         blacklist_criteria=["feature_quality_degraded", "liquidity_below_hard_floor"],
-        counterfactual_candidates=["trend_continuation_core", "range_rotation_rotation"],
+        counterfactual_candidates=[
+            "trend_continuation_core",
+            "range_rotation_rotation",
+        ],
         preferred_strategy_name="TrendContinuationStrategy",
     ),
     PlaybookDefinition(
@@ -355,7 +385,10 @@ PLAYBOOK_REGISTRY: tuple[PlaybookDefinition, ...] = (
         ],
         anti_patterns=["range_boundary_missing", "breakout_pressure_high"],
         blacklist_criteria=["feature_quality_degraded", "liquidity_below_hard_floor"],
-        counterfactual_candidates=["mean_reversion_reclaim", "liquidity_sweep_reversal"],
+        counterfactual_candidates=[
+            "mean_reversion_reclaim",
+            "liquidity_sweep_reversal",
+        ],
         preferred_strategy_name="MeanReversionMicroStrategy",
     ),
     PlaybookDefinition(
@@ -367,7 +400,12 @@ PLAYBOOK_REGISTRY: tuple[PlaybookDefinition, ...] = (
         regime_suitability=["funding_skewed", "delivery_sensitive", "trend"],
         invalid_contexts=["shock", "dislocation", "funding_missing"],
         preferred_stop_families=["funding_flip", "event_cut"],
-        exit_families=["funding_harvest", "basis_funding_unwind", "scale_out", "time_stop"],
+        exit_families=[
+            "funding_harvest",
+            "basis_funding_unwind",
+            "scale_out",
+            "time_stop",
+        ],
         minimum_liquidity=PlaybookLiquidityConstraints(
             max_spread_bps=10.0,
             max_execution_cost_bps=18.0,
@@ -380,20 +418,30 @@ PLAYBOOK_REGISTRY: tuple[PlaybookDefinition, ...] = (
             PlaybookBenchmarkRule(
                 benchmark_id="carry_vs_directional_trend_futures",
                 comparison_class="same_futures_product_same_timeframe_bucket",
-                evaluation_focus=["funding_drag", "expected_return_bps", "profit_factor"],
+                evaluation_focus=[
+                    "funding_drag",
+                    "expected_return_bps",
+                    "profit_factor",
+                ],
                 minimum_samples=30,
                 notes="Bewertet, ob Funding-/Basis-Playbooks echten Zusatznutzen liefern.",
             )
         ],
         anti_patterns=["carry_without_edge", "funding_event_too_far"],
-        blacklist_criteria=["missing_futures_context", "feature_quality_degraded", "liquidity_below_hard_floor"],
+        blacklist_criteria=[
+            "missing_futures_context",
+            "feature_quality_degraded",
+            "liquidity_below_hard_floor",
+        ],
         counterfactual_candidates=["trend_continuation_core", "time_window_repricing"],
     ),
     PlaybookDefinition(
         playbook_id="news_shock_response",
         playbook_family="news_shock",
         title="News-Shock",
-        summary="Eventgetriebene Reaktion auf News-/Schock-Regime mit explizitem Event-Exit und harter Risiko-Disziplin.",
+        summary=(
+            "Eventgetriebene Reaktion auf News-/Schock-Regime mit explizitem Event-Exit und harter Risiko-Disziplin."
+        ),
         target_market_families=["spot", "margin", "futures"],
         regime_suitability=["news_driven", "shock"],
         invalid_contexts=["news_context_missing"],
@@ -410,7 +458,11 @@ PLAYBOOK_REGISTRY: tuple[PlaybookDefinition, ...] = (
             PlaybookBenchmarkRule(
                 benchmark_id="news_shock_vs_no_trade_event",
                 comparison_class="same_regime_same_market_family",
-                evaluation_focus=["expected_return_bps", "time_to_stop_ms", "slippage_bps_entry"],
+                evaluation_focus=[
+                    "expected_return_bps",
+                    "time_to_stop_ms",
+                    "slippage_bps_entry",
+                ],
                 minimum_samples=25,
                 notes="Event-Playbooks muessen gegen No-Trade-Baseline ueberzeugend sein.",
             )
@@ -440,7 +492,11 @@ PLAYBOOK_REGISTRY: tuple[PlaybookDefinition, ...] = (
             PlaybookBenchmarkRule(
                 benchmark_id="session_open_vs_intraday_generic",
                 comparison_class="same_market_family_same_timeframe_same_signal_class",
-                evaluation_focus=["expected_return_bps", "time_to_tp1_ms", "profit_factor"],
+                evaluation_focus=[
+                    "expected_return_bps",
+                    "time_to_tp1_ms",
+                    "profit_factor",
+                ],
                 minimum_samples=30,
                 notes="Open-Drive soll sich von generischen Intraday-Setups unterscheiden lassen.",
             )
@@ -456,7 +512,12 @@ PLAYBOOK_REGISTRY: tuple[PlaybookDefinition, ...] = (
         title="Time-Window-Effekt",
         summary="Repricing um Funding-, Roll-, Hourly- oder definierte Zeitfenster mit explizitem Zeit-Exit.",
         target_market_families=["spot", "margin", "futures"],
-        regime_suitability=["session_transition", "funding_skewed", "delivery_sensitive", "compression"],
+        regime_suitability=[
+            "session_transition",
+            "funding_skewed",
+            "delivery_sensitive",
+            "compression",
+        ],
         invalid_contexts=["time_window_absent", "shock_without_event"],
         preferred_stop_families=["time_window_expiry", "event_cut"],
         exit_families=["time_stop", "event_exit", "scale_out"],
@@ -471,7 +532,11 @@ PLAYBOOK_REGISTRY: tuple[PlaybookDefinition, ...] = (
             PlaybookBenchmarkRule(
                 benchmark_id="time_window_vs_session_open_same_window",
                 comparison_class="same_market_family_same_window_bucket",
-                evaluation_focus=["expected_return_bps", "time_to_stop_ms", "profit_factor"],
+                evaluation_focus=[
+                    "expected_return_bps",
+                    "time_to_stop_ms",
+                    "profit_factor",
+                ],
                 minimum_samples=30,
                 notes="Zeitfenster-Edges sollen gegen Session-Open-Edges differenziert messbar sein.",
             )
@@ -513,7 +578,7 @@ def preferred_strategy_for_playbook(playbook_id: str | None) -> str | None:
 def preferred_strategy_for_playbook_family(playbook_family: str | None) -> str | None:
     if not playbook_family:
         return None
-    return _DEFAULT_STRATEGY_BY_FAMILY.get(str(playbook_family).strip())
+    return _DEFAULT_STRATEGY_BY_FAMILY.get(str(playbook_family).strip())  # type: ignore
 
 
 def playbook_registry_descriptor() -> dict[str, object]:
@@ -530,7 +595,9 @@ def playbook_registry_descriptor() -> dict[str, object]:
                 "target_market_families": list(item.target_market_families),
                 "regime_suitability": list(item.regime_suitability),
                 "preferred_timeframes": list(item.preferred_timeframes),
-                "benchmark_rule_ids": [rule.benchmark_id for rule in item.benchmark_rules],
+                "benchmark_rule_ids": [
+                    rule.benchmark_id for rule in item.benchmark_rules
+                ],
                 "preferred_strategy_name": item.preferred_strategy_name,
             }
             for item in PLAYBOOK_REGISTRY

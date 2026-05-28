@@ -7,7 +7,6 @@ from pathlib import Path
 
 from tools.check_german_only_ui import analyze_german_ui
 
-
 ROOT = Path(__file__).resolve().parents[2]
 TOOL = ROOT / "tools" / "check_german_only_ui.py"
 
@@ -31,9 +30,17 @@ def _fixture(tmp_path: Path) -> tuple[Path, Path, Path, Path]:
         glossary,
         "# Glossar\nHauptkonsole Systemzustand Betreiber Echtgeldmodus Papiermodus Schattenmodus Not-Stopp Sicherheits-Sperre Abgleich Kein Handel Quarantäne Live-Blocker\n",
     )
-    _write(messages_dir / "de.json", '{"console":{"nav":{"health":"Systemzustand & Vorfälle"}}}')
-    _write(messages_dir / "en.json", '{"console":{"nav":{"health":"Health & incidents"}}}')
-    _write(dashboard_src / "components" / "X.tsx", 'export function X(){return <button>Speichern</button>}\n')
+    _write(
+        messages_dir / "de.json",
+        '{"console":{"nav":{"health":"Systemzustand & Vorfälle"}}}',
+    )
+    _write(
+        messages_dir / "en.json", '{"console":{"nav":{"health":"Health & incidents"}}}'
+    )
+    _write(
+        dashboard_src / "components" / "X.tsx",
+        "export function X(){return <button>Speichern</button>}\n",
+    )
     return dashboard_src, messages_dir, policy, glossary
 
 
@@ -41,7 +48,7 @@ def test_english_visible_label_is_detected(tmp_path: Path) -> None:
     dashboard_src, messages_dir, policy, glossary = _fixture(tmp_path)
     _write(
         dashboard_src / "components" / "Bad.tsx",
-        'export function Bad(){return <div>Health & Incidents</div>}\n',
+        "export function Bad(){return <div>Health & Incidents</div>}\n",
     )
     summary = analyze_german_ui(
         dashboard_src=dashboard_src,
@@ -49,7 +56,9 @@ def test_english_visible_label_is_detected(tmp_path: Path) -> None:
         policy_doc=policy,
         glossary_doc=glossary,
     )
-    assert any(issue["code"] == "critical_english_visible_label" for issue in summary["issues"])
+    assert any(
+        issue["code"] == "critical_english_visible_label" for issue in summary["issues"]
+    )
 
 
 def test_technical_variable_not_flagged(tmp_path: Path) -> None:
@@ -64,14 +73,16 @@ def test_technical_variable_not_flagged(tmp_path: Path) -> None:
         policy_doc=policy,
         glossary_doc=glossary,
     )
-    assert not any(issue["code"] == "critical_english_visible_label" for issue in summary["issues"])
+    assert not any(
+        issue["code"] == "critical_english_visible_label" for issue in summary["issues"]
+    )
 
 
 def test_billing_pricing_visible_text_detected(tmp_path: Path) -> None:
     dashboard_src, messages_dir, policy, glossary = _fixture(tmp_path)
     _write(
         dashboard_src / "components" / "Billing.tsx",
-        'export function Billing(){return <div>Billing</div>}\n',
+        "export function Billing(){return <div>Billing</div>}\n",
     )
     summary = analyze_german_ui(
         dashboard_src=dashboard_src,
@@ -79,10 +90,14 @@ def test_billing_pricing_visible_text_detected(tmp_path: Path) -> None:
         policy_doc=policy,
         glossary_doc=glossary,
     )
-    assert any(issue["code"] == "out_of_scope_visible_phrase" for issue in summary["issues"])
+    assert any(
+        issue["code"] == "out_of_scope_visible_phrase" for issue in summary["issues"]
+    )
 
 
-def test_intl_message_key_with_customer_substring_not_out_of_scope(tmp_path: Path) -> None:
+def test_intl_message_key_with_customer_substring_not_out_of_scope(
+    tmp_path: Path,
+) -> None:
     dashboard_src, messages_dir, policy, glossary = _fixture(tmp_path)
     _write(
         dashboard_src / "components" / "T.tsx",
@@ -94,14 +109,16 @@ def test_intl_message_key_with_customer_substring_not_out_of_scope(tmp_path: Pat
         policy_doc=policy,
         glossary_doc=glossary,
     )
-    assert not any(issue["code"] == "out_of_scope_visible_phrase" for issue in summary["issues"])
+    assert not any(
+        issue["code"] == "out_of_scope_visible_phrase" for issue in summary["issues"]
+    )
 
 
 def test_german_labels_are_accepted(tmp_path: Path) -> None:
     dashboard_src, messages_dir, policy, glossary = _fixture(tmp_path)
     _write(
         dashboard_src / "components" / "Good.tsx",
-        'export function Good(){return <div>Systemzustand und Risiko</div>}\n',
+        "export function Good(){return <div>Systemzustand und Risiko</div>}\n",
     )
     summary = analyze_german_ui(
         dashboard_src=dashboard_src,
@@ -129,7 +146,7 @@ def test_strict_fails_correctly(tmp_path: Path) -> None:
     dashboard_src, messages_dir, policy, glossary = _fixture(tmp_path)
     _write(
         dashboard_src / "components" / "Bad.tsx",
-        'export function Bad(){return <div>Health & Incidents</div>}\n',
+        "export function Bad(){return <div>Health & Incidents</div>}\n",
     )
     completed = subprocess.run(
         [
@@ -161,7 +178,10 @@ def test_glossary_requirement_is_checked(tmp_path: Path) -> None:
     glossary = tmp_path / "docs" / "production_10_10" / "german_ui_glossary.md"
     _write(policy, "# Policy ohne Glossar\n")
     _write(messages_dir / "de.json", "{}")
-    _write(dashboard_src / "components" / "X.tsx", 'export function X(){return <div>Übersicht</div>}\n')
+    _write(
+        dashboard_src / "components" / "X.tsx",
+        "export function X(){return <div>Übersicht</div>}\n",
+    )
 
     summary = analyze_german_ui(
         dashboard_src=dashboard_src,
