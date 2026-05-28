@@ -7,7 +7,7 @@ Status: automatisch erzeugt aus `docs/production_10_10/evidence_matrix.yaml`.
 - Kategorien: 32
 - Live-Blocker nicht verified: 30
 - Schema-Fehler: 0
-- Warnungen: 285
+- Warnungen: 270
 
 ## Status Counts
 
@@ -96,14 +96,12 @@ Status: automatisch erzeugt aus `docs/production_10_10/evidence_matrix.yaml`.
 - WARNING `missing_evidence_file` `private_owner_scope`: missing evidence file: AGENTS.md
 - WARNING `missing_evidence_file` `private_owner_scope`: missing evidence file: docs/production_10_10/private_owner_scope.md
 - WARNING `missing_evidence_file` `private_owner_scope`: missing evidence file: docs/production_10_10/README.md
-- WARNING `missing_evidence_file` `main_console_information_architecture`: missing evidence file: docs/production_10_10/main_console_product_direction.md
 - WARNING `missing_evidence_file` `main_console_information_architecture`: missing evidence file: docs/production_10_10/main_console_bff_api_wiring.md
 - WARNING `missing_evidence_file` `main_console_information_architecture`: missing evidence file: docs/production_10_10/main_console_ai_operator_assistant.md
 - WARNING `missing_evidence_file` `main_console_information_architecture`: missing evidence file: docs/production_10_10/ai_operator_assistant_prompt_schema.md
 - WARNING `missing_evidence_file` `main_console_information_architecture`: missing evidence file: docs/dashboard_pages.md
 - WARNING `missing_evidence_file` `main_console_information_architecture`: missing evidence file: docs/dashboard_operator.md
 - WARNING `live_blocker_not_verified` `main_console_information_architecture`: blocks live trading and is not verified
-- WARNING `missing_evidence_file` `german_only_ui`: missing evidence file: docs/production_10_10/main_console_product_direction.md
 - WARNING `missing_evidence_file` `german_only_ui`: missing evidence file: docs/production_10_10/german_only_ui_policy.md
 - WARNING `missing_evidence_file` `german_only_ui`: missing evidence file: docs/production_10_10/german_ui_glossary.md
 - WARNING `missing_evidence_file` `german_only_ui`: missing evidence file: docs/production_10_10/german_ui_status_language.md
@@ -131,7 +129,6 @@ Status: automatisch erzeugt aus `docs/production_10_10/evidence_matrix.yaml`.
 - WARNING `missing_evidence_file` `instrument_catalog`: missing evidence file: reports/bitget_asset_universe_sample.json
 - WARNING `live_blocker_not_verified` `instrument_catalog`: blocks live trading and is not verified
 - WARNING `missing_evidence_file` `asset_quarantine_and_delisting`: missing evidence file: docs/bitget-config.md
-- WARNING `missing_evidence_file` `asset_quarantine_and_delisting`: missing evidence file: docs/production_10_10/no_go_rules.md
 - WARNING `missing_evidence_file` `asset_quarantine_and_delisting`: missing evidence file: reports/asset_governance_evidence.md
 - WARNING `missing_evidence_file` `asset_quarantine_and_delisting`: missing evidence file: reports/asset_governance_evidence.json
 - WARNING `missing_evidence_file` `asset_quarantine_and_delisting`: missing evidence file: reports/asset_preflight_evidence.md
@@ -145,8 +142,6 @@ Status: automatisch erzeugt aus `docs/production_10_10/evidence_matrix.yaml`.
 - WARNING `missing_evidence_file` `liquidity_spread_slippage_per_asset`: missing evidence file: docs/risk_governor.md
 - WARNING `missing_evidence_file` `liquidity_spread_slippage_per_asset`: missing evidence file: docs/portfolio_risk_governor.md
 - WARNING `missing_evidence_file` `liquidity_spread_slippage_per_asset`: missing evidence file: docs/production_10_10/LIQUIDITY_RUNTIME_EVIDENCE_GUIDE.md
-- WARNING `missing_evidence_file` `liquidity_spread_slippage_per_asset`: missing evidence file: reports/liquidity_spread_slippage_evidence.md
-- WARNING `missing_evidence_file` `liquidity_spread_slippage_per_asset`: missing evidence file: reports/liquidity_spread_slippage_evidence.json
 - WARNING `missing_evidence_file` `liquidity_spread_slippage_per_asset`: missing evidence file: reports/asset_governance_evidence.md
 - WARNING `missing_evidence_file` `liquidity_spread_slippage_per_asset`: missing evidence file: reports/asset_governance_evidence.json
 - WARNING `missing_evidence_file` `liquidity_spread_slippage_per_asset`: missing evidence file: reports/asset_preflight_evidence.md
@@ -195,21 +190,16 @@ Status: automatisch erzeugt aus `docs/production_10_10/evidence_matrix.yaml`.
 - WARNING `missing_evidence_file` `strategy_validation_per_asset_class`: missing evidence file: reports/multi_asset_strategy_evidence.json
 - WARNING `live_blocker_not_verified` `strategy_validation_per_asset_class`: blocks live trading and is not verified
 - WARNING `missing_evidence_file` `live_broker_fail_closed`: missing evidence file: docs/live_broker.md
-- WARNING `missing_evidence_file` `live_broker_fail_closed`: missing evidence file: docs/production_10_10/live_broker_multi_asset_preflight.md
 - WARNING `missing_evidence_file` `live_broker_fail_closed`: missing evidence file: docs/production_10_10/LIVE_BROKER_FAIL_CLOSED_DRILL_GUIDE.md
 - WARNING `missing_evidence_file` `live_broker_fail_closed`: missing evidence file: docs/production_10_10/live_broker_fail_closed_evidence.template.json
 - WARNING `missing_evidence_file` `live_broker_fail_closed`: missing evidence file: docs/production_10_10/09_live_mirror_gate_matrix.md
-- WARNING `missing_evidence_file` `live_broker_fail_closed`: missing evidence file: docs/production_10_10/no_go_rules.md
 - WARNING `missing_evidence_file` `live_broker_fail_closed`: missing evidence file: reports/live_broker_preflight_matrix.md
-- WARNING `missing_evidence_file` `live_broker_fail_closed`: missing evidence file: reports/live_broker_fail_closed_evidence.md
-- WARNING `missing_evidence_file` `live_broker_fail_closed`: missing evidence file: reports/live_broker_fail_closed_evidence.json
 - WARNING `live_blocker_not_verified` `live_broker_fail_closed`: blocks live trading and is not verified
 - WARNING `missing_evidence_file` `order_idempotency`: missing evidence file: docs/live_broker.md
 - WARNING `missing_evidence_file` `order_idempotency`: missing evidence file: docs/recovery_runbook.md
 - WARNING `missing_evidence_file` `order_idempotency`: missing evidence file: docs/production_10_10/RECONCILE_IDEMPOTENCY_DRILL_GUIDE.md
 - WARNING `missing_evidence_file` `order_idempotency`: missing evidence file: docs/production_10_10/reconcile_exchange_truth_per_asset.md
 - WARNING `missing_evidence_file` `order_idempotency`: missing evidence file: docs/production_10_10/reconcile_idempotency_evidence.template.json
-- WARNING `missing_evidence_file` `order_idempotency`: missing evidence file: docs/production_10_10/no_go_rules.md
 - WARNING `missing_evidence_file` `order_idempotency`: missing evidence file: reports/reconcile_idempotency_summary.md
 - WARNING `missing_evidence_file` `order_idempotency`: missing evidence file: reports/reconcile_idempotency_summary.json
 - WARNING `missing_evidence_file` `order_idempotency`: missing evidence file: reports/risk_execution_evidence.md
@@ -221,7 +211,6 @@ Status: automatisch erzeugt aus `docs/production_10_10/evidence_matrix.yaml`.
 - WARNING `missing_evidence_file` `reconcile_safety`: missing evidence file: docs/production_10_10/RECONCILE_IDEMPOTENCY_DRILL_GUIDE.md
 - WARNING `missing_evidence_file` `reconcile_safety`: missing evidence file: docs/production_10_10/reconcile_exchange_truth_per_asset.md
 - WARNING `missing_evidence_file` `reconcile_safety`: missing evidence file: docs/production_10_10/reconcile_idempotency_evidence.template.json
-- WARNING `missing_evidence_file` `reconcile_safety`: missing evidence file: docs/production_10_10/no_go_rules.md
 - WARNING `missing_evidence_file` `reconcile_safety`: missing evidence file: docs/production_10_10/live_safety_drill.md
 - WARNING `missing_evidence_file` `reconcile_safety`: missing evidence file: docs/production_10_10/live_safety_drill.template.json
 - WARNING `missing_evidence_file` `reconcile_safety`: missing evidence file: reports/reconcile_idempotency_summary.md
@@ -234,13 +223,11 @@ Status: automatisch erzeugt aus `docs/production_10_10/evidence_matrix.yaml`.
 - WARNING `missing_evidence_file` `kill_switch_safety_latch`: missing evidence file: docs/production_10_10/LIVE_SAFETY_DRILL_GUIDE.md
 - WARNING `missing_evidence_file` `kill_switch_safety_latch`: missing evidence file: docs/production_10_10/live_safety_drill.md
 - WARNING `missing_evidence_file` `kill_switch_safety_latch`: missing evidence file: docs/production_10_10/live_safety_drill.template.json
-- WARNING `missing_evidence_file` `kill_switch_safety_latch`: missing evidence file: docs/production_10_10/no_go_rules.md
 - WARNING `missing_evidence_file` `kill_switch_safety_latch`: missing evidence file: reports/live_safety_summary.md
 - WARNING `missing_evidence_file` `kill_switch_safety_latch`: missing evidence file: reports/live_safety_summary.json
 - WARNING `missing_evidence_file` `kill_switch_safety_latch`: missing evidence file: reports/live_safety_evidence.md
 - WARNING `missing_evidence_file` `kill_switch_safety_latch`: missing evidence file: reports/live_safety_evidence.json
 - WARNING `live_blocker_not_verified` `kill_switch_safety_latch`: blocks live trading and is not verified
-- WARNING `missing_evidence_file` `emergency_flatten`: missing evidence file: docs/production_10_10/no_go_rules.md
 - WARNING `missing_evidence_file` `emergency_flatten`: missing evidence file: docs/LaunchChecklist.md
 - WARNING `missing_evidence_file` `emergency_flatten`: missing evidence file: docs/production_10_10/LIVE_SAFETY_DRILL_GUIDE.md
 - WARNING `missing_evidence_file` `emergency_flatten`: missing evidence file: docs/production_10_10/live_safety_drill.md
@@ -328,7 +315,6 @@ Status: automatisch erzeugt aus `docs/production_10_10/evidence_matrix.yaml`.
 - WARNING `live_blocker_not_verified` `audit_forensics`: blocks live trading and is not verified
 - WARNING `missing_evidence_file` `frontend_main_console_security`: missing evidence file: docs/api_gateway_security.md
 - WARNING `missing_evidence_file` `frontend_main_console_security`: missing evidence file: docs/dashboard_operator.md
-- WARNING `missing_evidence_file` `frontend_main_console_security`: missing evidence file: docs/production_10_10/main_console_product_direction.md
 - WARNING `missing_evidence_file` `frontend_main_console_security`: missing evidence file: docs/production_10_10/main_console_safety_command_center.md
 - WARNING `missing_evidence_file` `frontend_main_console_security`: missing evidence file: reports/main_console_safety_audit.md
 - WARNING `missing_evidence_file` `frontend_main_console_security`: missing evidence file: reports/main_console_safety_audit.json
@@ -369,7 +355,6 @@ Status: automatisch erzeugt aus `docs/production_10_10/evidence_matrix.yaml`.
 - WARNING `missing_evidence_file` `branch_protection_ci`: missing evidence file: reports/branch_protection_ci_evidence.md
 - WARNING `missing_evidence_file` `branch_protection_ci`: missing evidence file: reports/branch_protection_ci_evidence.json
 - WARNING `live_blocker_not_verified` `branch_protection_ci`: blocks live trading and is not verified
-- WARNING `missing_evidence_file` `final_go_no_go_scorecard`: missing evidence file: docs/production_10_10/no_go_rules.md
 - WARNING `missing_evidence_file` `final_go_no_go_scorecard`: missing evidence file: docs/production_10_10/owner_private_live_release.template.json
 - WARNING `missing_evidence_file` `final_go_no_go_scorecard`: missing evidence file: docs/production_10_10/production_readiness_scorecard.md
 - WARNING `missing_evidence_file` `final_go_no_go_scorecard`: missing evidence file: docs/production_10_10/production_readiness_scorecard_template.md
